@@ -91,6 +91,7 @@ fn find_font() -> Option<PathBuf> {
 pub struct FfmpegRenderer {
     ffmpeg: String,
     ffprobe: String,
+    preview_watermark: bool,
 }
 
 impl FfmpegRenderer {
@@ -98,7 +99,13 @@ impl FfmpegRenderer {
         Self {
             ffmpeg: ffmpeg.to_string(),
             ffprobe: ffprobe.to_string(),
+            preview_watermark: false,
         }
+    }
+
+    pub fn with_preview_watermark(mut self, enabled: bool) -> Self {
+        self.preview_watermark = enabled;
+        self
     }
 
     pub fn thumbnail(
@@ -248,6 +255,11 @@ impl FfmpegRenderer {
             }
         }
         let font = find_font();
+        if self.preview_watermark && font.is_none() {
+            return Err(FramechesterError::Unavailable(
+                "fonte local ausente para identificar a previa".into(),
+            ));
+        }
         let mut scene_files = Vec::new();
         for (index, (scene, asset)) in timeline.scenes.iter().zip(scene_assets).enumerate() {
             let stem = format!("scene_{index:03}");
@@ -267,10 +279,13 @@ impl FfmpegRenderer {
                     audio_path.display()
                 )));
             }
-            let normalization = format!(
+            let mut normalization = format!(
                 "scale={}:{}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad={}:{}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={},format=yuv420p",
                 profile.width, profile.height, profile.width, profile.height, profile.fps
             );
+            if self.preview_watermark {
+                normalization.push_str(&format!(",drawtext=fontfile='{}':text='PREVIA - REVISAO PENDENTE':fontcolor=white:fontsize={}:x=16:y=16:box=1:boxcolor=0x000000BB:boxborderw=8",filter_escape(font.as_ref().expect("preview font validated")),(profile.width / 40).max(18)));
+            }
             let title_filter = font.as_ref().filter(|_| asset.path.is_none() && !scene.heading.trim().is_empty()).map(|font| {
                 format!(
                     "drawtext=fontfile='{}':textfile='{stem}.txt':fontcolor=white:fontsize={}:x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxcolor=0x000000AA:boxborderw=24",

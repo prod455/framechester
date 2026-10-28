@@ -32,7 +32,7 @@ test('an empty library automatically prepares and binds scene visuals without up
   assert.equal(hasUnsavedEdits(),false,'Preparing visuals is already persisted and must not create a discard warning');
   dialog.querySelector<HTMLButtonElement>('button[type=submit]')!.click();await tick();await tick();
   assert.equal(started,true);assert.equal(calls.length,2);
-  assert.deepEqual(calls[1].body,{scriptId:'script-one',assetIds:{42:'asset-auto'},asr:false,burnSubtitles:true});
+  assert.deepEqual(calls[1].body,{scriptId:'script-one',assetIds:{42:'asset-auto'},asr:false,burnSubtitles:true,previewOnly:true});
 });
 
 test('a scene requiring a real recording stays unbound and cannot silently use a fabricated image',async()=>{
@@ -63,7 +63,8 @@ test('pending captures show illustrative previews, one recovery summary and an a
   await tick();await tick();
   assert.equal(dialog.querySelectorAll('img').length,1,'The preview must exist even when a recording is pending');
   assert.match(dialog.textContent!,/Prévia ilustrativa/);
-  assert.equal(dialog.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled,true);
+  assert.equal(dialog.querySelector<HTMLButtonElement>('[data-testid="final-video"]')!.disabled,true);
+  assert.equal(dialog.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled,false);
   const adapt=[...dialog.querySelectorAll('button')].find(button=>button.textContent?.includes('Adaptar roteiro com IA'))!;
   assert.ok(adapt);adapt.click();await tick();assert.equal(adapted,script.id);
 });
@@ -72,6 +73,18 @@ test('unreviewed claims keep a newly adapted script visibly blocked despite conf
   const dialog=openProduction({channel,scripts:[{...script,claims:[{...script.claims[0],status:'unverified'}]}],assets:[],config:defaultConfig(),currentChannelId:()=>channel.id,
     api:async<T>()=>prepared as T,onStarted:async()=>{},onAddAssets:()=>{},onEditScript:()=>{}});
   await tick();await tick();
-  assert.equal(dialog.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled,true);
+  assert.equal(dialog.querySelector<HTMLButtonElement>('[data-testid="final-video"]')!.disabled,true);
+  assert.equal(dialog.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled,false);
   assert.match(dialog.textContent!,/alegações/);
+});
+
+test('pending sources and recordings still allow an explicitly marked video preview',async()=>{
+  let sent:unknown;
+  const dialog=openProduction({channel,scripts:[{...script,crossChecked:false,claims:[],sources:[]}],assets:[],config:defaultConfig(),currentChannelId:()=>channel.id,
+    api:async<T>(path:string,_method='GET',body?:unknown)=>{if(path.endsWith('/jobs')){sent=body;return job as T;}return {scriptId:script.id,assets:[{...asset,generated:{...asset.generated!,captureRequired:true}}],bindings:{},previews:{42:asset.id},pending:[{sceneId:42,reason:'Gravação pendente'}]} as T;},onStarted:async()=>{},onAddAssets:()=>{},onEditScript:()=>{}});
+  await tick();await tick();
+  const preview=dialog.querySelector<HTMLButtonElement>('button[type=submit]')!;
+  assert.equal(preview.disabled,false);assert.match(preview.textContent!,/Gerar prévia do vídeo/);
+  preview.click();await tick();await tick();
+  assert.deepEqual(sent,{scriptId:script.id,assetIds:{42:asset.id},asr:false,burnSubtitles:true,previewOnly:true});
 });

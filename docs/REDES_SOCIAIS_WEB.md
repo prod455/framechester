@@ -19,6 +19,15 @@ No Google Cloud do operador, habilitar YouTube Data API v3 e YouTube Analytics A
 
 O serviço solicita `youtube.readonly`, `yt-analytics.readonly` e `yt-analytics-monetary.readonly`; não solicita `youtube.upload`. O consentimento usa navegador normal, state aleatório válido por dez minutos, uso único e PKCE S256. State vincula canal local, Channel ID esperado, cliente e callback. Reiniciar o servidor invalida autorizações pendentes. Outra tentativa para o mesmo canal invalida o state anterior. O SDK oficial do Google documenta `codeChallenge` e `codeVerifier`. [Código primário do cliente OAuth](https://github.com/googleapis/google-auth-library-nodejs/blob/main/src/auth/oauth2client.ts).
 
+O retorno do Google aceita GET no callback mediante validação de state/PKCE.
+O redirecionamento seguinte pode conservar `Sec-Fetch-Site: cross-site`;
+por isso a página pública de entrada `/` aceita GET com modo `navigate` e
+destino `document`. Essa exceção não libera APIs, iframes, requisições fetch,
+outros métodos ou Hosts/Origins externos. A sessão e o CSRF das operações
+do Studio continuam obrigatórios. Após reiniciar para atualizar o servidor,
+comece uma nova autorização em Contas conectadas; recarregar um callback
+antigo não recria o state pendente.
+
 Antes de salvar ou substituir tokens, o backend consulta a identidade autenticada. Token de outro canal, resposta ambígua e refresh que retorna identidade diferente são rejeitados; o token anterior não é substituído. Escopos e validade do YouTube são lidos de `tokeninfo` por POST com Bearer no header, sem access token na URL. Dados ausentes continuam desconhecidos; não se aplica validade fictícia de uma hora. Renovação automática exige refresh token e cliente protegido correspondente. [Identidade autenticada em channels.list](https://developers.google.com/youtube/data/reference/rest/v3/channels/list), [implementação primária de tokeninfo](https://github.com/googleapis/google-auth-library-nodejs/blob/main/src/auth/oauth2client.ts).
 
 Uma sincronização consulta os últimos **28 dias calendários encerrados em Pacific time**, com `ids=channel==<conta esperada>`. A API pode retornar dados somente até uma data anterior, conforme disponibilidade das métricas. `periodStart`/`periodEnd` representam a janela solicitada, não certificação de cobertura integral; a nota de receita informa atrasos e ajustes. Estatísticas e receita são consultas distintas e podem ter defasagens distintas. O serviço não calcula RPM ou compara rentabilidade usando essas janelas como se estivessem integralmente conciliadas. [Datas e disponibilidade](https://developers.google.com/youtube/analytics/dimensions#time-periods).

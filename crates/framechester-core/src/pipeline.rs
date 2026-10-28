@@ -94,6 +94,19 @@ impl Pipeline {
     }
 
     pub fn run(&self, topic: Topic) -> Result<PipelineReport> {
+        self.run_mode(topic, false)
+    }
+
+    pub fn preview(&self, topic: Topic) -> Result<PipelineReport> {
+        if !self.options.dry_run {
+            return Err(FramechesterError::InvalidInput(
+                "previa exige dry_run e nunca publica".into(),
+            ));
+        }
+        self.run_mode(topic, true)
+    }
+
+    fn run_mode(&self, topic: Topic, preview_only: bool) -> Result<PipelineReport> {
         if let Some(channel) = &self.options.channel {
             channel.validate()?;
         }
@@ -108,8 +121,20 @@ impl Pipeline {
 
         tracker.advance(Stage::Sourced)?;
         let signal = editorial::evaluate(&topic);
-        if !signal.blocked_reasons.is_empty() {
+        let blocked = if preview_only {
+            editorial::preview_blocked_reasons(&topic)
+        } else {
+            signal.blocked_reasons.clone()
+        };
+        if preview_only {
+            warnings.push(
+                "PREVIA: rascunho para revisao; sem aprovacao editorial, pacote ou publicacao"
+                    .into(),
+            );
             warnings.extend(signal.blocked_reasons.clone());
+        }
+        if !blocked.is_empty() {
+            warnings.extend(blocked);
             tracker.block()?;
             return self.finish(
                 &topic,
@@ -229,6 +254,22 @@ impl Pipeline {
 
         let editorial_report = self.providers.qa.editorial(&script, &assets, &timeline)?;
         tracker.advance(Stage::EditorialQa)?;
+
+        if preview_only {
+            tracker.block()?;
+            return self.finish(
+                &topic,
+                tracker.stage,
+                Some(script),
+                Some(render),
+                Some(technical),
+                Some(editorial_report),
+                None,
+                None,
+                Vec::new(),
+                warnings,
+            );
+        }
 
         if technical.overall() == QaStatus::Fail {
             warnings.push("QA tecnico falhou; publicacao bloqueada".into());
@@ -667,6 +708,74 @@ mod tests {
         let report = pipeline.run(topic).unwrap();
         assert_eq!(report.stage, Stage::Blocked);
         assert!(report.script.is_none());
+    }
+
+    #[test]
+    fn preview_renders_a_draft_without_a_publish_package_or_editorial_approval() {
+        let workdir =
+            std::env::temp_dir().join(format!("fc-draft-preview-{}", crate::domain::now_unix()));
+        let pipeline = Pipeline::new(
+            providers(),
+            PipelineOptions {
+                workdir: workdir.clone(),
+                ..PipelineOptions::default()
+            },
+        );
+        let mut draft = topic();
+        draft.sources.clear();
+        draft.claims.clear();
+        draft.metrics.cross_check = 0.0;
+        let report = pipeline.preview(draft).unwrap();
+        assert!(report.render.is_some());
+        assert_eq!(report.stage, Stage::Blocked);
+        assert!(report.publish.is_none());
+        assert!(report.package.is_none());
+        assert!(!workdir.join("publish/metadata.json").exists());
+        let _ = std::fs::remove_dir_all(workdir);
+    }
+
+    #[test]
+    fn preview_refuses_live_mode_before_creating_output() {
+        let workdir = std::env::temp_dir().join("fc-live-preview-must-not-exist");
+        let pipeline = Pipeline::new(
+            providers(),
+            PipelineOptions {
+                workdir: workdir.clone(),
+                dry_run: false,
+                ..PipelineOptions::default()
+            },
+        );
+        assert!(pipeline.preview(topic()).is_err());
+        assert!(!workdir.exists());
+    }
+
+    #[test]
+    fn draft_preview_still_blocks_unsafe_sources_and_known_contradictions() {
+        for kind in ["unsafe-source", "contradiction"] {
+            let workdir = std::env::temp_dir().join(format!(
+                "fc-invalid-preview-{kind}-{}",
+                crate::domain::now_unix()
+            ));
+            let pipeline = Pipeline::new(
+                providers(),
+                PipelineOptions {
+                    workdir: workdir.clone(),
+                    ..PipelineOptions::default()
+                },
+            );
+            let mut draft = topic();
+            if kind == "unsafe-source" {
+                draft.sources[0].url = "file:///private/input".into();
+                draft.claims[0].source_urls.clear();
+            } else {
+                draft.claims[0].status = ClaimStatus::Contradicted;
+            }
+            let report = pipeline.preview(draft).unwrap();
+            assert!(report.render.is_none());
+            assert!(report.publish.is_none());
+            assert_eq!(report.stage, Stage::Blocked);
+            let _ = std::fs::remove_dir_all(workdir);
+        }
     }
 
     #[test]

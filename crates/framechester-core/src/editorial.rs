@@ -44,13 +44,22 @@ fn round2(value: f64) -> f64 {
 }
 
 pub fn blocked_reasons(topic: &Topic) -> Vec<String> {
+    reasons(topic, true)
+}
+
+/// Draft rendering relaxes evidence completeness, never unsafe inputs or contradictions.
+pub fn preview_blocked_reasons(topic: &Topic) -> Vec<String> {
+    reasons(topic, false)
+}
+
+fn reasons(topic: &Topic, require_review: bool) -> Vec<String> {
     let mut reasons = Vec::new();
     let distinct_sources: std::collections::HashSet<&str> = topic
         .sources
         .iter()
         .map(|source| source.url.as_str())
         .collect();
-    if distinct_sources.len() < 2 {
+    if require_review && distinct_sources.len() < 2 {
         reasons.push("menos de 2 fontes com URLs distintas".to_string());
     }
     if unlisted_claim_sources(&topic.claims, &topic.sources) > 0 {
@@ -74,11 +83,13 @@ pub fn blocked_reasons(topic: &Topic) -> Vec<String> {
         if claim.status == ClaimStatus::Contradicted {
             reasons.push(format!("claim contraditorio: {}", claim.text));
         }
-        if claim.status == ClaimStatus::Unverified || claim.source_urls.is_empty() {
+        if require_review
+            && (claim.status == ClaimStatus::Unverified || claim.source_urls.is_empty())
+        {
             reasons.push(format!("claim sem fonte: {}", claim.text));
         }
     }
-    if topic.metrics.cross_check <= 0.0 {
+    if require_review && topic.metrics.cross_check <= 0.0 {
         reasons.push("sem verificacao cruzada".to_string());
     }
     let mut texts: Vec<&str> = vec![&topic.title, &topic.angle];

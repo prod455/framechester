@@ -1,5 +1,10 @@
 # Vozes permitidas na produção
 
+No Studio, caminhos relativos de Python, modelo e estilos partem da raiz do
+repositório, inclusive quando iniciado por `npm --prefix web start`. O job
+recebe caminhos absolutos. Um Python configurado pelo nome do executável é
+localizado no PATH; a configuração salva do operador permanece preservada.
+
 Revisão: 28/10/2026. A produção está restrita às vozes brasileiras do
 **Kokoro-82M v1.0**, publicado pelo autor sob **Apache-2.0**, que permite uso
 comercial conforme as condições da licença.

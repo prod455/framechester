@@ -5,6 +5,11 @@ salvo. A biblioteca pode estar vazia. O operador confere as prévias e inicia
 o vídeo; importar imagens e preencher sua procedência é necessário apenas
 quando quiser usar arquivos próprios.
 
+O fluxo principal agora é **Produzir com IA**: orientação e referência →
+roteiro → visuais → narração → montagem → QA → revisão do vídeo. A associação
+de cada cena acontece no servidor. A preparação individual descrita abaixo
+fica em **Controles avançados → Abrir preparação manual**.
+
 O motor Rust compõe PNGs com o nome do canal, título da cena e trecho da
 narração: 1920 × 1080 para vídeos longos e 1080 × 1920 para Shorts. São
 composições de texto, sem pesquisa de imagens ou geração fotográfica por IA.
@@ -14,7 +19,9 @@ etapa. O render e a voz continuam locais.
 Uma cena marcada com `CAPTURA PENDENTE`, `gravação real`, `gravação de tela`
 ou equivalente recebe uma composição com o aviso **Prévia ilustrativa ·
 gravação pendente**. A prévia fica visível e na biblioteca, mas não pode ser
-usada como gravação real na versão final. A tela mostra um resumo das
+usada como gravação real na versão final. **Gerar prévia do vídeo** permite
+assistir à montagem antes de resolver as pendências e inclui uma marca de
+revisão em todos os frames. A tela mostra um resumo das
 pendências, com os arquivos próprios sob uma seção expansível de cada cena.
 
 Para um vídeo explicativo sem demonstração, **Adaptar roteiro com IA** abre

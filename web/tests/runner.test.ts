@@ -79,6 +79,58 @@ function state(): AppState {
   const script: Script = {id:'script-one',channelId:'tech',topicId:'topic-one',title:'Roteiro original',series:'tecnologia',format:'short',hook:'Uma pergunta',crossChecked:true,status:'reviewed',createdAt:date,updatedAt:date,sources:[source(1),source(2)],claims:[{text:'Alegacao citada',status:'cited',sourceUrls:[source(1).url]}],scenes:[{id:42,heading:'Cena',narration:'Texto autoral preservado.',visualBrief:'Diagrama original',durationHintSecs:20}]};
   return {schemaVersion:1,channels:['tech','science'].map(id=>({id,name:id,description:'',niche:'',audience:'',language:'pt-BR',createdAt:date,updatedAt:date})),config:{dryRun:true,telemetry:false,render:{width:640,height:360,fps:30,crf:20,preset:'veryfast',videoCodec:'libx264'},tts:{engine:'kokoro',pythonPath:'synthetic-python',voiceStyles:'C:/synthetic/voices.bin',piperPath:'piper',voiceModel:'C:/synthetic/licensed-voice.onnx',voiceName:'pf_dora'},asr:{enabled:false,model:'',language:'pt',minCoverage:.45}},channelConfigs:{},research:[],scripts:[script],stories:[],monetization:[],receipts:[]};
 }
+
+test('a local draft preview renders unreviewed material without approving it or accepting it as a final video',async()=>{
+  const home=await mkdtemp(join(tmpdir(),'fc-draft-video-'));const current=state();current.scripts[0].crossChecked=false;current.scripts[0].sources=[];current.scripts[0].claims=[];let previews=false;
+  const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>current,execute:async args=>{
+    if(args[0]==='visuals'){
+      const output=args[args.indexOf('--output')+1];await mkdir(output,{recursive:true});await writeFile(join(output,'scene-42.png'),visualPng);
+      return {exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v1',scenes:[{scene_id:42,status:'requires_capture',file:'scene-42.png'}]}),stderr:''};
+    }
+    previews=args.includes('--preview-only');assert.equal(previews,true);
+    const topic=JSON.parse(await readFile(args[args.indexOf('--topic')+1],'utf8'));assert.equal(topic.metrics.cross_check,0);assert.deepEqual(topic.sources,[]);
+    const output=join(args[args.indexOf('--workdir')+1],'channels','tech');await mkdir(join(output,'render'),{recursive:true});await writeFile(join(output,'render/final.mp4'),'synthetic preview fixture');
+    await writeFile(join(output,'pipeline_report.json'),JSON.stringify({stage:'blocked',technical_qa:{checks:[{status:'pass'}]},editorial_qa:{checks:[{status:'fail'}]}}));
+    return {exitCode:1,stdout:'',stderr:''};
+  }});
+  try{
+    const prepared=await runner.prepareVisuals('tech','script-one');const assetIds=prepared.previews!;
+    await assert.rejects(runner.start('tech',{scriptId:'script-one',assetIds}),/fontes/);
+    const job=await runner.start('tech',{scriptId:'script-one',assetIds,previewOnly:true});await runner.idle();
+    const saved=(await runner.list('tech')).find(item=>item.id===job.id)!;
+    assert.equal(saved.previewOnly,true);assert.equal(saved.videoAvailable,true);assert.equal(saved.qa?.editorial,'fail');assert.match(saved.message,/Prévia/);assert.equal(previews,true);assert.equal(current.scripts[0].crossChecked,false);
+  }finally{await runner.close();await rm(home,{recursive:true,force:true});}
+});
+
+test('automatic production continues from a generated script through visuals and render in the server queue',async()=>{
+  const home=await mkdtemp(join(tmpdir(),'fc-auto-run-'));const current=state();let generated=false,rendered=false;
+  const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>current,execute:async args=>{
+    if(args[0]==='visuals'){const output=args[args.indexOf('--output')+1];await mkdir(output,{recursive:true});await writeFile(join(output,'scene-42.png'),visualPng);return {exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v1',scenes:[{scene_id:42,status:'generated',file:'scene-42.png'}]}),stderr:''};}
+    rendered=true;assert.ok(args.includes('--preview-only'));const output=join(args[args.indexOf('--workdir')+1],'channels','tech');await mkdir(join(output,'render'),{recursive:true});await writeFile(join(output,'render/final.mp4'),'synthetic automated preview');await writeFile(join(output,'pipeline_report.json'),JSON.stringify({stage:'blocked',technical_qa:{checks:[{status:'pass'}]},editorial_qa:{checks:[{status:'needs_human'}]}}));return {exitCode:1,stdout:'',stderr:''};
+  }});
+  try{
+    const method=Reflect.get(runner,'startAutomated');assert.equal(typeof method,'function');
+    const job=await runner.startAutomated('tech','script-one',async()=>{generated=true;const draft={...current.scripts[0],id:'script-generated',crossChecked:false,status:'draft' as const};current.scripts.push(draft);return draft.id;});
+    assert.equal(job.automated,true);await runner.idle();const saved=(await runner.list('tech')).find(item=>item.id===job.id)!;
+    assert.equal(generated,true);assert.equal(rendered,true);assert.equal(saved.scriptId,'script-generated');assert.equal(saved.videoAvailable,true);assert.equal(saved.previewOnly,true);assert.equal(current.scripts[0].crossChecked,true);
+  }finally{await runner.close();await rm(home,{recursive:true,force:true});}
+});
+
+test('automatic narration preflight resolves installed files from the repository rather than the server working directory',async()=>{
+  const home=await mkdtemp(join(tmpdir(),'fc-narrator-root-'));const root=join(home,'repository');const current=state();
+  current.config.tts={...current.config.tts,pythonPath:'.framechester/tts-venv/Scripts/python.exe',voiceModel:'models/kokoro/kokoro-v1.0.onnx',voiceStyles:'models/kokoro/voices-v1.0.bin'};
+  for(const relative of [current.config.tts.pythonPath!,current.config.tts.voiceModel,current.config.tts.voiceStyles!,'engine.exe']){const path=join(root,relative);await mkdir(join(path,'..'),{recursive:true});await writeFile(path,'synthetic path fixture');}
+  let prepared=false;const runner=await createRunner({home:join(home,'profile'),repositoryRoot:root,binary:join(root,'engine.exe'),readState:async()=>current});
+  try{
+    const job=await runner.startAutomated('tech','script-one',async()=>{prepared=true;throw new Error('Synthetic stop before any engine or model call');});
+    await runner.idle();assert.equal(prepared,true,'The installed narrator must be accepted even when the Node working directory is elsewhere');
+    assert.equal((await runner.list('tech')).find(item=>item.id===job.id)!.status,'failed');
+    assert.equal(current.config.tts.pythonPath,'.framechester/tts-venv/Scripts/python.exe','Runtime resolution must preserve saved operator paths');
+    await rm(join(root,current.config.tts.voiceStyles!));prepared=false;
+    await assert.rejects(runner.startAutomated('tech','script-one',async()=>{prepared=true;return 'script-one';}),error=>error instanceof Error&&error.message.includes('voiceStyles')&&!error.message.includes('voices:setup'));
+    assert.equal(prepared,false,'A genuinely missing file must be reported before the AI call');
+  }finally{await runner.close();await rm(home,{recursive:true,force:true});}
+});
 test('a channel job passes authored JSON and licensed media to the fixed Rust engine', async () => {
   const home = await mkdtemp(join(tmpdir(),'framechester-web-runner-'));
   const input = state();

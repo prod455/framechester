@@ -1,9 +1,10 @@
 import { spawn } from 'node:child_process';
 import { commercialVoiceError } from '../shared/voices.ts';
+import {HttpError} from './auth.ts';
 import { randomUUID, createHash } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync,statSync } from 'node:fs';
 import { mkdir, readFile, writeFile, rename, copyFile, realpath, stat } from 'node:fs/promises';
-import { basename, extname, join, relative, resolve, sep } from 'node:path';
+import { basename, extname, join, relative, resolve, sep,delimiter,isAbsolute } from 'node:path';
 import type { AppState, RunnerApi, Script, StartJobInput, UploadAssetInput, WebAsset, WebJob, WebConfig, QaStatus, PreparedVisuals } from '../shared/types.ts';
 
 interface StoredAsset extends WebAsset { diskName: string }
@@ -19,6 +20,23 @@ const id = (value: string) => {
   return value;
 };
 const hash = (data: Buffer) => createHash('sha256').update(data).digest('hex');
+function isFile(path:string|undefined):boolean {try{return !!path&&statSync(path).isFile();}catch{return false;}}
+/** Operator paths are relative to the repository, just like the engine's cwd. */
+function productionConfig(config:WebConfig,repositoryRoot:string):WebConfig {
+  const snapshot=structuredClone(config),tts=snapshot.tts;
+  if(tts.voiceModel)tts.voiceModel=resolve(repositoryRoot,tts.voiceModel);
+  if(tts.voiceStyles)tts.voiceStyles=resolve(repositoryRoot,tts.voiceStyles);
+  if(tts.pythonPath){
+    if(isAbsolute(tts.pythonPath)||/[\\/]/.test(tts.pythonPath))tts.pythonPath=resolve(repositoryRoot,tts.pythonPath);
+    else {
+      const names=process.platform==='win32'&&!extname(tts.pythonPath)?[tts.pythonPath,`${tts.pythonPath}.exe`]:[tts.pythonPath];
+      const locations=[repositoryRoot,...(process.env.PATH??'').split(delimiter).filter(Boolean)];
+      const installed=locations.flatMap(directory=>names.map(name=>resolve(directory,name))).find(isFile);
+      tts.pythonPath=installed??resolve(repositoryRoot,tts.pythonPath);
+    }
+  }
+  return snapshot;
+}
 async function load<T>(path: string, fallback: T): Promise<T> {
   try { return JSON.parse(await readFile(path,'utf8')) as T; }
   catch(error) { if((error as NodeJS.ErrnoException).code==='ENOENT') return fallback; throw new RunnerError('Índice local de produção inválido.'); }
@@ -39,10 +57,10 @@ function rustConfig(config: WebConfig, channelId: string): string {
   const q = (value: string) => JSON.stringify(value);
   return `[[channels]]\nid = ${q(channelId)}\n[app]\ndry_run = true\ntelemetry = false\n[render]\nwidth = ${config.render.width}\nheight = ${config.render.height}\nfps = ${config.render.fps}\ncrf = ${config.render.crf}\npreset = ${q(config.render.preset)}\nvideo_codec = "libx264"\n[tts]\nengine = "kokoro"\npython_path = ${q(config.tts.pythonPath!)}\nvoice_styles = ${q(config.tts.voiceStyles!)}\nvoice_model = ${q(config.tts.voiceModel)}\nvoice_name = ${q(config.tts.voiceName)}\n[asr]\nenabled = ${config.asr.enabled}\nmodel = ${q(config.asr.model)}\nlanguage = ${q(config.asr.language)}\nmin_coverage = ${config.asr.minCoverage}\n[publish]\nenabled = false\nprivacy = "private"\n`;
 }
-function checkScript(script: Script) {
-  if(!script.crossChecked) throw new RunnerError('Confirme o cruzamento das fontes no roteiro antes de produzir.');
+function checkScript(script: Script,previewOnly=false) {
+  if(!previewOnly&&!script.crossChecked) throw new RunnerError('Confirme o cruzamento das fontes no roteiro antes de produzir.');
   const urls=new Set(script.sources.map(item=>item.url));
-  if(urls.size<2) throw new RunnerError('O roteiro precisa de duas fontes distintas.');
+  if(!previewOnly&&urls.size<2) throw new RunnerError('O roteiro precisa de duas fontes distintas.');
   if(script.scenes.length<1 || script.scenes.length>32 || script.scenes.reduce((sum,item)=>sum+item.narration.length,0)>50_000) throw new RunnerError('Quantidade ou tamanho das cenas inválido.');
   const sceneIds=new Set<number>();
   for(const scene of script.scenes) {
@@ -53,7 +71,7 @@ function checkScript(script: Script) {
     const url=new URL(item.url);
     if(url.protocol!=='https:' || url.username || url.password || !item.title.trim() || !item.publisher.trim() || !item.retrievedAt.trim() || !item.license.trim()) throw new RunnerError('Fonte incompleta ou URL insegura.');
   }
-  if(!script.claims.length || script.claims.some(claim=>claim.status!=='cited' || !claim.text.trim() || !claim.sourceUrls.length || claim.sourceUrls.some(url=>!urls.has(url)))) throw new RunnerError('Alegações precisam estar citadas nas fontes do roteiro, sem contradições pendentes.');
+  if((!previewOnly&&!script.claims.length) || script.claims.some(claim=>(!previewOnly&&(claim.status!=='cited'||!claim.sourceUrls.length))||claim.status==='contradicted'||!claim.text.trim()||claim.sourceUrls.some(url=>!urls.has(url)))) throw new RunnerError('Alegações precisam estar citadas nas fontes do roteiro, sem contradições pendentes.');
 }
 
 export class LocalRunner implements RunnerApi {
@@ -195,26 +213,56 @@ export class LocalRunner implements RunnerApi {
     const {diskName:_,...publicAsset}=asset; return structuredClone(publicAsset);
   }
   async start(channelId: string,input: StartJobInput): Promise<WebJob> {
+    if(input.previewOnly!==undefined&&typeof input.previewOnly!=='boolean')throw new RunnerError('Opção de prévia inválida.');
     const state=await this.channel(channelId);
     if(this.stopped) throw new RunnerError('Servidor encerrando.');
     if(!this.engineStatus().available) throw new RunnerError(this.engineStatus().message,503);
     const script=state.scripts.find(item=>item.id===input.scriptId && item.channelId===channelId);
     if(!script || script.status==='archived') throw new RunnerError('Roteiro não encontrado neste canal.');
-    checkScript(script);
+    checkScript(script,input.previewOnly===true);
     if(!input.assetIds || Object.keys(input.assetIds).length!==script.scenes.length) throw new RunnerError('Selecione uma mídia deste canal para cada cena.');
     const assets=script.scenes.map(scene=>this.media.find(asset=>asset.id===input.assetIds[String(scene.id)] && asset.channelId===channelId));
     if(assets.some(asset=>!asset)) throw new RunnerError('Mídia ausente ou pertencente a outro canal.');
-    if(assets.some(asset=>asset?.generated?.captureRequired))throw new RunnerError('Esta imagem é uma prévia ilustrativa. Adicione a gravação real ou adapte o roteiro antes de gerar a versão final.');
+    if(!input.previewOnly&&assets.some(asset=>asset?.generated?.captureRequired))throw new RunnerError('Esta imagem é uma prévia ilustrativa. Adicione a gravação real ou adapte o roteiro antes de gerar a versão final.');
     if(assets.some((asset,index)=>asset?.generated&&(asset.generated.scriptId!==script.id||asset.generated.sceneId!==script.scenes[index].id||asset.generated.fingerprint!==visualFingerprint(state,channelId,script))))
       throw new RunnerError('O roteiro mudou ou este visual foi preparado para outra cena. Prepare os visuais novamente antes de gerar o vídeo.');
-    const config=structuredClone(Object.hasOwn(state.channelConfigs,channelId) ? state.channelConfigs[channelId] : state.config);
+    const config=productionConfig(Object.hasOwn(state.channelConfigs,channelId) ? state.channelConfigs[channelId] : state.config,this.options.repositoryRoot);
     const voiceError=commercialVoiceError(config.tts);
     if(voiceError) throw new RunnerError(voiceError);
-    const job: WebJob={id:randomUUID(),channelId,scriptId:script.id,status:'queued',createdAt:new Date().toISOString(),message:'Aguardando o motor local.',videoAvailable:false};
+    const job: WebJob={id:randomUUID(),channelId,scriptId:script.id,status:'queued',createdAt:new Date().toISOString(),message:'Aguardando o motor local.',videoAvailable:false,...(input.previewOnly?{previewOnly:true}:{})};
     this.jobs.unshift(job); await this.persist();
     const work=()=>this.run(job,structuredClone(script),config,assets as StoredAsset[],input);
     this.queue=this.queue.then(work,work);
     return structuredClone(job);
+  }
+  async startAutomated(channelId:string,seedScriptId:string,prepare:()=>Promise<string>):Promise<WebJob> {
+    const state=await this.channel(channelId);
+    if(this.stopped)throw new RunnerError('Servidor encerrando.');
+    if(!this.engineStatus().available)throw new RunnerError(this.engineStatus().message,503);
+    if(seedScriptId!=='automatic'&&!state.scripts.some(script=>script.id===seedScriptId&&script.channelId===channelId&&script.status!=='archived'))throw new RunnerError('O roteiro de referência não pertence a este canal.');
+    const config=productionConfig(Object.hasOwn(state.channelConfigs,channelId)?state.channelConfigs[channelId]:state.config,this.options.repositoryRoot);
+    const voiceError=commercialVoiceError(config.tts);if(voiceError)throw new RunnerError(voiceError);
+    if(!this.options.execute){
+      const missing=[['Python do Kokoro (pythonPath)',config.tts.pythonPath],['Modelo da voz (voiceModel)',config.tts.voiceModel],['Estilos das vozes (voiceStyles)',config.tts.voiceStyles]].filter(([,path])=>!isFile(path)).map(([label])=>label);
+      if(missing.length)throw new RunnerError(`Arquivos do narrador não encontrados: ${missing.join(', ')}. Confira os caminhos em Configurações; caminhos relativos partem da raiz do projeto.`);
+    }
+    const job:WebJob={id:randomUUID(),channelId,scriptId:seedScriptId,status:'queued',createdAt:new Date().toISOString(),message:'Produção com IA na fila.',videoAvailable:false,previewOnly:true,automated:true};
+    this.jobs.unshift(job);await this.persist();
+    const work=async()=>{
+      if(this.stopped)return;
+      try{
+        job.status='running';job.startedAt=new Date().toISOString();job.message='A IA está desenvolvendo o roteiro.';await this.persist();
+        const generatedId=await prepare();if(this.stopped)throw new RunnerError('Produção interrompida pelo encerramento do servidor. O roteiro gerado foi preservado.');
+        const next=await this.channel(channelId),script=next.scripts.find(script=>script.id===generatedId&&script.channelId===channelId&&script.status!=='archived');
+        if(!script)throw new RunnerError('O roteiro gerado não pertence a este canal.');
+        checkScript(script,true);job.scriptId=script.id;job.message='Roteiro salvo. Preparando os visuais de todas as cenas.';await this.persist();
+        const prepared=await this.prepareVisuals(channelId,script.id),assetIds=prepared.previews??prepared.bindings;
+        const assets=script.scenes.map(scene=>this.media.find(asset=>asset.id===assetIds[String(scene.id)]&&asset.channelId===channelId));
+        if(assets.some(asset=>!asset))throw new RunnerError('A preparação automática não entregou um visual para cada cena.');
+        await this.run(job,structuredClone(script),config,assets as StoredAsset[],{scriptId:script.id,assetIds,burnSubtitles:true,asr:config.asr.enabled,previewOnly:true});
+      }catch(error){job.status='failed';job.message=error instanceof RunnerError||error instanceof HttpError?error.message:'A produção automática não foi concluída. Confira o roteiro salvo e a configuração do assistente antes de tentar novamente.';job.finishedAt=new Date().toISOString();await this.persist();}
+    };
+    this.queue=this.queue.then(work,work);return structuredClone(job);
   }
   private async run(job: WebJob,script: Script,config: WebConfig,assets: StoredAsset[],input: StartJobInput) {
     if(this.stopped) return;
@@ -222,7 +270,7 @@ export class LocalRunner implements RunnerApi {
     this.active=new AbortController();
     const timer=setTimeout(()=>this.active?.abort(),this.options.timeoutMs ?? 30*60*1000);
     try {
-      job.status='running'; job.startedAt=new Date().toISOString(); job.message='Produzindo localmente com QA e publicação em simulação.'; await this.persist();
+      job.status='running'; job.startedAt??=new Date().toISOString(); job.message='Gerando a voz, montando as cenas e executando o QA local.'; await this.persist();
       await mkdir(join(directory,'assets'),{recursive:true,mode:0o700});
       const manifest=[];
       for(let index=0;index<assets.length;index++) {
@@ -239,6 +287,7 @@ export class LocalRunner implements RunnerApi {
       await Promise.all([writeFile(join(directory,'topic.json'),JSON.stringify(topic),{mode:0o600}),writeFile(join(directory,'script.json'),JSON.stringify(authored),{mode:0o600}),writeFile(join(directory,'assets','manifest.json'),JSON.stringify(manifest),{mode:0o600}),writeFile(join(directory,'config.toml'),rustConfig(config,job.channelId),{mode:0o600})]);
       const args=['--config',join(directory,'config.toml'),'run','--channel',job.channelId,'--topic',join(directory,'topic.json'),'--script',join(directory,'script.json'),'--assets',join(directory,'assets','manifest.json'),'--workdir',join(directory,'output'),'--max-scenes',String(script.scenes.length),'--format',script.format,'--privacy','private','--json'];
       if(input.burnSubtitles!==false) args.push('--burn-subtitles');
+      if(input.previewOnly)args.push('--preview-only');
       if(input.asr ?? config.asr.enabled) args.push('--asr');
       const result=await (this.options.execute ?? this.execute.bind(this))(args,resolve(this.options.repositoryRoot),this.active.signal);
       const output=join(directory,'output','channels',job.channelId);
@@ -250,7 +299,8 @@ export class LocalRunner implements RunnerApi {
       job.qa={technical:qa(report.technical_qa?.checks),editorial:qa(report.editorial_qa?.checks)};
       const video=await stat(join(output,'render','final.mp4')).catch(()=>undefined);
       job.videoAvailable=Boolean(video?.isFile() && video.size>0);
-      if(result.exitCode!==0 || report.stage==='blocked' || job.qa.technical==='fail' || job.qa.editorial==='fail') { job.status='blocked'; job.message='O motor bloqueou a entrega. Confira o relatório de QA.'; }
+      if(input.previewOnly&&job.videoAvailable&&['pass','needs_human'].includes(job.qa.technical)) {job.status='needs_review';job.message='Prévia do vídeo gerada com marca de revisão. Confira o resultado e as pendências de QA; nenhuma publicação foi autorizada.';}
+      else if(result.exitCode!==0 || report.stage==='blocked' || job.qa.technical==='fail' || job.qa.editorial==='fail') { job.status='blocked'; job.message='O motor bloqueou a entrega. Confira o relatório de QA.'; }
       else if(!job.videoAvailable || job.qa.technical==='skipped' || job.qa.editorial==='skipped') { job.status='blocked'; job.message='Entrega incompleta: confira o arquivo de vídeo e os relatórios de QA antes de criar um novo trabalho.'; }
       else { job.status='needs_review'; job.message='Vídeo produzido. Revisão editorial e autorização de publicação continuam pendentes.'; }
     } catch(error) { job.status='failed'; job.message=error instanceof Error ? error.message.slice(0,600) : 'Falha na produção local.'; }
@@ -274,7 +324,9 @@ export class LocalRunner implements RunnerApi {
     await this.channel(channelId); id(jobId);
     if(!FILES[file] || !this.jobs.some(job=>job.channelId===channelId && job.id===jobId)) return undefined;
     const root=join(this.root,'jobs',channelId,jobId,'output','channels',channelId);
-    try { const path=await realpath(join(root,FILES[file][0])); const base=await realpath(root); const rel=relative(base,path); if(rel.startsWith(`..${sep}`) || rel==='..' || resolve(base,rel)!==path || !(await stat(path)).isFile()) return undefined; return {path,contentType:FILES[file][1]}; }
+    const preview=this.jobs.find(job=>job.channelId===channelId&&job.id===jobId)?.previewOnly;
+    if(preview&&!['video','report','subtitles'].includes(file))return undefined;
+    try { const path=await realpath(join(root,preview&&file==='subtitles'?'render/captions.srt':FILES[file][0])); const base=await realpath(root); const rel=relative(base,path); if(rel.startsWith(`..${sep}`) || rel==='..' || resolve(base,rel)!==path || !(await stat(path)).isFile()) return undefined; return {path,contentType:FILES[file][1]}; }
     catch { return undefined; }
   }
   async idle() { await this.preparations; await this.queue; await this.writes; }

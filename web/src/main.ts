@@ -1,6 +1,7 @@
 import "./basecoat.css";
 import "./styles.css";
 import { openProduction } from "./production-ui.ts";
+import {openAutomaticProduction} from './automatic-production-ui.ts';
 import { commercialVoices, commercialVoiceError } from "../shared/voices.ts";
 import { request, setCsrfToken } from "./api.ts";
 import { hasUnsavedEdits, protectEdits } from "./edit-protection.ts";
@@ -682,9 +683,9 @@ function productionPage(): HTMLElement {
   const state = data!;
   const jobs = scoped(state.jobs).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const assets = scoped(state.assets);
-  const startButton = button("Preparar vídeo", () => startProduction(), "primary", "film");
+  const startButton = button("Produzir com IA", () => startProduction(), "primary", "film");
   startButton.disabled = state.engine?.available === false;
-  const jobsBody = jobs.length ? el("div", {}, ...jobs.map(jobCard)) : empty("Seu roteiro pode virar um vídeo", "Ao preparar a produção, os visuais explicativos são criados e vinculados às cenas.", "film", button("Preparar vídeo", () => startProduction(), "primary", "plus"));
+  const jobsBody = jobs.length ? el("div", {}, ...jobs.map(jobCard)) : empty("Da sua orientação ao vídeo para revisão", "A IA desenvolve o roteiro; o motor prepara os visuais, a voz, a montagem e o QA em sequência.", "film", button("Produzir com IA", () => startProduction(), "primary", "plus"));
   const assetBody = assets.length
     ? el("div", { className: "panel-body asset-grid" }, ...assets.map((asset) => el("div", { className: "asset-row" }, icon(asset.kind === "video" ? "film" : "folder"), el("div", {}, el("div", { className: "asset-name", title:asset.name }, asset.name), el("div", { className: "asset-caption" }, `${asset.kind === "video" ? "Vídeo" : "Imagem"} · ${number(Math.round(asset.bytes / 1024))} KB · ${asset.license}`)), el("span", { className: "spacer" }), el("span", { className: "badge mono", "data-variant": "outline", title: asset.checksum }, asset.checksum.slice(0, 8)))))
     : empty("Os visuais são preparados a partir do roteiro", "As imagens explicativas entram aqui automaticamente ao preparar o vídeo. Você também pode adicionar arquivos próprios.", "folder", button("Adicionar arquivo próprio", () => uploadAsset(), "secondary", "plus"));
@@ -698,11 +699,16 @@ function jobCard(job: WebJob): HTMLElement {
   const qa = job.qa ? el("div", { className: "entity-meta" }, el("span", { className: "field-hint" }, "Qualidade do arquivo:"), badge(job.qa.technical), el("span", { className: "field-hint" }, "Conteúdo:"), badge(job.qa.editorial)) : null;
   const diagnostic = ["failed","blocked"].includes(job.status)
     ? el("details", {}, el("summary",{},"Ver diagnóstico"), el("pre",{className:"job-diagnostic"},job.message))
-    : el("p",{},job.status==="needs_review" ? "Vídeo gerado. Confira o conteúdo e os direitos de uso antes de publicar." : job.message);
+    : el("p",{},job.previewOnly?job.message:job.status==="needs_review" ? "Vídeo gerado. Confira o conteúdo e os direitos de uso antes de publicar." : job.message);
   return el("article", { className: "job-card", "data-testid": `job-${job.id}` }, el("div", { className: "job-card-heading" }, mediaThumbnail(job), el("div", {}, el("h3", {title:script?.title || "Produção do canal"}, script?.title || "Produção do canal"), el("p", {}, `Solicitado em ${date(job.createdAt)}`)), el("span", { className: "spacer" }), badge(job.status)), stages, diagnostic, qa, job.videoAvailable ? el("div", { className: "job-artifacts" }, button("Revisar vídeo", () => viewJob(job), "secondary", "film")) : null);
 }
 
 function startProduction(): void {
+  const channel=currentChannel();if(!channel)return;
+  openAutomaticProduction({channel,scripts:scoped(data!.scripts),research:scoped(data!.research),selectedScriptId:activeScriptId,currentChannelId:()=>channelId,onStarted:async()=>{await refresh();toast('Produção iniciada. Acompanhe o roteiro, os visuais e a montagem na fila.');},onManual:scriptId=>{if(scriptId)activeScriptId=scriptId;prepareProductionManually();},onSettings:()=>go('settings')});
+}
+
+function prepareProductionManually(): void {
   const channel=currentChannel();if(!channel)return;
   const dialog=openProduction({channel,scripts:scoped(data!.scripts),assets:scoped(data!.assets),config:effectiveConfig(),selectedScriptId:activeScriptId,currentChannelId:()=>channelId,
     onStarted:async()=>{await refresh();toast("Produção adicionada à fila. Acompanhe o andamento aqui.");},
@@ -748,10 +754,11 @@ function uploadAsset(): void {
 }
 
 function viewJob(job: WebJob): void {
-  const { body } = createDialog("Revisar vídeo", `${currentChannel()?.name} · ${statusLabels[job.status] || job.status}`);
+  const { body } = createDialog(job.previewOnly?'Revisar vídeo gerado':'Revisar vídeo', `${currentChannel()?.name} · ${statusLabels[job.status] || job.status}`);
   const base = channelPath(`/jobs/${encodeURIComponent(job.id)}/files`);
   const video = el("video", { className: "video-preview", controls: true, preload: "metadata", src: `${base}/video`, "aria-label": "Vídeo produzido pelo motor Rust" }, "Seu navegador não conseguiu abrir o vídeo. Use o link do arquivo abaixo.");
-  body.append(video, el("div", { className: "job-artifacts" }, ...[["video", "Vídeo MP4"], ["subtitles", "Legendas"], ["thumbnail", "Thumbnail"], ["description", "Descrição"], ["sources", "Fontes"], ["metadata", "Metadados"], ["report", "Relatório"]].map(([key, label]) => el("a", { href: `${base}/${key}`, target: "_blank", rel: "noopener noreferrer" }, label, icon("external")))), el("div", { className: "divider" }), notice("Confira fatos, direitos, legibilidade e ritmo. O pacote é revisável e sua existência não comprova aprovação editorial ou publicação."));
+  const files=job.previewOnly?[["video","Vídeo MP4"],["subtitles","Legendas"],["report","Relatório"]]:[["video", "Vídeo MP4"], ["subtitles", "Legendas"], ["thumbnail", "Thumbnail"], ["description", "Descrição"], ["sources", "Fontes"], ["metadata", "Metadados"], ["report", "Relatório"]];
+  body.append(video, el("div", { className: "job-artifacts" }, ...files.map(([key, label]) => el("a", { href: `${base}/${key}`, target: "_blank", rel: "noopener noreferrer" }, label, icon("external")))), el("div", { className: "divider" }), notice(job.previewOnly?'Este vídeo foi gerado para sua revisão. Confira o conteúdo e os alertas de QA. As pendências continuam registradas e nenhuma publicação foi autorizada.':"Confira fatos, direitos, legibilidade e ritmo. O pacote é revisável e sua existência não comprova aprovação editorial ou publicação."));
 }
 
 window.addEventListener("hashchange", () => {

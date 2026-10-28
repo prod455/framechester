@@ -9,6 +9,7 @@ import type { ServerOptions } from '../server/app.ts';
 import type { RunnerApi, SocialApi, SocialSnapshot } from '../shared/types.ts';
 import { localPort } from '../server/index.ts';
 import { SocialError } from '../server/social.ts';
+import type {CreativeApi} from '../server/creative.ts';
 
 async function fixture(options: ServerOptions = {}) {
   const home = await mkdtemp(join(tmpdir(),'fc-api-fixture-')); const app = await createApp({ ...options, home }); const server = createServer(app.handler);
@@ -74,6 +75,37 @@ test('HTTP rejects foreign Host and static traversal while serving the local app
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); await rm(home, { recursive: true, force: true }); }
 });
 
+test('YouTube OAuth can return through a cross-site document navigation without opening API access',async()=>{
+  const dist=await mkdtemp(join(tmpdir(),'fc-oauth-return-'));await writeFile(join(dist,'index.html'),'<h1>Local Studio fixture</h1>');
+  let accepted=0;
+  const social:SocialApi={capabilities:()=>[],listConnections:async()=>[],connectToken:async()=>{throw Error('not used');},startYoutubeOAuth:async()=>{throw Error('not used');},sync:async()=>{throw Error('not used');},disconnect:async()=>{},callbackYoutubeOAuth:async({state,code})=>{
+    if(state!=='fixture-state'||code!=='fixture-code'||accepted)throw new SocialError('invalid_state','Autorização OAuth ausente, expirada ou já utilizada. Inicie novamente.');
+    accepted++;return {channelId:'tech',platform:'youtube',accountId:`UC${'a'.repeat(22)}`,displayName:'Fixture',status:'connected',connectedAt:'2026-10-28T00:00:00Z',expiresAt:null,scopes:[]};
+  }};
+  const context=await fixture({social,distDir:dist});const base=new URL(context.origin);
+  const navigation={'Sec-Fetch-Site':'cross-site','Sec-Fetch-Mode':'navigate','Sec-Fetch-Dest':'document'};
+  const send=(path:string,headers:Record<string,string>=navigation,method='GET')=>new Promise<{status:number;headers:import('node:http').IncomingHttpHeaders;body:string}>((resolve,reject)=>{
+    const request=httpRequest({hostname:base.hostname,port:base.port,path,method,headers},response=>{let body='';response.on('data',chunk=>{body+=chunk;});response.on('end',()=>resolve({status:response.statusCode!,headers:response.headers,body}));});request.on('error',reject);request.end();
+  });
+  try{
+    // A Strict session cookie may be absent on the return from Google.
+    const callback=await send('/api/oauth/youtube/callback?state=fixture-state&code=fixture-code');
+    assert.equal(callback.status,303);assert.equal(accepted,1);
+    const studio=await send(String(callback.headers.location));
+    assert.equal(studio.status,200,'The redirect chain still carries cross-site Fetch Metadata at the Studio entry');
+    assert.match(studio.body,/Local Studio fixture/);assert.equal(studio.headers['referrer-policy'],'no-referrer');
+    for(const path of ['/api/bootstrap','/api/auth/status','/api/channels/tech/jobs','/api/oauth/youtube/callback/other'])assert.equal((await send(path)).status,403);
+    assert.equal((await send('/',{...navigation,'Sec-Fetch-Dest':'iframe'})).status,403);
+    assert.equal((await send('/',{...navigation,'Sec-Fetch-Mode':'cors','Sec-Fetch-Dest':'empty'})).status,403);
+    assert.equal((await send('/api/oauth/youtube/callback?state=fixture-state&code=fixture-code',{...navigation,Origin:context.origin},'POST')).status,403);
+    assert.equal((await send('/api/oauth/youtube/callback?state=fixture-state&code=fixture-code',{...navigation,Host:'foreign.example'})).status,403);
+    const replay=await send('/api/oauth/youtube/callback?state=fixture-state&code=fixture-code');assert.equal(replay.status,400);assert.equal(accepted,1);
+    assert.equal((await send('/api/oauth/youtube/callback?state=unknown&code=fixture-code')).status,400);
+    assert.equal((await send('/api/oauth/youtube/callback?code=fixture-code')).status,400);
+    assert.equal(replay.body.includes('fixture-code'),false);
+  }finally{await context.close();await rm(dist,{recursive:true,force:true});}
+});
+
 test('production files require the correct channel and support bounded byte ranges', async () => {
   let mediaPath = '';
   const runner: RunnerApi = {
@@ -119,6 +151,24 @@ test('automatic visual preparation and image previews preserve authentication, C
     assert.equal((await context.call('/api/channels/tech/assets/asset-one/preview')).status,200);
     assert.equal((await context.call('/api/channels/science/assets/asset-one/preview')).status,404);
   }finally{await context.close();}
+});
+
+test('automatic production routes bind the quote and generated draft to the authenticated channel',async()=>{
+ let generations=0,queued=0;const date='2026-10-28';
+ const creative:CreativeApi={capabilities:async()=>({available:true,provider:'anthropic',models:[],selectedModel:'fixture',reason:'',endpoint:'fixture',supports:['script']}),quote:async(owner,input,scope)=>{assert.ok(scope);assert.equal(input.consentToSend,true);return {id:'quote-one',channelId:owner,model:'fixture',inputTokens:100,maxOutputTokens:100,estimatedMaxCostUsd:.01,costLimitUsd:.1,expiresAt:'2099-01-01',pricingCheckedAt:date};},draft:async(owner,input,scope)=>{generations++;assert.ok(scope);assert.equal(input.authorizePaid,true);return {channelId:owner,task:'script',title:'Fixture',body:'Uma explicação para revisão do operador.',model:'fixture',createdAt:date,status:'draft',crossChecked:false,reviewRequired:true,guides:[],fields:{title:'Roteiro automático',series:'Teste',format:'short',hook:'Pergunta',scenes:[{id:42,heading:'Explicação',narration:'Fala original de teste.',visualBrief:'Composição explicativa',durationHintSecs:20}],sources:[],claims:[]}};}};
+ const runner:RunnerApi={list:async()=>[],assets:async()=>[],file:async()=>undefined,assetFile:async()=>undefined,upload:async()=>{throw Error('not used');},start:async()=>{throw Error('not used');},prepareVisuals:async()=>{throw Error('not used');},engineStatus:()=>({available:true,message:''}),startAutomated:async(owner,_seed,prepare)=>{queued++;const scriptId=await prepare();return {id:'job-auto',channelId:owner,scriptId,status:'queued',createdAt:date,message:'Fila',videoAvailable:false,automated:true,previewOnly:true};}};
+ const context=await fixture({creative,runner});
+ try{
+  for(const id of ['tech','science'])await context.call('/api/channels','POST',{id,name:id});
+  const research=await(await context.call('/api/research','POST',{channelId:'tech',title:'Uma pauta'})).json();
+  const input={brief:'Explique o assunto da pauta',format:'short',researchId:research.id};
+  assert.equal((await context.call('/api/channels/tech/automatic/quote','POST',input,{'X-CSRF-Token':''})).status,403);
+  assert.equal((await context.call('/api/channels/science/automatic/quote','POST',input)).status,400);assert.equal(queued,0);assert.equal(generations,0);
+  assert.equal((await context.call('/api/channels/tech/automatic/quote','POST',input)).status,200);assert.equal(generations,0);
+  assert.equal((await context.call('/api/channels/tech/automatic/jobs','POST',input)).status,400);
+  const response=await context.call('/api/channels/tech/automatic/jobs','POST',{...input,quoteId:'quote-one',authorizePaid:true});assert.equal(response.status,202);assert.equal(generations,1);assert.equal(queued,1);
+  const state=await context.app.store.read();assert.equal(state.scripts.length,1);assert.equal(state.scripts[0].crossChecked,false);assert.equal(state.scripts[0].researchId,research.id);assert.equal(state.scripts[0].channelId,'tech');
+ }finally{await context.close();}
 });
 
 test('social metadata omits secrets, sync keeps unknown revenue null and connected channels cannot be removed',async()=>{

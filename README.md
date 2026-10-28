@@ -6,7 +6,7 @@
 
 Framechester ajuda um criador independente a descobrir assuntos, verificar fontes, escrever roteiros originais, gerar narracao, renderizar video, rodar QA audiovisual e analisar monetizacao oficial da plataforma. Nao e fabrica de engajamento, nao compra views e nao garante elegibilidade ou receita.
 
-No Studio, **Preparar vídeo** cria e associa [visuais explicativos locais](docs/VISUAIS_AUTOMATICOS.md) às cenas do roteiro. Imagens próprias são opcionais; demonstrações de testes reais ainda exigem suas gravações.
+No Studio, **Produzir com IA** recebe sua orientação, desenvolve um novo roteiro e segue automaticamente com [visuais explicativos locais](docs/VISUAIS_AUTOMATICOS.md), voz, legendas, montagem e QA. Você autoriza o custo antes da geração paga e revisa o vídeo resultante. A preparação manual permanece nos controles avançados.
 
 ## Principios
 

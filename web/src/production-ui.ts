@@ -46,7 +46,7 @@ export function openProduction(options:ProductionOptions):HTMLDialogElement {
       let updateReady=()=>{};
       for(const [index,scene] of script.scenes.entries()) {
         const selected=prepared.bindings[String(scene.id)]??'';
-        const control=select(`asset-${scene.id}`,[['','Selecione uma gravação ou imagem própria'],...usable.map((asset):[string,string]=>[asset.id,asset.name])],selected);control.required=true;
+        const control=select(`asset-${scene.id}`,[['','Selecione uma gravação ou imagem própria'],...usable.map((asset):[string,string]=>[asset.id,asset.name])],selected);
         bindings.push({sceneId:scene.id,control});
         const preview=el('div',{className:'production-scene-preview'});
         function showPreview() {
@@ -66,11 +66,13 @@ export function openProduction(options:ProductionOptions):HTMLDialogElement {
       }
       const asr=input('asr','','checkbox');asr.checked=options.config.asr.enabled;
       const subtitles=input('burnSubtitles','','checkbox');subtitles.checked=true;
-      const {form,fields}=formWithSave('Gerar vídeo neste computador',async()=>{
+      let finalRequested=false;
+      const {form,fields,actions}=formWithSave('Gerar prévia do vídeo',async()=>{
+        const previewOnly=!finalRequested;
         if(!relevant(scriptId)) throw new Error('O canal ou roteiro mudou. Abra a preparação novamente.');
-        if(!script.crossChecked) throw new Error('Confira as fontes no roteiro antes de gerar o vídeo.');
-        if(new Set(script.sources.map(source=>source.url)).size<2) throw new Error('O roteiro precisa de pelo menos duas URLs de fontes distintas.');
-        const job=await api<WebJob>(path('jobs'),'POST',{scriptId,assetIds:Object.fromEntries(bindings.map(binding=>[String(binding.sceneId),binding.control.value])),asr:asr.checked,burnSubtitles:subtitles.checked});
+        if(!previewOnly&&!script.crossChecked) throw new Error('Confira as fontes no roteiro antes de gerar o vídeo.');
+        if(!previewOnly&&new Set(script.sources.map(source=>source.url)).size<2) throw new Error('O roteiro precisa de pelo menos duas URLs de fontes distintas.');
+        const job=await api<WebJob>(path('jobs'),'POST',{scriptId,assetIds:Object.fromEntries(bindings.map(binding=>[String(binding.sceneId),binding.control.value||(previewOnly?prepared.previews?.[String(binding.sceneId)]??'':'')])),asr:asr.checked,burnSubtitles:subtitles.checked,...(previewOnly?{previewOnly:true}:{})});
         dialog.close();await options.onStarted(job);
       },()=>dialog.close(),'Iniciando produção…');
       const sourcesReady=script.crossChecked&&new Set(script.sources.map(source=>source.url)).size>=2;
@@ -87,13 +89,15 @@ export function openProduction(options:ProductionOptions):HTMLDialogElement {
       if(!editorialReady)summary.append(el('p',{className:'field-hint'},'Antes de gerar o vídeo: confira as fontes e as alegações na aba “Fontes e revisão” do roteiro.'));
       const readiness=el('p',{className:'field-hint',role:'status'});
       const submit=form.querySelector<HTMLButtonElement>('button[type=submit]')!;
+      const finalButton=button('Gerar versão final',()=>{finalRequested=true;form.requestSubmit(submit);finalRequested=false;},'secondary','film');finalButton.dataset.testid='final-video';actions.insertBefore(finalButton,submit);
       updateReady=()=>{
         const missing=bindings.filter(binding=>!binding.control.value).length;
-        submit.disabled=!editorialReady||missing>0;
+        finalButton.disabled=!editorialReady||missing>0;
+        submit.disabled=bindings.some(binding=>!binding.control.value&&!prepared.previews?.[String(binding.sceneId)]);
         readiness.textContent=missing?`Falta resolver ${missing} cena${missing===1?'':'s'} para gerar a versão final. As prévias ilustrativas já estão disponíveis.`:!editorialReady?'As fontes e as alegações ainda precisam de revisão para liberar a geração.':'Cenas prontas para gerar o vídeo neste computador.';
       };
       updateReady();
-      fields.append(summary,mapping,el('div',{className:'production-options'},el('label',{className:'checkbox-field'},subtitles,'Incluir legendas no vídeo final'),el('label',{className:'checkbox-field'},asr,'Conferir a fala com ASR local')),readiness,el('p',{className:'field-hint'},'Os visuais são preparados neste computador, sem API paga de imagens. Adaptar o roteiro com IA usa o assistente configurado e pede autorização antes de qualquer geração paga.'));
+      fields.append(summary,mapping,el('div',{className:'production-options'},el('label',{className:'checkbox-field'},subtitles,'Incluir legendas no vídeo'),el('label',{className:'checkbox-field'},asr,'Conferir a fala com ASR local')),readiness,el('p',{className:'field-hint'},'A prévia de vídeo pode ser gerada antes da revisão editorial e recebe uma marca de revisão. Os visuais e a montagem são locais. A adaptação com IA pede autorização antes de qualquer geração paga.'));
       replace(editor,form);
     } catch(error) {
       if(!relevant(scriptId)) return;

@@ -6,6 +6,7 @@ import { LocalAuth, HttpError } from './auth.ts';
 import { SocialError } from './social.ts';
 import { VaultError } from './vault.ts';
 import { RunnerError } from './runner.ts';
+import {createAutomaticProduction} from './automatic-production.ts';
 import type { CreativeApi } from './creative.ts';
 import type { PrivatePromptStore } from './private-prompt.ts';
 import { resolve, extname, sep } from 'node:path';
@@ -101,7 +102,12 @@ export async function createApp(options: ServerOptions = {}): Promise<{ handler:
     let decoded: string; try { decoded = decodeURIComponent(raw); } catch { throw new HttpError(400, 'Caminho inválido.'); }
     if (decoded.includes('\0') || decoded.includes('\\') || decoded.split('/').some(part => part === '..' || part === '.')) throw new HttpError(403, 'Caminho não permitido.');
     const url = new URL(request.url ?? '/', 'http://127.0.0.1'); const path = decoded.replace(/\/$/, '') || '/'; const method = request.method ?? 'GET';
-    if (request.headers['sec-fetch-site'] === 'cross-site' && path !== '/api/oauth/youtube/callback') throw new HttpError(403, 'Requisição entre sites não permitida.');
+    const oauthReturn = path === '/api/oauth/youtube/callback' && method === 'GET';
+    // Redirects from Google can retain cross-site metadata through the 303.
+    // Only the public shell may be loaded as a top-level document; APIs stay guarded.
+    const studioEntry = path === '/' && method === 'GET'
+      && request.headers['sec-fetch-mode'] === 'navigate' && request.headers['sec-fetch-dest'] === 'document';
+    if (request.headers['sec-fetch-site'] === 'cross-site' && !oauthReturn && !studioEntry) throw new HttpError(403, 'Requisição entre sites não permitida.');
     if(path==='/healthz'&&method==='GET'){json(response,200,{status:'ok'});return;}
     if (method === 'OPTIONS') { if (!request.headers.origin) throw new HttpError(403, 'Origem obrigatória.'); response.writeHead(204, { 'Access-Control-Allow-Methods':'GET,POST,PUT,DELETE,OPTIONS', 'Access-Control-Allow-Headers':'Content-Type,X-CSRF-Token' }); response.end(); return; }
     const cookie = request.headers.cookie; const csrf = typeof request.headers['x-csrf-token'] === 'string' ? request.headers['x-csrf-token'] : undefined;
@@ -157,6 +163,11 @@ export async function createApp(options: ServerOptions = {}): Promise<{ handler:
         await store.deleteChannel(id); json(response, 200, { ok:true }); return;
       }
       if (suffix === 'config' && method === 'PUT') { json(response, 200, await store.saveConfig(await readJson(request), id)); return; }
+      if(['automatic/quote','automatic/jobs'].includes(suffix)&&method==='POST'){
+        if(!options.creative)throw new HttpError(503,'Configure o assistente de criação antes de produzir com IA.');
+        const automation=createAutomaticProduction({store,runner:runner(),creative:options.creative});const body=await readJson(request,10_000);
+        json(response,suffix==='automatic/jobs'?202:200,suffix==='automatic/quote'?await automation.quote(id,body,session.csrfToken):await automation.start(id,body,session.csrfToken));return;
+      }
       if(suffix==='creative/usage'&&method==='GET'){
         if(!options.creative?.usageSnapshot)throw new HttpError(503,'O registro de consumo não está disponível nesta instância.');
         const daysText=url.searchParams.get('days')??'30',provider=url.searchParams.get('provider')??undefined;
@@ -185,10 +196,10 @@ export async function createApp(options: ServerOptions = {}): Promise<{ handler:
       if (suffix === 'research/discover' && method === 'POST') { const body = await readJson(request); allowedKeys(body, ['query']); const query = string(body.query, 'query', 120, 2).trim(); if (query.length < 2) throw new HttpError(400, 'A pesquisa precisa de pelo menos dois caracteres.'); const service = social(); if (!service.discoverYoutube) throw new HttpError(503, 'A descoberta do YouTube não está disponível.'); json(response, 200, await service.discoverYoutube(id, query)); return; }
       if (suffix === 'jobs' && method === 'GET') { json(response, 200, await runner().list(id)); return; }
       if (suffix === 'jobs' && method === 'POST') {
-        const body = await readJson(request); ownerBody(body, id); allowedKeys(body, ['scriptId','assetIds','asr','burnSubtitles','channelId']); const scriptId = validId(body.scriptId); const state = await store.read(); if (!state.scripts.some(script => script.id === scriptId && script.channelId === id)) throw new HttpError(400, 'O roteiro não pertence ao canal.');
+        const body = await readJson(request); ownerBody(body, id); allowedKeys(body, ['scriptId','assetIds','asr','burnSubtitles','channelId','previewOnly']); const scriptId = validId(body.scriptId); const state = await store.read(); if (!state.scripts.some(script => script.id === scriptId && script.channelId === id)) throw new HttpError(400, 'O roteiro não pertence ao canal.');
         const values = object(body.assetIds); if (Object.keys(values).length > 100) throw new HttpError(400, 'Muitos assets.'); const assetIds: Record<string,string> = {}; for (const [scene, asset] of Object.entries(values)) { if (!/^\d+$/.test(scene)) throw new HttpError(400, 'ID de cena inválido.'); assetIds[scene] = validId(asset); }
-        for (const flag of ['asr','burnSubtitles']) if (body[flag] !== undefined && typeof body[flag] !== 'boolean') throw new HttpError(400, 'Opção de job inválida.');
-        const input: StartJobInput = { scriptId, assetIds, asr: body.asr as boolean | undefined, burnSubtitles: body.burnSubtitles as boolean | undefined }; json(response, 202, await runner().start(id, input)); return;
+        for (const flag of ['asr','burnSubtitles','previewOnly']) if (body[flag] !== undefined && typeof body[flag] !== 'boolean') throw new HttpError(400, 'Opção de job inválida.');
+        const input: StartJobInput = { scriptId, assetIds, asr: body.asr as boolean | undefined, burnSubtitles: body.burnSubtitles as boolean | undefined,previewOnly:body.previewOnly as boolean|undefined }; json(response, 202, await runner().start(id, input)); return;
       }
       if (suffix === 'assets' && method === 'GET') { json(response, 200, await runner().assets(id)); return; }
       if (suffix === 'visuals/prepare' && method === 'POST') {

@@ -213,15 +213,30 @@ Detalhes e evidências: [CONSUMO_IA.md](CONSUMO_IA.md).
 
 ## Produção e configurações por canal
 
-1. Escolha um roteiro do canal e revise as fontes/alegações.
-2. Clique em **Preparar vídeo**. O motor cria imagens explicativas com o título
-   e um trecho das falas de cada cena, e já as associa ao roteiro. Isso é local
-   e não usa API paga de geração de imagens.
-3. Confira as prévias e escolha ASR/legendas. Arquivos próprios são opcionais;
-   cenas que pedem gravação real continuam pendentes até receberem o clipe ou
-   serem adaptadas no roteiro. Veja [visuais automáticos](VISUAIS_AUTOMATICOS.md).
-4. Inicie o job e acompanhe a fila local. Abra vídeo, legendas, thumbnail,
-   descrição, fontes, metadados e relatório ao concluir.
+1. Clique em **Produzir com IA**, informe a orientação e o formato. Uma pauta
+   ou roteiro existente do canal pode servir como referência.
+2. Com Claude/OpenAI, calcule o custo e use **Autorizar e produzir**. A
+   autorização cobre uma geração de roteiro; não há aprovação manual entre
+   as etapas locais seguintes. Com Ollama, use **Produzir neste computador**.
+3. O servidor gera e salva um novo roteiro, cria e associa os visuais,
+   sintetiza a voz comercial, monta o MP4 com legendas e executa o QA. A fila
+   continua executando depois que o diálogo ou navegador é fechado, enquanto
+   o servidor permanecer ativo. O roteiro original e as pendências editoriais
+   são preservados.
+4. Acompanhe o andamento e abra **Revisar vídeo**. O arquivo tem identificação
+   de revisão pendente. A produção automática não publica nem declara fontes
+   verificadas; não produz um pacote de publicação aprovado.
+
+O assistente usa a orientação e as referências fornecidas no canal; essa
+etapa não executa pesquisa externa na internet nem inventa fontes. Os visuais
+são composições de texto, sem geração fotográfica por API. Só a geração de
+roteiro usa a IA configurada; voz, visuais, montagem e QA são locais.
+
+**Controles avançados → Abrir preparação manual** mantém o fluxo anterior.
+Nele, **Gerar prévia do vídeo** funciona com fontes ainda não revisadas ou
+gravações pendentes, usando as composições ilustrativas. O vídeo recebe marca
+de revisão. **Gerar versão final** continua exigindo os vínculos e a revisão
+editorial. Veja [visuais automáticos](VISUAIS_AUTOMATICOS.md).
 
 O backend mantém uma fila no processo e registra os estados dos jobs. Após
 reinício, trabalhos que estavam na fila ou em execução ficam bloqueados como

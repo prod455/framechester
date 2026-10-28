@@ -177,6 +177,8 @@ struct RunArgs {
     asr: bool,
     #[arg(long, help = "queima legendas PT-BR no MP4 final")]
     burn_subtitles: bool,
+    #[arg(long, requires_all = ["script", "assets"], help = "renderiza previa com marca de revisao; sem pacote ou publicacao")]
+    preview_only: bool,
     #[arg(long)]
     json: bool,
 }
@@ -693,10 +695,10 @@ fn run_pipeline(path: &Option<PathBuf>, args: RunArgs) -> anyhow::Result<i32> {
         llm,
         assets,
         tts: Box::new(tts),
-        renderer: Box::new(FfmpegRenderer::new(
-            &config.render.ffmpeg_path,
-            &config.render.ffprobe_path,
-        )),
+        renderer: Box::new(
+            FfmpegRenderer::new(&config.render.ffmpeg_path, &config.render.ffprobe_path)
+                .with_preview_watermark(args.preview_only),
+        ),
         qa: Box::new({
             let qa = FfmpegQa::new(&config.render.ffmpeg_path, &config.render.ffprobe_path);
             if args.asr || config.asr.enabled {
@@ -727,7 +729,11 @@ fn run_pipeline(path: &Option<PathBuf>, args: RunArgs) -> anyhow::Result<i32> {
             burn_subtitles: args.burn_subtitles,
         },
     );
-    let report = pipeline.run(topic)?;
+    let report = if args.preview_only {
+        pipeline.preview(topic)?
+    } else {
+        pipeline.run(topic)?
+    };
     write_html_report(&report, &report.artifacts_dir)?;
     if args.json {
         println!("{}", serde_json::to_string_pretty(&report)?);

@@ -178,3 +178,23 @@ test('HTTP structured drafts require the same authenticated channel and CSRF and
     assert.equal((await app.store.read()).research.length,0);
   } finally {await new Promise<void>(resolve=>server.close(()=>resolve()));await ctx.close();}
 });
+
+test('a selected video style and the layout grammar reach the system prompt; unknown styles are rejected', async () => {
+  let system = '';
+  const ctx = await fixture(payload => { system = String(payload.system); return result({ title: 'Um vídeo concreto', series: 'Experimentos', format: 'short', hook: 'Gancho', scenes: [{ id: 7, heading: 'A demonstração', narration: 'Uma afirmação.', visualBrief: '#pergunta O que este diagrama demonstra?', durationHintSecs: 3 }], claims: [] }); });
+  try {
+    const request = { task: 'script', brief: 'Adapte o roteiro ao formato escolhido.', editorContext: { task: 'script', values: script } };
+    await assert.rejects(ctx.service.draft('tech', { ...request, style: 'viral' }), /Formato editorial inválido/);
+    assert.equal(ctx.calls(), 0);
+    const draft = await ctx.service.draft('tech', { ...request, style: 'misterio' });
+    assert.match(system, /Mistério documental/); assert.match(system, /#linha-do-tempo/); assert.match(system, /primeira cena dura até 3 segundos/);
+    assert.ok(draft.fields && 'scenes' in draft.fields);
+  } finally { await ctx.close(); }
+});
+
+test('a generated scene with an unrenderable directive is discarded with the scene and the reason', async () => {
+  const ctx = await fixture(() => result({ title: 'Um vídeo concreto', series: 'Experimentos', format: 'short', hook: 'Gancho', scenes: [{ id: 7, heading: 'A demonstração', narration: 'Sem número.', visualBrief: '#numero 90% | dos casos', durationHintSecs: 3 }], claims: [] }));
+  try {
+    await assert.rejects(ctx.service.draft('tech', { task: 'script', brief: 'Adapte o roteiro ao formato escolhido.', editorContext: { task: 'script', values: script } }), /diretiva visual inválida.*Cena 7.*narração/s);
+  } finally { await ctx.close(); }
+});

@@ -11,11 +11,13 @@ import {ProviderResponseError} from './ai-provider.ts';
 import type {ProviderUsage} from './ai-provider.ts';
 import type {AIUsageStore} from './ai-usage.ts';
 import type {AIUsageRecord,AIUsageSnapshot} from '../shared/ai-usage-types.ts';
+import {SceneLayoutError,sceneLayoutGrammar} from '../shared/scene-layouts.ts';
+import {videoStyle,videoStyleGuide} from '../shared/video-styles.ts';
 
 export type { CreativeTask } from '../shared/creative-types.ts';
 export interface CreativeDraft extends SharedCreativeDraft { guides: string[] }
 export type { CreativeCapabilities } from '../shared/creative-types.ts';
-export interface CreativeInput { task: unknown; brief: unknown; includeReferences?: unknown; editorContext?: unknown; consentToSend?: unknown; quoteId?: unknown; authorizePaid?: unknown }
+export interface CreativeInput { task: unknown; brief: unknown; style?: unknown; includeReferences?: unknown; editorContext?: unknown; consentToSend?: unknown; quoteId?: unknown; authorizePaid?: unknown }
 export interface CreativeOptions { settings: PrivatePromptStore; readState: () => Promise<AppState>; vault?: SecretVault; usage?:AIUsageStore; fetch?: typeof fetch; now?: () => Date }
 export interface CreativeApi {
   capabilities(channelId?: string): Promise<CreativeCapabilities>;
@@ -80,13 +82,17 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
     if (!tasks.includes(input.task as CreativeTask)) throw new HttpError(400, 'Tarefa criativa inválida. Escolha pesquisa, roteiro ou storytelling.');
     if (typeof input.brief !== 'string' || input.brief.trim().length < 12 || input.brief.length > 6000 || input.brief.includes('\0')) throw new HttpError(400, 'Descreva o pedido em 12 a 6.000 caracteres.');
     if (input.includeReferences !== undefined && typeof input.includeReferences !== 'boolean') throw new HttpError(400, 'A inclusão de pesquisas revisadas deve ser uma escolha explícita.');
+    const style=input.style===undefined?undefined:videoStyle(input.style);
+    if(input.style!==undefined&&!style)throw new HttpError(400,'Formato editorial inválido.');
     const {state,channel}=await requireChannel(owner); const task=input.task as CreativeTask;
     const prepared=prepareEditorContext(input.editorContext,task,owner,state);
+    const format=prepared?.context.task==='script'?prepared.context.values.format:undefined;
+    const taskGuide=[guides[task].instruction,...(style?[videoStyleGuide(style,format)]:[]),...(task==='script'?[`Layouts visuais (visualBrief):\n${sceneLayoutGrammar}`]:[])].join('\n\n');
     const settings=await options.settings.read();
     const references=input.includeReferences===true?referenceData(state,owner):[];
     const payload={task,brief:input.brief.trim(),channel:{id:channel.id,name:channel.name,description:channel.description,niche:channel.niche,audience:channel.audience,language:channel.language},referenceData:references,...(prepared?{editorContext:prepared.context}:{})};
     const outputInstruction=prepared?'Retorne exatamente title, body e fields. body é uma prévia curta de até 2.000 caracteres; fields contém todos os campos do schema para preencher o editor. Preserve o formato de vídeo selecionado. Não gere fontes, notas de aprovação ou números de demanda. Claims só podem citar URLs de fontes fornecidas em editorContext ou referenceData; não invente URLs. A revisão humana continuará pendente.':'Retorne exatamente title e body, sem outros campos.';
-    const system=`${guard}\n\nGuia da tarefa: ${guides[task].instruction}\n\n${outputInstruction}\n\nPreferências pessoais subordinadas às regras do aplicativo (JSON): ${JSON.stringify({editorialPreferences:settings.prompt.content})}`;
+    const system=`${guard}\n\nGuia da tarefa: ${taskGuide}\n\n${outputInstruction}\n\nPreferências pessoais subordinadas às regras do aplicativo (JSON): ${JSON.stringify({editorialPreferences:settings.prompt.content})}`;
     const prompt=JSON.stringify(payload);
     if(Buffer.byteLength(system+prompt,'utf8')>48_000)throw new HttpError(400,'O pedido completo excede o limite de contexto. Reduza textos/referências ou as instruções pessoais antes de gerar; o editor não foi cortado.');
     const outputSchema=prepared?{...schema,required:['title','body','fields'],properties:{...schema.properties,body:{...schema.properties.body,maxLength:2000},fields:editorFieldsSchema(task)}}:schema;
@@ -209,7 +215,7 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
         if (Object.keys(parsed).length !== allowed.length || Object.keys(parsed).some(key => !allowed.includes(key)) || typeof parsed.title !== 'string' || parsed.title.trim().length < 3 || parsed.title.length > 200 || typeof parsed.body !== 'string' || parsed.body.trim().length < 20 || parsed.body.length > (prepared ? 2000 : 20_000) || /\0/.test(parsed.title + parsed.body)) throw invalidResponse();
         if (settings.prompt.content.trim().length > 20 && JSON.stringify(parsed).includes(JSON.stringify(settings.prompt.content.trim()).slice(1,-1))) throw new HttpError(503, 'A resposta tentou reproduzir o prompt pessoal e foi descartada.');
         let fields: SharedCreativeDraft['fields'];
-        if (prepared) { try { fields = validateEditorFields(parsed.fields, prepared, references.flatMap(item => item.sources)); } catch { throw invalidResponse(); } }
+        if (prepared) { try { fields = validateEditorFields(parsed.fields, prepared, references.flatMap(item => item.sources)); } catch (error) { if (error instanceof SceneLayoutError) throw new HttpError(503, `A IA usou uma diretiva visual inválida. ${error.message} Gere novamente.`); throw invalidResponse(); } }
         usageStatus='succeeded';
         return { channelId: owner, task, title: parsed.title.trim(), body: parsed.body.trim(), model: selectedModel, createdAt: now().toISOString(), status: 'draft', crossChecked: false, reviewRequired: true, guides: [...guides[task].names], ...(fields ? { fields } : {}),...(usage?{usage}:{}) };
       } catch(error){

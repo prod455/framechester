@@ -1,6 +1,7 @@
 import type { AppState, Claim, Source, ScriptScene } from '../shared/types.ts';
 import type { CreativeEditorContext, CreativeFields, CreativeTask, ResearchCreativeValues, ScriptCreativeValues, StoryCreativeValues } from '../shared/creative-types.ts';
 import { HttpError } from './auth.ts';
+import { parseSceneLayout } from '../shared/scene-layouts.ts';
 
 const researchKeys = ['title','niche','audience','hypothesis','differentiation','keywords','sources','notes'];
 const scriptKeys = ['title','researchId','series','format','hook','scenes','sources','claims'];
@@ -31,7 +32,10 @@ function scenes(value: unknown, output = false): ScriptScene[] {
     const row = record(value); keys(row,['id','heading','narration','visualBrief','durationHintSecs']);
     if (typeof row.id !== 'number' || !Number.isSafeInteger(row.id) || row.id < 0 || row.id > 4294967295 || seen.has(row.id) || typeof row.durationHintSecs !== 'number' || !Number.isFinite(row.durationHintSecs) || row.durationHintSecs < (output ? 0.1 : 0) || row.durationHintSecs > 3600) throw bad();
     seen.add(row.id);
-    return { id:row.id,heading:text(row.heading,500,output),narration:text(row.narration,30_000,output),visualBrief:text(row.visualBrief,12_000,output),durationHintSecs:row.durationHintSecs };
+    const scene = { id:row.id,heading:text(row.heading,500,output),narration:text(row.narration,30_000,output),visualBrief:text(row.visualBrief,12_000,output),durationHintSecs:row.durationHintSecs };
+    // Generated directives must render; editor input is checked when the script is saved.
+    if (output) parseSceneLayout(scene.id,scene.visualBrief,scene.narration);
+    return scene;
   });
 }
 function claims(value: unknown, output = false, allowedUrls?: Set<string>): Claim[] {

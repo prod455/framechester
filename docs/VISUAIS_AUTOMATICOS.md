@@ -10,8 +10,12 @@ roteiro → visuais → narração → montagem → QA → revisão do vídeo. A
 de cada cena acontece no servidor. A preparação individual descrita abaixo
 fica em **Controles avançados → Abrir preparação manual**.
 
-O motor Rust compõe PNGs com o nome do canal, título da cena e trecho da
-narração: 1920 × 1080 para vídeos longos e 1080 × 1920 para Shorts. São
+O motor Rust compõe PNGs em tema escuro com o nome do canal e um layout por
+cena: 1920 × 1080 para vídeos longos e 1080 × 1920 para Shorts. O layout vem
+da diretiva opcional na primeira linha do briefing visual (`#pergunta`,
+`#numero`, `#lista`, `#comparacao`, `#linha-do-tempo`, `#citacao`); sem
+diretiva, a cena mostra o título e um trecho da narração. Identidade,
+regras e formatos de roteiro estão no [guia visual](GUIA_VISUAL.md). São
 composições de texto, sem pesquisa de imagens ou geração fotográfica por IA.
 Não há chamada de API, cobrança de provedor ou autorização de gasto nessa
 etapa. O render e a voz continuam locais.

@@ -1,5 +1,5 @@
 import { request } from './api.ts';
-import { createDialog, formWithSave, notice, statusLabels } from './components.ts';
+import { createDialog, formWithSave, notice, statusLabels, videoStyleField } from './components.ts';
 import { protectEdits } from './edit-protection.ts';
 import {editorTabs} from './ui-tabs.ts';
 import {createAIUsagePanel} from './ai-usage-ui.ts';
@@ -8,7 +8,7 @@ import type { CreativeCapabilities, CreativeDraft, CreativeSettings, CreativeTas
 
 const titles:Record<CreativeTask,string>={research:'Investigar um nicho',script:'Desenvolver um roteiro',story:'Construir uma narrativa'};
 const hints:Record<CreativeTask,string>={research:'Descreva o público, a pergunta e o que você quer investigar. Peça hipóteses e um plano de apuração.',script:'Informe a pergunta do vídeo, formato, duração e o que já foi apurado. Defina o tom e o que o roteiro deve entregar.',story:'Descreva a ideia central, o conflito e a descoberta que sustentam a história. Informe o público e a resposta que você pode demonstrar.'};
-const drafts=new Map<string,{draft:CreativeDraft;brief:string;includeReferences:boolean}>();
+const drafts=new Map<string,{draft:CreativeDraft;brief:string;includeReferences:boolean;style:string}>();
 let draftSession=0;
 export function clearCreativeDrafts():void {draftSession++;drafts.clear();}
 
@@ -113,6 +113,7 @@ export function openCreativeDraft(task:CreativeTask,channelId:string,channelName
   const active=()=>body.isConnected&&session===draftSession;
   const brief=textarea('creative-brief',editor?.initialBrief??(editor?objectives[task]:''),4);brief.required=true;brief.minLength=12;brief.maxLength=6000;brief.placeholder=hints[task];
   const references=input('creative-references','','checkbox');
+  const {control:style,node:styleField}=videoStyleField('creative-style');
   const status=el('p',{className:'assistant-status',role:'status'},'Consultando o assistente…');
   let provider:'ollama'|'anthropic'|'openai'='ollama';let quote:CreativeQuote|undefined;
   const cloud=()=>provider!=='ollama';const providerName=()=>provider==='openai'?'OpenAI':'Anthropic';
@@ -140,7 +141,7 @@ export function openCreativeDraft(task:CreativeTask,channelId:string,channelName
   }
   const submitLabel=()=>cloud()?(quote?'Autorizar e gerar':'Calcular custo'):'Gerar rascunho';
   const resetQuote=()=>{quote=undefined;costDetails.hidden=true;replace(costDetails);};
-  const payload=()=>({task,brief:brief.value.trim(),includeReferences:references.checked,...(editor?{editorContext:editor.context}:{})});
+  const payload=()=>({task,brief:brief.value.trim(),...(style.value?{style:style.value}:{}),includeReferences:references.checked,...(editor?{editorContext:editor.context}:{})});
   const {form,fields,actions}=formWithSave(submitLabel,async()=>{
     let paidAttempt=false;
     output.inert=true;resultActions.inert=true;resultActions.setAttribute('aria-busy','true');
@@ -162,7 +163,7 @@ export function openCreativeDraft(task:CreativeTask,channelId:string,channelName
       if(draft.channelId!==channelId||draft.task!==task)throw new Error('O rascunho não corresponde ao canal e à tarefa solicitados.');
       if(editor&&(!draft.fields||!fieldsMatch(task,draft.fields)||draft.status!=='draft'||draft.crossChecked!==false||draft.reviewRequired!==true))throw new Error('A resposta não contém campos válidos para este editor. Nenhuma alteração foi aplicada.');
       if(session!==draftSession)return;
-      drafts.delete(key);drafts.set(key,{draft,brief:brief.value.trim(),includeReferences:references.checked});while(drafts.size>12)drafts.delete(drafts.keys().next().value!);
+      drafts.delete(key);drafts.set(key,{draft,brief:brief.value.trim(),includeReferences:references.checked,style:style.value});while(drafts.size>12)drafts.delete(drafts.keys().next().value!);
       if(active()){show(draft);tabs.activate('result');status.textContent='Proposta pronta para revisão. Aplicar preenche o editor, sem salvar.';}
     } catch(error) {resetQuote();if(active())status.textContent=cloud()?(paidAttempt?`O pedido não foi concluído. Pode haver cobrança; confira o consumo ${provider==='openai'?'na OpenAI':'na Anthropic'} antes de tentar novamente.`:'A geração não foi iniciada. Confira o erro e calcule novamente.'):'A proposta não foi gerada. Confira o erro e tente novamente.';throw error;}
     finally {output.inert=false;resultActions.inert=false;resultActions.removeAttribute('aria-busy');}
@@ -170,8 +171,8 @@ export function openCreativeDraft(task:CreativeTask,channelId:string,channelName
   form.id=`creative-form-${crypto.randomUUID()}`;
   const submit=form.querySelector<HTMLButtonElement>('button[type="submit"]')!;submit.setAttribute('form',form.id);submit.disabled=true;
   const invalidateQuote=()=>{if(!quote)return;resetQuote();setButtonLabel(submit,submitLabel(),'check');status.textContent='Pedido alterado. Calcule o custo novamente antes de autorizar.';};
-  brief.addEventListener('input',invalidateQuote);references.addEventListener('change',invalidateQuote);
-  fields.append(field('O que desenvolver?',brief,editor?'O pedido usa os campos atuais do editor.':hints[task]),el('label',{className:'checkbox-field'},references,'Acrescentar outras pesquisas revisadas do canal'),el('p',{className:'field-hint'},'Opcional: até seis pesquisas. As referências não são verificadas automaticamente.'),transferNotice,costDetails);
+  brief.addEventListener('input',invalidateQuote);references.addEventListener('change',invalidateQuote);style.addEventListener('change',invalidateQuote);
+  fields.append(field('O que desenvolver?',brief,editor?'O pedido usa os campos atuais do editor.':hints[task]),styleField,el('label',{className:'checkbox-field'},references,'Acrescentar outras pesquisas revisadas do canal'),el('p',{className:'field-hint'},'Opcional: até seis pesquisas. As referências não são verificadas automaticamente.'),transferNotice,costDetails);
   const context=editor?renderValues(editor.context.values):el('p',{className:'field-hint'},'Este pedido usa o perfil do canal e as instruções pessoais.');
   const tabs=editorTabs('Assistente de criação',[{key:'request',label:'Pedido',content:form},{key:'context',label:'Dados usados',content:context},{key:'result',label:'Proposta',content:output}],key=>{actions.hidden=key!=='request';resultActions.hidden=key!=='result';});
   const back=button(editor?.mount?'Voltar ao editor':'Fechar',()=>protectEdits(close,body),'ghost','chevron');back.classList.add('assistant-back');
@@ -181,7 +182,7 @@ export function openCreativeDraft(task:CreativeTask,channelId:string,channelName
   const setupHint=editor?.mount?el('p',{className:'field-hint'},'Configure o modelo em Configurações → Assistente de criação. Você pode voltar e continuar escrevendo.'):configuration;
   setupHint.hidden=true;
   body.append(el('div',{className:'assistant-heading'},el('h2',{},titles[task]),el('p',{className:'field-hint'},channelName)),toolbar,tabs.node,status,feedback,setupHint);
-  const existing=drafts.get(key);if(existing){brief.value=existing.brief;references.checked=existing.includeReferences;show(existing.draft);queueMicrotask(()=>tabs.activate('result'));}
+  const existing=drafts.get(key);if(existing){brief.value=existing.brief;references.checked=existing.includeReferences;style.value=existing.style;style.dispatchEvent(new Event('change'));show(existing.draft);queueMicrotask(()=>tabs.activate('result'));}
   else queueMicrotask(()=>{if(active())tabs.node.querySelector<HTMLButtonElement>('[aria-selected="true"]')?.focus({preventScroll:true});});
   void request<CreativeCapabilities>(`/api/creative/capabilities?channel_id=${encodeURIComponent(channelId)}`).then(capabilities=>{
     if(!active())return;

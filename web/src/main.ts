@@ -15,6 +15,7 @@ import { badge, createDialog, editorWorkspace, empty, formWithSave, heading, ico
 import {editorTabs} from './ui-tabs.ts';
 import { button, el, externalLink, field, icon, input, replace, select, textarea, setButtonLabel } from "./dom.ts";
 import type { IconName } from "./dom.ts";
+import { parseSceneLayout, SceneLayoutError } from "../shared/scene-layouts.ts";
 import type { AuthStatus, Bootstrap, Channel, Claim, Platform, Research, RevenueEntry, Script, ScriptScene, Source, Story, WebConfig, WebJob, YoutubeDiscovery } from "../shared/types.ts";
 
 const root = document.querySelector<HTMLDivElement>("#app")!;
@@ -432,11 +433,14 @@ function sceneEditor(initial: ScriptScene[]): { node: HTMLElement; read: () => S
     const title = input("scene-heading", scene?.heading || ""); title.required = true;
     const narration = textarea("scene-narration", scene?.narration || "", 4); narration.required = true; narration.setAttribute("data-testid", `scene-${id}-narration`);
     const visual = textarea("scene-visual", scene?.visualBrief || "", 3); visual.required = true;
+    // Same check as the server, shown before saving.
+    const checkLayout = () => { try { parseSceneLayout(id, visual.value, narration.value); visual.setCustomValidity(""); } catch (error) { visual.setCustomValidity(error instanceof SceneLayoutError ? error.message : "Diretiva visual inválida."); } };
+    visual.addEventListener("input", checkLayout); narration.addEventListener("input", checkLayout); checkLayout();
     const duration = input("scene-duration", String(scene?.durationHintSecs ?? 20), "number"); duration.min = "0.1"; duration.step = "0.1"; duration.required = true;
     const count = el("span", { className: "field-hint" });
     const updateCount = () => { count.textContent = `${narration.value.trim().split(/\s+/).filter(Boolean).length} palavra(s) · duração final medida na narração`; };
     narration.addEventListener("input", updateCount); updateCount();
-    const node = el("section", { className: "scene-card" }, el("div", { className: "scene-top" }, el("span", { className: "scene-number" }, String(id + 1).padStart(2, "0")), el("h3", {}, `Cena ${id + 1}`), el("span", { className: "spacer" }), iconButton(`Remover cena ${id + 1}`, "trash", () => node.remove())), el("div", { className: "form-stack" }, el("div", { className: "form-grid" }, field("Título da cena", title), field("Duração estimada (segundos)", duration)), field("Narração autoral", narration), count, field("O que aparece na tela?", visual, "Descreva a função do visual e os recursos necessários para explicar a ideia.")));
+    const node = el("section", { className: "scene-card" }, el("div", { className: "scene-top" }, el("span", { className: "scene-number" }, String(id + 1).padStart(2, "0")), el("h3", {}, `Cena ${id + 1}`), el("span", { className: "spacer" }), iconButton(`Remover cena ${id + 1}`, "trash", () => node.remove())), el("div", { className: "form-stack" }, el("div", { className: "form-grid" }, field("Título da cena", title), field("Duração estimada (segundos)", duration)), field("Narração autoral", narration), count, field("O que aparece na tela?", visual, "Opcional na 1ª linha: #pergunta, #numero, #lista, #comparacao, #linha-do-tempo ou #citacao (ver docs/GUIA_VISUAL.md). O resto é nota livre.")));
     rows.push({ node, id, read: () => ({ id, heading: title.value.trim(), narration: narration.value.trim(), visualBrief: visual.value.trim(), durationHintSecs: Number(duration.value) }) });
     container.append(node);
   }

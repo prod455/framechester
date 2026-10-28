@@ -27,7 +27,7 @@ test('automatic visuals preserve scene IDs, stay in the channel and survive rest
     const plan=JSON.parse(await readFile(args[args.indexOf('--input')+1],'utf8'));
     assert.equal(plan.scenes[0].id,42);assert.equal(plan.scenes[0].narration,'Texto autoral preservado.');
     const output=args[args.indexOf('--output')+1];await mkdir(output,{recursive:true});await writeFile(join(output,'scene-42.png'),visualPng);
-    return {exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v1',scenes:[{scene_id:42,status:'generated',file:'scene-42.png'}]}),stderr:''};
+    return {exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v2',scenes:[{scene_id:42,status:'generated',file:'scene-42.png'}]}),stderr:''};
   }};
   let runner=await createRunner(options);
   try {
@@ -53,7 +53,7 @@ test('a required real capture is reported as pending without inventing an asset'
   let executions=0;
   const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>current,execute:async(args)=>{
     executions++;const output=args[args.indexOf('--output')+1];await mkdir(output,{recursive:true});await writeFile(join(output,'scene-42.png'),visualPng);
-    return {exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v1',scenes:[{scene_id:42,status:'requires_capture',file:'scene-42.png'}]}),stderr:''};
+    return {exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v2',scenes:[{scene_id:42,status:'requires_capture',file:'scene-42.png'}]}),stderr:''};
   }});
   try {
     const result=await runner.prepareVisuals('tech','script-one');
@@ -69,7 +69,7 @@ test('a required real capture is reported as pending without inventing an asset'
 
 test('invalid renderer paths are rejected before importing any generated file',async()=>{
   const home=await mkdtemp(join(tmpdir(),'fc-visual-path-'));
-  const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>state(),execute:async()=>({exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v1',scenes:[{scene_id:42,status:'generated',file:'../private.png'}]}),stderr:''})});
+  const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>state(),execute:async()=>({exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v2',scenes:[{scene_id:42,status:'generated',file:'../private.png'}]}),stderr:''})});
   try {
     await assert.rejects(runner.prepareVisuals('tech','script-one'),/arquivo visual inválido/);
     assert.deepEqual(await runner.assets('tech'),[]);
@@ -85,7 +85,7 @@ test('a local draft preview renders unreviewed material without approving it or 
   const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>current,execute:async args=>{
     if(args[0]==='visuals'){
       const output=args[args.indexOf('--output')+1];await mkdir(output,{recursive:true});await writeFile(join(output,'scene-42.png'),visualPng);
-      return {exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v1',scenes:[{scene_id:42,status:'requires_capture',file:'scene-42.png'}]}),stderr:''};
+      return {exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v2',scenes:[{scene_id:42,status:'requires_capture',file:'scene-42.png'}]}),stderr:''};
     }
     previews=args.includes('--preview-only');assert.equal(previews,true);
     const topic=JSON.parse(await readFile(args[args.indexOf('--topic')+1],'utf8'));assert.equal(topic.metrics.cross_check,0);assert.deepEqual(topic.sources,[]);
@@ -105,7 +105,7 @@ test('a local draft preview renders unreviewed material without approving it or 
 test('automatic production continues from a generated script through visuals and render in the server queue',async()=>{
   const home=await mkdtemp(join(tmpdir(),'fc-auto-run-'));const current=state();let generated=false,rendered=false;
   const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>current,execute:async args=>{
-    if(args[0]==='visuals'){const output=args[args.indexOf('--output')+1];await mkdir(output,{recursive:true});await writeFile(join(output,'scene-42.png'),visualPng);return {exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v1',scenes:[{scene_id:42,status:'generated',file:'scene-42.png'}]}),stderr:''};}
+    if(args[0]==='visuals'){const output=args[args.indexOf('--output')+1];await mkdir(output,{recursive:true});await writeFile(join(output,'scene-42.png'),visualPng);return {exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v2',scenes:[{scene_id:42,status:'generated',file:'scene-42.png'}]}),stderr:''};}
     rendered=true;assert.ok(args.includes('--preview-only'));const output=join(args[args.indexOf('--workdir')+1],'channels','tech');await mkdir(join(output,'render'),{recursive:true});await writeFile(join(output,'render/final.mp4'),'synthetic automated preview');await writeFile(join(output,'pipeline_report.json'),JSON.stringify({stage:'blocked',technical_qa:{checks:[{status:'pass'}]},editorial_qa:{checks:[{status:'needs_human'}]}}));return {exitCode:1,stdout:'',stderr:''};
   }});
   try{

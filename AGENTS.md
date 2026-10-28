@@ -5,7 +5,7 @@ Framechester V4: open-source, self-hosted, single-operator media production engi
 
 Current operator decision (2026-10-27): multiple channels under one local operator, with separate identities, artifacts, account bindings and metrics. Multi-user SaaS is a separate scope.
 
-The local Studio uses TypeScript/Vite and a Node.js backend; Rust remains the production engine. For web operation/configuration read `docs/WEB_STUDIO.md`; for social connections and API capabilities read `docs/REDES_SOCIAIS_WEB.md`.
+The local Studio uses TypeScript/Vite and a Node.js backend; Rust remains the production engine. For web operation/configuration read `docs/WEB_STUDIO.md`; for social connections and API capabilities read `docs/REDES_SOCIAIS_WEB.md`; for video visuals, scene layouts and script styles read `docs/GUIA_VISUAL.md`.
 For Studio UI changes, read `DESIGN.md` before editing; it records the current Operate direction and supersedes the rejected card-based themes.
 For detailed alignment work, apply `precise-ui-alignment` when installed and measure the shared geometry contract in `DESIGN.md`; passing overflow checks does not prove alignment.
 

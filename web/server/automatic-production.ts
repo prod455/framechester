@@ -11,7 +11,7 @@ const direction='Produza um roteiro explicativo original e completo, pronto para
 export function createAutomaticProduction(options:AutomaticProductionOptions){
   async function plan(owner:string,raw:unknown){
     const input=object(raw);
-    if(Object.keys(input).some(key=>!['brief','format','scriptId','researchId','quoteId','authorizePaid'].includes(key)))throw new HttpError(400,'Opção de produção automática inválida.');
+    if(Object.keys(input).some(key=>!['brief','format','style','scriptId','researchId','quoteId','authorizePaid'].includes(key)))throw new HttpError(400,'Opção de produção automática inválida.');
     if(typeof input.brief!=='string'||input.brief.trim().length<3||input.brief.length>2000||input.brief.includes('\0'))throw new HttpError(400,'Descreva o tema ou a orientação para a IA.');
     if(!['short','long'].includes(String(input.format)))throw new HttpError(400,'Escolha o formato do vídeo.');
     if(input.scriptId&&input.researchId)throw new HttpError(400,'Escolha uma pauta ou um roteiro como referência.');
@@ -22,7 +22,7 @@ export function createAutomaticProduction(options:AutomaticProductionOptions){
     if((input.scriptId&&!script)||(input.researchId&&!research))throw new HttpError(400,'A referência não pertence a este canal ou está arquivada.');
     const format=input.format as 'short'|'long';
     const context:CreativeEditorContext={task:'script',values:{title:script?.title??research?.title??input.brief.trim().slice(0,500),researchId:script?.researchId??research?.id,series:script?.series??(channel.niche.slice(0,150)||'principal'),format,hook:script?.hook??'',scenes:script?structuredClone(script.scenes):[],sources:structuredClone(script?.sources??research?.sources??[]),claims:script?structuredClone(script.claims):[]}};
-    const generation:CreativeInput={task:'script',brief:`${direction}\nOrientação do operador: ${input.brief.trim()}`,includeReferences:false,editorContext:context};
+    const generation:CreativeInput={task:'script',brief:`${direction}\nOrientação do operador: ${input.brief.trim()}`,...(input.style!==undefined?{style:input.style}:{}),includeReferences:false,editorContext:context};
     return {input,generation,seedId:script?.id??'automatic',researchId:context.values.researchId};
   }
   return {

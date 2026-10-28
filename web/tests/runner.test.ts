@@ -285,3 +285,14 @@ test('restart blocks interrupted jobs while preserving completed history and imp
     assert.deepEqual(JSON.parse(await readFile(join(home, 'production', 'jobs.json'), 'utf8')).map((job: { status: string }) => job.status), ['blocked', 'blocked', 'needs_review']);
   } finally { await restarted.close(); await rm(home, { recursive: true, force: true }); }
 });
+
+test('a stored script with an unrenderable directive fails before the engine runs, naming the scene by position',async()=>{
+  const home=await mkdtemp(join(tmpdir(),'fc-visual-legacy-'));
+  const current=state();let calls=0;
+  current.scripts[0].scenes[0].visualBrief='#grafico 1, 2, 3';
+  const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>structuredClone(current),execute:async()=>{calls++;return {exitCode:1,stdout:'',stderr:''};}});
+  try {
+    await assert.rejects(runner.prepareVisuals('tech','script-one'),/Cena 1: diretiva visual inválida; '#grafico' não existe/);
+    assert.equal(calls,0);
+  } finally { await runner.close(); await rm(home,{recursive:true,force:true}); }
+});

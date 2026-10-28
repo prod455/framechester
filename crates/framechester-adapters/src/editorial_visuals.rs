@@ -149,23 +149,41 @@ const INK: &str = "#EEF2F8";
 const MUTED: &str = "#8C99AE";
 const ACCENT: &str = "#F2B544";
 
-/// Wraps and draws `content`, returning the height consumed.
+/// Lowest baseline of a block that starts at `top` (its first baseline is `top + size`).
+fn bottom_of(top: f32, size: f32, lines: usize) -> f32 {
+    top + size + (lines.max(1) - 1) as f32 * size * 1.25
+}
+
+/// Draws `content` below `top` at the largest size from `max` down to `min` whose
+/// wrapped height stays above `bottom`. At `min` the text is cut with an ellipsis
+/// instead of overflowing into the caption band. Returns the lowest baseline.
 #[allow(clippy::too_many_arguments)]
-fn block(
+fn fit(
     svg: &mut String,
     content: &str,
     x: f32,
-    y: f32,
-    size: f32,
+    top: f32,
     width: f32,
-    lines: usize,
+    bottom: f32,
+    max: f32,
+    min: f32,
     color: &str,
     bold: bool,
     options: &usvg::Options,
 ) -> Result<f32> {
-    let wrapped = wrap(content, size, width, lines, bold, options)?;
-    text(svg, &wrapped, x, y, size, color, bold);
-    Ok(wrapped.len() as f32 * size * 1.25)
+    let mut size = max;
+    loop {
+        let unlimited = wrap(content, size, width, 64, bold, options)?;
+        if bottom_of(top, size, unlimited.len()) + size * 0.3 <= bottom || size <= min {
+            let lines = (((bottom - top - size * 0.3 - size) / (size * 1.25)).floor() as usize + 1)
+                .max(1)
+                .min(unlimited.len().max(1));
+            let wrapped = wrap(content, size, width, lines, bold, options)?;
+            text(svg, &wrapped, x, top + size, size, color, bold);
+            return Ok(bottom_of(top, size, wrapped.len()));
+        }
+        size = (size - 6.0).max(min);
+    }
 }
 
 struct Frame {
@@ -178,36 +196,26 @@ struct Frame {
     body: f32,
 }
 
+/// Draws one layout inside the frame and returns its lowest baseline, which never
+/// exceeds `f.bottom`; the test below checks that with fields at their size limits.
 fn body(
     svg: &mut String,
     layout: &SceneLayout,
     scene: &Scene,
     f: &Frame,
     options: &usvg::Options,
-) -> Result<()> {
+) -> Result<f32> {
     let x = f.margin;
     let usable = f.width - 2.0 * f.margin;
-    let max_body_lines = |y: f32, size: f32| {
-        (((f.bottom - y) / (size * 1.25)).floor() as usize).clamp(1, if f.vertical { 8 } else { 4 })
+    let heading = |svg: &mut String, size: f32, lines: usize| -> Result<f32> {
+        let wrapped = wrap(&scene.heading, size, usable, lines, true, options)?;
+        text(svg, &wrapped, x, f.top + size, size, INK, true);
+        Ok(bottom_of(f.top, size, wrapped.len()))
     };
-    let heading = |svg: &mut String, size: f32, lines: usize| {
-        block(
-            svg,
-            &scene.heading,
-            x,
-            f.top + size,
-            size,
-            usable,
-            lines,
-            INK,
-            true,
-            options,
-        )
-    };
-    match layout {
+    let lowest = match layout {
         SceneLayout::Destaque => {
             let used = heading(svg, f.heading, 3)?;
-            let y = (f.top + f.heading + used + 60.0).max(if f.vertical { 700.0 } else { 580.0 });
+            let top = (used + 60.0).max(if f.vertical { 650.0 } else { 530.0 });
             let excerpt = scene
                 .narration
                 .split('\n')
@@ -217,16 +225,17 @@ fn body(
                 excerpt,
                 f.body,
                 usable - 44.0,
-                max_body_lines(y, f.body),
+                (((f.bottom - top - f.body) / (f.body * 1.25)).floor() as usize + 1)
+                    .clamp(1, if f.vertical { 8 } else { 4 }),
                 false,
                 options,
             )?;
             svg.push_str(&format!(
-                "<rect x='{x}' y='{}' width='8' height='{}' fill='{ACCENT}'/>",
-                y - f.body,
+                "<rect x='{x}' y='{top}' width='8' height='{}' fill='{ACCENT}'/>",
                 wrapped.len() as f32 * f.body * 1.25 + 8.0
             ));
-            text(svg, &wrapped, x + 38.0, y, f.body, INK, false);
+            text(svg, &wrapped, x + 38.0, top + f.body, f.body, INK, false);
+            bottom_of(top, f.body, wrapped.len())
         }
         SceneLayout::Pergunta(question) => {
             text(
@@ -238,19 +247,19 @@ fn body(
                 ACCENT,
                 true,
             );
-            let size = f.heading * 1.15;
-            block(
+            fit(
                 svg,
                 question,
                 x,
-                f.top + 80.0 + size,
-                size,
+                f.top + 80.0,
                 usable,
-                5,
+                f.bottom,
+                f.heading * 1.15,
+                f.body,
                 INK,
                 true,
                 options,
-            )?;
+            )?
         }
         SceneLayout::Numero { value, caption } => {
             let used = heading(svg, f.body, 2)?;
@@ -259,158 +268,148 @@ fn body(
             while size > 72.0 && text_width(value, size, true, options)? > usable {
                 size -= 8.0;
             }
-            let y = f.top + used + 60.0 + size;
-            block(svg, value, x, y, size, usable, 1, ACCENT, true, options)?;
-            block(
+            let top = used + 60.0;
+            text(
+                svg,
+                std::slice::from_ref(value),
+                x,
+                top + size,
+                size,
+                ACCENT,
+                true,
+            );
+            fit(
                 svg,
                 caption,
                 x,
-                y + 90.0,
-                f.body,
+                top + size + 40.0,
                 usable,
-                3,
+                f.bottom,
+                f.body,
+                30.0,
                 INK,
                 false,
                 options,
-            )?;
+            )?
         }
         SceneLayout::Lista(items) => {
-            let mut y = f.top + heading(svg, f.heading * 0.8, 2)? + 70.0;
-            let size = f.body;
+            let mut top = heading(svg, f.heading * 0.8, 1)? + 50.0;
+            let gap = 24.0;
+            let count = items.len() as f32;
+            let per_item = (f.bottom - top - gap * (count - 1.0)) / count;
+            // Two lines per item when they fit; otherwise one line, cut with an ellipsis.
+            let (lines, size) = if per_item >= 36.0 * 2.5 {
+                (2, (per_item / 2.5).min(f.body))
+            } else {
+                (1, (per_item / 1.25).clamp(28.0, f.body))
+            };
+            let mut lowest = top;
             for (index, item) in items.iter().enumerate() {
                 text(
                     svg,
                     &[format!("{:02}", index + 1)],
                     x,
-                    y + size,
+                    top + size,
                     size,
                     ACCENT,
                     true,
                 );
-                y += block(
-                    svg,
-                    item,
-                    x + 110.0,
-                    y + size,
-                    size,
-                    usable - 110.0,
-                    2,
-                    INK,
-                    false,
-                    options,
-                )? + 34.0;
+                let wrapped = wrap(item, size, usable - 110.0, lines, false, options)?;
+                text(svg, &wrapped, x + 110.0, top + size, size, INK, false);
+                lowest = bottom_of(top, size, wrapped.len());
+                top = lowest + size * 0.25 + gap;
             }
+            lowest
         }
         SceneLayout::Comparacao { left, right } => {
-            let used = heading(svg, f.heading * 0.8, 2)?;
-            let y = f.top + used + 80.0;
+            let top = heading(svg, f.heading * 0.8, 2)? + 80.0;
             let sides = [left, right];
             if f.vertical {
-                let mut row = y;
+                let half = (f.bottom - top - 40.0) / 2.0;
+                let mut lowest = top;
                 for (index, side) in sides.iter().enumerate() {
+                    let start = top + index as f32 * (half + 40.0);
                     if index == 1 {
                         svg.push_str(&format!(
                             "<path d='M{x} {} H{}' stroke='{RULE}' stroke-width='2'/>",
-                            row - 20.0,
+                            start - 20.0,
                             f.width - x
                         ));
-                        row += 40.0;
                     }
-                    row += block(
-                        svg,
-                        &side.label,
-                        x,
-                        row + f.body,
-                        f.body,
-                        usable,
-                        1,
-                        ACCENT,
-                        true,
-                        options,
-                    )? + 16.0;
-                    row += block(
+                    let wrapped = wrap(&side.label, f.body, usable, 1, true, options)?;
+                    text(svg, &wrapped, x, start + f.body, f.body, ACCENT, true);
+                    lowest = fit(
                         svg,
                         &side.text,
                         x,
-                        row + f.body,
-                        f.body,
+                        start + f.body * 1.6,
                         usable,
-                        4,
+                        start + half,
+                        f.body,
+                        30.0,
                         INK,
                         false,
                         options,
-                    )? + 60.0;
+                    )?;
                 }
+                lowest
             } else {
                 let column = (usable - 80.0) / 2.0;
+                let mut lowest = top;
                 for (index, side) in sides.iter().enumerate() {
                     let cx = x + index as f32 * (column + 80.0);
-                    let used = block(
-                        svg,
-                        &side.label,
-                        cx,
-                        y + f.body,
-                        f.body,
-                        column,
-                        1,
-                        ACCENT,
-                        true,
-                        options,
-                    )?;
-                    block(
+                    let wrapped = wrap(&side.label, f.body, column, 1, true, options)?;
+                    text(svg, &wrapped, cx, top + f.body, f.body, ACCENT, true);
+                    lowest = lowest.max(fit(
                         svg,
                         &side.text,
                         cx,
-                        y + used + 16.0 + f.body,
-                        f.body,
+                        top + f.body * 1.6,
                         column,
-                        4,
+                        f.bottom,
+                        f.body,
+                        30.0,
                         INK,
                         false,
                         options,
-                    )?;
+                    )?);
                 }
                 let mid = x + column + 40.0;
                 svg.push_str(&format!(
-                    "<path d='M{mid} {y} V{}' stroke='{RULE}' stroke-width='2'/>",
+                    "<path d='M{mid} {top} V{}' stroke='{RULE}' stroke-width='2'/>",
                     f.bottom
                 ));
+                lowest
             }
         }
         SceneLayout::LinhaDoTempo(entries) => {
-            let used = heading(svg, f.heading * 0.8, 2)?;
-            let y = f.top + used + 90.0;
+            let top = heading(svg, f.heading * 0.8, if f.vertical { 2 } else { 1 })? + 90.0;
+            let mut lowest = top;
             if f.vertical {
-                let step = ((f.bottom - y) / entries.len() as f32).min(260.0);
+                let step = ((f.bottom - top) / entries.len() as f32).min(260.0);
                 svg.push_str(&format!(
-                    "<path d='M{} {y} V{}' stroke='{RULE}' stroke-width='4'/>",
+                    "<path d='M{} {top} V{}' stroke='{RULE}' stroke-width='4'/>",
                     x + 12.0,
-                    y + step * (entries.len() as f32 - 0.5)
+                    top + step * (entries.len() as f32 - 0.5)
                 ));
                 for (index, entry) in entries.iter().enumerate() {
-                    let row = y + index as f32 * step;
+                    let row = top + index as f32 * step;
                     svg.push_str(&format!(
                         "<circle cx='{}' cy='{}' r='14' fill='{ACCENT}'/>",
                         x + 12.0,
                         row + 4.0
                     ));
-                    text(
-                        svg,
-                        std::slice::from_ref(&entry.label),
-                        x + 60.0,
-                        row + 18.0,
-                        f.body,
-                        ACCENT,
-                        true,
-                    );
-                    block(
+                    let label = wrap(&entry.label, f.body, usable - 60.0, 1, true, options)?;
+                    text(svg, &label, x + 60.0, row + 18.0, f.body, ACCENT, true);
+                    lowest = fit(
                         svg,
                         &entry.text,
                         x + 60.0,
-                        row + 18.0 + f.body * 1.3,
-                        f.body * 0.85,
+                        row + 18.0 + f.body * 0.5,
                         usable - 60.0,
-                        2,
+                        row + step - 20.0,
+                        f.body * 0.85,
+                        28.0,
                         INK,
                         false,
                         options,
@@ -418,7 +417,7 @@ fn body(
                 }
             } else {
                 let column = usable / entries.len() as f32;
-                let line = y + 30.0;
+                let line = top + 30.0;
                 svg.push_str(&format!(
                     "<path d='M{x} {line} H{}' stroke='{RULE}' stroke-width='4'/>",
                     f.width - x
@@ -431,20 +430,22 @@ fn body(
                     ));
                     let label = wrap(&entry.label, f.body, column - 30.0, 1, true, options)?;
                     text(svg, &label, cx, line + 100.0, f.body, ACCENT, true);
-                    block(
+                    lowest = lowest.max(fit(
                         svg,
                         &entry.text,
                         cx,
-                        line + 110.0 + f.body * 1.25,
-                        34.0,
+                        line + 110.0,
                         column - 30.0,
-                        3,
+                        f.bottom,
+                        34.0,
+                        26.0,
                         INK,
                         false,
                         options,
-                    )?;
+                    )?);
                 }
             }
+            lowest
         }
         SceneLayout::Citacao { quote, author } => {
             text(
@@ -456,24 +457,53 @@ fn body(
                 ACCENT,
                 true,
             );
-            let size = f.heading * 0.85;
-            let y = f.top + 220.0 + size;
-            let used = block(svg, quote, x, y, size, usable, 5, INK, false, options)?;
-            block(
+            let author_size = f.body * 0.8;
+            let author_room = author_size * 2.5 + 40.0;
+            let used = fit(
                 svg,
-                &format!("— {author}"),
+                quote,
                 x,
-                y + used + 40.0,
-                f.body * 0.8,
+                f.top + 220.0,
                 usable,
-                2,
-                MUTED,
+                f.bottom - author_room,
+                f.heading * 0.85,
+                f.body,
+                INK,
                 false,
                 options,
             )?;
+            fit(
+                svg,
+                &format!("— {author}"),
+                x,
+                used + 40.0,
+                usable,
+                f.bottom,
+                author_size,
+                26.0,
+                MUTED,
+                false,
+                options,
+            )?
         }
+    };
+    Ok(lowest)
+}
+
+fn frame(width: u32, height: u32) -> Frame {
+    let vertical = width < height;
+    let h = height as f32;
+    // Keep the bottom area clear for burned-in narration captions.
+    let footer_y = h - if vertical { 470.0 } else { 290.0 };
+    Frame {
+        vertical,
+        margin: if vertical { 82.0 } else { 112.0 },
+        width: width as f32,
+        top: 250.0,
+        bottom: footer_y - 70.0,
+        heading: if vertical { 72.0 } else { 88.0 },
+        body: if vertical { 48.0 } else { 44.0 },
     }
-    Ok(())
 }
 
 fn render_scene(
@@ -485,11 +515,10 @@ fn render_scene(
     height: u32,
     options: &usvg::Options,
 ) -> Result<tiny_skia::Pixmap> {
-    let vertical = width < height;
-    let w = width as f32;
-    let h = height as f32;
-    let margin = if vertical { 82.0 } else { 112.0 };
+    let f = frame(width, height);
+    let (w, margin) = (f.width, f.margin);
     let usable = w - 2.0 * margin;
+    let footer_y = f.bottom + 70.0;
     let mut svg = format!("<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'><rect width='100%' height='100%' fill='{BACKGROUND}'/><g font-family='{}'><path d='M{margin} 190 H{}' stroke='{RULE}' stroke-width='2'/>", xml(&options.font_family), w - margin);
     text(
         &mut svg,
@@ -509,18 +538,7 @@ fn render_scene(
         MUTED,
         false,
     );
-    // Keep the bottom area clear for burned-in narration captions.
-    let footer_y = h - if vertical { 470.0 } else { 290.0 };
-    let frame = Frame {
-        vertical,
-        margin,
-        width: w,
-        top: 250.0,
-        bottom: footer_y - 70.0,
-        heading: if vertical { 72.0 } else { 88.0 },
-        body: if vertical { 48.0 } else { 44.0 },
-    };
-    body(&mut svg, layout, scene, &frame, options)?;
+    body(&mut svg, layout, scene, &f, options)?;
     text(
         &mut svg,
         &wrap(&plan.title, 26.0, usable, 1, false, options)?,
@@ -558,6 +576,27 @@ fn render_scene(
     Ok(pixmap)
 }
 
+fn fonts() -> Result<usvg::Options<'static>> {
+    let mut options = usvg::Options::default();
+    options.fontdb_mut().load_system_fonts();
+    if options.fontdb.is_empty() {
+        return Err(FramechesterError::Unavailable(
+            "fontes locais ausentes; instale DejaVu Sans para gerar visuais".into(),
+        ));
+    }
+    for family in ["Segoe UI", "DejaVu Sans", "Arial"] {
+        if options
+            .fontdb
+            .faces()
+            .any(|face| face.families.iter().any(|(name, _)| name == family))
+        {
+            options.font_family = family.into();
+            break;
+        }
+    }
+    Ok(options)
+}
+
 pub fn prepare(plan: &VisualPlan, output: &Path) -> Result<VisualReport> {
     let mut ids = HashSet::new();
     if plan.scenes.is_empty()
@@ -588,23 +627,7 @@ pub fn prepare(plan: &VisualPlan, output: &Path) -> Result<VisualReport> {
         ScriptFormat::Long => (1920, 1080),
         ScriptFormat::Short => (1080, 1920),
     };
-    let mut options = usvg::Options::default();
-    options.fontdb_mut().load_system_fonts();
-    if options.fontdb.is_empty() {
-        return Err(FramechesterError::Unavailable(
-            "fontes locais ausentes; instale DejaVu Sans para gerar visuais".into(),
-        ));
-    }
-    for family in ["Segoe UI", "DejaVu Sans", "Arial"] {
-        if options
-            .fontdb
-            .faces()
-            .any(|face| face.families.iter().any(|(name, _)| name == family))
-        {
-            options.font_family = family.into();
-            break;
-        }
-    }
+    let options = fonts()?;
     std::fs::create_dir_all(output)?;
     let mut scenes = Vec::new();
     for (index, (scene, layout)) in plan.scenes.iter().zip(&layouts).enumerate() {
@@ -718,6 +741,46 @@ mod tests {
                 .scenes
                 .iter()
                 .all(|scene| scene.status == "generated"));
+        }
+    }
+    #[test]
+    fn fields_at_their_limits_stay_above_the_caption_band() {
+        let options = fonts().unwrap();
+        let word = "palavra ";
+        let long = word.repeat(20).trim().to_string(); // 159 chars
+        let label = "r".repeat(40);
+        let number = "1234567890123456";
+        let briefs = [
+            format!("#pergunta {long}"),
+            format!("#numero {number} | {long}"),
+            format!("#lista {long}; {long}; {long}; {long}; {long}"),
+            format!("#comparacao {label}: {long} | {label}: {long}"),
+            format!("#linha-do-tempo {label}: {long}; {label}: {long}; {label}: {long}; {label}: {long}; {label}: {long}"),
+            format!("#citacao {long} | {long}"),
+            "x".repeat(3000),
+        ];
+        let narration = format!("{number} {long} {}", "y".repeat(500));
+        for (width, height) in [(1920, 1080), (1080, 1920)] {
+            let f = frame(width, height);
+            for brief in &briefs {
+                let scene = Scene {
+                    id: 1,
+                    heading: "h".repeat(3000),
+                    narration: narration.clone(),
+                    visual_brief: brief.clone(),
+                    duration_hint_secs: 5.0,
+                };
+                let layout = scene_layout::parse(1, &scene.visual_brief, &scene.narration).unwrap();
+                let mut svg = String::new();
+                let lowest = body(&mut svg, &layout, &scene, &f, &options).unwrap();
+                assert!(
+                    lowest <= f.bottom,
+                    "{width}x{height} {}: {lowest} > {}",
+                    &brief[..12],
+                    f.bottom
+                );
+                assert!(usvg::Tree::from_str(&format!("<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'>{svg}</svg>"), &options).is_ok());
+            }
         }
     }
 }

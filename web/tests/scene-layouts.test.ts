@@ -32,7 +32,7 @@ test('a script with an unrenderable directive is rejected on save, while stored 
     const store = new LocalStore(home); const now = new Date().toISOString();
     await store.update(state => { state.channels.push({ id: 'tech', name: 'tech', description: '', niche: '', audience: '', language: 'pt-BR', createdAt: now, updatedAt: now }); });
     const script = (visualBrief: string) => ({ channelId: 'tech', title: 'Roteiro', format: 'short', hook: 'Gancho', scenes: [{ id: 1, heading: 'Cena', narration: 'Sem número falado.', visualBrief, durationHintSecs: 5 }], sources: [], claims: [] });
-    await assert.rejects(store.saveResource('scripts', script('#numero 90% | dos casos')), (error: unknown) => error instanceof HttpError && error.status === 400 && /Cena 1/.test(error.message));
+    await assert.rejects(store.saveResource('scripts', script('#numero 90% | dos casos')), (error: unknown) => error instanceof HttpError && error.status === 400 && /Cena 2/.test(error.message));
     const saved = await store.saveResource('scripts', script('#lista Coletar; Treinar'));
     // A brief that predates the catalog must not brick the state on load.
     await store.update(state => { state.scripts[0]!.scenes[0]!.visualBrief = '#legado nota antiga'; });

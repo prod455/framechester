@@ -84,6 +84,7 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
     if (input.includeReferences !== undefined && typeof input.includeReferences !== 'boolean') throw new HttpError(400, 'A inclusão de pesquisas revisadas deve ser uma escolha explícita.');
     const style=input.style===undefined?undefined:videoStyle(input.style);
     if(input.style!==undefined&&!style)throw new HttpError(400,'Formato editorial inválido.');
+    if(style&&input.task==='research')throw new HttpError(400,'O formato de vídeo vale para roteiro e narrativa, não para pesquisa.');
     const {state,channel}=await requireChannel(owner); const task=input.task as CreativeTask;
     const prepared=prepareEditorContext(input.editorContext,task,owner,state);
     const format=prepared?.context.task==='script'?prepared.context.values.format:undefined;

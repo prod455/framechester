@@ -1,25 +1,142 @@
 [
-  {"brief": "Diagrama simples do fluxo", "narration": "x", "layout": "destaque"},
-  {"brief": "# Nota em Markdown", "narration": "x", "layout": "destaque"},
-  {"brief": "", "narration": "x", "layout": "destaque"},
-  {"brief": "#destaque", "narration": "x", "layout": "destaque"},
-  {"brief": "#destaque sobra", "narration": "x", "layout": null},
-  {"brief": "#pergunta Por que a GPU ganhou da CPU?\nTom de suspense", "narration": "x", "layout": "pergunta"},
-  {"brief": "#pergunta", "narration": "x", "layout": null},
-  {"brief": "#numero 175 bilhões | parâmetros no GPT-3", "narration": "O modelo tinha 175   Bilhões de parâmetros.", "layout": "numero"},
-  {"brief": "#numero 90% | dos casos", "narration": "Em quase todos os casos.", "layout": null},
-  {"brief": "#numero muitos | casos", "narration": "muitos casos", "layout": null},
-  {"brief": "#numero 1 | 2 | 3", "narration": "1", "layout": null},
-  {"brief": "#lista Coletar; Treinar; Avaliar", "narration": "x", "layout": "lista"},
-  {"brief": "#lista Só um item", "narration": "x", "layout": null},
-  {"brief": "#lista A; B; C; D; E; F", "narration": "x", "layout": null},
-  {"brief": "#lista A; ; C", "narration": "x", "layout": null},
-  {"brief": "#comparacao CPU: poucos núcleos rápidos | GPU: milhares de núcleos simples", "narration": "x", "layout": "comparacao"},
-  {"brief": "#comparacao CPU poucos núcleos | GPU: muitos", "narration": "x", "layout": null},
-  {"brief": "#linha-do-tempo 1958: Perceptron; 1986: Backpropagation; 2017: Transformer", "narration": "x", "layout": "linha-do-tempo"},
-  {"brief": "#linha-do-tempo 1958: Perceptron", "narration": "x", "layout": null},
-  {"brief": "#citacao Atenção é tudo de que você precisa | título do artigo de 2017", "narration": "O artigo dizia: atenção é tudo de que você precisa.", "layout": "citacao"},
-  {"brief": "#citacao Frase que ninguém disse | Alguém famoso", "narration": "Outra coisa.", "layout": null},
-  {"brief": "#grafico 1, 2, 3", "narration": "x", "layout": null},
-  {"brief": "#Lista A; B", "narration": "x", "layout": null}
+{
+"brief": "Diagrama simples do fluxo",
+"narration": "x",
+"layout": "destaque"
+},
+{
+"brief": "# Nota em Markdown",
+"narration": "x",
+"layout": "destaque"
+},
+{
+"brief": "",
+"narration": "x",
+"layout": "destaque"
+},
+{
+"brief": "#destaque",
+"narration": "x",
+"layout": "destaque"
+},
+{
+"brief": "#destaque sobra",
+"narration": "x",
+"layout": null
+},
+{
+"brief": "#pergunta Por que a GPU ganhou da CPU?\nTom de suspense",
+"narration": "x",
+"layout": "pergunta"
+},
+{
+"brief": "#pergunta",
+"narration": "x",
+"layout": null
+},
+{
+"brief": "#numero 175 bilhões | parâmetros no GPT-3",
+"narration": "O modelo tinha 175   Bilhões de parâmetros.",
+"layout": "numero"
+},
+{
+"brief": "#numero 90% | dos casos",
+"narration": "Em quase todos os casos.",
+"layout": null
+},
+{
+"brief": "#numero muitos | casos",
+"narration": "muitos casos",
+"layout": null
+},
+{
+"brief": "#numero 1 | 2 | 3",
+"narration": "1",
+"layout": null
+},
+{
+"brief": "#lista Coletar; Treinar; Avaliar",
+"narration": "x",
+"layout": "lista"
+},
+{
+"brief": "#lista Só um item",
+"narration": "x",
+"layout": null
+},
+{
+"brief": "#lista A; B; C; D; E; F",
+"narration": "x",
+"layout": null
+},
+{
+"brief": "#lista A; ; C",
+"narration": "x",
+"layout": null
+},
+{
+"brief": "#comparacao CPU: poucos núcleos rápidos | GPU: milhares de núcleos simples",
+"narration": "x",
+"layout": "comparacao"
+},
+{
+"brief": "#comparacao CPU poucos núcleos | GPU: muitos",
+"narration": "x",
+"layout": null
+},
+{
+"brief": "#linha-do-tempo 1958: Perceptron; 1986: Backpropagation; 2017: Transformer",
+"narration": "x",
+"layout": "linha-do-tempo"
+},
+{
+"brief": "#linha-do-tempo 1958: Perceptron",
+"narration": "x",
+"layout": null
+},
+{
+"brief": "#citacao Atenção é tudo de que você precisa | título do artigo de 2017",
+"narration": "O artigo dizia: atenção é tudo de que você precisa.",
+"layout": "citacao"
+},
+{
+"brief": "#citacao Frase que ninguém disse | Alguém famoso",
+"narration": "Outra coisa.",
+"layout": null
+},
+{
+"brief": "#grafico 1, 2, 3",
+"narration": "x",
+"layout": null
+},
+{
+"brief": "#Lista A; B",
+"narration": "x",
+"layout": null
+},
+{
+"brief": "#linha-do-tempo rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr: palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra; rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr: palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra",
+"narration": "x",
+"layout": "linha-do-tempo"
+},
+{
+"brief": "#comparacao rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr: a | b: c",
+"narration": "x",
+"layout": null
+},
+{
+"brief": "#comparacao a: palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavra palavraxy | b: c",
+"narration": "x",
+"layout": null
+},
+{
+"brief": "#comparacao a: b | c: d | e: f",
+"narration": "x",
+"layout": null
+},
+{
+"brief": "#numero 10 | dez\r\nnota com CRLF",
+"narration": "São 10 casos.",
+"layout": "numero"
+}
 ]

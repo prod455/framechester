@@ -13,19 +13,24 @@ fn check(id: &str, name: &str, status: QaStatus, detail: impl Into<String>) -> Q
 pub fn editorial(script: &Script, assets: &[AssetManifest], timeline: &Timeline) -> QaReport {
     let mut checks = Vec::new();
 
-    checks.push(if script.sources.len() >= 2 {
+    let distinct_sources: std::collections::HashSet<&str> = script
+        .sources
+        .iter()
+        .map(|source| source.url.as_str())
+        .collect();
+    checks.push(if distinct_sources.len() >= 2 {
         check(
             "sources",
-            "pelo menos 2 fontes",
+            "pelo menos 2 URLs de fontes distintas",
             QaStatus::Pass,
             format!("{} fontes", script.sources.len()),
         )
     } else {
         check(
             "sources",
-            "pelo menos 2 fontes",
+            "pelo menos 2 URLs de fontes distintas",
             QaStatus::Fail,
-            format!("apenas {} fonte(s)", script.sources.len()),
+            format!("apenas {} URL(s) distinta(s)", distinct_sources.len()),
         )
     });
 
@@ -61,11 +66,17 @@ pub fn editorial(script: &Script, assets: &[AssetManifest], timeline: &Timeline)
         .iter()
         .filter(|claim| claim.status == ClaimStatus::Contradicted)
         .count();
+    let unverified = script
+        .claims
+        .iter()
+        .filter(|claim| claim.status == ClaimStatus::Unverified)
+        .count();
     let cited = script
         .claims
         .iter()
         .filter(|claim| claim.status == ClaimStatus::Cited)
         .count();
+    let unlisted = crate::editorial::unlisted_claim_sources(&script.claims, &script.sources);
     checks.push(if contradicted > 0 {
         check(
             "claims",
@@ -73,12 +84,26 @@ pub fn editorial(script: &Script, assets: &[AssetManifest], timeline: &Timeline)
             QaStatus::Fail,
             format!("{contradicted} claim(s) contraditorio(s)"),
         )
+    } else if unlisted > 0 {
+        check(
+            "claims",
+            "claims com fonte no inventario",
+            QaStatus::Fail,
+            format!("{unlisted} referencia(s) fora das fontes documentadas"),
+        )
     } else if unsourced > 0 {
         check(
             "claims",
             "claims com fonte e sem contradicao",
             QaStatus::Fail,
             format!("{unsourced} claim(s) sem fonte"),
+        )
+    } else if unverified > 0 {
+        check(
+            "claims",
+            "claims com fonte e sem contradicao",
+            QaStatus::Fail,
+            format!("{unverified} claim(s) nao verificado(s)"),
         )
     } else if cited > 0 || script.claims.is_empty() {
         check(
@@ -190,24 +215,34 @@ pub fn editorial(script: &Script, assets: &[AssetManifest], timeline: &Timeline)
         )
     });
 
-    let missing_assets = if assets.len() != script.scenes.len() {
-        assets.len()
-    } else {
-        assets
-            .iter()
-            .filter(|asset| {
-                asset.license.trim().is_empty()
-                    || asset.provenance.trim().is_empty()
-                    || asset.checksum.trim().is_empty()
-            })
-            .count()
-    };
-    checks.push(if missing_assets > 0 {
+    let missing_or_duplicate_assets = script
+        .scenes
+        .iter()
+        .filter(|scene| {
+            assets
+                .iter()
+                .filter(|asset| asset.scene_id == scene.id)
+                .count()
+                != 1
+        })
+        .count();
+    let invalid_assets = assets
+        .iter()
+        .filter(|asset| {
+            asset.license.trim().is_empty()
+                || asset.provenance.trim().is_empty()
+                || asset.checksum.trim().is_empty()
+                || !script.scenes.iter().any(|scene| scene.id == asset.scene_id)
+        })
+        .count();
+    checks.push(if missing_or_duplicate_assets > 0 || invalid_assets > 0 {
         check(
             "assets",
             "assets com licenca e proveniencia",
             QaStatus::Fail,
-            format!("{missing_assets} asset(s) sem metadados"),
+            format!(
+                "{missing_or_duplicate_assets} cena(s) sem asset unico; {invalid_assets} asset(s) invalidos"
+            ),
         )
     } else {
         check(
@@ -371,5 +406,47 @@ mod tests {
             .checks
             .iter()
             .any(|check| check.id == "claims" && check.status == QaStatus::Fail));
+    }
+
+    #[test]
+    fn claim_cannot_pass_with_a_reference_outside_the_script_sources() {
+        let mut script = script();
+        script.claims[0].source_urls = vec!["https://example.com/not-listed".into()];
+        let report = editorial(&script, &[asset(0), asset(1)], &timeline());
+        assert!(report
+            .checks
+            .iter()
+            .any(|check| check.id == "claims" && check.status == QaStatus::Fail));
+    }
+
+    #[test]
+    fn unverified_claim_with_source_cannot_pass_claims_check() {
+        let mut script = script();
+        script.claims[0].status = ClaimStatus::Unverified;
+        let report = editorial(&script, &[asset(0), asset(1)], &timeline());
+        assert!(report
+            .checks
+            .iter()
+            .any(|check| check.id == "claims" && check.status == QaStatus::Fail));
+    }
+
+    #[test]
+    fn missing_all_assets_fails() {
+        let report = editorial(&script(), &[], &timeline());
+        assert!(report
+            .checks
+            .iter()
+            .any(|check| check.id == "assets" && check.status == QaStatus::Fail));
+    }
+
+    #[test]
+    fn each_scene_requires_its_own_asset_manifest() {
+        for manifests in [vec![asset(0), asset(0)], vec![asset(0), asset(99)]] {
+            let report = editorial(&script(), &manifests, &timeline());
+            assert!(report
+                .checks
+                .iter()
+                .any(|check| check.id == "assets" && check.status == QaStatus::Fail));
+        }
     }
 }

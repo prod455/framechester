@@ -1,0 +1,62 @@
+{
+  "topic_id": "exemplo-ffmpeg",
+  "script": {
+    "title": "Antes de escolher um encoder, escolha a pergunta",
+    "hook": "Um video ficou pronto primeiro. Isso basta para chamar o encoder de melhor?",
+    "series": "tecnologia",
+    "format": "short",
+    "scenes": [
+      {
+        "id": 0,
+        "heading": "A pergunta vem antes do ranking",
+        "narration": "Um video ficou pronto primeiro. Isso basta para chamar o encoder de melhor? Neste exercicio, vamos organizar uma comparacao, sem inventar resultados. As fontes cadastradas sao exemplos ficticios. Antes de publicar, elas precisam ser substituidas por referencias reais, e o conteudo precisa passar por revisao.",
+        "visual_brief": "Cartao original com a pergunta: mais rapido para fazer o que? Marcar demonstracao editorial com fontes ficticias.",
+        "duration_hint_secs": 22.0
+      },
+      {
+        "id": 1,
+        "heading": "Tres perguntas distintas",
+        "narration": "Primeiro, separe tres perguntas. Quanto tempo a tarefa levou? Quanto espaco o arquivo ocupa? E como a imagem ficou na avaliacao escolhida? Anote cada resposta na sua propria coluna. Se voce ainda nao executou o teste, escreva nao medido. Uma coluna vazia nao autoriza completar o resultado por intuicao.",
+        "visual_brief": "Tabela propria com colunas tempo, tamanho e qualidade; todas as celulas de resultado dizem nao medido.",
+        "duration_hint_secs": 23.0
+      },
+      {
+        "id": 2,
+        "heading": "Registre a condicao da comparacao",
+        "narration": "Depois, descreva a cena, a configuracao e a pergunta do teste. Imagine comparar um rascunho rapido com uma entrega final: os objetivos ja seriam diferentes. Por isso, escreva o criterio antes de olhar os numeros. Nesta demonstracao, nenhum encoder recebeu uma nota e nenhum desempenho real esta sendo anunciado.",
+        "visual_brief": "Diagrama original conecta cena, parametros e criterio; selo hipotese de teste, sem resultados.",
+        "duration_hint_secs": 23.0
+      },
+      {
+        "id": 3,
+        "heading": "Uma conclusao que cabe na evidencia",
+        "narration": "A conclusao deve responder apenas ao que foi medido. Em vez de procurar um vencedor universal, descreva a decisao e seus limites. Agora voce tem um roteiro de comparacao: pergunta, condicoes, observacoes e conclusao. O proximo passo e executar o experimento, guardar a evidencia e revisar o que ela realmente permite dizer.",
+        "visual_brief": "Checklist original: pergunta, condicoes, observacoes, conclusao. Evidencias reais ainda pendentes.",
+        "duration_hint_secs": 23.0
+      }
+    ],
+    "sources": [
+      {
+        "title": "Documentacao de referencia do encoder",
+        "url": "https://example.com/encoder-docs",
+        "publisher": "Exemplo",
+        "retrieved_at": "2026-10-27",
+        "license": "CC BY 4.0 (exemplo sintetico)"
+      },
+      {
+        "title": "Metodologia de comparacao de qualidade",
+        "url": "https://example.com/quality-method",
+        "publisher": "Exemplo",
+        "retrieved_at": "2026-10-27",
+        "license": "CC BY 4.0 (exemplo sintetico)"
+      }
+    ],
+    "claims": [
+      {
+        "text": "Metricas diferentes respondem perguntas diferentes",
+        "status": "cited",
+        "source_urls": ["https://example.com/quality-method"]
+      }
+    ]
+  }
+}

@@ -1,4 +1,4 @@
-use crate::domain::{ClaimStatus, Topic, TrendMetrics};
+use crate::domain::{Claim, ClaimStatus, Source, Topic, TrendMetrics};
 use crate::ports::TrendSignal;
 use crate::security::{detect_injection, validate_source_url};
 
@@ -45,8 +45,16 @@ fn round2(value: f64) -> f64 {
 
 pub fn blocked_reasons(topic: &Topic) -> Vec<String> {
     let mut reasons = Vec::new();
-    if topic.sources.len() < 2 {
-        reasons.push("menos de 2 fontes independentes".to_string());
+    let distinct_sources: std::collections::HashSet<&str> = topic
+        .sources
+        .iter()
+        .map(|source| source.url.as_str())
+        .collect();
+    if distinct_sources.len() < 2 {
+        reasons.push("menos de 2 fontes com URLs distintas".to_string());
+    }
+    if unlisted_claim_sources(&topic.claims, &topic.sources) > 0 {
+        reasons.push("claim referencia fonte fora do inventario da pauta".to_string());
     }
     for source in &topic.sources {
         if let Err(error) = validate_source_url(&source.url) {
@@ -84,6 +92,16 @@ pub fn blocked_reasons(topic: &Topic) -> Vec<String> {
         reasons.push("padrao de prompt injection no material do topico".to_string());
     }
     reasons
+}
+
+pub fn unlisted_claim_sources(claims: &[Claim], sources: &[Source]) -> usize {
+    let known: std::collections::HashSet<&str> =
+        sources.iter().map(|source| source.url.as_str()).collect();
+    claims
+        .iter()
+        .flat_map(|claim| &claim.source_urls)
+        .filter(|url| !known.contains(url.as_str()))
+        .count()
 }
 
 pub fn evaluate(topic: &Topic) -> TrendSignal {
@@ -240,6 +258,20 @@ mod tests {
             .blocked_reasons
             .iter()
             .any(|reason| reason.contains("insegura")));
+    }
+
+    #[test]
+    fn claimed_evidence_must_belong_to_the_topic_source_inventory() {
+        let mut topic = topic_with(2, 1.0, ClaimStatus::Verified);
+        topic.claims[0].source_urls = vec!["https://example.com/not-in-inventory".into()];
+        assert!(!evaluate(&topic).blocked_reasons.is_empty());
+    }
+
+    #[test]
+    fn repeated_source_does_not_satisfy_two_source_requirement() {
+        let mut topic = topic_with(2, 1.0, ClaimStatus::Cited);
+        topic.sources[1] = topic.sources[0].clone();
+        assert!(!evaluate(&topic).blocked_reasons.is_empty());
     }
 
     #[test]

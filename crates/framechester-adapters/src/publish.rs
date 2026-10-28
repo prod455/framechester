@@ -1,4 +1,4 @@
-use framechester_core::domain::{now_unix, PublishReceipt, PublishRequest, PublishStatus};
+use framechester_core::domain::{PublishReceipt, PublishRequest, PublishStatus};
 use framechester_core::error::{FramechesterError, Result};
 use framechester_core::ports::{AdapterInfo, Publisher};
 
@@ -53,7 +53,7 @@ impl Publisher for DryRunPublisher {
                 request.privacy,
                 request.channel
             ),
-            published_at_unix: Some(now_unix()),
+            published_at_unix: None,
             dry_run: true,
         };
         if let Some(parent) = request.media_path.parent() {
@@ -69,7 +69,7 @@ impl Publisher for DryRunPublisher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use framechester_core::domain::PublishPrivacy;
+    use framechester_core::domain::{now_unix, PublishPrivacy};
     use std::path::PathBuf;
 
     fn request(path: PathBuf, dry_run: bool) -> PublishRequest {
@@ -102,6 +102,10 @@ mod tests {
             .unwrap();
         assert_eq!(receipt.status, PublishStatus::DryRun);
         assert!(receipt.dry_run);
+        assert!(
+            receipt.published_at_unix.is_none(),
+            "dry-run has no publication time"
+        );
         assert!(media
             .parent()
             .unwrap()

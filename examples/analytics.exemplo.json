@@ -1,0 +1,14 @@
+{
+  "channel_id": "tech",
+  "period_start": "2026-10-01",
+  "period_end": "2026-10-27",
+  "source": "fixture",
+  "currency": "BRL",
+  "monetization_enabled": false,
+  "format": "shorts",
+  "views": 2000,
+  "engaged_views": 1200,
+  "watch_minutes": 400,
+  "estimated_revenue_cents": null,
+  "paid_revenue_cents": null
+}

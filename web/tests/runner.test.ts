@@ -1,0 +1,153 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, readFile, writeFile, mkdir, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import type { AppState, Script } from '../shared/types.ts';
+import { createRunner, localEngineEnvironment } from '../server/runner.ts';
+
+const date = '2026-10-27T00:00:00.000Z';
+const source = (id: number) => ({title:`Fonte ${id}`,url:`https://example.com/${id}`,publisher:'Fixture',retrievedAt:'2026-10-27',license:'Referencia de teste'});
+function state(): AppState {
+  const script: Script = {id:'script-one',channelId:'tech',topicId:'topic-one',title:'Roteiro original',series:'tecnologia',format:'short',hook:'Uma pergunta',crossChecked:true,status:'reviewed',createdAt:date,updatedAt:date,sources:[source(1),source(2)],claims:[{text:'Alegacao citada',status:'cited',sourceUrls:[source(1).url]}],scenes:[{id:42,heading:'Cena',narration:'Texto autoral preservado.',visualBrief:'Diagrama original',durationHintSecs:20}]};
+  return {schemaVersion:1,channels:['tech','science'].map(id=>({id,name:id,description:'',niche:'',audience:'',language:'pt-BR',createdAt:date,updatedAt:date})),config:{dryRun:true,telemetry:false,render:{width:640,height:360,fps:30,crf:20,preset:'veryfast',videoCodec:'libx264'},tts:{piperPath:'piper',voiceModel:'C:/synthetic/licensed-voice.onnx',voiceName:'pt-BR'},asr:{enabled:false,model:'',language:'pt',minCoverage:.45}},channelConfigs:{},research:[],scripts:[script],stories:[],monetization:[],receipts:[]};
+}
+test('a channel job passes authored JSON and licensed media to the fixed Rust engine', async () => {
+  const home = await mkdtemp(join(tmpdir(),'framechester-web-runner-'));
+  const input = state();
+  let called = false;
+  const runner = await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>structuredClone(input),execute:async(args)=>{
+    called=true;
+    assert.equal(args.includes('--script'),true);
+    assert.equal(args.includes('--assets'),true);
+    assert.equal(args.includes('anthropic'),false);
+    const topic=JSON.parse(await readFile(args[args.indexOf('--topic')+1],'utf8'));
+    assert.deepEqual(topic.metrics,{acceleration:0,demand:0,alignment:0,originality:0,visual_feasibility:0,timing:0,cross_check:1});
+    const authored=JSON.parse(await readFile(args[args.indexOf('--script')+1],'utf8'));
+    assert.equal(authored.script.scenes[0].id,42);
+    assert.equal(authored.script.scenes[0].narration,'Texto autoral preservado.');
+    const out=join(args[args.indexOf('--workdir')+1],'channels','tech');
+    await mkdir(join(out,'render'),{recursive:true});
+    await writeFile(join(out,'render','final.mp4'),'synthetic fixture');
+    await writeFile(join(out,'pipeline_report.json'),JSON.stringify({stage:'editorial_qa',render:{path:join(out,'render','final.mp4')},technical_qa:{checks:[{status:'pass'},{status:'skipped'}]},editorial_qa:{checks:[{status:'needs_human'}]},publish:{status:'dry_run'}}));
+    return {exitCode:0,stdout:'',stderr:''};
+  }});
+  try {
+    const asset=await runner.upload('tech',{filename:'diagram.png',kind:'image',contentBase64:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',license:'Original de teste',provenance:'Fixture local',restrictions:'Teste'});
+    const job=await runner.start('tech',{scriptId:'script-one',assetIds:{42:asset.id},burnSubtitles:true});
+    await runner.idle();
+    assert.equal(called,true);
+    const done=(await runner.list('tech')).find(item=>item.id===job.id)!;
+    assert.equal(done.status,'needs_review',done.message);
+    assert.equal(done.videoAvailable,true);
+    assert.equal(done.qa?.technical,'pass');
+    assert.ok(await runner.file('tech',job.id,'video'));
+    assert.equal(await runner.file('science',job.id,'video'),undefined);
+    assert.deepEqual(await runner.list('science'),[]);
+  } finally { await runner.close(); await rm(home,{recursive:true,force:true}); }
+});
+
+test('a job refuses another channel script, foreign media and unconfirmed evidence before executing',async()=>{
+  const home=await mkdtemp(join(tmpdir(),'framechester-web-isolation-'));
+  const input=state(); let calls=0;
+  const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>structuredClone(input),execute:async()=>{calls++;return {exitCode:0,stdout:'',stderr:''};}});
+  try {
+    const asset=await runner.upload('science',{filename:'fixture.png',kind:'image',contentBase64:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',license:'Original',provenance:'Fixture',restrictions:'Teste'});
+    await assert.rejects(runner.start('science',{scriptId:'script-one',assetIds:{42:asset.id}}),/Roteiro/);
+    await assert.rejects(runner.start('tech',{scriptId:'script-one',assetIds:{42:asset.id}}),/outro canal/);
+    input.scripts[0].crossChecked=false;
+    await assert.rejects(runner.start('tech',{scriptId:'script-one',assetIds:{42:asset.id}}),/cruzamento/);
+    assert.equal(calls,0);
+    assert.deepEqual(await runner.list('tech'),[]);
+  } finally {await runner.close();await rm(home,{recursive:true,force:true});}
+});
+
+test('uploads reject traversal, fake signatures and absent rights metadata',async()=>{
+  const home=await mkdtemp(join(tmpdir(),'framechester-web-upload-'));
+  const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>state()});
+  const normal={filename:'fixture.png',kind:'image' as const,contentBase64:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',license:'Original',provenance:'Fixture',restrictions:'Teste'};
+  try {
+    await assert.rejects(runner.upload('tech',{...normal,filename:'../escape.png'}),/Nome/);
+    await assert.rejects(runner.upload('tech',{...normal,contentBase64:Buffer.from('this is not a PNG image').toString('base64')}),/corresponde/);
+    await assert.rejects(runner.upload('tech',{...normal,license:''}),/licença/);
+    assert.deepEqual(await runner.assets('tech'),[]);
+  } finally {await runner.close();await rm(home,{recursive:true,force:true});}
+});
+
+test('offline engine processes receive tool paths without platform or API credentials',()=>{
+  const original={Path:'C:/tools',SystemRoot:'C:/Windows',ANTHROPIC_API_KEY:'synthetic-secret',YOUTUBE_TOKEN_FILE:'private-token-path',RESTIC_PASSWORD:'synthetic-password',AWS_ACCESS_KEY_ID:'synthetic-id',FRAMECHESTER_WEB_HOME:'private-web-home'};
+  assert.deepEqual(localEngineEnvironment(original),{Path:'C:/tools',SystemRoot:'C:/Windows'});
+  assert.equal(original.ANTHROPIC_API_KEY,'synthetic-secret');
+});
+
+test('production requires an explicit local voice before creating a job or invoking the engine', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-unconfigured-voice-'));
+  const input = state(); input.config.tts.voiceModel = '';
+  let calls = 0;
+  const runner = await createRunner({ home, repositoryRoot: resolve('..'), readState: async () => structuredClone(input), execute: async () => { calls++; return { exitCode: 0, stdout: '', stderr: '' }; } });
+  try {
+    const asset = await runner.upload('tech', { filename: 'fixture.png', kind: 'image', contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB', license: 'Original', provenance: 'Fixture', restrictions: 'Teste' });
+    await assert.rejects(runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } }), /Configure.*voz/);
+    assert.equal(calls, 0);
+    assert.deepEqual(await runner.list('tech'), []);
+  } finally { await runner.close(); await rm(home, { recursive: true, force: true }); }
+});
+
+test('a channel named constructor uses its actual configuration rather than the object prototype',async()=>{
+  const home=await mkdtemp(join(tmpdir(),'framechester-web-prototype-'));
+  const input=state(); input.channels[0].id='constructor'; input.scripts[0].channelId='constructor'; let calls=0;
+  const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>structuredClone(input),execute:async(args)=>{calls++;const config=await readFile(args[args.indexOf('--config')+1],'utf8');assert.match(config,/width = 640/);return {exitCode:1,stdout:'',stderr:'fixture'};}});
+  try {
+    const asset=await runner.upload('constructor',{filename:'fixture.png',kind:'image',contentBase64:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',license:'Original',provenance:'Fixture',restrictions:'Teste'});
+    await runner.start('constructor',{scriptId:'script-one',assetIds:{42:asset.id}});await runner.idle();assert.equal(calls,1);
+  } finally {await runner.close();await rm(home,{recursive:true,force:true});}
+});
+
+test('an incomplete engine delivery is blocked rather than presented as a produced video', async () => {
+  const cases = [
+    { name: 'missing technical QA', technical: undefined, editorial: [{ status: 'needs_human' }], video: 'fixture' },
+    { name: 'missing editorial QA', technical: [{ status: 'pass' }], editorial: undefined, video: 'fixture' },
+    { name: 'unknown check status', technical: [{ status: 'unexpected' }], editorial: [{ status: 'needs_human' }], video: 'fixture' },
+    { name: 'no video', technical: [{ status: 'pass' }], editorial: [{ status: 'needs_human' }], video: undefined },
+    { name: 'empty video', technical: [{ status: 'pass' }], editorial: [{ status: 'needs_human' }], video: '' },
+  ];
+  for (const entry of cases) {
+    const home = await mkdtemp(join(tmpdir(), 'fc-incomplete-delivery-'));
+    const runner = await createRunner({ home, repositoryRoot: resolve('..'), readState: async () => state(), execute: async args => {
+      const output = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
+      await mkdir(join(output, 'render'), { recursive: true });
+      if (entry.video !== undefined) await writeFile(join(output, 'render', 'final.mp4'), entry.video);
+      await writeFile(join(output, 'pipeline_report.json'), JSON.stringify({ stage: 'editorial_qa', technical_qa: entry.technical ? { checks: entry.technical } : undefined, editorial_qa: entry.editorial ? { checks: entry.editorial } : undefined }));
+      return { exitCode: 0, stdout: '', stderr: '' };
+    } });
+    try {
+      const asset = await runner.upload('tech', { filename: 'fixture.png', kind: 'image', contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB', license: 'Original', provenance: 'Fixture', restrictions: 'Teste' });
+      const job = await runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } });
+      await runner.idle();
+      const result = (await runner.list('tech')).find(item => item.id === job.id)!;
+      assert.equal(result.status, 'blocked', entry.name);
+      assert.match(result.message, /incompleta|bloqueou/, entry.name);
+      assert.equal(result.videoAvailable, Boolean(entry.video), entry.name);
+    } finally { await runner.close(); await rm(home, { recursive: true, force: true }); }
+  }
+});
+
+test('restart blocks interrupted jobs while preserving completed history and imported media', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-runner-restart-'));
+  const options = { home, repositoryRoot: resolve('..'), readState: async () => state() };
+  const first = await createRunner(options);
+  const asset = await first.upload('tech', { filename: 'fixture.png', kind: 'image', contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB', license: 'Original', provenance: 'Fixture', restrictions: 'Teste' });
+  await first.close();
+  const jobs = ['queued', 'running', 'needs_review'].map((status, index) => ({ id: `job-${index}`, channelId: 'tech', scriptId: 'script-one', status, createdAt: date, message: 'Synthetic fixture', videoAvailable: index === 2 }));
+  await writeFile(join(home, 'production', 'jobs.json'), JSON.stringify(jobs));
+  const restarted = await createRunner(options);
+  try {
+    const results = await restarted.list('tech');
+    assert.deepEqual(results.map(job => job.status), ['blocked', 'blocked', 'needs_review']);
+    assert.match(results[0].message, /interrompida/);
+    assert.equal(results[2].videoAvailable, true);
+    assert.deepEqual((await restarted.assets('tech')).map(item => item.id), [asset.id]);
+    assert.deepEqual(await restarted.list('science'), []);
+    assert.deepEqual(JSON.parse(await readFile(join(home, 'production', 'jobs.json'), 'utf8')).map((job: { status: string }) => job.status), ['blocked', 'blocked', 'needs_review']);
+  } finally { await restarted.close(); await rm(home, { recursive: true, force: true }); }
+});

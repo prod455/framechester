@@ -1,11 +1,13 @@
 use anyhow::{bail, Context};
 use clap::{Parser, Subcommand, ValueEnum};
 use framechester_adapters::anthropic::AnthropicLlm;
+use framechester_adapters::authored_script::AuthoredScriptLlm;
 use framechester_adapters::backup::ResticBackup;
 use framechester_adapters::ffmpeg::{inspect_output, AsrOptions, FfmpegQa, FfmpegRenderer};
 use framechester_adapters::fixtures::{
     LocalEvidenceProvider, StaticTrendSource, SyntheticAssetProvider, TemplateLlm,
 };
+use framechester_adapters::local_assets::LocalAssetProvider;
 use framechester_adapters::metrics::NullMetrics;
 use framechester_adapters::piper::PiperTts;
 use framechester_adapters::publish::DryRunPublisher;
@@ -16,7 +18,7 @@ use framechester_core::domain::{
 use framechester_core::finance::{self, FinanceInput, StorageProvider};
 use framechester_core::pipeline::{Pipeline, PipelineOptions, PipelineProviders};
 use framechester_core::ports::{
-    BackupProvider, GenerationBudget, LlmProvider, TrendRequest, TrendSource,
+    AssetProvider, BackupProvider, GenerationBudget, LlmProvider, TrendRequest, TrendSource,
 };
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -47,6 +49,15 @@ enum Commands {
         #[arg(long)]
         json: bool,
     },
+    #[command(about = "analisa um snapshot JSON local por canal; nao consulta o YouTube")]
+    Analytics {
+        #[arg(long)]
+        channel: String,
+        #[arg(long)]
+        input: PathBuf,
+        #[arg(long)]
+        json: bool,
+    },
     #[command(about = "lista e pontua topicos do fixture local")]
     Trends {
         #[arg(long, default_value_t = 10)]
@@ -62,6 +73,12 @@ enum Commands {
     Qa {
         #[arg(long)]
         video: PathBuf,
+        #[arg(
+            long,
+            value_enum,
+            help = "perfil de proporcao esperado: short vertical, long horizontal"
+        )]
+        format: Option<FormatArg>,
         #[arg(long)]
         json: bool,
     },
@@ -107,6 +124,22 @@ enum Commands {
 
 #[derive(Debug, clap::Args)]
 struct RunArgs {
+    #[arg(
+        long,
+        conflicts_with = "llm",
+        help = "roteiro JSON autoral vinculado ao topico; sem chamada de IA"
+    )]
+    script: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "manifesto JSON de imagens/videos locais com licenca, origem e SHA256"
+    )]
+    assets: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "id local cadastrado em [[channels]]; obrigatorio quando ha canais"
+    )]
+    channel: Option<String>,
     #[arg(long, help = "arquivo JSON com Topic ou lista de Topic")]
     topic: Option<PathBuf>,
     #[arg(long, default_value_t = 0)]
@@ -126,7 +159,7 @@ struct RunArgs {
     #[arg(
         long,
         default_value_t = 0,
-        help = "limite de custo em centavos; obrigatorio para Anthropic"
+        help = "orcamento em centavos; Anthropic bloqueado ate existir cotacao e controle de custo"
     )]
     max_cost_cents: u32,
     #[arg(long, default_value_t = 4000)]
@@ -240,13 +273,22 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
     match cli.command {
         Commands::Doctor { json } => doctor(&cli.config, json),
         Commands::ConfigCheck { json } => config_check(&cli.config, json),
+        Commands::Analytics {
+            channel,
+            input,
+            json,
+        } => analytics_report(&cli.config, &channel, &input, json),
         Commands::Trends {
             limit,
             region,
             json,
         } => trends(&cli.config, limit, &region, json),
         Commands::Run(args) => run_pipeline(&cli.config, args),
-        Commands::Qa { video, json } => qa_video(&cli.config, &video, json),
+        Commands::Qa {
+            video,
+            format,
+            json,
+        } => qa_video(&cli.config, &video, format, json),
         Commands::BackupCheck { json } => backup_check(json),
         Commands::Backup {
             paths,
@@ -275,6 +317,49 @@ fn load_config(path: &Option<PathBuf>) -> anyhow::Result<Config> {
         }
     };
     Ok(Config::load_or_default(resolved.as_deref())?)
+}
+
+fn analytics_report(
+    path: &Option<PathBuf>,
+    channel: &str,
+    input: &Path,
+    json: bool,
+) -> anyhow::Result<i32> {
+    let config = load_config(path)?;
+    let profile = config
+        .select_channel(Some(channel))?
+        .context("analytics exige canal cadastrado")?;
+    let snapshot: framechester_core::analytics::AnalyticsSnapshot =
+        serde_json::from_slice(&std::fs::read(input)?)?;
+    snapshot.validate_for_channel(&profile.id)?;
+    let summary = snapshot.summarize()?;
+    if json {
+        println!("{}", serde_json::to_string_pretty(&summary)?);
+    } else {
+        println!("Snapshot local informado pelo operador; dados nao verificados na plataforma");
+        println!(
+            "canal: {} | origem: {:?} | formato: {:?}",
+            summary.channel_id, summary.source, summary.format
+        );
+        println!(
+            "periodo: {} a {} | moeda: {}",
+            summary.period_start, summary.period_end, summary.currency
+        );
+        println!(
+            "views: {} | engaged views: {:?}",
+            summary.views, summary.engaged_views
+        );
+        println!(
+            "receita estimada (centavos): {:?} | recebida (centavos): {:?}",
+            summary.estimated_revenue_cents, summary.paid_revenue_cents
+        );
+        println!(
+            "RPM estimado (centavos): {:?} | base: {:?}",
+            summary.estimated_rpm_cents, summary.rpm_view_basis
+        );
+        println!("None = desconhecido; fixture e simulacao nao comprovam receita ou elegibilidade");
+    }
+    Ok(0)
 }
 
 fn check_command(name: &str, args: &[&str], critical: bool) -> Check {
@@ -543,6 +628,13 @@ fn build_llm(config: &Config, choice: Option<LlmArg>) -> anyhow::Result<Box<dyn 
 
 fn run_pipeline(path: &Option<PathBuf>, args: RunArgs) -> anyhow::Result<i32> {
     let config = load_config(path)?;
+    let channel = config.select_channel(args.channel.as_deref())?;
+    if args.script.is_none()
+        && (matches!(args.llm, Some(LlmArg::Anthropic))
+            || (args.llm.is_none() && config.llm.provider == "anthropic"))
+    {
+        eprintln!("Anthropic esta bloqueado ate existir cotacao e controle de custo; use --script para producao local");
+    }
     if config.publish.enabled {
         eprintln!(
             "aviso: publish.enabled=true ignorado; publicacao real nao implementada (dry-run)"
@@ -573,7 +665,14 @@ fn run_pipeline(path: &Option<PathBuf>, args: RunArgs) -> anyhow::Result<i32> {
         max_output_tokens: args.max_output_tokens,
         max_cost_cents: args.max_cost_cents,
     };
-    let llm = build_llm(&config, args.llm)?;
+    let llm: Box<dyn LlmProvider> = match &args.script {
+        Some(path) => Box::new(AuthoredScriptLlm::from_path(path)?),
+        None => build_llm(&config, args.llm)?,
+    };
+    let assets: Box<dyn AssetProvider> = match &args.assets {
+        Some(path) => Box::new(LocalAssetProvider::from_json_file(path)?),
+        None => Box::new(SyntheticAssetProvider),
+    };
     let tts = PiperTts::new(
         &config.tts.piper_path,
         &config.tts.voice_model,
@@ -584,7 +683,7 @@ fn run_pipeline(path: &Option<PathBuf>, args: RunArgs) -> anyhow::Result<i32> {
         trends: Box::new(StaticTrendSource::sample()),
         facts: Box::new(LocalEvidenceProvider),
         llm,
-        assets: Box::new(SyntheticAssetProvider),
+        assets,
         tts: Box::new(tts),
         renderer: Box::new(FfmpegRenderer::new(
             &config.render.ffmpeg_path,
@@ -608,24 +707,28 @@ fn run_pipeline(path: &Option<PathBuf>, args: RunArgs) -> anyhow::Result<i32> {
     let pipeline = Pipeline::new(
         providers,
         PipelineOptions {
+            channel,
             workdir: workdir.clone(),
             format,
             max_scenes,
             dry_run: true,
             voice,
             privacy,
-            render_profile: config.render_profile(),
+            render_profile: config.render_profile_for(format),
             budget,
             burn_subtitles: args.burn_subtitles,
         },
     );
     let report = pipeline.run(topic)?;
-    write_html_report(&report, &workdir)?;
+    write_html_report(&report, &report.artifacts_dir)?;
     if args.json {
         println!("{}", serde_json::to_string_pretty(&report)?);
     } else {
         print_report(&report);
-        println!("html: {}", workdir.join("report.html").display());
+        println!(
+            "html: {}",
+            report.artifacts_dir.join("report.html").display()
+        );
     }
     Ok(if report.stage == Stage::Blocked { 2 } else { 0 })
 }
@@ -682,6 +785,12 @@ fn write_html_report(report: &PipelineReport, workdir: &Path) -> anyhow::Result<
         .map(|script| script.title.clone())
         .unwrap_or_else(|| report.topic_id.clone());
     let mut body = String::new();
+    if let Some(channel) = &report.channel {
+        body.push_str(&format!(
+            "<p>Canal: <strong>{}</strong></p>",
+            html_escape(&channel.id)
+        ));
+    }
     if let Some(script) = &report.script {
         body.push_str(&format!(
             "<p class=\"muted\">{} cenas | {:?} | serie {}</p>",
@@ -830,6 +939,9 @@ fn print_qa(report: &QaReport) {
 }
 
 fn print_report(report: &PipelineReport) {
+    if let Some(channel) = &report.channel {
+        println!("canal: {}", channel.id);
+    }
     println!("tema: {}", report.topic_id);
     println!("etapa: {:?}", report.stage);
     if let Some(script) = &report.script {
@@ -884,12 +996,19 @@ fn print_report(report: &PipelineReport) {
     );
 }
 
-fn qa_video(path: &Option<PathBuf>, video: &Path, json: bool) -> anyhow::Result<i32> {
+fn qa_video(
+    path: &Option<PathBuf>,
+    video: &Path,
+    format: Option<FormatArg>,
+    json: bool,
+) -> anyhow::Result<i32> {
     let config = load_config(path)?;
     if !video.is_file() {
         bail!("video inexistente: {}", video.display());
     }
-    let profile = config.render_profile();
+    let profile = format
+        .map(|format| config.render_profile_for(format.into()))
+        .unwrap_or_else(|| config.render_profile());
     let output = inspect_output(&config.render.ffprobe_path, video, &profile)?;
     let qa = FfmpegQa::new(&config.render.ffmpeg_path, &config.render.ffprobe_path);
     let report = qa.technical(&output, &profile)?;

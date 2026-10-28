@@ -1,3 +1,5 @@
+pub mod analytics;
+pub mod channel;
 pub mod config;
 pub mod domain;
 pub mod editorial;

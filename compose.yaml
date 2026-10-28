@@ -1,0 +1,61 @@
+name: framechester
+
+services:
+  studio:
+    image: ${FRAMECHESTER_IMAGE:-framechester-studio:local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    init: true
+    user: "1000:1000"
+    restart: unless-stopped
+    stop_grace_period: 30s
+    ports:
+      - "127.0.0.1:${FRAMECHESTER_HTTP_PORT:-4317}:4317"
+    environment:
+      FRAMECHESTER_CONTAINER: "1"
+      FRAMECHESTER_WEB_PORT: "4317"
+      FRAMECHESTER_WEB_PUBLIC_PORT: ${FRAMECHESTER_HTTP_PORT:-4317}
+      FRAMECHESTER_WEB_HOME: /data/studio
+      FRAMECHESTER_PRIVATE_ROOT: /data/private
+      FRAMECHESTER_ENGINE_BINARY: /usr/local/bin/framechester
+      FRAMECHESTER_VAULT_KEY_FILE: /run/secrets/vault_key
+    secrets:
+      - source: framechester_vault_key
+        target: vault_key
+    volumes:
+      - studio-data:/data
+      - type: bind
+        source: ${FRAMECHESTER_MODELS_DIR:-./models}
+        target: /models
+        read_only: true
+        bind:
+          create_host_path: false
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: ${FRAMECHESTER_MEMORY_LIMIT:-4g}
+    cpus: ${FRAMECHESTER_CPUS:-2.0}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "node", "/app/docker/healthcheck.mjs"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 4
+
+volumes:
+  studio-data:
+
+secrets:
+  framechester_vault_key:
+    file: ${FRAMECHESTER_DOCKER_VAULT_KEY_FILE:?execute npm run docker:prepare antes de subir}

@@ -7,13 +7,23 @@ use std::time::Duration;
 
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct AnthropicLlm {
     client: reqwest::blocking::Client,
     api_key: String,
     model: String,
     base_url: String,
     api_key_env: String,
+}
+
+impl std::fmt::Debug for AnthropicLlm {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("AnthropicLlm")
+            .field("model", &self.model)
+            .field("api_key", &"[REDACTED]")
+            .finish_non_exhaustive()
+    }
 }
 
 impl AnthropicLlm {
@@ -62,6 +72,17 @@ impl AnthropicLlm {
 
     pub fn model(&self) -> &str {
         &self.model
+    }
+
+    fn preflight(&self, budget: &GenerationBudget) -> Result<()> {
+        if budget.max_cost_cents == 0 {
+            return Err(FramechesterError::InvalidInput(
+                "budget.max_cost_cents=0 bloqueia chamada paga".into(),
+            ));
+        }
+        Err(FramechesterError::Unavailable(
+            "preflight Anthropic: chamadas pagas bloqueadas; cotacao confiavel e enforcement de custo ainda nao implementados; use roteiro local revisado".into(),
+        ))
     }
 
     pub fn build_prompt(prompt: &ScriptPrompt) -> (String, String) {
@@ -209,23 +230,19 @@ impl LlmProvider for AnthropicLlm {
             name: "anthropic-llm".into(),
             license: "API comercial Anthropic; uso sujeito aos termos".into(),
             network: true,
-            unit_cost: "pago por token; defina budget explicito".into(),
+            unit_cost: "pago por token; chamadas bloqueadas ate preflight confiavel".into(),
             secrets: vec![self.api_key_env.clone()],
             failure_modes: vec![
                 "chave ausente".into(),
                 "rate limit".into(),
                 "JSON invalido".into(),
-                "custo acima do budget".into(),
+                "preflight de cotacao e enforcement de custo indisponivel; chamadas pagas bloqueadas".into(),
             ],
         }
     }
 
     fn generate(&self, prompt: &ScriptPrompt, budget: &GenerationBudget) -> Result<Script> {
-        if budget.max_cost_cents == 0 {
-            return Err(FramechesterError::InvalidInput(
-                "budget.max_cost_cents=0 bloqueia chamada paga; informe um limite explicito".into(),
-            ));
-        }
+        self.preflight(budget)?;
         let max_tokens = budget.max_output_tokens.clamp(256, 8192);
         let (system, user) = Self::build_prompt(prompt);
         let body = serde_json::json!({
@@ -330,5 +347,50 @@ mod tests {
     fn rejects_empty_scene() {
         let value = serde_json::json!({"scenes": [{"heading": "", "narration": "x"}]});
         assert!(AnthropicLlm::parse_script(&prompt(), &value).is_err());
+    }
+
+    #[test]
+    fn debug_redacts_api_key_and_private_endpoint_credentials() {
+        let adapter = AnthropicLlm {
+            client: reqwest::blocking::Client::new(),
+            api_key: "synthetic-secret-do-not-log".into(),
+            model: "synthetic-model".into(),
+            base_url: "https://synthetic-user:synthetic-password@example.invalid".into(),
+            api_key_env: "SYNTHETIC_API_KEY".into(),
+        };
+        let debug = format!("{adapter:?}");
+        assert!(debug.contains("AnthropicLlm"));
+        assert!(debug.contains("synthetic-model"));
+        assert!(!debug.contains("synthetic-secret-do-not-log"));
+        assert!(!debug.contains("synthetic-user"));
+        assert!(!debug.contains("synthetic-password"));
+    }
+
+    #[test]
+    fn positive_budget_without_trusted_quote_blocks_before_http() {
+        let adapter = AnthropicLlm {
+            client: reqwest::blocking::Client::builder()
+                .no_proxy()
+                .timeout(Duration::from_secs(1))
+                .build()
+                .unwrap(),
+            api_key: "synthetic-not-a-real-key".into(),
+            model: "synthetic-model".into(),
+            base_url: "http://127.0.0.1:1".into(),
+            api_key_env: "SYNTHETIC_API_KEY".into(),
+        };
+        let error = adapter
+            .generate(
+                &prompt(),
+                &GenerationBudget {
+                    max_output_tokens: 256,
+                    max_cost_cents: 1,
+                },
+            )
+            .unwrap_err();
+        assert!(matches!(error, FramechesterError::Unavailable(_)));
+        let message = error.to_string();
+        assert!(message.contains("preflight"));
+        assert!(message.contains("cotacao"));
     }
 }

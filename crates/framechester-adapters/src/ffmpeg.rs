@@ -1,3 +1,4 @@
+use crate::local_assets::{local_media_demuxer, validate_local_asset};
 use framechester_core::domain::{
     AssetManifest, QaCheck, QaReport, QaStatus, RenderOutput, RenderProfile, Script, Timeline,
 };
@@ -168,7 +169,7 @@ impl FfmpegRenderer {
     pub fn render(
         &self,
         timeline: &Timeline,
-        _assets: &[AssetManifest],
+        assets: &[AssetManifest],
         profile: &RenderProfile,
         output: &Path,
     ) -> Result<RenderOutput> {
@@ -176,6 +177,49 @@ impl FfmpegRenderer {
             return Err(FramechesterError::InvalidInput(
                 "timeline sem cenas para renderizar".into(),
             ));
+        }
+        if assets.len() != timeline.scenes.len() {
+            return Err(FramechesterError::InvalidInput(
+                "cada cena da timeline exige um asset correspondente".into(),
+            ));
+        }
+        let mut scene_assets = Vec::with_capacity(timeline.scenes.len());
+        let mut scene_ids = std::collections::HashSet::new();
+        for scene in &timeline.scenes {
+            if !scene_ids.insert(scene.scene_id)
+                || !scene.duration_secs.is_finite()
+                || scene.duration_secs <= 0.0
+            {
+                return Err(FramechesterError::InvalidInput(
+                    "timeline exige IDs unicos e duracoes positivas finitas".into(),
+                ));
+            }
+            let mut matches = assets
+                .iter()
+                .filter(|asset| asset.scene_id == scene.scene_id);
+            let asset = matches.next().ok_or_else(|| {
+                FramechesterError::InvalidInput(format!(
+                    "asset ausente para cena {}",
+                    scene.scene_id
+                ))
+            })?;
+            if matches.next().is_some() {
+                return Err(FramechesterError::InvalidInput(format!(
+                    "asset duplicado para cena {}",
+                    scene.scene_id
+                )));
+            }
+            match asset.kind.as_str() {
+                "image" | "video" => validate_local_asset(asset)?,
+                "testsrc2" | "color" if asset.path.is_none() => {}
+                _ => {
+                    return Err(FramechesterError::InvalidInput(format!(
+                        "tipo de asset nao suportado para cena {}",
+                        scene.scene_id
+                    )))
+                }
+            }
+            scene_assets.push(asset);
         }
         let output_abs = if output.is_absolute() {
             output.to_path_buf()
@@ -189,13 +233,23 @@ impl FfmpegRenderer {
             .parent()
             .unwrap_or_else(|| Path::new("."))
             .join("scenes");
-        if scene_dir.exists() {
-            std::fs::remove_dir_all(&scene_dir)?;
-        }
         std::fs::create_dir_all(&scene_dir)?;
+        let scene_dir = scene_dir.canonicalize()?;
+        for asset in &scene_assets {
+            if let Some(path) = &asset.path {
+                let path = path.canonicalize()?;
+                if path.starts_with(&scene_dir)
+                    || output_abs.canonicalize().is_ok_and(|output| output == path)
+                {
+                    return Err(FramechesterError::InvalidInput(
+                        "asset de entrada conflita com arquivos de saida do render".into(),
+                    ));
+                }
+            }
+        }
         let font = find_font();
         let mut scene_files = Vec::new();
-        for (index, scene) in timeline.scenes.iter().enumerate() {
+        for (index, (scene, asset)) in timeline.scenes.iter().zip(scene_assets).enumerate() {
             let stem = format!("scene_{index:03}");
             let text_path = scene_dir.join(format!("{stem}.txt"));
             let video_path = scene_dir.join(format!("{stem}.mp4"));
@@ -213,17 +267,11 @@ impl FfmpegRenderer {
                     audio_path.display()
                 )));
             }
-            let background = match scene.background.as_str() {
-                "color" => format!(
-                    "color=c=0x101820:size={}x{}:rate={}",
-                    profile.width, profile.height, profile.fps
-                ),
-                _ => format!(
-                    "testsrc2=size={}x{}:rate={}",
-                    profile.width, profile.height, profile.fps
-                ),
-            };
-            let filter = font.as_ref().map(|font| {
+            let normalization = format!(
+                "scale={}:{}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad={}:{}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={},format=yuv420p",
+                profile.width, profile.height, profile.width, profile.height, profile.fps
+            );
+            let title_filter = font.as_ref().filter(|_| asset.path.is_none() && !scene.heading.trim().is_empty()).map(|font| {
                 format!(
                     "drawtext=fontfile='{}':textfile='{stem}.txt':fontcolor=white:fontsize={}:x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxcolor=0x000000AA:boxborderw=24",
                     filter_escape(font),
@@ -235,12 +283,46 @@ impl FfmpegRenderer {
                 "-loglevel".to_string(),
                 "error".to_string(),
                 "-y".to_string(),
-                "-f".to_string(),
-                "lavfi".to_string(),
-                "-i".to_string(),
-                background,
+            ];
+            if let Some(path) = &asset.path {
+                base.extend(["-protocol_whitelist".into(), "file,pipe".into()]);
+                if asset.kind == "image" {
+                    base.extend([
+                        "-loop".into(),
+                        "1".into(),
+                        "-framerate".into(),
+                        profile.fps.to_string(),
+                    ]);
+                } else {
+                    base.extend(["-stream_loop".into(), "-1".into()]);
+                }
+                base.extend([
+                    "-f".into(),
+                    local_media_demuxer(asset)?.into(),
+                    "-i".into(),
+                    path.to_string_lossy().to_string(),
+                ]);
+            } else {
+                let background = if asset.kind == "color" {
+                    format!(
+                        "color=c=0x101820:size={}x{}:rate={}",
+                        profile.width, profile.height, profile.fps
+                    )
+                } else {
+                    format!(
+                        "testsrc2=size={}x{}:rate={}",
+                        profile.width, profile.height, profile.fps
+                    )
+                };
+                base.extend(["-f".into(), "lavfi".into(), "-i".into(), background]);
+            }
+            base.extend([
                 "-i".to_string(),
                 audio_path.to_string_lossy().to_string(),
+                "-map".into(),
+                "0:v:0".into(),
+                "-map".into(),
+                "1:a:0".into(),
                 "-t".to_string(),
                 format!("{duration:.3}"),
                 "-c:v".to_string(),
@@ -261,20 +343,22 @@ impl FfmpegRenderer {
                 "2".to_string(),
                 "-shortest".to_string(),
                 format!("{stem}.mp4"),
-            ];
-            if let Some(filter) = &filter {
-                let insert_at = 10;
-                base.insert(insert_at, "-vf".to_string());
-                base.insert(insert_at + 1, filter.clone());
-            }
+            ]);
+            let filter_index = base.len() - 1;
+            let filter = title_filter
+                .as_ref()
+                .map(|title| format!("{normalization},{title}"))
+                .unwrap_or_else(|| normalization.clone());
+            base.insert(filter_index, "-vf".into());
+            base.insert(filter_index + 1, filter);
             let mut output_result = run(&self.ffmpeg, &base, Some(&scene_dir));
             if output_result
                 .as_ref()
                 .map(|result| !result.status.success())
                 .unwrap_or(true)
-                && filter.is_some()
+                && title_filter.is_some()
             {
-                base.drain(10..12);
+                base[filter_index + 1] = normalization;
                 output_result = run(&self.ffmpeg, &base, Some(&scene_dir));
             }
             require_success(output_result?, &format!("render cena {index}"))?;
@@ -376,9 +460,17 @@ impl FfmpegRenderer {
 
 fn subtitle_filter(captions: &Path, profile: &RenderProfile) -> String {
     let path = captions.to_string_lossy().replace('\\', "/");
-    let font_size = (profile.height / 32).max(20);
+    let font_size = if profile.height > profile.width {
+        profile.width / 20
+    } else {
+        profile.height / 32
+    }
+    .clamp(14, 64);
+    let margin_v = (profile.height * 3 / 40).max(16);
+    let margin_h = (profile.width / 18).max(8);
     let style = format!(
-        "FontName=Segoe UI,FontSize={font_size},PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=2,Shadow=0,Alignment=2,MarginV=48"
+        "PlayResX={},PlayResY={},FontName=Segoe UI,FontSize={font_size},PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=1,Shadow=0,Alignment=2,MarginL={margin_h},MarginR={margin_h},MarginV={margin_v}",
+        profile.width, profile.height
     );
     format!("subtitles=filename='{path}':force_style='{style}'")
 }
@@ -501,13 +593,30 @@ pub fn probe_video(probe: &serde_json::Value) -> Option<(u32, u32, f64)> {
 }
 
 pub fn probe_codec(probe: &serde_json::Value) -> Option<String> {
+    probe_stream_codec(probe, "video").map(str::to_string)
+}
+
+fn probe_stream_codec<'a>(probe: &'a serde_json::Value, kind: &str) -> Option<&'a str> {
     let streams = probe.get("streams")?.as_array()?;
     streams
         .iter()
-        .find(|stream| stream.get("codec_type").and_then(|value| value.as_str()) == Some("video"))
+        .find(|stream| stream.get("codec_type").and_then(|value| value.as_str()) == Some(kind))
         .and_then(|stream| stream.get("codec_name"))
         .and_then(|value| value.as_str())
-        .map(str::to_string)
+}
+
+fn expected_video_codec(encoder: &str) -> &str {
+    match encoder {
+        "libx264" | "libx264rgb" => "h264",
+        "libx265" => "hevc",
+        "libvpx" => "vp8",
+        "libvpx-vp9" => "vp9",
+        "libaom-av1" | "librav1e" | "libsvtav1" => "av1",
+        name if name.starts_with("h264_") => "h264",
+        name if name.starts_with("hevc_") => "hevc",
+        name if name.starts_with("av1_") => "av1",
+        name => name,
+    }
 }
 
 pub fn has_audio(probe: &serde_json::Value) -> bool {
@@ -647,7 +756,7 @@ impl FfmpegQa {
             "null".to_string(),
             "-".to_string(),
         ];
-        let output = run(&self.ffmpeg, &args, None)?;
+        let output = require_success(run(&self.ffmpeg, &args, None)?, &format!("scan {filter}"))?;
         Ok(String::from_utf8_lossy(&output.stderr).to_string())
     }
 
@@ -716,25 +825,27 @@ impl FfmpegQa {
                 .unwrap_or_else(|| "sem stream de video".into()),
         ));
         let codec = probe_codec(&probe).unwrap_or_default();
+        let expected_codec = expected_video_codec(&profile.video_codec);
         checks.push(Self::check(
             "codec",
             "codec de video",
-            if !codec.is_empty() {
+            if codec == expected_codec {
                 QaStatus::Pass
             } else {
                 QaStatus::Fail
             },
-            codec,
+            format!("{codec}, esperado {expected_codec}"),
         ));
+        let audio_codec = probe_stream_codec(&probe, "audio").unwrap_or_default();
         checks.push(Self::check(
             "audio_stream",
             "stream de audio presente",
-            if has_audio(&probe) {
+            if audio_codec == "aac" {
                 QaStatus::Pass
             } else {
                 QaStatus::Fail
             },
-            "aac esperado".to_string(),
+            format!("{audio_codec}, esperado aac"),
         ));
         let decode_args = vec![
             "-hide_banner".to_string(),
@@ -802,7 +913,7 @@ impl FfmpegQa {
             "null".to_string(),
             "-".to_string(),
         ];
-        let volume = run(&self.ffmpeg, &volume_args, None)?;
+        let volume = require_success(run(&self.ffmpeg, &volume_args, None)?, "scan volumedetect")?;
         let volume_text = String::from_utf8_lossy(&volume.stderr).to_string();
         let max_volume = parse_volume_db(&volume_text);
         let audio_ok = max_volume.map(|value| value > -50.0).unwrap_or(false);
@@ -990,6 +1101,117 @@ impl QaGate for FfmpegQa {
 mod tests {
     use super::*;
 
+    fn fake_qa(
+        directory: &Path,
+        failed_filter: Option<&str>,
+        video_codec: &str,
+        audio_codec: &str,
+    ) -> (FfmpegQa, RenderOutput, RenderProfile) {
+        let extension = if cfg!(windows) { "cmd" } else { "sh" };
+        let ffmpeg = directory.join(format!("fake-ffmpeg.{extension}"));
+        let ffprobe = directory.join(format!("fake-ffprobe.{extension}"));
+        let marker = failed_filter.unwrap_or("NEVER_FAIL");
+        let ffmpeg_script = if cfg!(windows) {
+            format!("@echo off\r\necho max_volume: -3.0 dB 1>&2\r\necho %* | findstr /C:\"{marker}\" >nul\r\nif not errorlevel 1 exit /b 7\r\nexit /b 0\r\n")
+        } else {
+            format!("#!/bin/sh\necho 'max_volume: -3.0 dB' >&2\ncase \"$*\" in *{marker}*) exit 7;; esac\nexit 0\n")
+        };
+        let probe = serde_json::json!({
+            "format": { "duration": "3.0" },
+            "streams": [
+                { "codec_type": "video", "codec_name": video_codec, "width": 160, "height": 90, "avg_frame_rate": "30/1" },
+                { "codec_type": "audio", "codec_name": audio_codec }
+            ]
+        });
+        let probe_script = if cfg!(windows) {
+            format!("@echo off\r\necho {probe}\r\nexit /b 0\r\n")
+        } else {
+            format!("#!/bin/sh\nprintf '%s\\n' '{probe}'\n")
+        };
+        std::fs::write(&ffmpeg, ffmpeg_script).unwrap();
+        std::fs::write(&ffprobe, probe_script).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            for path in [&ffmpeg, &ffprobe] {
+                std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o700)).unwrap();
+            }
+        }
+        let path = directory.join("video.mp4");
+        std::fs::write(&path, b"synthetic fixture").unwrap();
+        let profile = RenderProfile {
+            width: 160,
+            height: 90,
+            ..RenderProfile::default()
+        };
+        let output = RenderOutput {
+            path,
+            duration_secs: 3.0,
+            bytes: 17,
+            sha256: "synthetic".into(),
+            video_codec: video_codec.into(),
+            width: 160,
+            height: 90,
+            fps: 30,
+        };
+        (
+            FfmpegQa::new(ffmpeg.to_str().unwrap(), ffprobe.to_str().unwrap()),
+            output,
+            profile,
+        )
+    }
+
+    #[test]
+    fn failed_video_scans_abort_technical_qa() {
+        for filter in ["blackdetect", "freezedetect"] {
+            let directory = tempfile::tempdir().unwrap();
+            let (qa, output, profile) = fake_qa(directory.path(), Some(filter), "h264", "aac");
+            let error = qa.technical(&output, &profile).unwrap_err();
+            assert!(matches!(error, FramechesterError::External(_)));
+            assert!(error.to_string().contains("scan"));
+        }
+    }
+
+    #[test]
+    fn failed_volume_scan_cannot_pass_from_partial_volume_output() {
+        let directory = tempfile::tempdir().unwrap();
+        let (qa, output, profile) = fake_qa(directory.path(), Some("volumedetect"), "h264", "aac");
+        let error = qa.technical(&output, &profile).unwrap_err();
+        assert!(matches!(error, FramechesterError::External(_)));
+        assert!(error.to_string().contains("volume"));
+    }
+
+    #[test]
+    fn unexpected_video_or_audio_codec_fails_the_requested_profile() {
+        for (video, audio, expected_failed_check) in [
+            ("vp9", "aac", "codec"),
+            ("h264", "pcm_s16le", "audio_stream"),
+        ] {
+            let directory = tempfile::tempdir().unwrap();
+            let (qa, output, profile) = fake_qa(directory.path(), None, video, audio);
+            let report = qa.technical(&output, &profile).unwrap();
+            assert!(report
+                .checks
+                .iter()
+                .any(|check| check.id == expected_failed_check && check.status == QaStatus::Fail));
+        }
+    }
+
+    #[test]
+    fn encoder_aliases_match_their_probed_codec_names() {
+        for (encoder, codec) in [
+            ("libx264", "h264"),
+            ("h264_amf", "h264"),
+            ("libx265", "hevc"),
+        ] {
+            let directory = tempfile::tempdir().unwrap();
+            let (qa, output, mut profile) = fake_qa(directory.path(), None, codec, "aac");
+            profile.video_codec = encoder.into();
+            let report = qa.technical(&output, &profile).unwrap();
+            assert_eq!(report.overall(), QaStatus::Pass, "encoder {encoder}");
+        }
+    }
+
     #[test]
     fn normalizes_asr_words() {
         let words = normalize_words("Você já viu a GPU? Ação, coração e IA!");
@@ -1057,6 +1279,190 @@ mod tests {
         );
         assert!(filter.starts_with("subtitles=filename='C"));
         assert!(filter.contains("FontName=Segoe UI"));
-        assert!(filter.ends_with("MarginV=48'"));
+        assert!(filter.contains("PlayResX=1920,PlayResY=1080"));
+    }
+
+    #[test]
+    fn renderer_rejects_missing_scene_asset_before_invoking_ffmpeg() {
+        let directory = tempfile::tempdir().unwrap();
+        let audio = directory.path().join("audio.wav");
+        std::fs::write(&audio, b"synthetic test input").unwrap();
+        let timeline = Timeline {
+            captions: None,
+            scenes: vec![framechester_core::domain::TimelineScene {
+                scene_id: 7,
+                heading: "Cena".into(),
+                background: "image".into(),
+                audio_path: audio,
+                duration_secs: 1.0,
+            }],
+        };
+        let result = FfmpegRenderer::new("missing-ffmpeg-for-test", "missing-ffprobe-for-test")
+            .render(
+                &timeline,
+                &[],
+                &RenderProfile::default(),
+                &directory.path().join("out.mp4"),
+            );
+        assert!(matches!(result, Err(FramechesterError::InvalidInput(_))));
+    }
+
+    #[test]
+    #[ignore = "requires local FFmpeg and ffprobe; generates only synthetic media"]
+    fn renders_local_image_and_video_instead_of_test_pattern() {
+        let directory = tempfile::tempdir().unwrap();
+        let image = directory.path().join("image.png");
+        let clip = directory.path().join("clip.mp4");
+        let audio = directory.path().join("audio.wav");
+        for args in [
+            vec![
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=0x124DBC:s=320x180:r=30",
+                "-frames:v",
+                "1",
+                image.to_str().unwrap(),
+            ],
+            vec![
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=0xA43826:s=80x80:r=15",
+                "-t",
+                "0.3",
+                "-pix_fmt",
+                "yuv420p",
+                clip.to_str().unwrap(),
+            ],
+            vec![
+                "-f",
+                "lavfi",
+                "-i",
+                "sine=frequency=440:sample_rate=48000",
+                "-t",
+                "1",
+                audio.to_str().unwrap(),
+            ],
+        ] {
+            let result = Command::new("ffmpeg")
+                .args(["-hide_banner", "-loglevel", "error", "-y"])
+                .args(args)
+                .output()
+                .unwrap();
+            assert!(
+                result.status.success(),
+                "{}",
+                String::from_utf8_lossy(&result.stderr)
+            );
+        }
+        let assets: Vec<AssetManifest> = [(&image, "image"), (&clip, "video")]
+            .into_iter()
+            .enumerate()
+            .map(|(id, (path, kind))| AssetManifest {
+                scene_id: id as u32,
+                kind: kind.into(),
+                path: Some(path.canonicalize().unwrap()),
+                license: "CC0-1.0".into(),
+                provenance: "fixture sintetica gerada pelo proprio teste".into(),
+                checksum: sha256_file(path).unwrap(),
+                restrictions: "somente teste; sem conteudo de terceiros".into(),
+            })
+            .collect();
+        let timeline = Timeline {
+            captions: None,
+            scenes: assets
+                .iter()
+                .map(|asset| framechester_core::domain::TimelineScene {
+                    scene_id: asset.scene_id,
+                    heading: String::new(),
+                    background: asset.kind.clone(),
+                    audio_path: audio.clone(),
+                    duration_secs: 1.0,
+                })
+                .collect(),
+        };
+        let profile = RenderProfile {
+            width: 160,
+            height: 90,
+            fps: 30,
+            preset: "ultrafast".into(),
+            ..RenderProfile::default()
+        };
+        let output = directory.path().join("render/final.mp4");
+        let render = FfmpegRenderer::new("ffmpeg", "ffprobe")
+            .render(&timeline, &assets, &profile, &output)
+            .unwrap();
+        assert_eq!((render.width, render.height, render.fps), (160, 90, 30));
+        assert!((render.duration_secs - 2.0).abs() < 0.15);
+        let probe = probe_json("ffprobe", &output).unwrap();
+        assert!(has_audio(&probe));
+        for (timestamp, pixel) in [("0.2", [18i16, 77, 188]), ("1.2", [164i16, 56, 38])] {
+            let frame = Command::new("ffmpeg")
+                .args(["-v", "error", "-ss", timestamp, "-i"])
+                .arg(&output)
+                .args([
+                    "-frames:v",
+                    "1",
+                    "-vf",
+                    "crop=2:2:80:44,scale=1:1",
+                    "-pix_fmt",
+                    "rgb24",
+                    "-f",
+                    "rawvideo",
+                    "-",
+                ])
+                .output()
+                .unwrap();
+            assert!(frame.status.success());
+            assert_eq!(frame.stdout.len(), 3);
+            for (actual, expected) in frame.stdout.iter().zip(pixel) {
+                assert!(
+                    (*actual as i16 - expected).abs() < 25,
+                    "source pixel mismatch: {:?}",
+                    frame.stdout
+                );
+            }
+        }
+        let qa = FfmpegQa::new("ffmpeg", "ffprobe");
+        assert_eq!(
+            qa.technical(&render, &profile).unwrap().overall(),
+            QaStatus::Pass
+        );
+        let black = directory.path().join("black.mp4");
+        let generated = Command::new("ffmpeg")
+            .args([
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=black:s=160x90:r=30",
+                "-f",
+                "lavfi",
+                "-i",
+                "sine=frequency=440:sample_rate=48000",
+                "-t",
+                "3",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "ultrafast",
+                "-c:a",
+                "aac",
+            ])
+            .arg(&black)
+            .output()
+            .unwrap();
+        assert!(generated.status.success());
+        let black_output = inspect_output("ffprobe", &black, &profile).unwrap();
+        let black_report = qa.technical(&black_output, &profile).unwrap();
+        assert_eq!(black_report.overall(), QaStatus::Fail);
+        assert!(black_report
+            .checks
+            .iter()
+            .any(|check| check.id == "black" && check.status == QaStatus::Fail));
     }
 }

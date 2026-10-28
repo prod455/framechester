@@ -25,6 +25,7 @@ pub struct PipelineProviders {
 
 #[derive(Debug, Clone)]
 pub struct PipelineOptions {
+    pub channel: Option<crate::channel::ChannelProfile>,
     pub workdir: PathBuf,
     pub format: ScriptFormat,
     pub max_scenes: usize,
@@ -39,6 +40,7 @@ pub struct PipelineOptions {
 impl Default for PipelineOptions {
     fn default() -> Self {
         Self {
+            channel: None,
             workdir: PathBuf::from("artifacts"),
             format: ScriptFormat::Short,
             max_scenes: 4,
@@ -83,11 +85,18 @@ impl Tracker {
 }
 
 impl Pipeline {
-    pub fn new(providers: PipelineProviders, options: PipelineOptions) -> Self {
+    pub fn new(providers: PipelineProviders, mut options: PipelineOptions) -> Self {
+        if let Some(channel) = &options.channel {
+            // Validation happens before any I/O in run, including for direct API callers.
+            options.workdir = options.workdir.join("channels").join(&channel.id);
+        }
         Self { providers, options }
     }
 
     pub fn run(&self, topic: Topic) -> Result<PipelineReport> {
+        if let Some(channel) = &self.options.channel {
+            channel.validate()?;
+        }
         if self.options.max_scenes == 0 {
             return Err(FramechesterError::InvalidInput(
                 "max_scenes deve ser maior que zero".into(),
@@ -132,8 +141,11 @@ impl Pipeline {
 
         let mut script = generated;
         script.scenes.truncate(self.options.max_scenes);
-        for (index, scene) in script.scenes.iter_mut().enumerate() {
-            scene.id = index as u32;
+        let mut scene_ids = std::collections::HashSet::new();
+        if !script.scenes.iter().all(|scene| scene_ids.insert(scene.id)) {
+            return Err(FramechesterError::InvalidInput(
+                "roteiro com scene_id duplicado".into(),
+            ));
         }
         script.format = self.options.format;
         script.series = topic.series.clone();
@@ -250,9 +262,13 @@ impl Pipeline {
             );
         }
 
-        if !self.options.dry_run && editorial_report.overall() != QaStatus::Pass {
+        if !self.options.dry_run
+            && (technical.overall() != QaStatus::Pass
+                || editorial_report.overall() != QaStatus::Pass)
+        {
             warnings.push(
-                "publicacao real exige QA editorial Pass e aprovacao humana explicita".into(),
+                "publicacao real exige QA tecnico e editorial Pass e aprovacao humana explicita"
+                    .into(),
             );
             tracker.block()?;
             return self.finish(
@@ -291,6 +307,7 @@ impl Pipeline {
             &editorial_report,
             self.options.privacy,
             thumbnail,
+            self.options.channel.as_ref(),
         )?;
 
         let publish_request = PublishRequest {
@@ -299,7 +316,11 @@ impl Pipeline {
             description: package::build_description(&script, &topic, &timeline),
             privacy: self.options.privacy,
             dry_run: self.options.dry_run,
-            channel: None,
+            channel: self
+                .options
+                .channel
+                .as_ref()
+                .and_then(|channel| channel.youtube_channel_id.clone()),
         };
         let receipt = self.providers.publisher.publish(&publish_request)?;
         let metrics = if receipt.status == PublishStatus::Published {
@@ -351,6 +372,7 @@ impl Pipeline {
         warnings: Vec<String>,
     ) -> Result<PipelineReport> {
         let report = PipelineReport {
+            channel: self.options.channel.clone(),
             topic_id: topic.id.clone(),
             stage,
             artifacts_dir: self.options.workdir.clone(),
@@ -536,6 +558,37 @@ mod tests {
             })
         }
     }
+    struct PendingTechnicalQa(QaStatus);
+    impl QaGate for PendingTechnicalQa {
+        fn info(&self) -> AdapterInfo {
+            AdapterInfo::local("pending-technical-qa", "test")
+        }
+        fn technical(
+            &self,
+            _output: &RenderOutput,
+            _profile: &crate::domain::RenderProfile,
+        ) -> Result<QaReport> {
+            Ok(QaReport::new(vec![QaCheck {
+                id: "technical".into(),
+                name: "technical".into(),
+                status: self.0,
+                detail: "verificacao incompleta".into(),
+            }]))
+        }
+        fn editorial(
+            &self,
+            _script: &Script,
+            _assets: &[AssetManifest],
+            _timeline: &Timeline,
+        ) -> Result<QaReport> {
+            Ok(QaReport::new(vec![QaCheck {
+                id: "editorial".into(),
+                name: "editorial".into(),
+                status: QaStatus::Pass,
+                detail: "aprovado pelo operador de teste".into(),
+            }]))
+        }
+    }
     struct FakeMetrics;
     impl MetricsProvider for FakeMetrics {
         fn info(&self) -> AdapterInfo {
@@ -638,5 +691,139 @@ mod tests {
         assert!(workdir.join("publish/final.srt").exists());
         assert!(workdir.join("pipeline_report.json").exists());
         let _ = std::fs::remove_dir_all(workdir);
+    }
+
+    #[test]
+    fn live_pipeline_blocks_incomplete_technical_qa() {
+        for status in [QaStatus::NeedsHuman, QaStatus::Skipped] {
+            let workdir = std::env::temp_dir().join(format!(
+                "fc-pipeline-pending-technical-{:?}-{}",
+                status,
+                crate::domain::now_unix()
+            ));
+            let mut providers = providers();
+            providers.qa = Box::new(PendingTechnicalQa(status));
+            let pipeline = Pipeline::new(
+                providers,
+                PipelineOptions {
+                    workdir: workdir.clone(),
+                    dry_run: false,
+                    ..PipelineOptions::default()
+                },
+            );
+            let report = pipeline.run(topic()).unwrap();
+            assert_eq!(report.stage, Stage::Blocked, "QA tecnico {status:?}");
+            assert!(report.publish.is_none());
+            assert!(report.package.is_none());
+            let _ = std::fs::remove_dir_all(workdir);
+        }
+    }
+
+    #[test]
+    fn same_topic_keeps_channel_packages_reports_and_destinations_separate() {
+        struct ChannelPublisher(String);
+        impl Publisher for ChannelPublisher {
+            fn info(&self) -> AdapterInfo {
+                AdapterInfo::local("channel-test", "test")
+            }
+            fn publish(&self, request: &PublishRequest) -> Result<crate::domain::PublishReceipt> {
+                assert_eq!(request.channel.as_deref(), Some(self.0.as_str()));
+                FakePublisher.publish(request)
+            }
+        }
+        let root = std::env::temp_dir().join(format!(
+            "fc-multichannel-{}-{}",
+            std::process::id(),
+            crate::domain::now_unix()
+        ));
+        for id in ["tech", "science"] {
+            let channel = crate::channel::ChannelProfile {
+                id: id.into(),
+                youtube_channel_id: Some(format!("synthetic-{id}")),
+            };
+            let mut adapters = providers();
+            adapters.publisher = Box::new(ChannelPublisher(format!("synthetic-{id}")));
+            let report = Pipeline::new(
+                adapters,
+                PipelineOptions {
+                    channel: Some(channel.clone()),
+                    workdir: root.clone(),
+                    ..PipelineOptions::default()
+                },
+            )
+            .run(topic())
+            .unwrap();
+            let expected = root.join("channels").join(id);
+            assert_eq!(report.artifacts_dir, expected);
+            assert_eq!(report.channel, Some(channel.clone()));
+            assert!(expected.join("pipeline_report.json").is_file());
+            let metadata: serde_json::Value = serde_json::from_str(
+                &std::fs::read_to_string(report.package.unwrap().metadata).unwrap(),
+            )
+            .unwrap();
+            assert_eq!(metadata["channel"]["id"], id);
+            assert_eq!(
+                metadata["channel"]["youtube_channel_id"],
+                format!("synthetic-{id}")
+            );
+        }
+        assert!(!root.join("pipeline_report.json").exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn direct_pipeline_api_rejects_unsafe_channel_before_writing_files() {
+        let root = std::env::temp_dir().join(format!("fc-channel-invalid-{}", std::process::id()));
+        let result = Pipeline::new(
+            providers(),
+            PipelineOptions {
+                channel: Some(crate::channel::ChannelProfile {
+                    id: "../escape".into(),
+                    youtube_channel_id: None,
+                }),
+                workdir: root.clone(),
+                ..PipelineOptions::default()
+            },
+        )
+        .run(topic());
+        assert!(result.is_err());
+        assert!(!root.exists());
+    }
+
+    #[test]
+    fn authored_scene_ids_survive_pipeline_and_asset_resolution() {
+        struct AuthoredIds;
+        impl LlmProvider for AuthoredIds {
+            fn info(&self) -> AdapterInfo {
+                AdapterInfo::local("authored-ids", "test")
+            }
+            fn generate(&self, prompt: &ScriptPrompt, budget: &GenerationBudget) -> Result<Script> {
+                let mut script = FakeLlm.generate(prompt, budget)?;
+                script.scenes[0].id = 42;
+                script.scenes[1].id = 99;
+                Ok(script)
+            }
+        }
+        let root = std::env::temp_dir().join(format!("fc-authored-ids-{}", std::process::id()));
+        let mut adapters = providers();
+        adapters.llm = Box::new(AuthoredIds);
+        let report = Pipeline::new(
+            adapters,
+            PipelineOptions {
+                workdir: root.clone(),
+                ..PipelineOptions::default()
+            },
+        )
+        .run(topic())
+        .unwrap();
+        let ids: Vec<u32> = report
+            .script
+            .unwrap()
+            .scenes
+            .iter()
+            .map(|scene| scene.id)
+            .collect();
+        assert_eq!(ids, vec![42, 99]);
+        std::fs::remove_dir_all(root).unwrap();
     }
 }

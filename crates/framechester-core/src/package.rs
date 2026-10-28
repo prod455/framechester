@@ -307,6 +307,7 @@ pub fn write_package(
     editorial: &QaReport,
     privacy: PublishPrivacy,
     thumbnail: Option<PathBuf>,
+    channel: Option<&crate::channel::ChannelProfile>,
 ) -> Result<PublishPackage> {
     let directory = workdir.join("publish");
     std::fs::create_dir_all(&directory)?;
@@ -317,7 +318,7 @@ pub fn write_package(
     std::fs::write(&subtitles, build_srt(script, timeline))?;
     std::fs::write(&description, build_description(script, topic, timeline))?;
     std::fs::write(&sources, build_sources_markdown(topic, script))?;
-    let metadata_value = build_metadata(
+    let mut metadata_value = build_metadata(
         script,
         topic,
         timeline,
@@ -327,6 +328,9 @@ pub fn write_package(
         privacy,
         thumbnail.as_deref(),
     );
+    if let Some(channel) = channel {
+        metadata_value["channel"] = serde_json::to_value(channel)?;
+    }
     std::fs::write(&metadata, serde_json::to_string_pretty(&metadata_value)?)?;
     Ok(PublishPackage {
         subtitles,
@@ -524,6 +528,7 @@ mod tests {
             &qa(),
             &qa(),
             PublishPrivacy::Private,
+            None,
             None,
         )
         .unwrap();

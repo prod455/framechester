@@ -1,0 +1,28 @@
+# Configuracao sanitizada de dois canais locais sob o mesmo operador.
+# Copie para framechester.toml (ignorado pelo Git). IDs locais nao sao IDs YouTube.
+# Informe youtube_channel_id somente no arquivo privado quando conhecido.
+
+[[channels]]
+id = "tech"
+
+[[channels]]
+id = "science"
+
+[app]
+dry_run = true
+telemetry = false
+workdir = "artifacts"
+
+[render]
+width = 1920
+height = 1080
+fps = 30
+
+[tts]
+piper_path = "C:/piper/piper.exe"
+voice_model = "C:/piper/pt_BR-faber-medium.onnx"
+voice_name = "pt_BR-faber-medium"
+
+[publish]
+enabled = false
+privacy = "private"

@@ -1,0 +1,20 @@
+{
+  "name": "framechester",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "setup": "node scripts/infra.mjs setup",
+    "start": "node scripts/infra.mjs start",
+    "dev": "node scripts/infra.mjs dev",
+    "stop": "node scripts/infra.mjs stop",
+    "infra:test": "node --test scripts/infra.test.mjs",
+    "docker:prepare": "node scripts/infra.mjs docker:prepare",
+    "docker:up": "node scripts/infra.mjs docker:up",
+    "docker:down": "node scripts/infra.mjs docker:down",
+    "docker:logs": "node scripts/infra.mjs docker:logs",
+    "docker:status": "node scripts/infra.mjs docker:status",
+    "docker:doctor": "node scripts/infra.mjs docker:doctor",
+    "docker:config": "node scripts/infra.mjs docker:config"
+  }
+}

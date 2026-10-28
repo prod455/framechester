@@ -24,4 +24,12 @@
 *.bin
 __pycache__/
 .pytest_cache/
+node_modules/
+/web/dist/
+/web/.local/
+/web/coverage/
+/.framechester/
+/PROMPT_CODEX_CLAUDE.txt
+/.impeccable/*
+!/.impeccable/config.json
 

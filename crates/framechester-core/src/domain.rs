@@ -389,6 +389,8 @@ pub struct PublishPackage {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PipelineReport {
+    #[serde(default)]
+    pub channel: Option<crate::channel::ChannelProfile>,
     pub topic_id: String,
     pub stage: Stage,
     pub artifacts_dir: PathBuf,

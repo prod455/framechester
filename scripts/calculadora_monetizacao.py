@@ -9,17 +9,21 @@ Zero receita até monetização oficialmente habilitada. Zero custo adicional j�
 """
 from __future__ import annotations
 import argparse
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP
 
 D = Decimal
 
+def money(n: Decimal) -> Decimal:
+    return n.quantize(D('0.01'), rounding=ROUND_HALF_UP)
+
+
 def cash(n: Decimal) -> str:
-    return f"R$ {n.quantize(D('0.01'), rounding=ROUND_HALF_UP):,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    return f"R$ {money(n):,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
 
 
 def storage_cost_usd(provider: str, gb_month: Decimal) -> Decimal:
-    if gb_month < 0:
-        raise ValueError('armazenamento negativo')
+    if not gb_month.is_finite() or gb_month < 0:
+        raise ValueError('armazenamento deve ser finito e não negativo')
     chargeable = max(D('0'), gb_month-D('10'))
     if provider == 'b2':
         # Hipótese de conversão TB=1000 GB para planejamento, verificar unidade real na fatura.
@@ -34,20 +38,26 @@ def model(*, provider: str, gb_month: Decimal, usd_brl: Decimal, eligible: bool,
           additional_cost: Decimal, other_actual_revenue: Decimal, taxes_rate: Decimal,
           own_hours: Decimal, hour_rate: Decimal, economic_allocations: Decimal) -> dict:
     for key, value in locals().copy().items():
-        if isinstance(value, Decimal) and value < 0:
-            raise ValueError(f'{key} não pode ser negativo')
+        if isinstance(value, Decimal) and (not value.is_finite() or value < 0):
+            raise ValueError(f'{key} deve ser finito e não negativo')
+    if usd_brl == 0:
+        raise ValueError('usd_brl deve ser maior que zero')
     if taxes_rate > 1:
         raise ValueError('taxes_rate deve estar entre 0 e 1')
-    storage_brl = storage_cost_usd(provider, gb_month)*usd_brl
+    storage_brl = money(storage_cost_usd(provider, gb_month)*usd_brl)
     # 'other_actual_revenue' só pode ser incluída para pagamentos efetivamente confirmados, nunca estimativas hipotéticas de outras plataformas.
-    revenue = ((views_long/1000*rpm_long)+(views_shorts/1000*rpm_shorts) if eligible else D(0)) + other_actual_revenue
-    taxes = revenue*taxes_rate
-    cash_cost = storage_brl + additional_cost
+    revenue = ((money(views_long/1000*rpm_long)+money(views_shorts/1000*rpm_shorts)) if eligible else D(0)) + money(other_actual_revenue)
+    taxes = money(revenue*taxes_rate)
+    cash_cost = storage_brl + money(additional_cost)
     cash_result = revenue - taxes - cash_cost
-    economic_result = cash_result - own_hours*hour_rate - economic_allocations
+    economic_result = cash_result - money(own_hours*hour_rate) - money(economic_allocations)
+    # Cenário exclusivamente de longos: não compensa custos com Shorts ou outras receitas.
+    net_long_rpm = rpm_long * (1 - taxes_rate)
+    breakeven = ((cash_cost * 1000 / net_long_rpm).to_integral_value(rounding=ROUND_CEILING)
+                 if eligible and net_long_rpm > 0 else None)
     return {'backup_brl':storage_brl, 'gross_revenue_brl':revenue, 'taxes_brl':taxes, 'additional_cash_cost_brl':cash_cost,
             'cash_result_brl':cash_result, 'economic_result_brl':economic_result,
-            'long_views_for_breakeven': (cash_cost/(rpm_long/1000) if eligible and rpm_long>0 else None)}
+            'long_views_for_breakeven': breakeven}
 
 
 def main():
@@ -67,10 +77,13 @@ def main():
     ap.add_argument('--hour-rate', type=Decimal, default=D(0), help='valor econômico por hora')
     ap.add_argument('--economic-allocations', type=Decimal, default=D(0), help='rateios/depreciação, informativos')
     a=ap.parse_args()
-    r=model(provider=a.provider,gb_month=a.storage_gb,usd_brl=a.usd_brl,eligible=a.eligible,
-            views_long=a.views_long,rpm_long=a.rpm_long,views_shorts=a.views_shorts,rpm_shorts=a.rpm_shorts,
-            other_actual_revenue=a.other_actual_revenue,additional_cost=a.additional_cost,taxes_rate=a.taxes_rate,
-            own_hours=a.own_hours,hour_rate=a.hour_rate,economic_allocations=a.economic_allocations)
+    try:
+        r=model(provider=a.provider,gb_month=a.storage_gb,usd_brl=a.usd_brl,eligible=a.eligible,
+                views_long=a.views_long,rpm_long=a.rpm_long,views_shorts=a.views_shorts,rpm_shorts=a.rpm_shorts,
+                other_actual_revenue=a.other_actual_revenue,additional_cost=a.additional_cost,taxes_rate=a.taxes_rate,
+                own_hours=a.own_hours,hour_rate=a.hour_rate,economic_allocations=a.economic_allocations)
+    except ValueError as error:
+        ap.error(str(error))
     print('PROJEÇÃO HIPOTÉTICA - NÃO É PREVISÃO DE RENDA')
     print(f"Backup {a.provider.upper()} ({a.storage_gb} GB-mês): {cash(r['backup_brl'])}")
     print(f"Receita considerada: {cash(r['gross_revenue_brl'])}")
@@ -79,9 +92,9 @@ def main():
     print(f"Resultado de caixa: {cash(r['cash_result_brl'])}")
     print(f"Resultado econômico (horas + rateios): {cash(r['economic_result_brl'])}")
     if r['long_views_for_breakeven'] is not None:
-        print(f"Equilíbrio teórico considerando RPM longo: {r['long_views_for_breakeven'].quantize(D('1'),rounding=ROUND_HALF_UP)} views longas/mês")
+        print(f"Equilíbrio teórico só com longos, após tributos simulados: {r['long_views_for_breakeven']} views longas/mês")
     else:
-        print('Equilíbrio de anúncios: INDISPONÍVEL sem elegibilidade e RPM > 0')
+        print('Equilíbrio de anúncios: INDISPONÍVEL sem elegibilidade e RPM líquido > 0')
     print('AVISO: exclui IOF, spread, possíveis taxas de cartão, arredondamentos R2 e tributos desconhecidos.')
     print('AVISO: assinatura de IA e VPS existentes só têm custo adicional zero se cotas/capacidade bastarem.')
 

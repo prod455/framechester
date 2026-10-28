@@ -1,0 +1,58 @@
+name: docker
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      COMPOSE_PROJECT_NAME: framechester-ci
+      FRAMECHESTER_IMAGE: framechester-studio:ci
+      FRAMECHESTER_HTTP_PORT: "4317"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - uses: docker/setup-buildx-action@v3
+      - name: Delivery contracts
+        run: python3 -m unittest discover -s tests -p test_docker_delivery.py -v
+      - name: Prepare synthetic secret and model directory
+        shell: bash
+        run: |
+          secret_dir="$(mktemp -d)"
+          echo "FRAMECHESTER_DOCKER_VAULT_KEY_FILE=$secret_dir/vault.key" >> "$GITHUB_ENV"
+          SECRET_FILE="$secret_dir/vault.key" node --input-type=module -e 'import{writeFileSync}from"node:fs";import{randomBytes}from"node:crypto";writeFileSync(process.env.SECRET_FILE,randomBytes(32).toString("hex"),{mode:0o444});'
+          mkdir -p models
+      - name: Validate Compose
+        run: docker compose config --quiet
+      - name: Build local image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          push: false
+          tags: framechester-studio:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Start and verify
+        shell: bash
+        run: |
+          docker compose up -d --no-build --wait --wait-timeout 90
+          node docker/smoke.mjs
+          docker compose exec -T studio node --input-type=module < docker/verify-runtime.mjs
+      - name: Recreate without deleting the data volume
+        shell: bash
+        run: |
+          docker compose down
+          docker compose up -d --no-build --wait --wait-timeout 90
+          node docker/smoke.mjs --verify-persisted
+      - name: Clean disposable CI resources
+        if: always()
+        run: docker compose down --volumes --remove-orphans

@@ -1,5 +1,7 @@
 # Framechester — open-source architecture contract
 
+Operator update (2026-10-27): multiple channels under one local operator replace the earlier single-channel assumption. `ChannelProfile` identifies local channels; explicit selection scopes pipeline outputs/reports/packages. OAuth paths and expected identity are channel-scoped; local analytics validates channel and reporting window. This is not multi-user authentication. See `EQUIPES_E_SKILLS.md` and `AUDITORIA_ENGENHARIA.md` for responsibilities and current limits.
+
 ## Deployment topology
 
 1. Local worker (MVP): Rust CLI + FFmpeg external binary + Piper TTS; generates script, narration, render and QA. No VPS required (`NOT_REQUIRED` decision).

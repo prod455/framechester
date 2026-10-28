@@ -1,5 +1,6 @@
 # Framechester configuration example. Copy to framechester.toml and adjust.
 # Never commit framechester.toml, .env, tokens or real credentials.
+# Multi-channel setup: copy examples/canais.exemplo.toml; run requires --channel.
 
 [app]
 locale = "pt-BR"

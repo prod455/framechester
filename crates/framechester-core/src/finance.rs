@@ -68,11 +68,11 @@ fn round_div(numerator: u128, denominator: u128) -> u64 {
     u64::try_from(rounded).unwrap_or(u64::MAX)
 }
 
-fn div_ceil(numerator: u64, denominator: u64) -> u64 {
+fn div_ceil(numerator: u128, denominator: u128) -> u64 {
     if denominator == 0 {
         return 0;
     }
-    numerator.div_ceil(denominator)
+    u64::try_from(numerator.div_ceil(denominator)).unwrap_or(u64::MAX)
 }
 
 pub fn storage_cost_cents(input: &FinanceInput) -> u64 {
@@ -120,14 +120,15 @@ pub fn simulate(input: &FinanceInput) -> Result<FinanceReport> {
     let own_cost = input.own_hours.saturating_mul(input.hour_rate_cents);
     let economic_result_cents =
         cash_result_cents - own_cost as i64 - input.economic_allocations_cents as i64;
-    let breakeven_long_views = if input.eligible && input.rpm_long_cents > 0 {
-        Some(div_ceil(
-            cash_cost_cents.saturating_mul(1000),
-            input.rpm_long_cents,
-        ))
-    } else {
-        None
-    };
+    let breakeven_long_views =
+        if input.eligible && input.rpm_long_cents > 0 && input.taxes_basis_points < 10_000 {
+            Some(div_ceil(
+                cash_cost_cents as u128 * 1000 * 10_000,
+                input.rpm_long_cents as u128 * (10_000 - input.taxes_basis_points) as u128,
+            ))
+        } else {
+            None
+        };
     Ok(FinanceReport {
         backup_cents,
         gross_revenue_cents,
@@ -215,7 +216,7 @@ mod tests {
         assert_eq!(report.taxes_cents, 6_000);
         assert_eq!(report.cash_cost_cents, 248);
         assert_eq!(report.cash_result_cents, 53_752);
-        assert_eq!(report.breakeven_long_views, Some(414));
+        assert_eq!(report.breakeven_long_views, Some(460));
     }
 
     #[test]
@@ -229,6 +230,16 @@ mod tests {
         let report = simulate(&input).unwrap();
         assert_eq!(report.cash_result_cents, 1000);
         assert_eq!(report.economic_result_cents, -9000);
+    }
+
+    #[test]
+    fn no_breakeven_without_positive_net_rpm() {
+        let mut input = input_with(50, StorageProvider::B2);
+        input.eligible = true;
+        input.rpm_long_cents = 600;
+        input.taxes_basis_points = 10_000;
+        let report = simulate(&input).unwrap();
+        assert_eq!(report.breakeven_long_views, None);
     }
 
     #[test]

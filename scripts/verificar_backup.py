@@ -259,13 +259,12 @@ def command_restore_check(env: dict[str, str], confirmed: bool) -> int:
             print("FALHA: snapshot id nao retornado.")
             return 4
         restore = run_restic(["restore", snapshot, "--target", str(restore_dir)], env)
-        restored = {path.name: path for path in restore_dir.rglob("*") if path.is_file()}
         if restore.returncode != 0:
-            if not {"verificacao.txt", "blob.bin"} <= set(restored):
-                print("Falha no restore:")
-                print(explain_failure(restore, env))
-                return 4
-            print("AVISO: restic reportou erro de timestamp (conhecido no Windows); arquivos presentes.")
+            print(f"Falha no restore (codigo {restore.returncode}); destino pode estar parcial.")
+            print("Presenca ou hashes de dois arquivos nao validam metadados nem o snapshot completo.")
+            print(explain_failure(restore, env))
+            return 4
+        restored = {path.name: path for path in restore_dir.rglob("*") if path.is_file()}
         for name in ("verificacao.txt", "blob.bin"):
             original = source_dir / name
             restored_path = restored.get(name)

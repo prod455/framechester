@@ -1,3 +1,4 @@
+use crate::channel::ChannelProfile;
 use crate::domain::RenderProfile;
 use crate::error::{FramechesterError, Result};
 use serde::{Deserialize, Serialize};
@@ -6,6 +7,7 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
+    pub channels: Vec<ChannelProfile>,
     pub app: AppConfig,
     pub render: RenderConfig,
     pub tts: TtsConfig,
@@ -179,6 +181,21 @@ impl Config {
     }
 
     pub fn validate(&self) -> Result<()> {
+        let mut channel_ids = std::collections::HashSet::new();
+        let mut platform_ids = std::collections::HashSet::new();
+        for channel in &self.channels {
+            channel.validate()?;
+            if !channel_ids.insert(&channel.id)
+                || channel
+                    .youtube_channel_id
+                    .as_ref()
+                    .is_some_and(|id| !platform_ids.insert(id))
+            {
+                return Err(FramechesterError::Config(
+                    "canal duplicado na configuracao".into(),
+                ));
+            }
+        }
         if self.app.telemetry {
             return Err(FramechesterError::Config(
                 "telemetry deve permanecer false; nenhum envio remoto e implementado".into(),
@@ -245,8 +262,39 @@ impl Config {
         }
     }
 
+    pub fn render_profile_for(&self, format: crate::domain::ScriptFormat) -> RenderProfile {
+        let mut profile = self.render_profile();
+        let should_swap = match format {
+            crate::domain::ScriptFormat::Short => profile.width > profile.height,
+            crate::domain::ScriptFormat::Long => profile.width < profile.height,
+        };
+        if should_swap {
+            std::mem::swap(&mut profile.width, &mut profile.height);
+        }
+        profile
+    }
+
     pub fn workdir_path(&self) -> PathBuf {
         self.app.workdir.clone()
+    }
+
+    pub fn select_channel(&self, id: Option<&str>) -> Result<Option<ChannelProfile>> {
+        self.validate()?;
+        match id {
+            Some(id) => self
+                .channels
+                .iter()
+                .find(|channel| channel.id == id)
+                .cloned()
+                .map(Some)
+                .ok_or_else(|| {
+                    FramechesterError::Config("canal nao cadastrado; confira --channel".into())
+                }),
+            None if self.channels.is_empty() => Ok(None),
+            None => Err(FramechesterError::Config(
+                "selecione --channel para uma operacao multicanais".into(),
+            )),
+        }
     }
 
     pub fn to_pretty_json(&self) -> Result<String> {
@@ -327,5 +375,43 @@ mod tests {
         let profile = config.render_profile();
         assert_eq!(profile.width, 1280);
         assert_eq!(profile.height, 720);
+    }
+
+    #[test]
+    fn registered_channels_require_explicit_selection() {
+        let config =
+            Config::from_toml("[[channels]]\nid = 'tech'\n[[channels]]\nid = 'science'\n").unwrap();
+        assert!(config.select_channel(None).is_err());
+        assert!(config.select_channel(Some("missing")).is_err());
+        assert_eq!(
+            config.select_channel(Some("science")).unwrap().unwrap().id,
+            "science"
+        );
+        assert!(Config::default().select_channel(None).unwrap().is_none());
+    }
+
+    #[test]
+    fn duplicate_or_unsafe_channel_identities_are_rejected() {
+        for text in [
+            "[[channels]]\nid = 'tech'\n[[channels]]\nid = 'tech'\n",
+            "[[channels]]\nid = '../escape'\n",
+            "[[channels]]\nid = 'tech'\nyoutube_channel_id = 'synthetic-id'\n[[channels]]\nid = 'science'\nyoutube_channel_id = 'synthetic-id'\n",
+        ] {
+            assert!(Config::from_toml(text).is_err());
+        }
+    }
+
+    #[test]
+    fn short_profile_is_vertical_and_long_profile_is_horizontal() {
+        use crate::domain::ScriptFormat;
+        let mut config = Config::default();
+        let short = config.render_profile_for(ScriptFormat::Short);
+        assert_eq!((short.width, short.height), (1080, 1920));
+        let long = config.render_profile_for(ScriptFormat::Long);
+        assert_eq!((long.width, long.height), (1920, 1080));
+        config.render.width = 720;
+        config.render.height = 1280;
+        let long = config.render_profile_for(ScriptFormat::Long);
+        assert_eq!((long.width, long.height), (1280, 720));
     }
 }

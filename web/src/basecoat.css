@@ -1,0 +1,18 @@
+/* Locally compiled CSS. Tabs use the matching local Basecoat runtime. No CDN. */
+@import "tailwindcss" source(none);
+@import "basecoat-css/base/base.css";
+@import "basecoat-css/components/button.css";
+@import "basecoat-css/components/field.css";
+@import "basecoat-css/components/label.css";
+@import "basecoat-css/components/input.css";
+@import "basecoat-css/components/textarea.css";
+@import "basecoat-css/components/native-select.css";
+@import "basecoat-css/components/checkbox.css";
+@import "basecoat-css/components/dialog.css";
+@import "basecoat-css/components/badge.css";
+@import "basecoat-css/components/alert.css";
+@import "basecoat-css/components/table.css";
+@import "basecoat-css/components/tabs.css";
+@import "basecoat-css/components/accordion.css";
+@import "basecoat-css/styles/vega.css";
+@source "./*.ts";

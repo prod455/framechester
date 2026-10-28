@@ -1,0 +1,31 @@
+{
+  "name": "framechester-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "tsx scripts/dev.ts",
+    "dev:server": "tsx watch server/index.ts",
+    "dev:ui": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "check": "tsc --noEmit",
+    "start": "tsx server/index.ts",
+    "test": "tsx --test tests/*.test.ts",
+    "engine:build": "tsx scripts/build-engine.ts"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.1",
+    "@types/node": "^22.0.0",
+    "happy-dom": "21.0.4",
+    "tailwindcss": "4.3.1",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vite": "8.3.5"
+  },
+  "dependencies": {
+    "basecoat-css": "1.1.0"
+  }
+}

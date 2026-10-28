@@ -1,0 +1,67 @@
+{
+  "topic_id": "piloto-vertical-enquadramento",
+  "script": {
+    "title": "Vertical não significa mais pixels",
+    "hook": "Virar um vídeo para o formato vertical aumenta a qualidade da imagem?",
+    "series": "tecnologia",
+    "format": "short",
+    "scenes": [
+      {
+        "id": 0,
+        "heading": "A mesma conta de pixels",
+        "narration": "Virar um vídeo para o formato vertical aumenta a qualidade da imagem? Não por si só. Veja esta conta: mil novecentos e vinte por mil e oitenta. Agora troque a ordem das dimensões. O produto continua igual: dois milhões, setenta e três mil e seiscentos pixels. A forma mudou; a quantidade, não.",
+        "visual_brief": "Diagrama original compara dois retângulos com dimensões invertidas e o mesmo total aritmético de pixels. Não representa medição de qualidade.",
+        "duration_hint_secs": 23.0
+      },
+      {
+        "id": 1,
+        "heading": "Cortar muda o que aparece",
+        "narration": "Mas adaptar uma cena horizontal exige outra decisão: o que deve continuar visível? Uma opção é recortar. As laterais saem, e o assunto ocupa o quadro vertical. No exemplo, o círculo do centro fica; os elementos das bordas desaparecem. Isso muda a composição, não prova uma melhora de qualidade.",
+        "visual_brief": "Cena abstrata original mostra círculo central e triângulos laterais; o quadro vertical destaca o recorte e identifica as áreas retiradas.",
+        "duration_hint_secs": 21.0
+      },
+      {
+        "id": 2,
+        "heading": "Bordas preservam a composição",
+        "narration": "Outra opção é manter a cena inteira e preencher o espaço que sobra com bordas. O conteúdo continua visível, mas fica menor dentro do quadro. No FFmpeg, redimensionar, recortar e adicionar bordas são operações diferentes. Escolha pelo conteúdo: esticar a imagem sem preservar suas proporções pode deformar os objetos.",
+        "visual_brief": "Quadro vertical original contém a composição horizontal inteira no centro; áreas acima e abaixo são identificadas como bordas, e o círculo preserva a forma.",
+        "duration_hint_secs": 21.0
+      },
+      {
+        "id": 3,
+        "heading": "Formato não é monetização",
+        "narration": "Para canais padrão do YouTube, envios atuais quadrados ou verticais, com até três minutos, são classificados como Shorts. Isso não confirma monetização. Antes de exportar, confira dimensões, enquadramento e leitura das legendas. A pergunta útil é: o espectador consegue entender a cena? Vertical é uma escolha de formato, não um certificado de qualidade.",
+        "visual_brief": "Checklist original distingue proporção, enquadramento, legibilidade e monetização não verificada. O exemplo não usa marcas, contas ou estatísticas reais.",
+        "duration_hint_secs": 22.0
+      }
+    ],
+    "sources": [
+      {
+        "title": "FFmpeg Filters Documentation: scale, crop e pad",
+        "url": "https://ffmpeg.org/ffmpeg-filters.html#scale",
+        "publisher": "FFmpeg",
+        "retrieved_at": "2026-10-27",
+        "license": "referencia documental; midia nao redistribuida"
+      },
+      {
+        "title": "Como criar Shorts com até três minutos no YouTube",
+        "url": "https://support.google.com/youtube/answer/15424877?hl=pt-BR",
+        "publisher": "YouTube Help / Google",
+        "retrieved_at": "2026-10-27",
+        "license": "referencia documental; midia nao redistribuida"
+      }
+    ],
+    "claims": [
+      {
+        "text": "FFmpeg oferece filtros distintos para redimensionar, recortar e adicionar bordas: scale, crop e pad.",
+        "status": "cited",
+        "source_urls": ["https://ffmpeg.org/ffmpeg-filters.html#scale"]
+      },
+      {
+        "text": "Em canais padrão, envios após 15/10/2024 com proporção quadrada ou vertical e até três minutos são classificados como Shorts; classificação não comprova monetização do canal.",
+        "status": "cited",
+        "source_urls": ["https://support.google.com/youtube/answer/15424877?hl=pt-BR"]
+      }
+    ]
+  }
+}

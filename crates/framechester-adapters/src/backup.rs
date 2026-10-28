@@ -30,22 +30,6 @@ pub fn mask_repository(repository: &str) -> String {
     format!("local:{name}")
 }
 
-fn has_regular_file(path: &Path) -> bool {
-    let Ok(entries) = std::fs::read_dir(path) else {
-        return false;
-    };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_file() {
-            return true;
-        }
-        if path.is_dir() && has_regular_file(&path) {
-            return true;
-        }
-    }
-    false
-}
-
 #[derive(Debug, Clone)]
 pub struct ResticBackup {
     restic: String,
@@ -228,6 +212,26 @@ impl BackupProvider for ResticBackup {
         if snapshot_id.trim().is_empty() {
             return Err(FramechesterError::InvalidInput("snapshot vazio".into()));
         }
+        if target.as_os_str().is_empty() {
+            return Err(FramechesterError::InvalidInput(
+                "restore exige destino novo ou vazio".into(),
+            ));
+        }
+        match std::fs::symlink_metadata(target) {
+            Ok(metadata) => {
+                if !metadata.is_dir()
+                    || metadata.file_type().is_symlink()
+                    || std::fs::read_dir(target)?.next().transpose()?.is_some()
+                {
+                    return Err(FramechesterError::InvalidInput(
+                        "restore exige diretorio novo ou vazio, sem redirecionamento por link"
+                            .into(),
+                    ));
+                }
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.into()),
+        }
         std::fs::create_dir_all(target)?;
         let output = self
             .run(
@@ -241,15 +245,13 @@ impl BackupProvider for ResticBackup {
             )
             .map_err(|error| FramechesterError::Unavailable(format!("restic: {error}")))?;
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-        let timestamp_issue = stderr.contains("timestamp")
-            || stderr.contains("failed to restore timestamp")
-            || stderr.contains("failed to set");
-        if !output.status.success() && (!timestamp_issue || !has_regular_file(target)) {
+        if !output.status.success() {
             return Err(FramechesterError::External(format!(
-                "restic restore falhou: {}",
+                "restic restore falhou; destino pode estar parcial e nao foi validado: {}",
                 self.sanitize(&stderr)
             )));
         }
+        let timestamp_issue = stderr.contains("timestamp") || stderr.contains("failed to set");
         let status = if timestamp_issue { "warning" } else { "ok" };
         Ok(BackupReceipt {
             provider: "restic".into(),
@@ -258,7 +260,7 @@ impl BackupProvider for ResticBackup {
             snapshot_id: Some(snapshot_id.to_string()),
             bytes: None,
             message: if status == "warning" {
-                "arquivos restaurados; timestamp pode ter falhado no Windows".into()
+                "restic retornou sucesso; revise o aviso de timestamp/metadados".into()
             } else {
                 "restore concluido".into()
             },
@@ -269,6 +271,99 @@ impl BackupProvider for ResticBackup {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn fake_backup(directory: &Path, exit_code: u8, stderr: &str) -> (ResticBackup, PathBuf) {
+        let marker = directory.join("invoked.txt");
+        #[cfg(windows)]
+        let executable = {
+            let path = directory.join("fake-restic.cmd");
+            let script = format!(
+                "@echo off\r\n>\"{}\" echo invoked\r\n>\"%~6\\restored.txt\" echo fixture-restored\r\n{}exit /b {exit_code}\r\n",
+                marker.display(),
+                if stderr.is_empty() {
+                    String::new()
+                } else {
+                    format!("echo {stderr} 1>&2\r\n")
+                }
+            );
+            std::fs::write(&path, script).unwrap();
+            path
+        };
+        #[cfg(unix)]
+        let executable = {
+            use std::os::unix::fs::PermissionsExt;
+            let path = directory.join("fake-restic.sh");
+            let script = format!(
+                "#!/bin/sh\nprintf '%s' 'invoked' > '{}'\nprintf '%s' 'fixture-restored' > \"$6/restored.txt\"\nprintf '%s' '{stderr}' >&2\nexit {exit_code}\n",
+                marker.display()
+            );
+            std::fs::write(&path, script).unwrap();
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700)).unwrap();
+            path
+        };
+        (
+            ResticBackup {
+                restic: executable.to_string_lossy().into_owned(),
+                repository: directory
+                    .join("fixture-repository")
+                    .to_string_lossy()
+                    .into_owned(),
+            },
+            marker,
+        )
+    }
+
+    #[test]
+    fn restore_rejects_timestamp_mixed_with_missing_or_corrupt_content() {
+        for stderr in [
+            "failed to restore timestamp; missing blob",
+            "failed to restore timestamp; content checksum mismatch",
+        ] {
+            let directory = tempfile::tempdir().unwrap();
+            let (backup, marker) = fake_backup(directory.path(), 1, stderr);
+            let target = directory.path().join("target");
+            let result = backup.restore("fixture-snapshot", &target);
+            assert!(marker.exists());
+            assert!(target.join("restored.txt").exists());
+            assert!(matches!(result, Err(FramechesterError::External(_))));
+        }
+    }
+
+    #[test]
+    fn restore_rejects_nonempty_destination_before_running_restic() {
+        let directory = tempfile::tempdir().unwrap();
+        let (backup, marker) = fake_backup(directory.path(), 0, "");
+        let target = directory.path().join("target");
+        std::fs::create_dir(&target).unwrap();
+        let existing = target.join("existing.txt");
+        std::fs::write(&existing, "operator-data").unwrap();
+        let result = backup.restore("fixture-snapshot", &target);
+        assert!(matches!(result, Err(FramechesterError::InvalidInput(_))));
+        assert!(!marker.exists());
+        assert!(!target.join("restored.txt").exists());
+        assert_eq!(std::fs::read_to_string(existing).unwrap(), "operator-data");
+    }
+
+    #[test]
+    fn restore_accepts_new_or_empty_destination_when_process_succeeds() {
+        for existing_empty in [false, true] {
+            let directory = tempfile::tempdir().unwrap();
+            let (backup, marker) = fake_backup(directory.path(), 0, "");
+            let target = directory.path().join("target");
+            if existing_empty {
+                std::fs::create_dir(&target).unwrap();
+            }
+            let receipt = backup.restore("fixture-snapshot", &target).unwrap();
+            assert_eq!(receipt.status, "ok");
+            assert!(marker.exists());
+            assert_eq!(
+                std::fs::read_to_string(target.join("restored.txt"))
+                    .unwrap()
+                    .trim(),
+                "fixture-restored"
+            );
+        }
+    }
 
     #[test]
     fn masks_remote_credentials() {

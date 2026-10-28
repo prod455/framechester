@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — Studio refactor
+- Formatted the Studio sources with Prettier; `npm run check` now verifies formatting.
+- Split the 782-line `web/src/main.ts` into `studio/` (state, shell, toast, platforms), `pages/` (one file per page) and `editors/` (sources, claims, scenes, assistant button). Application state lives in one explicit `studio` object; pages render from it and never import each other in cycles.
+- Added a shell boot test that logs in against a stubbed API and draws every page.
+
 ## Unreleased — visual guide and video styles
 - Added a closed catalog of scene layouts (`#pergunta`, `#numero`, `#lista`, `#comparacao`, `#linha-do-tempo`, `#citacao`) declared on the first line of `visualBrief`, parsed in Rust and mirrored in the Studio with a shared fixture.
 - Explanatory visuals now use one dark editorial theme (`framechester-editorial-v2`); numbers shrink to fit instead of being truncated.

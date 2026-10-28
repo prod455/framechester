@@ -13,16 +13,13 @@ function slot(sceneId:number,value:string,max=maxSlot):string {
   if(!result||length(result)>max)throw fail(sceneId,`cada campo precisa de 1 a ${max} caracteres`);
   return result;
 }
-function pair(sceneId:number,args:string):[string,string] {
-  const parts=args.split('|');
-  if(parts.length!==2)throw fail(sceneId,"use exatamente dois campos separados por '|'");
-  return [slot(sceneId,parts[0]!),slot(sceneId,parts[1]!)];
+function split(sceneId:number,args:string,separator:string,min:number,max:number):string[] {
+  const parts=args.split(separator);
+  if(parts.length<min||parts.length>max)throw fail(sceneId,min===max?`use exatamente ${min} campos separados por '${separator}'`:`informe de ${min} a ${max} itens separados por '${separator}'`);
+  return parts;
 }
-function items(sceneId:number,args:string):string[] {
-  const rows=args.split(';').map(item=>slot(sceneId,item));
-  if(rows.length<2||rows.length>5)throw fail(sceneId,"informe de 2 a 5 itens separados por ';'");
-  return rows;
-}
+function pair(sceneId:number,args:string):[string,string] {const parts=split(sceneId,args,'|',2,2);return [slot(sceneId,parts[0]!),slot(sceneId,parts[1]!)];}
+function items(sceneId:number,args:string):string[] {return split(sceneId,args,';',2,5).map(item=>slot(sceneId,item));}
 function entry(sceneId:number,value:string):void {
   const at=value.indexOf(':');
   if(at<0)throw fail(sceneId,"cada item precisa do formato 'rotulo: texto'");
@@ -33,26 +30,30 @@ function spoken(sceneId:number,value:string,narration:string,what:string):void {
   if(!normalized(narration).includes(normalized(value)))throw fail(sceneId,`${what} '${value}' precisa aparecer na narração da cena`);
 }
 
-/** Returns the layout declared on the first line of `visualBrief`, or throws SceneLayoutError. */
-export function parseSceneLayout(sceneId:number,visualBrief:string,narration:string):SceneLayout {
+/**
+ * Returns the layout declared on the first line of `visualBrief`, or throws SceneLayoutError.
+ * `sceneNumber` is the number the operator sees (editor label or position), not the raw id;
+ * the Rust CLI reports the raw `scene_id` from its JSON plan instead.
+ */
+export function parseSceneLayout(sceneNumber:number,visualBrief:string,narration:string):SceneLayout {
   const first=(visualBrief.split('\n')[0]??'').trim();
   // `# Titulo` (Markdown) is a free note; a directive starts with a letter.
   if(!/^#\p{Alphabetic}/u.test(first))return 'destaque';
   const directive=first.slice(1),space=directive.search(/\s/);
   const name=space<0?directive:directive.slice(0,space),args=space<0?'':directive.slice(space).trim();
   switch(name){
-    case 'destaque':if(args)throw fail(sceneId,'#destaque não recebe campos');return name;
-    case 'pergunta':slot(sceneId,args);return name;
+    case 'destaque':if(args)throw fail(sceneNumber,'#destaque não recebe campos');return name;
+    case 'pergunta':slot(sceneNumber,args);return name;
     case 'numero':{
-      const [value]=pair(sceneId,args);
-      if(length(value)>maxValue||!/[0-9]/.test(value))throw fail(sceneId,`o valor precisa conter um dígito e até ${maxValue} caracteres`);
-      spoken(sceneId,value,narration,'o valor');return name;
+      const [value]=pair(sceneNumber,args);
+      if(length(value)>maxValue||!/[0-9]/.test(value))throw fail(sceneNumber,`o valor precisa conter um dígito e até ${maxValue} caracteres`);
+      spoken(sceneNumber,value,narration,'o valor');return name;
     }
-    case 'lista':items(sceneId,args);return name;
-    case 'comparacao':{const [left,right]=pair(sceneId,args);entry(sceneId,left);entry(sceneId,right);return name;}
-    case 'linha-do-tempo':items(sceneId,args).forEach(item=>entry(sceneId,item));return name;
-    case 'citacao':{const [quote]=pair(sceneId,args);spoken(sceneId,quote,narration,'a citação');return name;}
-    default:throw fail(sceneId,`'#${name}' não existe; use ${sceneLayouts.join(', ')}`);
+    case 'lista':items(sceneNumber,args);return name;
+    case 'comparacao':split(sceneNumber,args,'|',2,2).forEach(side=>entry(sceneNumber,side));return name;
+    case 'linha-do-tempo':split(sceneNumber,args,';',2,5).forEach(item=>entry(sceneNumber,item));return name;
+    case 'citacao':{const [quote]=pair(sceneNumber,args);spoken(sceneNumber,quote,narration,'a citação');return name;}
+    default:throw fail(sceneNumber,`'#${name}' não existe; use ${sceneLayouts.join(', ')}`);
   }
 }
 

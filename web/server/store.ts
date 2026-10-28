@@ -140,7 +140,7 @@ function normalizeSnapshot(value: unknown, state: AppState): SocialSnapshot {
 }
 // Checked on save only: a stored brief must never prevent the whole state from loading.
 function renderableScenes(script: Script): void {
-  try { for (const scene of script.scenes) parseSceneLayout(scene.id, scene.visualBrief, scene.narration); }
+  try { for (const scene of script.scenes) parseSceneLayout(scene.id + 1, scene.visualBrief, scene.narration); }
   catch (error) { if (error instanceof SceneLayoutError) throw new HttpError(400, error.message); throw error; }
 }
 function validateState(state: AppState): void {

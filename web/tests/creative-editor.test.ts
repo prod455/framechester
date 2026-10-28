@@ -185,6 +185,7 @@ test('a selected video style and the layout grammar reach the system prompt; unk
   try {
     const request = { task: 'script', brief: 'Adapte o roteiro ao formato escolhido.', editorContext: { task: 'script', values: script } };
     await assert.rejects(ctx.service.draft('tech', { ...request, style: 'viral' }), /Formato editorial inválido/);
+    await assert.rejects(ctx.service.draft('tech', { task: 'research', brief: 'Investigue um nicho concreto.', style: 'ranking' }), /não para pesquisa/);
     assert.equal(ctx.calls(), 0);
     const draft = await ctx.service.draft('tech', { ...request, style: 'misterio' });
     assert.match(system, /Mistério documental/); assert.match(system, /#linha-do-tempo/); assert.match(system, /primeira cena dura até 3 segundos/);
@@ -195,6 +196,6 @@ test('a selected video style and the layout grammar reach the system prompt; unk
 test('a generated scene with an unrenderable directive is discarded with the scene and the reason', async () => {
   const ctx = await fixture(() => result({ title: 'Um vídeo concreto', series: 'Experimentos', format: 'short', hook: 'Gancho', scenes: [{ id: 7, heading: 'A demonstração', narration: 'Sem número.', visualBrief: '#numero 90% | dos casos', durationHintSecs: 3 }], claims: [] }));
   try {
-    await assert.rejects(ctx.service.draft('tech', { task: 'script', brief: 'Adapte o roteiro ao formato escolhido.', editorContext: { task: 'script', values: script } }), /diretiva visual inválida.*Cena 7.*narração/s);
+    await assert.rejects(ctx.service.draft('tech', { task: 'script', brief: 'Adapte o roteiro ao formato escolhido.', editorContext: { task: 'script', values: script } }), /diretiva visual inválida.*Cena 8.*narração/s);
   } finally { await ctx.close(); }
 });

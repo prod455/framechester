@@ -44,32 +44,34 @@ fn slot(scene_id: u32, value: &str, max: usize) -> Result<String> {
     Ok(value.to_owned())
 }
 
-fn pair(scene_id: u32, args: &str, separator: char) -> Result<(String, String)> {
-    let mut parts = args.split(separator);
-    let (Some(first), Some(second), None) = (parts.next(), parts.next(), parts.next()) else {
+fn split(scene_id: u32, args: &str, separator: char, min: usize, max: usize) -> Result<Vec<&str>> {
+    let parts: Vec<&str> = args.split(separator).collect();
+    if !(min..=max).contains(&parts.len()) {
         return Err(invalid(
             scene_id,
-            &format!("use exatamente dois campos separados por '{separator}'"),
+            &if min == max {
+                format!("use exatamente {min} campos separados por '{separator}'")
+            } else {
+                format!("informe de {min} a {max} itens separados por '{separator}'")
+            },
         ));
-    };
+    }
+    Ok(parts)
+}
+
+fn pair(scene_id: u32, args: &str) -> Result<(String, String)> {
+    let parts = split(scene_id, args, '|', 2, 2)?;
     Ok((
-        slot(scene_id, first, MAX_SLOT)?,
-        slot(scene_id, second, MAX_SLOT)?,
+        slot(scene_id, parts[0], MAX_SLOT)?,
+        slot(scene_id, parts[1], MAX_SLOT)?,
     ))
 }
 
 fn items(scene_id: u32, args: &str) -> Result<Vec<String>> {
-    let rows = args
-        .split(';')
+    split(scene_id, args, ';', 2, 5)?
+        .into_iter()
         .map(|item| slot(scene_id, item, MAX_SLOT))
-        .collect::<Result<Vec<_>>>()?;
-    if !(2..=5).contains(&rows.len()) {
-        return Err(invalid(
-            scene_id,
-            "informe de 2 a 5 itens separados por ';'",
-        ));
-    }
-    Ok(rows)
+        .collect()
 }
 
 fn entry(scene_id: u32, value: &str) -> Result<Entry> {
@@ -119,7 +121,7 @@ pub fn parse(scene_id: u32, visual_brief: &str, narration: &str) -> Result<Scene
         "destaque" => Err(invalid(scene_id, "#destaque nao recebe campos")),
         "pergunta" => Ok(SceneLayout::Pergunta(slot(scene_id, args, MAX_SLOT)?)),
         "numero" => {
-            let (value, caption) = pair(scene_id, args, '|')?;
+            let (value, caption) = pair(scene_id, args)?;
             if value.chars().count() > MAX_VALUE || !value.chars().any(|c| c.is_ascii_digit()) {
                 return Err(invalid(
                     scene_id,
@@ -131,20 +133,20 @@ pub fn parse(scene_id: u32, visual_brief: &str, narration: &str) -> Result<Scene
         }
         "lista" => Ok(SceneLayout::Lista(items(scene_id, args)?)),
         "comparacao" => {
-            let (left, right) = pair(scene_id, args, '|')?;
+            let sides = split(scene_id, args, '|', 2, 2)?;
             Ok(SceneLayout::Comparacao {
-                left: entry(scene_id, &left)?,
-                right: entry(scene_id, &right)?,
+                left: entry(scene_id, sides[0])?,
+                right: entry(scene_id, sides[1])?,
             })
         }
         "linha-do-tempo" => Ok(SceneLayout::LinhaDoTempo(
-            items(scene_id, args)?
-                .iter()
+            split(scene_id, args, ';', 2, 5)?
+                .into_iter()
                 .map(|item| entry(scene_id, item))
                 .collect::<Result<_>>()?,
         )),
         "citacao" => {
-            let (quote, author) = pair(scene_id, args, '|')?;
+            let (quote, author) = pair(scene_id, args)?;
             spoken(scene_id, &quote, narration, "a citacao")?;
             Ok(SceneLayout::Citacao { quote, author })
         }

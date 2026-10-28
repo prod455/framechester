@@ -434,7 +434,7 @@ function sceneEditor(initial: ScriptScene[]): { node: HTMLElement; read: () => S
     const narration = textarea("scene-narration", scene?.narration || "", 4); narration.required = true; narration.setAttribute("data-testid", `scene-${id}-narration`);
     const visual = textarea("scene-visual", scene?.visualBrief || "", 3); visual.required = true;
     // Same check as the server, shown before saving.
-    const checkLayout = () => { try { parseSceneLayout(id, visual.value, narration.value); visual.setCustomValidity(""); } catch (error) { visual.setCustomValidity(error instanceof SceneLayoutError ? error.message : "Diretiva visual inválida."); } };
+    const checkLayout = () => { try { parseSceneLayout(id + 1, visual.value, narration.value); visual.setCustomValidity(""); } catch (error) { visual.setCustomValidity(error instanceof SceneLayoutError ? error.message : "Diretiva visual inválida."); } };
     visual.addEventListener("input", checkLayout); narration.addEventListener("input", checkLayout); checkLayout();
     const duration = input("scene-duration", String(scene?.durationHintSecs ?? 20), "number"); duration.min = "0.1"; duration.step = "0.1"; duration.required = true;
     const count = el("span", { className: "field-hint" });

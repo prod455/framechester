@@ -34,7 +34,7 @@ function scenes(value: unknown, output = false): ScriptScene[] {
     seen.add(row.id);
     const scene = { id:row.id,heading:text(row.heading,500,output),narration:text(row.narration,30_000,output),visualBrief:text(row.visualBrief,12_000,output),durationHintSecs:row.durationHintSecs };
     // Generated directives must render; editor input is checked when the script is saved.
-    if (output) parseSceneLayout(scene.id,scene.visualBrief,scene.narration);
+    if (output) parseSceneLayout(scene.id + 1,scene.visualBrief,scene.narration);
     return scene;
   });
 }

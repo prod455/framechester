@@ -41,11 +41,18 @@ uma diretiva. O restante do campo continua sendo nota livre para o operador.
 | `#linha-do-tempo MARCO: texto; …` | evolução histórica | 2 a 5 marcos |
 | `#citacao FRASE \| ATRIBUIÇÃO` | frase documentada | FRASE **precisa ser dita na narração** |
 
-Cada campo aceita até 160 caracteres (rótulos, até 40). Uma diretiva
-desconhecida ou mal formada (`#grafico`, `#Lista`, `#lista só um`) gera
-erro com o número da cena. Isso acontece ao salvar o roteiro, na resposta da
-IA e no render. Nenhum caso cai num layout padrão sem aviso. `# Título` com
-espaço é tratado como nota em Markdown.
+Cada campo aceita até 160 caracteres; em `#comparacao` e `#linha-do-tempo`,
+o rótulo antes dos dois-pontos aceita até 40 e o texto depois, até 160. Uma
+diretiva desconhecida ou mal formada (`#grafico`, `#Lista`, `#lista só um`)
+gera erro com o número da cena. Isso acontece ao salvar o roteiro, na
+resposta da IA, ao preparar os visuais e no render. Nenhum caso cai num
+layout padrão sem aviso. `# Título` com espaço é tratado como nota em
+Markdown.
+
+No Studio, o número da cena no erro é o que aparece na tela: no editor,
+"Cena 1" para a primeira cena; na produção, a posição no roteiro. A CLI usa o
+`id` do JSON, como no restante da saída. Roteiros salvos antes deste guia
+continuam abrindo; a checagem só roda ao salvar, gerar ou preparar visuais.
 
 Por que números e citações precisam estar na narração: assim, o que aparece
 na tela também passa pela revisão de alegações do roteiro. Sem essa regra,
@@ -71,9 +78,14 @@ cargo run -p framechester-cli -- visuals --input examples/guia-visual-plan.json 
 - Longo 1920×1080: margem de 112 px, título de 88 px, texto de 44 px.
 - Short 1080×1920: margem de 82 px, título de 72 px, texto de 48 px.
 - A faixa inferior (290 px no longo, 470 px no Short) fica livre para as
-  legendas queimadas.
+  legendas queimadas. Nenhum layout entra nela: o texto diminui de tamanho
+  até caber e, no tamanho mínimo, é cortado com reticências. Um teste
+  renderiza cada layout com todos os campos no limite, nos dois formatos, e
+  confere o limite inferior.
 - Um número nunca é cortado: a fonte diminui até caber em uma linha. Trocar
   "175 bilhões" por "175…" mudaria o sentido.
+- `#lista` usa duas linhas por item quando há espaço; com cinco itens longos
+  no formato longo, cai para uma linha por item. Itens curtos ficam melhores.
 
 Longo:
 

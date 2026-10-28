@@ -15,6 +15,9 @@ decoração, contadores e explicações repetidas.
   na visão geral e na página Resultados.
 - Grupos de formulário usam espaçamento e separadores. Containers não exigem
   cartões; campos continuam tendo bordas, rótulos e foco identificáveis.
+- O corpo dos diálogos mantém 24 px entre filhos diretos, inclusive quando
+  um seletor fica fora do formulário. No preparo de vídeo, o resumo, as cenas
+  e as opções usam essa mesma régua; ações relacionadas têm 12 px entre si.
 - Autenticação é uma tela de formulário, sem slogan ou hero de marketing.
 
 ## Tokens

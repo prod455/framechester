@@ -215,3 +215,24 @@
 .operation-properties > div { display: flex; justify-content: space-between; gap: 20px; padding: 14px 0; border-bottom: 1px solid var(--border); font-size: var(--font-sm); }
 .operation-properties dt { color: var(--muted-foreground); }
 .operation-properties + p { margin-top: 16px; }
+/* Preparation shows the actual generated visual beside its scene context. */
+.production-summary { display: grid; gap: var(--space-3); min-width: 0; }
+.production-summary h3, .production-summary p { margin: 0; overflow-wrap: anywhere; }
+.production-summary h3 { font-size: var(--font-md); line-height: var(--line-copy); font-weight: 600; }
+.production-summary-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); }
+.production-scenes { display: grid; gap: var(--space-6); min-width: 0; }
+.production-scene { display: grid; gap: var(--space-3); min-width: 0; padding-block: var(--space-4); border-bottom: 1px solid var(--border); }
+.production-scene h3, .production-scene p { margin: 0; overflow-wrap: anywhere; }
+.production-scene h3 { line-height: var(--line-copy); }
+.production-scene-preview { min-width: 0; }
+.production-scene-preview img { display: block; width: min(100%, 560px); max-width: 100%; height: auto; }
+.production-scene details { min-width: 0; }
+.production-scene details > summary { min-height: var(--control-height); margin: 0; padding-block: var(--space-3); line-height: var(--line-ui); overflow-wrap: anywhere; }
+.production-scene details > .field { padding-top: var(--space-3); }
+.production-scene-source { display: grid; gap: var(--space-4); min-width: 0; padding-top: var(--space-3); }
+.production-scene-source > .button { justify-self: start; max-width: 100%; }
+.production-options { display: grid; gap: var(--space-3); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+@media (max-width: 560px) {
+  .production-summary-actions > .button { flex: 1 1 100%; }
+  .production-scene-source > .button { justify-self: stretch; }
+}

@@ -12,7 +12,7 @@ const drafts=new Map<string,{draft:CreativeDraft;brief:string;includeReferences:
 let draftSession=0;
 export function clearCreativeDrafts():void {draftSession++;drafts.clear();}
 
-export interface CreativeEditorOptions { context: CreativeEditorContext; onApply: (fields: CreativeFields) => void; mount?:{host:HTMLElement;onClose:()=>void} }
+export interface CreativeEditorOptions { context: CreativeEditorContext; onApply: (fields: CreativeFields) => void|Promise<void>; initialBrief?:string; applyLabel?:string; mount?:{host:HTMLElement;onClose:()=>void} }
 const objectives:Record<CreativeTask,string>={research:'Desenvolva esta hipótese a partir dos campos preenchidos e indique o que falta apurar.',script:'Desenvolva o roteiro a partir dos campos, da pauta e das fontes fornecidas. Preserve o formato escolhido e explicite o que falta verificar.',story:'Desenvolva a narrativa a partir dos campos e do roteiro vinculado. Entregue a promessa e mantenha os limites das evidências.'};
 function describeValues(values:object):string {
   const labels:Record<string,string>={title:'Título',niche:'Nicho',audience:'Público',hypothesis:'Hipótese de interesse',differentiation:'Contribuição original',keywords:'Palavras-chave',sources:'Fontes fornecidas',notes:'Notas e próximos passos',series:'Série',format:'Formato',hook:'Gancho',scenes:'Cenas',claims:'Alegações',setup:'Contexto',conflict:'Tensão',turningPoint:'Descoberta',resolution:'Resolução',cta:'Próximo passo'};
@@ -111,7 +111,7 @@ export function openCreativeDraft(task:CreativeTask,channelId:string,channelName
   body.classList.add('assistant-workspace');
   const close=()=>{if(editor?.mount)editor.mount.onClose();else modal?.dialog.close();};
   const active=()=>body.isConnected&&session===draftSession;
-  const brief=textarea('creative-brief',editor?objectives[task]:'',4);brief.required=true;brief.minLength=12;brief.maxLength=6000;brief.placeholder=hints[task];
+  const brief=textarea('creative-brief',editor?.initialBrief??(editor?objectives[task]:''),4);brief.required=true;brief.minLength=12;brief.maxLength=6000;brief.placeholder=hints[task];
   const references=input('creative-references','','checkbox');
   const status=el('p',{className:'assistant-status',role:'status'},'Consultando o assistente…');
   let provider:'ollama'|'anthropic'|'openai'='ollama';let quote:CreativeQuote|undefined;
@@ -121,16 +121,21 @@ export function openCreativeDraft(task:CreativeTask,channelId:string,channelName
   const output=el('section',{className:'creative-output','aria-live':'polite'},el('p',{className:'field-hint'},'A proposta aparece aqui depois de gerar. Nenhum campo será alterado antes de você aplicar.'));
   const resultActions=el('div',{className:'assistant-result-actions'});
   const feedback=el('p',{className:'alert form-error',role:'alert',hidden:true});
-  const key=`${channelId}:${task}:${editor?JSON.stringify(editor.context):'free'}`;
+  const key=`${channelId}:${task}:${editor?JSON.stringify(editor.context):'free'}:${editor?.initialBrief??''}`;
   function show(draft:CreativeDraft):void {
     const content=editor&&draft.fields?renderValues(draft.fields):textarea('creative-result',draft.body,12);
     if(content instanceof HTMLTextAreaElement){content.readOnly=true;content.setAttribute('aria-label','Rascunho gerado pela IA');}
     replace(output,el('h3',{},draft.title),el('p',{className:'field-hint'},`Rascunho · ${draft.model} · revisão pendente`),draft.usage?el('p',{className:'field-hint'},`${draft.usage.inputTokens.toLocaleString('pt-BR')} tokens de entrada · ${draft.usage.outputTokens.toLocaleString('pt-BR')} de resposta · custo calculado: ${usd(draft.usage.estimatedCostUsd)}. Confira a cobrança no provedor.`):null,el('p',{className:'creative-draft-summary'},draft.body),content);
     replace(resultActions);
-    if(editor&&draft.fields)resultActions.append(button('Usar nos campos',()=>{
-      try{if(!active())throw new Error('Abra novamente o editor nesta sessão.');editor.onApply(draft.fields!);close();}
-      catch(error){feedback.textContent=error instanceof Error?error.message:'Não foi possível preencher o editor.';feedback.hidden=false;}
-    },'primary','check'));
+    if(editor&&draft.fields) {
+      const apply=button(editor.applyLabel??'Usar nos campos',async()=>{
+        if(apply.disabled)return;apply.disabled=true;feedback.hidden=true;
+        try{if(!active())throw new Error('Abra novamente o editor nesta sessão.');const applying=editor.onApply(draft.fields!);if(applying)await applying;if(active())close();}
+        catch(error){if(active()){feedback.textContent=error instanceof Error?error.message:'Não foi possível preencher o editor.';feedback.hidden=false;}}
+        finally{apply.disabled=false;}
+      },'primary','check');
+      resultActions.append(apply);
+    }
     else resultActions.append(button('Copiar rascunho',()=>{void navigator.clipboard.writeText(draft.body).catch(()=>{if(content instanceof HTMLTextAreaElement){content.focus();content.select();}});},'secondary'));
   }
   const submitLabel=()=>cloud()?(quote?'Autorizar e gerar':'Calcular custo'):'Gerar rascunho';

@@ -122,6 +122,15 @@ pub trait Renderer {
 pub trait QaGate {
     fn info(&self) -> AdapterInfo;
     fn technical(&self, output: &RenderOutput, profile: &RenderProfile) -> Result<QaReport>;
+    /// Rendering intent can explain static frames; standalone QA remains strict.
+    fn technical_with_timeline(
+        &self,
+        output: &RenderOutput,
+        profile: &RenderProfile,
+        _timeline: &Timeline,
+    ) -> Result<QaReport> {
+        self.technical(output, profile)
+    }
     fn editorial(
         &self,
         script: &Script,

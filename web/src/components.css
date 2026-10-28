@@ -58,7 +58,7 @@
 .dialog-header { flex-shrink: 0; padding: var(--space-6) 80px var(--space-6) var(--space-6); border-bottom: 1px solid var(--border); }
 .dialog-header h2 { min-height: var(--control-height); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 21px; line-height: var(--control-height); }
 .dialog-header p { margin-top: var(--space-2); color: var(--muted-foreground); font-size: var(--font-sm); line-height: var(--line-ui); }
-.dialog-body { min-height: 0; padding: var(--space-6); overflow-y: auto; overscroll-behavior: contain; }
+.dialog-body { display: grid; align-content: start; gap: var(--space-6); min-height: 0; padding: var(--space-6); overflow-y: auto; overscroll-behavior: contain; }
 .dialog .dialog-close { top: var(--space-6); right: var(--space-6); opacity: 1; }
 .studio-toast-region { position: fixed; bottom: 24px; right: 24px; z-index: 100; display: grid; gap: 12px; max-width: min(470px, calc(100vw - 32px)); }
 .studio-toast { display: flex; align-items: flex-start; gap: 12px; padding: 16px; color: var(--ink); background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-popover); font-size: var(--font-sm); line-height: var(--line-copy); }

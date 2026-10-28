@@ -243,3 +243,17 @@ test('a generation failure releases the actions and reports a recoverable error 
   assert.equal(host.querySelector<HTMLElement>('.creative-output')!.inert, false);
   assert.equal(document.querySelectorAll('dialog').length, 0);
 });
+
+test('adaptation presets await saving a new script and never generate automatically',async()=>{
+  let generations=0;let complete!:()=>void;
+  const saved=new Promise<void>(resolve=>{complete=resolve;});
+  globalThis.fetch=async(_url,init)=>{if(init?.method==='POST')generations++;return Response.json(init?.method==='POST'?draft:{available:true,selectedModel:'fixture'});};
+  const initialBrief='Adapte para uma explicação com visuais locais, sem afirmar testes não realizados.';
+  openCreativeDraft('story','tech','Canal de teste',{context,initialBrief,applyLabel:'Salvar como novo roteiro',onApply:async()=>{await saved;}});
+  await tick();assert.equal(generations,0);
+  assert.equal(document.querySelector<HTMLTextAreaElement>('[name="creative-brief"]')!.value,initialBrief);
+  await submit();
+  const apply=[...document.querySelectorAll('button')].find(button=>button.textContent?.includes('Salvar como novo roteiro'))!;
+  assert.ok(apply);apply.click();await tick();assert.equal(apply.disabled,true);assert.ok(document.querySelector('dialog'));
+  complete();await tick();await tick();assert.equal(document.querySelector('dialog'),null);
+});

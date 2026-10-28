@@ -4,7 +4,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile, rename, copyFile, realpath, stat } from 'node:fs/promises';
 import { basename, extname, join, relative, resolve, sep } from 'node:path';
-import type { AppState, RunnerApi, Script, StartJobInput, UploadAssetInput, WebAsset, WebJob, WebConfig, QaStatus } from '../shared/types.ts';
+import type { AppState, RunnerApi, Script, StartJobInput, UploadAssetInput, WebAsset, WebJob, WebConfig, QaStatus, PreparedVisuals } from '../shared/types.ts';
 
 interface StoredAsset extends WebAsset { diskName: string }
 interface EngineResult { exitCode: number; stdout: string; stderr: string }
@@ -32,6 +32,9 @@ function qa(checks: unknown): QaStatus {
   return statuses.some(value=>value==='pass') ? 'pass' : 'skipped';
 }
 function source(value: Script['sources'][number]) { return {title:value.title,url:value.url,publisher:value.publisher,retrieved_at:value.retrievedAt,license:value.license}; }
+function visualFingerprint(state:AppState,channelId:string,script:Script):string {
+  return hash(Buffer.from(JSON.stringify({renderer:'framechester-editorial-v1',previewRevision:2,channelId,channel:state.channels.find(channel=>channel.id===channelId)?.name,script:{id:script.id,title:script.title,format:script.format,scenes:script.scenes,sources:script.sources}})));
+}
 function rustConfig(config: WebConfig, channelId: string): string {
   const q = (value: string) => JSON.stringify(value);
   return `[[channels]]\nid = ${q(channelId)}\n[app]\ndry_run = true\ntelemetry = false\n[render]\nwidth = ${config.render.width}\nheight = ${config.render.height}\nfps = ${config.render.fps}\ncrf = ${config.render.crf}\npreset = ${q(config.render.preset)}\nvideo_codec = "libx264"\n[tts]\nengine = "kokoro"\npython_path = ${q(config.tts.pythonPath!)}\nvoice_styles = ${q(config.tts.voiceStyles!)}\nvoice_model = ${q(config.tts.voiceModel)}\nvoice_name = ${q(config.tts.voiceName)}\n[asr]\nenabled = ${config.asr.enabled}\nmodel = ${q(config.asr.model)}\nlanguage = ${q(config.asr.language)}\nmin_coverage = ${config.asr.minCoverage}\n[publish]\nenabled = false\nprivacy = "private"\n`;
@@ -58,6 +61,8 @@ export class LocalRunner implements RunnerApi {
   private media: StoredAsset[]=[];
   private queue=Promise.resolve();
   private writes=Promise.resolve();
+  private preparations=Promise.resolve();
+  private visualControllers=new Set<AbortController>();
   private stopped=false;
   private active: AbortController | undefined;
   private readonly root: string;
@@ -82,6 +87,88 @@ export class LocalRunner implements RunnerApi {
   }
   async list(channelId: string) { await this.channel(channelId); return structuredClone(this.jobs.filter(item=>item.channelId===channelId)); }
   async assets(channelId: string) { await this.channel(channelId); return this.media.filter(item=>item.channelId===channelId).map(({diskName:_,...asset})=>structuredClone(asset)); }
+  prepareVisuals(channelId:string,scriptId:string):Promise<PreparedVisuals> {
+    const task=this.preparations.then(()=>this.prepareScriptVisuals(channelId,scriptId));
+    this.preparations=task.then(()=>{},()=>{});
+    return task;
+  }
+  private async prepareScriptVisuals(channelId:string,scriptId:string):Promise<PreparedVisuals> {
+    const state=await this.channel(channelId); id(scriptId);
+    if(this.stopped) throw new RunnerError('Servidor encerrando.');
+    if(!this.engineStatus().available) throw new RunnerError(this.engineStatus().message,503);
+    const script=state.scripts.find(item=>item.id===scriptId&&item.channelId===channelId&&item.status!=='archived');
+    if(!script) throw new RunnerError('Roteiro não encontrado neste canal.');
+    if(!script.scenes.length||script.scenes.length>32||script.scenes.some(scene=>!scene.heading.trim()||!scene.narration.trim()||!Number.isSafeInteger(scene.id)||scene.id<0)||new Set(script.scenes.map(scene=>scene.id)).size!==script.scenes.length)
+      throw new RunnerError('Complete os títulos e as falas das cenas no roteiro antes de preparar os visuais.');
+    const fingerprint=visualFingerprint(state,channelId,script);
+    const bindings:Record<string,string>={};
+    const previews:Record<string,string>={};
+    const pending:PreparedVisuals['pending']=[];
+    const captureReason='Prévia ilustrativa criada. A gravação real desta cena continua pendente para a versão final.';
+    for(const asset of this.media.filter(asset=>asset.channelId===channelId&&asset.generated?.scriptId===scriptId&&asset.generated.fingerprint===fingerprint)) {
+      if(await this.assetFile(channelId,asset.id)) {
+        const sceneId=asset.generated!.sceneId;previews[String(sceneId)]=asset.id;
+        if(asset.generated!.captureRequired)pending.push({sceneId,reason:captureReason});
+        else bindings[String(sceneId)]=asset.id;
+      }
+    }
+    if(Object.keys(previews).length===script.scenes.length) return {scriptId,assets:await this.assets(channelId),bindings,previews,pending};
+    const directory=join(this.root,'visuals',channelId,randomUUID());
+    await mkdir(directory,{recursive:true,mode:0o700});
+    const input=join(directory,'plan.json'),output=join(directory,'images');
+    const plan={channel:state.channels.find(channel=>channel.id===channelId)!.name,title:script.title,format:script.format,scenes:script.scenes.map(scene=>({id:scene.id,heading:scene.heading,narration:scene.narration,visual_brief:scene.visualBrief,duration_hint_secs:scene.durationHintSecs}))};
+    if(Buffer.byteLength(JSON.stringify(plan))>1_048_576) throw new RunnerError('O plano visual excede 1 MB. Reduza o texto das cenas.');
+    await writeFile(input,JSON.stringify(plan),{mode:0o600});
+    const controller=new AbortController();this.visualControllers.add(controller);
+    const timer=setTimeout(()=>controller.abort(),120_000);
+    try {
+      const result=await (this.options.execute??this.execute.bind(this))(['visuals','--input',input,'--output',output],resolve(this.options.repositoryRoot),controller.signal);
+      if(result.exitCode!==0) throw new RunnerError('Não foi possível criar os visuais locais. Confira os títulos e as falas das cenas e reconstrua o motor com npm run engine:build se necessário.');
+      let report:unknown;
+      try {report=JSON.parse(result.stdout);} catch {throw new RunnerError('O motor retornou um plano visual inválido.');}
+      if(!report||typeof report!=='object'||!('renderer'in report)||report.renderer!=='framechester-editorial-v1'||!('scenes'in report)||!Array.isArray(report.scenes)||report.scenes.length!==script.scenes.length) throw new RunnerError('O motor retornou um plano visual inválido.');
+      const seen=new Set<number>(),imports:Array<{sceneId:number;bytes:Buffer;captureRequired:boolean}>=[];
+      for(const item of report.scenes) {
+        if(!item||typeof item!=='object'||!Number.isSafeInteger(item.scene_id)||seen.has(item.scene_id)||!script.scenes.some(scene=>scene.id===item.scene_id)) throw new RunnerError('O motor retornou cenas visuais incompatíveis.');
+        seen.add(item.scene_id);
+        const captureRequired=item.status==='requires_capture';
+        if(captureRequired&&!pending.some(scene=>scene.sceneId===item.scene_id))pending.push({sceneId:item.scene_id,reason:captureReason});
+        if(!['generated','requires_capture'].includes(item.status)||item.file!==`scene-${item.scene_id}.png`) throw new RunnerError('O motor retornou um arquivo visual inválido. Reconstrua o motor local se necessário.');
+        if(previews[String(item.scene_id)]) continue;
+        const actual=await realpath(join(output,item.file)),base=await realpath(output),rel=relative(base,actual);
+        const info=await stat(actual);
+        if(rel.startsWith(`..${sep}`)||rel==='..'||resolve(base,rel)!==actual||!info.isFile()||info.nlink!==1||info.size<24||info.size>20*1024*1024) throw new RunnerError('O arquivo visual saiu da área permitida ou tem tamanho inválido.');
+        const bytes=await readFile(actual);
+        if(!bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))||bytes.subarray(12,16).toString()!=='IHDR'||!bytes.readUInt32BE(16)||!bytes.readUInt32BE(20)||bytes.readUInt32BE(16)>7680||bytes.readUInt32BE(20)>7680) throw new RunnerError('O motor não produziu uma imagem PNG válida.');
+        imports.push({sceneId:item.scene_id,bytes,captureRequired});
+      }
+      // All output is validated before any new asset enters the channel library.
+      const mediaDirectory=join(this.root,'media',channelId);await mkdir(mediaDirectory,{recursive:true,mode:0o700});
+      const created:StoredAsset[]=[];
+      for(const {sceneId,bytes,captureRequired} of imports) {
+        const scene=script.scenes.find(scene=>scene.id===sceneId)!;
+        const asset:StoredAsset={id:randomUUID(),channelId,name:`${scene.heading.slice(0,100)}.png`,kind:'image',bytes:bytes.length,checksum:hash(bytes),license:'Original — visual explicativo gerado localmente pelo Framechester',provenance:'Composição própria com título e trecho do roteiro; sem busca de imagens, API paga ou mídia de terceiros.',restrictions:captureRequired?'Prévia ilustrativa; gravação real pendente. Não usar como demonstração ou evidência de teste.':'Ilustração editorial para revisão; não representa captura real, experimento ou comprovação das alegações.',createdAt:new Date().toISOString(),generated:{scriptId,sceneId,fingerprint,...(captureRequired?{captureRequired:true}:{})},diskName:''};
+        asset.diskName=`${asset.id}.png`;
+        await writeFile(join(mediaDirectory,asset.diskName),bytes,{flag:'wx',mode:0o600});
+        created.push(asset);previews[String(sceneId)]=asset.id;
+        if(!captureRequired)bindings[String(sceneId)]=asset.id;
+      }
+      this.media.push(...created);
+      await this.persist();
+      return {scriptId,assets:await this.assets(channelId),bindings,previews,pending};
+    } finally {clearTimeout(timer);this.visualControllers.delete(controller);}
+  }
+  async assetFile(channelId:string,assetId:string) {
+    await this.channel(channelId);id(assetId);
+    const asset=this.media.find(item=>item.id===assetId&&item.channelId===channelId&&item.kind==='image');
+    if(!asset) return undefined;
+    try {
+      const directory=await realpath(join(this.root,'media',channelId)),path=await realpath(join(directory,asset.diskName)),rel=relative(directory,path),info=await stat(path);
+      if(rel.startsWith(`..${sep}`)||rel==='..'||resolve(directory,rel)!==path||!info.isFile()||info.nlink!==1||info.size>20*1024*1024||hash(await readFile(path))!==asset.checksum) return undefined;
+      const contentType:Record<string,string>={'.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.bmp':'image/bmp'};
+      return contentType[extname(asset.diskName)]?{path,contentType:contentType[extname(asset.diskName)]}:undefined;
+    } catch {return undefined;}
+  }
   async upload(channelId: string, input: UploadAssetInput): Promise<WebAsset> {
     await this.channel(channelId);
     if(typeof input.filename!=='string' || basename(input.filename)!==input.filename || /[\\/\x00-\x1f]/.test(input.filename)) throw new RunnerError('Nome de arquivo inválido.');
@@ -117,6 +204,9 @@ export class LocalRunner implements RunnerApi {
     if(!input.assetIds || Object.keys(input.assetIds).length!==script.scenes.length) throw new RunnerError('Selecione uma mídia deste canal para cada cena.');
     const assets=script.scenes.map(scene=>this.media.find(asset=>asset.id===input.assetIds[String(scene.id)] && asset.channelId===channelId));
     if(assets.some(asset=>!asset)) throw new RunnerError('Mídia ausente ou pertencente a outro canal.');
+    if(assets.some(asset=>asset?.generated?.captureRequired))throw new RunnerError('Esta imagem é uma prévia ilustrativa. Adicione a gravação real ou adapte o roteiro antes de gerar a versão final.');
+    if(assets.some((asset,index)=>asset?.generated&&(asset.generated.scriptId!==script.id||asset.generated.sceneId!==script.scenes[index].id||asset.generated.fingerprint!==visualFingerprint(state,channelId,script))))
+      throw new RunnerError('O roteiro mudou ou este visual foi preparado para outra cena. Prepare os visuais novamente antes de gerar o vídeo.');
     const config=structuredClone(Object.hasOwn(state.channelConfigs,channelId) ? state.channelConfigs[channelId] : state.config);
     const voiceError=commercialVoiceError(config.tts);
     if(voiceError) throw new RunnerError(voiceError);
@@ -187,7 +277,7 @@ export class LocalRunner implements RunnerApi {
     try { const path=await realpath(join(root,FILES[file][0])); const base=await realpath(root); const rel=relative(base,path); if(rel.startsWith(`..${sep}`) || rel==='..' || resolve(base,rel)!==path || !(await stat(path)).isFile()) return undefined; return {path,contentType:FILES[file][1]}; }
     catch { return undefined; }
   }
-  async idle() { await this.queue; await this.writes; }
-  async close() { this.stopped=true; this.active?.abort(); await this.idle(); }
+  async idle() { await this.preparations; await this.queue; await this.writes; }
+  async close() { this.stopped=true; this.active?.abort(); for(const controller of this.visualControllers)controller.abort(); await this.idle(); }
 }
 export async function createRunner(options: RunnerOptions) { return new LocalRunner(options).initialize(); }

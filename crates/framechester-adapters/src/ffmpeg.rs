@@ -1064,6 +1064,24 @@ fn parse_whisper_transcript(raw: &str) -> String {
         .join(" ")
 }
 
+fn contextualize_static_scenes(report: &mut QaReport, timeline: &Timeline) {
+    // Only an entirely authored still-image timeline explains the freeze scan.
+    // Mixed/video timelines keep the strict failure until interval-level QA exists.
+    if !timeline.scenes.is_empty()
+        && timeline
+            .scenes
+            .iter()
+            .all(|scene| scene.background == "image")
+    {
+        for check in &mut report.checks {
+            if check.id == "freeze" && check.status == QaStatus::Fail {
+                check.status = QaStatus::NeedsHuman;
+                check.detail = "Cenas compostas por imagens estaticas; revisar ritmo e adequacao visual. O detector encontrou frames parados previstos pela timeline.".into();
+            }
+        }
+    }
+}
+
 impl QaGate for FfmpegQa {
     fn info(&self) -> AdapterInfo {
         AdapterInfo {
@@ -1083,6 +1101,17 @@ impl QaGate for FfmpegQa {
         FfmpegQa::technical(self, output, profile)
     }
 
+    fn technical_with_timeline(
+        &self,
+        output: &RenderOutput,
+        profile: &RenderProfile,
+        timeline: &Timeline,
+    ) -> Result<QaReport> {
+        let mut report = FfmpegQa::technical(self, output, profile)?;
+        contextualize_static_scenes(&mut report, timeline);
+        Ok(report)
+    }
+
     fn editorial(
         &self,
         script: &Script,
@@ -1100,6 +1129,46 @@ impl QaGate for FfmpegQa {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn intentional_still_scenes_require_visual_review_without_hiding_video_freezes() {
+        let timeline = Timeline {
+            captions: None,
+            scenes: vec![framechester_core::domain::TimelineScene {
+                scene_id: 42,
+                heading: "Explicação".into(),
+                background: "image".into(),
+                audio_path: "fixture.wav".into(),
+                duration_secs: 10.0,
+            }],
+        };
+        let report = QaReport::new(vec![
+            FfmpegQa::check("freeze", "congelamento", QaStatus::Fail, "freeze_start: 0"),
+            FfmpegQa::check(
+                "decode",
+                "decodificação",
+                QaStatus::Fail,
+                "arquivo inválido",
+            ),
+        ]);
+        let mut still = report.clone();
+        contextualize_static_scenes(&mut still, &timeline);
+        assert_eq!(
+            still.checks[0].status,
+            QaStatus::NeedsHuman,
+            "Still-image scenes need contextual review, not a false freeze failure"
+        );
+        assert_eq!(
+            still.checks[1].status,
+            QaStatus::Fail,
+            "Decode failures must remain blocking"
+        );
+        let mut video_timeline = timeline;
+        video_timeline.scenes[0].background = "video".into();
+        let mut video = report;
+        contextualize_static_scenes(&mut video, &video_timeline);
+        assert_eq!(video.checks[0].status, QaStatus::Fail);
+    }
 
     fn fake_qa(
         directory: &Path,

@@ -1,6 +1,7 @@
 pub mod anthropic;
 pub mod authored_script;
 pub mod backup;
+pub mod editorial_visuals;
 pub mod ffmpeg;
 pub mod fixtures;
 pub mod kokoro;

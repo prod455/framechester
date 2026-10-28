@@ -8,6 +8,73 @@ import { createRunner, localEngineEnvironment } from '../server/runner.ts';
 
 const date = '2026-10-27T00:00:00.000Z';
 const source = (id: number) => ({title:`Fonte ${id}`,url:`https://example.com/${id}`,publisher:'Fixture',retrievedAt:'2026-10-27',license:'Referencia de teste'});
+
+test('the local runner prepares script visuals without a manual upload', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-auto-visuals-'));
+  const runner = await createRunner({home, repositoryRoot:resolve('..'), readState:async()=>state()});
+  try {
+    assert.equal(typeof Reflect.get(runner, 'prepareVisuals'), 'function', 'A production operator needs automatic script visuals');
+  } finally { await runner.close(); await rm(home,{recursive:true,force:true}); }
+});
+
+const visualPng=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jMMAAAAAASUVORK5CYII=','base64');
+
+test('automatic visuals preserve scene IDs, stay in the channel and survive restart without repeated generation',async()=>{
+  const home=await mkdtemp(join(tmpdir(),'fc-visual-generation-'));
+  const current=state();let calls=0;
+  const options={home,repositoryRoot:resolve('..'),readState:async()=>structuredClone(current),execute:async(args:string[])=>{
+    calls++;assert.equal(args[0],'visuals');
+    const plan=JSON.parse(await readFile(args[args.indexOf('--input')+1],'utf8'));
+    assert.equal(plan.scenes[0].id,42);assert.equal(plan.scenes[0].narration,'Texto autoral preservado.');
+    const output=args[args.indexOf('--output')+1];await mkdir(output,{recursive:true});await writeFile(join(output,'scene-42.png'),visualPng);
+    return {exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v1',scenes:[{scene_id:42,status:'generated',file:'scene-42.png'}]}),stderr:''};
+  }};
+  let runner=await createRunner(options);
+  try {
+    const prepared=await runner.prepareVisuals('tech','script-one');
+    assert.equal(calls,1);assert.equal(prepared.assets.length,1);assert.deepEqual(prepared.pending,[]);
+    const asset=prepared.assets[0];assert.equal(asset.generated?.sceneId,42);assert.equal(asset.channelId,'tech');
+    assert.equal(prepared.bindings['42'],asset.id);assert.equal('diskName'in asset,false);
+    assert.deepEqual(await runner.assets('science'),[]);assert.equal(await runner.assetFile('science',asset.id),undefined);
+    assert.ok(await runner.assetFile('tech',asset.id));
+    await assert.rejects(runner.prepareVisuals('science','script-one'),/neste canal/);assert.equal(calls,1);
+    await runner.close();runner=await createRunner(options);
+    assert.deepEqual((await runner.prepareVisuals('tech','script-one')).bindings,prepared.bindings);assert.equal(calls,1);
+    current.scripts[0].title='Título revisado';
+    await assert.rejects(runner.start('tech',{scriptId:'script-one',assetIds:{42:asset.id}}),/roteiro mudou/);
+    const revised=await runner.prepareVisuals('tech','script-one');assert.notEqual(revised.bindings['42'],asset.id);assert.equal(calls,2);
+    assert.equal(current.scripts[0].crossChecked,true);assert.deepEqual(await runner.list('tech'),[]);
+  }finally{await runner.close();await rm(home,{recursive:true,force:true});}
+});
+
+test('a required real capture is reported as pending without inventing an asset',async()=>{
+  const home=await mkdtemp(join(tmpdir(),'fc-pending-capture-'));
+  const current=state();current.scripts[0].scenes[0].visualBrief='[CAPTURA PENDENTE] Gravação real.';current.scripts[0].crossChecked=false;
+  let executions=0;
+  const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>current,execute:async(args)=>{
+    executions++;const output=args[args.indexOf('--output')+1];await mkdir(output,{recursive:true});await writeFile(join(output,'scene-42.png'),visualPng);
+    return {exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v1',scenes:[{scene_id:42,status:'requires_capture',file:'scene-42.png'}]}),stderr:''};
+  }});
+  try {
+    const result=await runner.prepareVisuals('tech','script-one');
+    assert.equal(result.assets.length,1,'A pending capture still needs an illustrative preview');assert.deepEqual(result.bindings,{});assert.equal(result.pending[0].sceneId,42);
+    assert.equal(result.assets[0].generated?.captureRequired,true);
+    assert.equal(result.previews?.['42'],result.assets[0].id);
+    assert.match(result.pending[0].reason,/gravação real/);assert.equal(current.scripts[0].crossChecked,false);
+    assert.deepEqual((await runner.prepareVisuals('tech','script-one')).previews,result.previews);assert.equal(executions,1,'Pending previews must also be cached');
+    current.scripts[0].crossChecked=true;
+    await assert.rejects(runner.start('tech',{scriptId:'script-one',assetIds:{42:result.assets[0].id}}),/prévia|gravação/i);
+  }finally{await runner.close();await rm(home,{recursive:true,force:true});}
+});
+
+test('invalid renderer paths are rejected before importing any generated file',async()=>{
+  const home=await mkdtemp(join(tmpdir(),'fc-visual-path-'));
+  const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>state(),execute:async()=>({exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v1',scenes:[{scene_id:42,status:'generated',file:'../private.png'}]}),stderr:''})});
+  try {
+    await assert.rejects(runner.prepareVisuals('tech','script-one'),/arquivo visual inválido/);
+    assert.deepEqual(await runner.assets('tech'),[]);
+  }finally{await runner.close();await rm(home,{recursive:true,force:true});}
+});
 function state(): AppState {
   const script: Script = {id:'script-one',channelId:'tech',topicId:'topic-one',title:'Roteiro original',series:'tecnologia',format:'short',hook:'Uma pergunta',crossChecked:true,status:'reviewed',createdAt:date,updatedAt:date,sources:[source(1),source(2)],claims:[{text:'Alegacao citada',status:'cited',sourceUrls:[source(1).url]}],scenes:[{id:42,heading:'Cena',narration:'Texto autoral preservado.',visualBrief:'Diagrama original',durationHintSecs:20}]};
   return {schemaVersion:1,channels:['tech','science'].map(id=>({id,name:id,description:'',niche:'',audience:'',language:'pt-BR',createdAt:date,updatedAt:date})),config:{dryRun:true,telemetry:false,render:{width:640,height:360,fps:30,crf:20,preset:'veryfast',videoCodec:'libx264'},tts:{engine:'kokoro',pythonPath:'synthetic-python',voiceStyles:'C:/synthetic/voices.bin',piperPath:'piper',voiceModel:'C:/synthetic/licensed-voice.onnx',voiceName:'pf_dora'},asr:{enabled:false,model:'',language:'pt',minCoverage:.45}},channelConfigs:{},research:[],scripts:[script],stories:[],monetization:[],receipts:[]};

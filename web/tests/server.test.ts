@@ -79,6 +79,7 @@ test('production files require the correct channel and support bounded byte rang
   const runner: RunnerApi = {
     list: async owner => owner === 'tech' ? [{id:'job-1',channelId:owner,scriptId:'script-1',status:'completed',createdAt:'2026-10-27T12:00:00Z',message:'synthetic fixture',videoAvailable:true}] : [],
     assets:async()=>[],start:async()=>{throw new Error('not used');},upload:async()=>{throw new Error('not used');},
+    prepareVisuals:async()=>{throw new Error('not used');},assetFile:async()=>undefined,
     file:async(owner,job,file)=>owner==='tech'&&job==='job-1'&&file==='video'?{path:mediaPath,contentType:'video/mp4'}:undefined,
     engineStatus:()=>({available:true,message:'synthetic test engine'}),
   };
@@ -93,6 +94,31 @@ test('production files require the correct channel and support bounded byte rang
     assert.equal((await context.call('/api/channels/tech/jobs/job-1/files/private.json')).status,404);
     assert.equal((await context.call('/api/channels/tech','DELETE')).status,409);
   } finally {await context.close();}
+});
+
+test('automatic visual preparation and image previews preserve authentication, CSRF and script ownership',async()=>{
+  let calls=0,previewPath='';
+  const runner:RunnerApi={
+    list:async()=>[],assets:async()=>[],upload:async()=>{throw new Error('not used');},start:async()=>{throw new Error('not used');},file:async()=>undefined,
+    engineStatus:()=>({available:true,message:'Synthetic engine'}),
+    prepareVisuals:async(owner,scriptId)=>{calls++;assert.equal(owner,'tech');return {scriptId,assets:[],bindings:{},pending:[]};},
+    assetFile:async(owner,asset)=>owner==='tech'&&asset==='asset-one'?{path:previewPath,contentType:'image/png'}:undefined,
+  };
+  const context=await fixture({runner});previewPath=join(context.home,'preview.png');await writeFile(previewPath,'synthetic-image');
+  try {
+    await context.app.store.update(state=>{
+      const date='2026-10-28T00:00:00Z';
+      state.channels=['tech','science'].map(id=>({id,name:id,niche:'',audience:'',description:'',language:'pt-BR',createdAt:date,updatedAt:date}));
+      state.scripts.push({id:'script-one',channelId:'tech',topicId:'topic-one',title:'Demo',series:'tecnologia',format:'long',hook:'Pergunta',crossChecked:false,status:'draft',createdAt:date,updatedAt:date,sources:[],claims:[],scenes:[{id:42,heading:'Conceito',narration:'Texto do roteiro.',visualBrief:'Diagrama',durationHintSecs:10}]});
+    });
+    assert.equal((await fetch(context.origin+'/api/channels/tech/assets/asset-one/preview')).status,401);
+    assert.equal((await context.call('/api/channels/tech/visuals/prepare','POST',{scriptId:'script-one'},{'X-CSRF-Token':''})).status,403);
+    assert.equal((await context.call('/api/channels/science/visuals/prepare','POST',{scriptId:'script-one'})).status,400);
+    assert.equal(calls,0);
+    assert.equal((await context.call('/api/channels/tech/visuals/prepare','POST',{scriptId:'script-one'})).status,200);assert.equal(calls,1);
+    assert.equal((await context.call('/api/channels/tech/assets/asset-one/preview')).status,200);
+    assert.equal((await context.call('/api/channels/science/assets/asset-one/preview')).status,404);
+  }finally{await context.close();}
 });
 
 test('social metadata omits secrets, sync keeps unknown revenue null and connected channels cannot be removed',async()=>{

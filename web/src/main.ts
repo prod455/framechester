@@ -1,5 +1,6 @@
 import "./basecoat.css";
 import "./styles.css";
+import { openProduction } from "./production-ui.ts";
 import { commercialVoices, commercialVoiceError } from "../shared/voices.ts";
 import { request, setCsrfToken } from "./api.ts";
 import { hasUnsavedEdits, protectEdits } from "./edit-protection.ts";
@@ -683,11 +684,11 @@ function productionPage(): HTMLElement {
   const assets = scoped(state.assets);
   const startButton = button("Preparar vídeo", () => startProduction(), "primary", "film");
   startButton.disabled = state.engine?.available === false;
-  const jobsBody = jobs.length ? el("div", {}, ...jobs.map(jobCard)) : empty("Sua próxima produção começa com um roteiro", "Selecione um roteiro com fontes conferidas e vincule os recursos visuais de cada cena.", "film", button("Preparar produção", () => startProduction(), "primary", "plus"));
+  const jobsBody = jobs.length ? el("div", {}, ...jobs.map(jobCard)) : empty("Seu roteiro pode virar um vídeo", "Ao preparar a produção, os visuais explicativos são criados e vinculados às cenas.", "film", button("Preparar vídeo", () => startProduction(), "primary", "plus"));
   const assetBody = assets.length
     ? el("div", { className: "panel-body asset-grid" }, ...assets.map((asset) => el("div", { className: "asset-row" }, icon(asset.kind === "video" ? "film" : "folder"), el("div", {}, el("div", { className: "asset-name", title:asset.name }, asset.name), el("div", { className: "asset-caption" }, `${asset.kind === "video" ? "Vídeo" : "Imagem"} · ${number(Math.round(asset.bytes / 1024))} KB · ${asset.license}`)), el("span", { className: "spacer" }), el("span", { className: "badge mono", "data-variant": "outline", title: asset.checksum }, asset.checksum.slice(0, 8)))))
-    : empty("Os recursos visuais ficam neste canal", "Envie imagens ou clipes com licença, origem e condições de uso registradas.", "folder", button("Adicionar recurso", () => uploadAsset(), "secondary", "plus"));
-  return el("div", {className:"section-stack"}, heading("Produção", "Gere o vídeo, confira a qualidade e revise o resultado.", button("Adicionar recurso visual", () => uploadAsset(), "secondary", "plus"), startButton), state.engine?.available === false ? notice(state.engine.message) : null, panel("Fila de produção", `${jobs.length} produções neste canal. A publicação automática está desativada.`, jobsBody), panel("Biblioteca do canal", `${assets.length} recursos visuais. Confira a origem e os direitos de cada arquivo.`, assetBody));
+    : empty("Os visuais são preparados a partir do roteiro", "As imagens explicativas entram aqui automaticamente ao preparar o vídeo. Você também pode adicionar arquivos próprios.", "folder", button("Adicionar arquivo próprio", () => uploadAsset(), "secondary", "plus"));
+  return el("div", {className:"section-stack"}, heading("Produção", "Gere o vídeo, confira a qualidade e revise o resultado.", button("Adicionar arquivo próprio", () => uploadAsset(), "secondary", "plus"), startButton), state.engine?.available === false ? notice(state.engine.message) : null, panel("Fila de produção", `${jobs.length} produções neste canal. A publicação automática está desativada.`, jobsBody), panel("Biblioteca do canal", `${assets.length} recursos visuais. Confira a origem e os direitos de cada arquivo.`, assetBody));
 }
 
 function jobCard(job: WebJob): HTMLElement {
@@ -702,32 +703,23 @@ function jobCard(job: WebJob): HTMLElement {
 }
 
 function startProduction(): void {
-  const scripts = scoped(data!.scripts);
-  const assets = scoped(data!.assets);
-  const { dialog, body } = createDialog("Preparar vídeo", `Canal: ${currentChannel()?.name}. Execução neste computador.`);
-  if (!scripts.length) { body.append(empty("Adicione um roteiro primeiro", "O motor usa o texto autoral e os recursos de cada cena.", "script", button("Ir para roteiros", () => { dialog.close(); go("scripts"); }, "primary", "arrow"))); return; }
-  if (!assets.length) { body.append(empty("Adicione os recursos visuais", "Os recursos precisam pertencer a este canal e ter origem e direitos registrados.", "folder", button("Adicionar recurso", () => { dialog.close(); uploadAsset(); }, "primary", "plus"))); return; }
-  const script = select("scriptId", scripts.map((entry) => [entry.id, entry.title]), activeScriptId && scripts.some((entry) => entry.id === activeScriptId) ? activeScriptId : scripts[0].id);
-  const mapping = el("div", { className: "form-stack" });
-  let bindings: Array<{ id: number; control: HTMLSelectElement }> = [];
-  const selectedScript = () => scripts.find((entry) => entry.id === script.value)!;
-  function updateMapping(): void {
-    bindings = selectedScript().scenes.map((scene) => ({ id: scene.id, control: select(`asset-${scene.id}`, [["", "Selecione um recurso"], ...assets.map((asset): [string, string] => [asset.id, asset.name])], "") }));
-    for (const item of bindings) item.control.required = true;
-    replace(mapping, ...bindings.map((entry) => field(`Cena ${entry.id + 1} · ${selectedScript().scenes.find((scene) => scene.id === entry.id)?.heading}`, entry.control)));
-  }
-  script.addEventListener("change", updateMapping); updateMapping();
-  const asr = input("asr", "", "checkbox"); asr.checked = effectiveConfig().asr.enabled;
-  const subtitles = input("burnSubtitles", "", "checkbox"); subtitles.checked = true;
-  const { form, fields } = formWithSave("Gerar vídeo neste computador", async () => {
-    const selected = selectedScript();
-    if (!selected.crossChecked) throw new Error("Abra o roteiro e registre a conferência e o cruzamento das fontes antes de produzir.");
-    if (new Set(selected.sources.map((source) => source.url)).size < 2) throw new Error("O roteiro precisa de pelo menos duas URLs de fontes distintas.");
-    await request(channelPath("/jobs"), "POST", { scriptId: script.value, assetIds: Object.fromEntries(bindings.map((entry) => [String(entry.id), entry.control.value])), asr: asr.checked, burnSubtitles: subtitles.checked });
-    dialog.close(); await refresh(); toast("Produção adicionada à fila. Acompanhe o andamento aqui.");
-  }, () => dialog.close());
-  fields.append(field("Roteiro autoral", script), el("h3", {}, "Recurso visual de cada cena"), mapping, el("label", { className: "checkbox-field" }, subtitles, "Incluir legendas no vídeo final"), el("label", { className: "checkbox-field" }, asr, "Executar conferência da fala com o modelo ASR local"), notice("Confirme a licença dos arquivos e da voz. A conferência de fontes não substitui revisão editorial; o vídeo produzido ainda pode exigir intervenção humana."));
-  body.append(form);
+  const channel=currentChannel();if(!channel)return;
+  const dialog=openProduction({channel,scripts:scoped(data!.scripts),assets:scoped(data!.assets),config:effectiveConfig(),selectedScriptId:activeScriptId,currentChannelId:()=>channelId,
+    onStarted:async()=>{await refresh();toast("Produção adicionada à fila. Acompanhe o andamento aqui.");},
+    onPrepared:prepared=>{if(data)data.assets=[...data.assets.filter(asset=>asset.channelId!==channel.id),...prepared.assets];},
+    onAdaptScript:script=>openCreativeDraft('script',channel.id,channel.name,{
+      context:{task:'script',values:{title:script.title,researchId:script.researchId,series:script.series,format:script.format,hook:script.hook,scenes:structuredClone(script.scenes),sources:structuredClone(script.sources),claims:structuredClone(script.claims)}},
+      initialBrief:'Crie uma versão explicativa deste roteiro para um vídeo com narração e composições tipográficas geradas localmente. Preserve o assunto, o formato e a duração escolhidos. Reescreva o título, o gancho e as falas que prometem testes, comparações ou resultados ainda não realizados. Não invente resultados, fontes, experiências ou funcionalidades. Use apenas afirmações sustentadas pelas referências fornecidas e explicite o que falta verificar. Nos briefings visuais, peça composições explicativas com texto; não peça gravações, capturas de tela ou CAPTURA PENDENTE. Entregue um novo rascunho para revisão, sem aprovar alegações ou fontes.',
+      applyLabel:'Salvar como novo roteiro',
+      onApply:async fields=>{
+        if(channelId!==channel.id||!('scenes' in fields))throw new Error('O canal mudou. Abra a adaptação novamente neste canal.');
+        const response=await request<Script>('/api/scripts','POST',{channelId:channel.id,...fields,researchId:script.researchId,topicId:`topico-${crypto.randomUUID()}`,claims:fields.claims.map(claim=>({...claim,status:'unverified'})),status:'draft',crossChecked:false});
+        if(channelId===channel.id){activeScriptId=response.id;await refresh();go('scripts');toast('Versão explicativa salva como novo roteiro. O original foi preservado; confira as fontes e as alegações.');}
+      }
+    }),
+    onAddAssets:()=>uploadAsset(),onEditScript:scriptId=>{activeScriptId=scriptId;go("scripts");}
+  });
+  dialog.addEventListener('close',()=>{if(location.hash==='#production')render();});
 }
 
 function uploadAsset(): void {

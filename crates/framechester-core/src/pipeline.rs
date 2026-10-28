@@ -217,10 +217,11 @@ impl Pipeline {
         )?;
         tracker.advance(Stage::Rendered)?;
 
-        let mut technical = self
-            .providers
-            .qa
-            .technical(&render, &self.options.render_profile)?;
+        let mut technical = self.providers.qa.technical_with_timeline(
+            &render,
+            &self.options.render_profile,
+            &timeline,
+        )?;
         if let Some(asr) = self.providers.qa.transcript(&render, &script)? {
             technical.checks.extend(asr.checks);
         }

@@ -28,6 +28,16 @@ Piper voices are now blocked by the production adapter. Legacy Studio voice sett
 
 ## Framechester Studio web dependencies
 
+The local explanatory-visual renderer uses `resvg` **0.49.0** and its locked
+`usvg`/`tiny-skia` dependency graph. Installed crate metadata declares MIT OR
+Apache-2.0 for resvg/usvg and BSD-3-Clause for tiny-skia/tiny-skia-path 0.12.0;
+exact transitive packages are in `Cargo.lock`. These are Rust
+runtime dependencies, without a browser CDN or remote image service. Review
+the complete lockfile and retain applicable notices when distributing a
+binary. System fonts are loaded from the installation; Windows font files
+are not copied into the repository or redistributed by this feature. The
+Docker image uses its existing DejaVu font package and distribution notices.
+
 The Basecoat migration adds `basecoat-css` **1.1.0** (MIT) as a direct UI
 dependency, with `tailwindcss` and `@tailwindcss/vite` **4.3.1** as build-only
 dependencies. Basecoat styles compile into local assets; no component

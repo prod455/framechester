@@ -214,9 +214,12 @@ Detalhes e evidências: [CONSUMO_IA.md](CONSUMO_IA.md).
 ## Produção e configurações por canal
 
 1. Escolha um roteiro do canal e revise as fontes/alegações.
-2. Importe imagens ou vídeos locais. Informe licença, origem e restrições de
-   cada mídia; a entrada web limita cada arquivo a 20 MiB e confere formato.
-3. Associe uma mídia do mesmo canal a cada cena e escolha ASR/legendas.
+2. Clique em **Preparar vídeo**. O motor cria imagens explicativas com o título
+   e um trecho das falas de cada cena, e já as associa ao roteiro. Isso é local
+   e não usa API paga de geração de imagens.
+3. Confira as prévias e escolha ASR/legendas. Arquivos próprios são opcionais;
+   cenas que pedem gravação real continuam pendentes até receberem o clipe ou
+   serem adaptadas no roteiro. Veja [visuais automáticos](VISUAIS_AUTOMATICOS.md).
 4. Inicie o job e acompanhe a fila local. Abra vídeo, legendas, thumbnail,
    descrição, fontes, metadados e relatório ao concluir.
 

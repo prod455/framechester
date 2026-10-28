@@ -69,6 +69,15 @@ enum Commands {
     },
     #[command(about = "executa o pipeline completo em dry-run")]
     Run(RunArgs),
+    #[command(
+        about = "prepara visuais explicativos locais; nao usa API nem substitui capturas reais"
+    )]
+    Visuals {
+        #[arg(long)]
+        input: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
     #[command(about = "roda QA tecnico em um video existente")]
     Qa {
         #[arg(long)]
@@ -284,6 +293,15 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
             json,
         } => trends(&cli.config, limit, &region, json),
         Commands::Run(args) => run_pipeline(&cli.config, args),
+        Commands::Visuals { input, output } => {
+            if std::fs::metadata(&input)?.len() > 1_048_576 {
+                bail!("plano visual excede 1 MB");
+            }
+            let plan = serde_json::from_slice(&std::fs::read(input)?)?;
+            let report = framechester_adapters::editorial_visuals::prepare(&plan, &output)?;
+            println!("{}", serde_json::to_string(&report)?);
+            Ok(0)
+        }
         Commands::Qa {
             video,
             format,

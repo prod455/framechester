@@ -1,0 +1,182 @@
+OBJETIVO: FRAMECHESTER V4 — REFATORAR/IMPLEMENTAR MOTOR OPEN-SOURCE SELF-HOSTED DE PRODUÇÃO DE MÍDIA
+Compatibilidade: Codex CLI e Claude Code. Repositório local do proprietário. NÃO presumir existência de skills instaladas neste agente, de contas, de infraestrutura, de contratos ou de APIs pagas.
+
+FONTE PRINCIPAL DE VERDADE: ler integralmente `docs/PLANO_OPERACIONAL_COMPLETO.md` (ou `PLANO_OPERACIONAL_COMPLETO.md`, procurar), `docs/OPEN_SOURCE_ARCHITECTURE.md`, README e licença, inclusive links oficiais, riscos, restrições e critérios de aceite. Se o plano não estiver no repositório, relatar isso e usar os requisitos deste prompt. Não fingir que leu arquivo ausente.
+
+
+POLÍTICA OPEN-SOURCE OBRIGATÓRIA — FRAMECHESTER V4
+- Nome do repositório/sistema: Framechester; slug sugerido `framechester` (disponibilidade deve ser verificada antes de criar). Não afirmar exclusividade da marca.
+- Este é um repositório PUBLICAMENTE REUTILIZÁVEL, Apache-2.0 (código próprio). Preservar licença de dependências e modelos; ler `LICENSE`, `THIRD_PARTY_NOTICES.md` e `docs/OPEN_SOURCE_ARCHITECTURE.md`.
+- O software público é somente o motor self-hosted. A operação de canais é do usuário. Nenhuma conta, CPF, token, receita real, histórico pessoal, URL privada, mídia protegida ou dado comercial pode ir para commits/CI/issues/releases.
+- Arquitetura de single-operator self-hosted, por configuração local, sem cobrança, assinatura SaaS, portal de cadastro, backend central dos mantenedores nem telemetry opt-out: telemetry OFF por padrão.
+- Criar camada de adaptadores com contratos/traits e testes: TrendSource, FactEvidenceProvider, LlmProvider, TtsEngine, Renderer, AssetProvider, Publisher, MetricsProvider, BackupProvider. Não montar plugins com execução arbitrária em sandbox inexistente. Modelos locais como baseline; plugins remotos opt-in e com credenciais do próprio usuário.
+- Licença Apache-2.0 não se aplica automaticamente a FFmpeg (LGPL/GPL dependendo build), checkpoints TTS, pesos de IA, mídia ou fontes; documentar o build e os direitos antes de distribuir binários. Invocar FFmpeg externo via CLI por default.
+- Gerar CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, GOVERNANCE, THIRD_PARTY_NOTICES, PRIVACY, .env.example, config.example.toml, .gitignore, README EN/PT-BR opcional, matriz de licenças e checklist de release.
+- Proteções CI: cargo fmt/clippy/test/audit quando instalado e licenciado, scripts de licença, secret scan, build limpo em Windows/Linux, teste de instalação sem segredo, e nenhuma chamada real para rede ou APIs pagas no pipeline.
+- Não divulgar screenshots reais das contas; exemplos usam dados totalmente sintéticos e não alegam monetização real. Não publicar vídeo sem autorização do operador.
+- README deve conter status verdadeiro: specification/prototype/pre-alpha, NÃO alegar software já pronto, nem sistema validado por uso real.
+- Instalação deve funcionar offline para funções locais com amostras livres; integração externa deve degradar com erro explícito e nunca forjar informações atuais.
+- Escopo do produto NÃO inclui monetizar software, vender serviços, afiliados ou patrocínios. Apenas monetização oficial da audiência pelo operador independente.
+- Após auditar o repositório existente: atualizar arquivos em lugar, sem apagar código não relacionado; entregar um plano de migração transparente quando mudanças quebram contratos.
+- Antes de release público, exigir aprovação explícita para publicação do repositório, credenciais e qualquer ação em conta real. Nunca assumir consentimento para publicar no GitHub.
+
+MISSÃO:
+Criar uma operação individual de mídia faceless, 1 canal principal no YouTube com 3 séries de tecnologia/IA/ciência, capaz de detectar tendências reais, realizar pesquisa com evidências, escrever roteiros originais, criar storyboard, compor áudio e vídeo de alta qualidade, testar integridade, publicar somente através de meios permitidos, consultar analytics e estimar receita APENAS DA MONETIZAÇÃO OFICIAL DA AUDIÊNCIA. Sem clientes, afiliados, links de venda, patrocínio negociado, produto digital, envio de spam, compra de views ou autopromoção enganosa.
+
+CONTRATO INEGOCIÁVEL DE ORÇAMENTO:
+- Energia já inclusa no aluguel: R$0 incremental de caixa, não inventar tarifa.
+- VPS existente e já pago: R$0 incremental de caixa DESDE QUE capacidade, tráfego e recursos já contratados sejam suficientes; auditar e pedir aprovação antes de expandir.
+- IA já paga: NÃO pressupor que assinatura de chat equivale a API. Descobrir direito programático e quota; se não houver, usar modelo local ou modo de aprovação/exportação, não esconder custo adicional.
+- Computador existente: inventariar; zero compra inicial até existir benchmark. Informações históricas: Windows 11 e Radeon RX6600 NÃO verificadas; confirmar.
+- Único serviço novo autorizado: backup remoto pay-as-you-go B2 ou R2; comparar custos e testar restauração. Sem habilitar assinaturas pagas novas, gerar cobrança de API ou alugar GPU sem autorização específica.
+- Diferenciar custos de caixa adicionais, custos já pagos rateados (informativos), custo de horas próprias e despesas futuras potenciais. Receita R$0 até monetização oficialmente habilitada. Nunca declarar lucro econômico sem valorar tempo, impostos e depreciação.
+
+PRIMEIRO PASSO OBRIGATÓRIO — INVENTÁRIO READ-ONLY E RELATÓRIO:
+1. Ler layout real do repo, git status, arquivos AGENTS.md/CLAUDE.md, arquitetura atual, padrões, testes, dependências e notas.
+2. Local: CPU, RAM, VRAM, disco, SO, versões FFmpeg/ffprobe/Rust, disponibilidade dos encoders libx264/h264_amf/HEVC; medir 1 amostra curta CPU vs AMF, tamanho, VMAF/SSIM se disponível, tempo, utilização de memória, falhas e reprodução. Não declarar suporte funcional apenas porque encoder aparece listado.
+3. VPS: registrar CPU, RAM, armazenamento, tráfego, banco existente, conectividade outbound e problemas; não expor IP, chaves ou credenciais em relatório público.
+4. Fornecedor IA: distinguir plano pessoal de API, limites incluídos e método de autenticação; registrar resultado como VERIFIED/NOT_VERIFIED/NOT_AVAILABLE. Nunca usar browser automation da assinatura pessoal para simular API.
+5. Canais: criar checklist de OAuth YouTube, 2FA, Adsense quando pertinente, privacidade, monetização real e disponibilidade TikTok/Facebook; não acessar sem credenciais explicitamente fornecidas por meio seguro.
+6. Resultado: `docs/00-inventario-e-viabilidade.md`, matriz de evidências com logs/versões/limitações, lista de bloqueios e proposta de compra zero. Se informação inacessível, estado UNKNOWN e não inventar.
+
+PERSPECTIVAS OBRIGATÓRIAS (skills próprias de alto rigor):
+- Business Analyst: requisitos de negócio, receita monetização, condições de elegibilidade, hipóteses de demanda e ROI; separação de dados reais versus cenário.
+- Product Analyst: JTBD, story map, MVP ponta a ponta, eventos, experimentos, analytics, KPIs de watchtime qualificada e aceite.
+- CEO: gate de investimento, risco de perda de receita, priorização de tendências, GO/PIVOT/STOP e expansão somente com provas.
+- Editorial Director: roteiro autêntico, storytelling, identidade por série, storyboard cena a cena, diversidade substantiva e compreensão.
+- QA/SRE/Security: corretude, observabilidade, backups, copyright, token management, automação autorizada, degradação controlada.
+Crie essas skills como SKILL.md locais apenas se não existirem versões adequadas e úteis. Não use palavras de efeito em vez de testes.
+
+SKILLS PÚBLICAS A CONSULTAR/REFERENCIAR (VERIFICAR PÁGINA REAL, VERSÃO, AUTORIA, LICENÇA E MANTER SOURCE LOCK COM COMMIT HASH; NÃO INSTALAR LINKS ARBITRÁRIOS):
+Superpowers (https://github.com/obra/superpowers):
+- https://github.com/obra/superpowers/blob/main/skills/brainstorming/SKILL.md
+- https://github.com/obra/superpowers/blob/main/skills/writing-plans/SKILL.md
+- https://github.com/obra/superpowers/blob/main/skills/test-driven-development/SKILL.md
+- https://github.com/obra/superpowers/blob/main/skills/systematic-debugging/SKILL.md
+- https://github.com/obra/superpowers/blob/main/skills/verification-before-completion/SKILL.md
+- https://github.com/obra/superpowers/blob/main/skills/requesting-code-review/SKILL.md
+- https://github.com/obra/superpowers/blob/main/skills/using-git-worktrees/SKILL.md
+Vercel (https://github.com/vercel-labs/agent-skills):
+- https://github.com/vercel-labs/agent-skills/blob/main/skills/react-best-practices/SKILL.md
+- https://github.com/vercel-labs/agent-skills/blob/main/skills/web-design-guidelines/SKILL.md
+Agent Skills specification: https://agentskills.io/specification
+Anthropic skill creator (referência, somente se necessário): https://github.com/anthropics/skills/tree/main/skills/skill-creator
+Caso instalação/retrieval não esteja disponível, referenciar a fonte, descrever BLOCKED e prosseguir com critérios técnicos conhecidos sem fingir ativação de skill. O fato de haver skills instaladas no ChatGPT não significa que estão disponíveis aqui.
+
+SKILLS LOCAIS A CRIAR COM GATILHO, PASSOS, ARTEFATO, CRITÉRIO DE ACEITE E 2 TESTES DE EXEMPLO:
+1. .agents/skills/business-analyst/SKILL.md
+2. .agents/skills/product-analyst/SKILL.md
+3. .agents/skills/ceo-capital-allocation/SKILL.md
+4. .agents/skills/trend-intelligence/SKILL.md
+5. .agents/skills/editorial-fact-check/SKILL.md
+6. .agents/skills/audiovisual-direction/SKILL.md
+7. .agents/skills/ffmpeg-quality-gate/SKILL.md
+8. .agents/skills/platform-compliance/SKILL.md
+9. .agents/skills/storage-disaster-recovery/SKILL.md
+10. .agents/skills/monetization-finance/SKILL.md
+11. .agents/skills/anti-injection-and-provenance/SKILL.md
+Todas com frontmatter válido, não copiar cegamente repositórios externos e confirmar skills realmente disponíveis no Codex/Claude.
+
+STACK BASE (AJUSTAR SE REPO JÁ USA OPÇÃO MELHOR COM EVIDÊNCIA):
+- Rust stable, Tokio, Axum, Serde, SQLx/PostgreSQL existente, jobs persistidos no banco com lease/heartbeat, sem Redis adicional no MVP.
+- FFmpeg/ffprobe local com baseline libx264, comparar AMD AMF na RX6600 se existente. Matriz formato, duração, qualidade e codecs validada. Blender headless se cenas 3D justificarem complexidade.
+- TTS PT-BR local: Piper voz pt_BR com licença específica rastreável, teste pronúncia, evitar usar vozes sem licença; Chatterbox PT-BR como experimento após licença, benchmark CPU/GPU/VRAM, nunca assumir CUDA/ROCm em RX6600.
+- ASR de QA: whisper.cpp/CPU com fallback e Vulkan somente se benchmark habilitar. Cuidado com soletração, siglas, nomes próprios.
+- UI mínima existente; somente se não houver React/Vite pequeno. Comparar impacto do uso do navegador para screencasts autorizados.
+- restic + B2 S3-compatible ou Cloudflare R2, criptografia, versionamento e teste restore.
+- Não introduzir n8n, cloud GPU, Remotion, várias bases de dados, telemetria invasiva, microsserviços desnecessários, API paga de vídeo ou framework extra por moda.
+
+ARQUITETURA E ESTADOS:
+- VPS agendador Rust + DB + API, worker PC faz pull autenticado por TLS; sem porta residencial exposta.
+- `IDEA -> SOURCED -> APPROVED_TOPIC -> WRITTEN -> FACT_CHECKED -> STORYBOARDED -> ASSET_READY -> NARRATED -> RENDERED -> TECH_QA -> EDITORIAL_QA -> SCHEDULED -> PUBLISHED -> ANALYZED`; caminhos FAILED/BLOCKED/RETRY.
+- Persistir: canais/séries, topic/trend signal, fontes, claims, storyboard, mídia + licença, cache hashes, render manifesto, áudio, publicação plataforma e IDs, snapshots de métrica, custos e backup.
+- Reexecutar depois de falha sem duplicar upload; recuperar job órfão; retries com limites/backoff; não publicar se QA falhar.
+- `dry_run=true` padrão para credenciais e publish; flags para habilitar cada rede separadamente; não postar em contas reais sem opt-in explícito.
+
+ALGORITMO EDITORIAL:
+- RSS Trends Brasil e RSS oficiais permitidos; YouTube Data API conforme quota, métricas internas.
+- Tendências com proveniência, time window real, deduplicação, 0-100 score: aceleração 25, demanda 15, alinhamento 20, originalidade 15, viabilidade visual 10, timing 10, verificação cruzada 5. Penalidade/gate absoluto para claims não verificáveis/copyright/pautas exploratórias.
+- 50% tendências, 30% evergreen, 20% oportunidades emergentes enquanto não houver evidência superior.
+- Notícia com poucas fontes não se torna verdade por estar em tendência. Uma fonte não deve virar roteiro copiado. Site externo é entrada de dados não confiável; impedir prompt injection e SSRF.
+- Comparar versões de hooks em benchmarks editorialmente distintos sem repostagem repetitiva. Registrar data de pesquisa e validade.
+
+PRODUTOS E VOLUMES:
+- 1 canal YouTube com séries IA, tecnologia/engenharia, ciência.
+- MVP: um curto com 65-90s original e um longo 7-12min, cada um com voz pt-BR, cenas, trilha legal, legendas, thumb, descrição, fontes/licenças e QA.
+- 4 semanas pós MVP: 4 longos + 12 curtos, somente se aprovados.
+- Expandir após gates para 8 longos + 24 curtos por 4 semanas. TikTok manual, sob regras; Instagram/Facebook se elegíveis/autorizados. Manter planilha de quais canais/formatos receberam qual arquivo.
+
+QUALITY GATES:
+Técnico: decodificação total, ffprobe, codec/container, dimensões e profiles corretos, fps estável, timestamps, black/freeze detect, clipping/silêncios não intencionais, sincronia ASR legendas, assinatura original. Hardware codec benchmark de 1 segmento longo e 1 curto com métricas.
+Editorial: claims + fontes, direitos de cada mídia/fonte/música/voz/font, informação original e clara, áudio natural, sem claims de testes físicos inexistentes, sem falsa documentação, sem rosto do dono, sem generative AI deception.
+Monetização: verificar políticas atuais do YouTube de inauthentic/mass-produced/reused content; exigir contribuição original substancial por vídeo e série; não apenas trocar frase num template. Implementar bloqueio de materiais quase idênticos.
+Fazer QA humano inicial e logs de evidência antes de automatizar aprovações. Não declarar verificação editorial por métricas objetivas.
+
+CADASTRO PESSOA FÍSICA / PAGAMENTOS (SEM CNPJ):
+- Verificar programa YPP no Studio, 2FA/recursos avançados e elegibilidade; apenas criar/configurar AdSense pelo fluxo autorizado do YouTube Studio quando cabível, como perfil individual se a plataforma oferecer. Não gerar CNPJ/MEI como pré-requisito.
+- Consultar https://support.google.com/youtube/answer/14732067?hl=pt-BR e https://support.google.com/youtube/answer/11602441?hl=pt-BR para verificação de identidade, endereço, impostos, forma de pagamento e mínimo de saque.
+- Guardar somente status não sensível e valores financeiros necessários; nunca inserir CPF, dados bancários ou foto de documento em logs/repositório. Receita estimada, saldo final e pagamento efetivo devem aparecer em colunas distintas.
+- Se o usuário ainda não ingressou no YPP, a receita com anúncios deverá ser R$0 em qualquer dashboard, mesmo que haja views.
+
+PUBLISHING / TERMS:
+- YouTube OAuth/scopes oficiais, channel-level 2FA, publicar em modo privado/teste antes de público, confirmar ID e status. Antes da integração conferir documentação atual https://developers.google.com/youtube/data/reference/rest/v3/videos/insert (documentações antigas e recentes divergem quanto a restrictions unverified apps). Não inventar quota ou status.
+- TikTok não é API de autopublicação pública para aplicativo somente da própria equipe. API exige condições/auditoria, produto próprio de gestão da própria conta é uso inaceitável segundo https://developers.tiktok.com/docs/en/content-sharing-guidelines. Exportar manualmente, nunca burlar via selenium/cookies/contas falsas.
+- Instagram Facebook publicar só se API permitir contas/escopo e após consentimento. Caso contrário export e checklist manual, sem afirmar publicado.
+- Registrar disclosures de conteúdo sintético quando aplicável, inclusive `status.containsSyntheticMedia` quando exigido no YouTube.
+
+FINANCEIRO + BACKUP:
+- Implementar calculadora baseada em `cash_additional`, `already_paid`, `unknown`, `economic`, sem confundí-los.
+- VPS/energia/IA R$0 incremental CONDICIONAL. Qualquer feature que gere gasto não autorizado deve ficar desativada e mostrar estimativa antes de habilitar.
+- B2 (10GB free; US$6,95/TB-mês em out/2026) vs R2 (10GB free; US$0,015/GB-mês), câmbio configurável e IOF/spread separados; guardar uso médio GB-mês, não apenas pico.
+- Priorizar backup do banco, scripts/projetos, fonte/licenças, vídeos finais e assets não reconstituíveis. Excluir cache e intermediários descartáveis. restic criptografado, snapshots incrementais, política de retenção configurável, teste de restauração mensal registrado.
+- Demonstrar cenário R$0 de receita até elegibilidade; estimativas somente após habilitar monetização. Parâmetros editáveis de RPM longo em R$/mil views, views QUALIFICADAS longas e reais, RPM Shorts separado, valores oficiais TikTok/Facebook após aceitação, tributos e horas. Projeções não são receitas.
+- Checar anúncio do YouTube: em out/2026 1000 inscritos + 4000h ou 10M Shorts; para novos criadores a partir de 01/02/2027 1000 inscritos + 8000h ou 20M Shorts, conforme https://blog.youtube/intl/pt-br/news-and-events/novas-oportunidades-e-mudancas-programa-de-parcerias-do-youtube/. Documentar eventuais novas mudanças, não hardcode eterno.
+
+TESTES MÍNIMOS:
+1. Testes unitários do score editorial determinístico, ranking, dedupe, fontes faltando, URLs perigosas e limiares.
+2. Migração PostgreSQL up/down, teste de concorrência em fila, lease e recuperação após kill.
+3. Render baseline com arquivos de teste licenciados; medir libx264 e h264_amf quando disponível, qualidade/frame/duração/hash.
+4. Voz pt-BR gera áudio completo; nome/sigla; testes de queda para fallback. Não afirmar “voz humana” se avaliação for insuficiente.
+5. Testes QA com arquivo preto, congelado, áudio cortado, legenda sobre UI, licença ausente, claim contraditória e template repetitivo.
+6. Fake publish com API mock simular 401/403/429/500 e evitar duplicações; publicação real privada só após autorização.
+7. Restic snapshot + restore para pasta temporária, integridade checksums, documentação.
+8. Financeiro com 0 views/0 aprovação/0 custo adicional, backup free 10GB, 50/150/500GB e RPMs variados; asserções exatas por centavo quando definido.
+9. E2E do roteiro ao artefato final (curto + longo) e analytics simulado sem inventar retorno financeiro.
+10. Security: segredos ausentes em logs, autenticação, CORS/CSRF apropriados, SSRF, paths, upload perigoso, dependências, SAST se disponível.
+
+DOCUMENTAÇÃO/ARQUIVOS ESPERADOS:
+- `docs/00-inventario-e-viabilidade.md`
+- `docs/01-requisitos-BA.md`, `docs/02-produto-PA.md`, `docs/03-decisao-CEO.md`
+- `docs/04-arquitetura-e-ADR.md`, `docs/05-editorial-trends.md`, `docs/06-equipamentos-e-licencas.md`
+- `docs/07-monetizacao-e-formula.md`, `docs/08-backup-restore.md`, `docs/09-platform-apis.md`, `docs/10-threat-model.md`
+- `docs/11-qa-checklist.md`, `docs/12-resultados-benchmark.md`, `docs/13-runbook.md`
+- `docs/skills-sources.lock.md` com URL + versão/commit e status de acesso/licença.
+- `AGENTS.md` para Codex e `CLAUDE.md` para Claude Code, curtos e coerentes, com comandos e regras de segurança; não duplicar integralmente 30 páginas.
+- `config.example.toml` / `.env.example` sem senhas reais, `README.md`, migrations, testes, scripts, worktree/branch adequado e backout documentado.
+- Dashboard com lista de pautas, fila de vídeo, visual do storyboard, QA, publicação, custos, armazenamento e receitas oficiais/estimadas separadas.
+
+PROCESSO DE TRABALHO:
+A. Primeiro mapear o existente, conferir links/versões/licenças, executar inventário sem alteração e baseline de testes.
+B. Elaborar ADR com pelo menos duas alternativas técnicas para gargalos reais (CPU x AMF, Piper x Chatterbox, B2 x R2), métricas e trade-offs, com recomendação.
+C. Especificar plano de fatias verticais e testes correspondentes, usando writing-plans + TDD.
+D. Implementar primeira fatia totalmente funcional (trend manual/fonte -> roteiro com fontes -> storyboard -> TTS -> render -> QA -> MP4), depois storage e publicação, depois analytics. Sem criar dezenas de diretórios vazios fingindo entrega.
+E. Realizar testes automáticos e reprodução real. Auditoria de diffs/commits, documentação e status.
+F. Não executar compras, contratação, backup remoto pago ou postagem pública sem autorização e credenciais fornecidas por meio seguro. Quando os bloqueios impedirem avançar, entregar as partes implementáveis e relatórios verdadeiros, sem inventar sucesso ou pedir informações já disponíveis.
+
+FORMATO DE RELATÓRIO FINAL:
+- Funções entregues e arquivos alterados.
+- Inventário confirmado e incompatibilidades.
+- Tabela por fonte: URL, licença, versão/commit, status.
+- Benchmarks CPU/AMF/voz/transcrição, hardware, comandos usados e logs.
+- Custo extra real/previsão B2/R2 e custo econômico separado.
+- Testes comandados e status PASS/FAIL/SKIPPED/UNKNOWN, evidência de 1 curto + 1 longo.
+- Publicações reais confirmadas ou não; receitas oficialmente monetizadas ou zero.
+- Riscos P0–P3 e rollback.
+- Próxima ação de maior retorno marginal.
+
+NÃO VIOLAR: zero clientes; zero vendas/afiliados; sem rosto; zero cobrança nova não autorizada; sem burlar APIs; sem copiar material de terceiros; sem declarar fatos sem fonte; sem estética massificada; sem gastar esforço em estrutura que não entrega vídeo real.
+
+ENTREGA EXTRA OBRIGATÓRIA OSS:
+- Documentar o procedimento seguro para publicar a primeira versão no GitHub após aprovação, verificar disponibilidade de nome, branch protection, release notes, licença e copyright.
+- Relatar se qualquer arquivo contém segredo, mídia de terceiro sem licença, modelo com licença não confirmada ou fixture pessoal. NÃO criar release nem push público sem autorização.
+- Garantir que usuário consiga instalar e rodar o mesmo fluxo de vídeo sem acesso à conta do mantenedor, sem tokens predefinidos e sem serviços proprietários obrigatórios.

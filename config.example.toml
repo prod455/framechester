@@ -1,0 +1,46 @@
+# Framechester configuration example. Copy to framechester.toml and adjust.
+# Never commit framechester.toml, .env, tokens or real credentials.
+
+[app]
+locale = "pt-BR"
+dry_run = true          # must stay true in this MVP
+telemetry = false       # must stay false; validation rejects true
+workdir = "artifacts"
+
+[render]
+ffmpeg_path = "ffmpeg"
+ffprobe_path = "ffprobe"
+width = 1920
+height = 1080
+fps = 30
+video_codec = "libx264"
+crf = 20
+preset = "veryfast"
+audio_bitrate_kbps = 160
+
+[tts]
+piper_path = "C:/piper/piper.exe"
+voice_model = "C:/piper/pt_BR-faber-medium.onnx"
+voice_name = "pt_BR-faber-medium"
+
+[llm]
+provider = "template"    # "template" (offline) or "anthropic" (paid API)
+model = ""               # required for anthropic; run scripts/verificar_anthropic.py
+api_key_env = "ANTHROPIC_API_KEY"
+base_url = "https://api.anthropic.com"
+
+[publish]
+enabled = false          # real publishing is not implemented
+network = "youtube"
+privacy = "private"
+
+[backup]
+enabled = false
+provider = "b2"
+
+[asr]
+enabled = false         # true or --asr runs local whisper QA
+model = "C:/whisper/models/ggml-base.bin"
+language = "pt"
+min_coverage = 0.45      # below this: needs_human, never silent pass
+

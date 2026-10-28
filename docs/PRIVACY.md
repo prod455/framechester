@@ -1,0 +1,3 @@
+# Privacy and data boundaries
+
+Each self-hosted instance controls its own channel data, content files and tokens. No central Framechester service receives them. Default telemetry: off. Optional third-party providers need explicit configuration and may process supplied content according to their own terms. Platform tokens never appear in examples, logs or bug reports; financial reports remain local. Operators control retention and deletion policies. Remote encrypted backups are optional and keys are kept separate from backed-up payloads. GDPR/LGPD applicability depends on actual collected personal data and operator jurisdiction; no automatic compliance claim.

@@ -1,0 +1,38 @@
+{
+  "id": "exemplo-ffmpeg",
+  "title": "Como comparar encoders de video sem cair em marketing",
+  "series": "tecnologia",
+  "angle": "Separar velocidade, tamanho e qualidade medida",
+  "sources": [
+    {
+      "title": "Documentacao de referencia do encoder",
+      "url": "https://example.com/encoder-docs",
+      "publisher": "Exemplo",
+      "retrieved_at": "2026-10-27",
+      "license": "CC BY 4.0 (exemplo sintetico)"
+    },
+    {
+      "title": "Metodologia de comparacao de qualidade",
+      "url": "https://example.com/quality-method",
+      "publisher": "Exemplo",
+      "retrieved_at": "2026-10-27",
+      "license": "CC BY 4.0 (exemplo sintetico)"
+    }
+  ],
+  "claims": [
+    {
+      "text": "Metricas diferentes respondem perguntas diferentes",
+      "status": "cited",
+      "source_urls": ["https://example.com/quality-method"]
+    }
+  ],
+  "metrics": {
+    "acceleration": 0.6,
+    "demand": 0.7,
+    "alignment": 0.9,
+    "originality": 0.8,
+    "visual_feasibility": 0.8,
+    "timing": 0.7,
+    "cross_check": 0.8
+  }
+}

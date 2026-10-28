@@ -9,7 +9,9 @@ import { LocalStore } from '../server/store.ts';
 import { HttpError } from '../server/auth.ts';
 
 test('the Studio validator accepts exactly what the Rust renderer accepts', async () => {
-  const cases: { brief: string; narration: string; layout: string | null }[] = JSON.parse(await readFile(new URL('../../tests/fixtures/scene-layouts.json', import.meta.url), 'utf8'));
+  const cases: { brief: string; narration: string; layout: string | null }[] = JSON.parse(
+    await readFile(new URL('../../tests/fixtures/scene-layouts.json', import.meta.url), 'utf8'),
+  );
   assert.ok(cases.length >= 10);
   for (const item of cases) {
     if (item.layout) assert.equal(parseSceneLayout(7, item.brief, item.narration), item.layout, item.brief);
@@ -29,13 +31,40 @@ test('every style guide only recommends layouts from the closed catalog and keep
 test('a script with an unrenderable directive is rejected on save, while stored data keeps loading', async () => {
   const home = await mkdtemp(join(tmpdir(), 'fc-layout-store-'));
   try {
-    const store = new LocalStore(home); const now = new Date().toISOString();
-    await store.update(state => { state.channels.push({ id: 'tech', name: 'tech', description: '', niche: '', audience: '', language: 'pt-BR', createdAt: now, updatedAt: now }); });
-    const script = (visualBrief: string) => ({ channelId: 'tech', title: 'Roteiro', format: 'short', hook: 'Gancho', scenes: [{ id: 1, heading: 'Cena', narration: 'Sem número falado.', visualBrief, durationHintSecs: 5 }], sources: [], claims: [] });
-    await assert.rejects(store.saveResource('scripts', script('#numero 90% | dos casos')), (error: unknown) => error instanceof HttpError && error.status === 400 && /Cena 2/.test(error.message));
+    const store = new LocalStore(home);
+    const now = new Date().toISOString();
+    await store.update((state) => {
+      state.channels.push({
+        id: 'tech',
+        name: 'tech',
+        description: '',
+        niche: '',
+        audience: '',
+        language: 'pt-BR',
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+    const script = (visualBrief: string) => ({
+      channelId: 'tech',
+      title: 'Roteiro',
+      format: 'short',
+      hook: 'Gancho',
+      scenes: [{ id: 1, heading: 'Cena', narration: 'Sem número falado.', visualBrief, durationHintSecs: 5 }],
+      sources: [],
+      claims: [],
+    });
+    await assert.rejects(
+      store.saveResource('scripts', script('#numero 90% | dos casos')),
+      (error: unknown) => error instanceof HttpError && error.status === 400 && /Cena 2/.test(error.message),
+    );
     const saved = await store.saveResource('scripts', script('#lista Coletar; Treinar'));
     // A brief that predates the catalog must not brick the state on load.
-    await store.update(state => { state.scripts[0]!.scenes[0]!.visualBrief = '#legado nota antiga'; });
+    await store.update((state) => {
+      state.scripts[0]!.scenes[0]!.visualBrief = '#legado nota antiga';
+    });
     assert.equal((await new LocalStore(home).read()).scripts[0]!.id, saved.id);
-  } finally { await rm(home, { recursive: true, force: true }); }
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
 });

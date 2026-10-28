@@ -43,6 +43,9 @@ pub struct RenderConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct TtsConfig {
+    pub engine: String,
+    pub python_path: String,
+    pub voice_styles: String,
     pub piper_path: String,
     pub voice_model: String,
     pub voice_name: String,
@@ -110,10 +113,32 @@ impl Default for RenderConfig {
 
 impl Default for TtsConfig {
     fn default() -> Self {
+        let container = std::env::var("FRAMECHESTER_CONTAINER").as_deref() == Ok("1")
+            && Path::new("/.dockerenv").is_file();
         Self {
+            engine: "kokoro".into(),
+            python_path: if container {
+                "/opt/tts/bin/python"
+            } else if cfg!(windows) {
+                ".framechester/tts-venv/Scripts/python.exe"
+            } else {
+                ".framechester/tts-venv/bin/python"
+            }
+            .into(),
+            voice_styles: if container {
+                "/models/kokoro/voices-v1.0.bin"
+            } else {
+                "models/kokoro/voices-v1.0.bin"
+            }
+            .into(),
             piper_path: "piper".into(),
-            voice_model: String::new(),
-            voice_name: "pt_BR-faber-medium".into(),
+            voice_model: if container {
+                "/models/kokoro/kokoro-v1.0.onnx"
+            } else {
+                "models/kokoro/kokoro-v1.0.onnx"
+            }
+            .into(),
+            voice_name: "pf_dora".into(),
         }
     }
 }

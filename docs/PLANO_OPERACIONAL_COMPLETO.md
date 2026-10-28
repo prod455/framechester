@@ -172,7 +172,7 @@ Compra proibida no MVP sem relatório: nova GPU, servidor GPU, NAS, licença de 
 
 **Vídeo e áudio:** FFmpeg/ffprobe; `libx264` como baseline qualidade; `h264_amf` se passar testes na RX6600; `libass` para legenda; Blender headless para diagramas 3D quando necessário; SVG/Cairo/Skia/HTML-to-image apenas conforme benchmark; OpenTimelineIO apenas se demonstrar benefício (evitar dependência decorativa).
 
-**TTS:** Piper CPU com voz PT-BR devidamente licenciada e origem rastreável como baseline; Chatterbox PT-BR como opção experimental, somente após verificar licença do checkpoint, VRAM/CPU, qualidade e tempo de geração. Voz clonada exige direitos/consentimento; preferir voz sintética licenciada.
+**TTS:** Kokoro-82M v1.0 local com as vozes PT-BR Dora, Alex e Santa (Apache-2.0). Modelo e estilos são fixados por SHA-256 no [catálogo comercial](VOZES_COMERCIAIS.md). Piper e vozes fora desse catálogo estão bloqueados na operação; novos checkpoints exigem revisão de licença e procedência antes de integração.
 
 **Transcrição/verificação:** whisper.cpp no CPU e avaliar Vulkan sob hardware AMD, sem supor ROCm disponível. Texto do roteiro também alimenta alinhador de frases/palavras, com validação por ASR.
 
@@ -390,7 +390,7 @@ Cada custo carrega `status={já pago, adicional confirmado, adicional potencial,
 
 **Fase 2 — pesquisa + roteiro:** RSS oficial, Trends, YouTube trends, fontes e proveniência, ranking e revisão manual inicial. Saída tópico com 3 fontes, claims citados e storyboard.
 
-**Fase 3 — render:** voz PT-BR baseline Piper, FFmpeg local e legenda; asset library com direitos; um piloto curto e um longo com FFprobe + reprodução manual.
+**Fase 3 — render:** voz PT-BR baseline Kokoro comercial, FFmpeg local e legenda; asset library com direitos; um piloto curto e um longo com FFprobe + reprodução manual.
 
 **Fase 4 — QA + entrega:** gates, prevenção de conteúdo repetitivo, publicador YouTube após consentimento, relatório API/IDs reais, export TikTok manual. Saída 2 vídeos publicados e dados rastreáveis.
 
@@ -426,7 +426,7 @@ Cada custo carrega `status={já pago, adicional confirmado, adicional potencial,
 | Mudança YPP fev/2027 | Studio atualiza requisitos | Atualizar meta para 8k horas / 20M Shorts |
 | Conteúdo repetitivo | Roteiros/telas intercambiáveis | Gate de originalidade e diversidade substantiva |
 | Anúncios indisponíveis | Conteúdo não advertiser-friendly | Revisar e bloquear sem esconder conteúdo problemático |
-| TTS ruim | Erros de pronúncia, entonação | Piper baseline e avaliação com amostras; premium só se autorizado |
+| TTS ruim | Erros de pronúncia, entonação | Kokoro comercial e avaliação com amostras; premium só se autorizado |
 | RX6600 incompatível | Falha AMF/LLM/TTS | Voltar para CPU, benchmark, nunca presumir ROCm |
 | Backup corrompido | Restore falha | Teste de restauração mensal; alertas |
 | VPS insuficiente | CPU/RAM/DB saturado | Reduzir jobs; compra somente com autorização |

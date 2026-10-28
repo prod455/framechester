@@ -20,9 +20,12 @@ preset = "veryfast"
 audio_bitrate_kbps = 160
 
 [tts]
-piper_path = "C:/piper/piper.exe"
-voice_model = "C:/piper/pt_BR-faber-medium.onnx"
-voice_name = "pt_BR-faber-medium"
+engine = "kokoro"
+# npm run voices:setup (Python 3.11–3.13). Linux: .framechester/tts-venv/bin/python
+python_path = ".framechester/tts-venv/Scripts/python.exe"
+voice_model = "models/kokoro/kokoro-v1.0.onnx"
+voice_styles = "models/kokoro/voices-v1.0.bin"
+voice_name = "pf_dora" # pf_dora, pm_alex, pm_santa; Apache-2.0
 
 [llm]
 provider = "template"    # "template" (offline) or "anthropic" (paid API)

@@ -32,6 +32,8 @@ jobs:
           mkdir -p models
       - name: Validate Compose
         run: docker compose config --quiet
+      - name: Fetch only reviewed commercial voice assets
+        run: python3 scripts/setup_voices.py --models-only
       - name: Build local image
         uses: docker/build-push-action@v6
         with:
@@ -47,6 +49,15 @@ jobs:
           docker compose up -d --no-build --wait --wait-timeout 90
           node docker/smoke.mjs
           docker compose exec -T studio node --input-type=module < docker/verify-runtime.mjs
+      - name: Commercial narration with no network and hardened filesystems
+        shell: bash
+        run: |
+          docker run --rm -i --network none --read-only --user 1000:1000 \
+            --cap-drop ALL --security-opt no-new-privileges:true \
+            --memory 3g --cpus 2 --tmpfs /tmp:size=384m,mode=1777 \
+            --volume /data --mount "type=bind,src=$PWD/models,dst=/models,readonly" \
+            --entrypoint /opt/tts/bin/python framechester-studio:ci \
+            < docker/verify-voices.py
       - name: Recreate without deleting the data volume
         shell: bash
         run: |

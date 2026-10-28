@@ -7,9 +7,9 @@ use framechester_adapters::ffmpeg::{inspect_output, AsrOptions, FfmpegQa, Ffmpeg
 use framechester_adapters::fixtures::{
     LocalEvidenceProvider, StaticTrendSource, SyntheticAssetProvider, TemplateLlm,
 };
+use framechester_adapters::kokoro::KokoroTts;
 use framechester_adapters::local_assets::LocalAssetProvider;
 use framechester_adapters::metrics::NullMetrics;
-use framechester_adapters::piper::PiperTts;
 use framechester_adapters::publish::DryRunPublisher;
 use framechester_core::config::Config;
 use framechester_core::domain::{
@@ -411,24 +411,18 @@ fn doctor(path: &Option<PathBuf>, json: bool) -> anyhow::Result<i32> {
     checks.push(check_command("ffmpeg", &["-version"], true));
     checks.push(check_command("ffprobe", &["-version"], true));
     checks.push(check_command("restic", &["version"], false));
-    match PiperTts::new(
-        &config.tts.piper_path,
-        &config.tts.voice_model,
-        &config.tts.voice_name,
-        &config.render.ffprobe_path,
-    ) {
-        Ok(piper) => checks.push(Check {
-            name: "piper".into(),
+    match KokoroTts::new(&config.tts) {
+        Ok(_) => checks.push(Check {
+            name: "commercial_voice".into(),
             ok: true,
             critical: true,
             detail: format!(
-                "{} | modelo {}",
-                piper.piper_path().display(),
-                piper.model_path().display()
+                "Kokoro {} | Apache-2.0 | modelo e vozes conferidos por SHA-256",
+                config.tts.voice_name
             ),
         }),
         Err(error) => checks.push(Check {
-            name: "piper".into(),
+            name: "commercial_voice".into(),
             ok: false,
             critical: true,
             detail: error.to_string(),
@@ -453,7 +447,6 @@ fn doctor(path: &Option<PathBuf>, json: bool) -> anyhow::Result<i32> {
     checks.push(check_env("YOUTUBE_TOKEN_FILE"));
     checks.push(check_env("RESTIC_REPOSITORY"));
     checks.push(check_env("RESTIC_PASSWORD"));
-    checks.push(check_env("FRAMECHESTER_PIPER_VOICE"));
     checks.push(Check {
         name: "telemetry".into(),
         ok: !config.app.telemetry,
@@ -530,8 +523,8 @@ fn config_check(path: &Option<PathBuf>, json: bool) -> anyhow::Result<i32> {
             config.render.crf
         );
         println!(
-            "tts: piper={} voz={}",
-            config.tts.piper_path, config.tts.voice_name
+            "tts: motor={} voz={} (catalogo comercial)",
+            config.tts.engine, config.tts.voice_name
         );
         println!(
             "llm: provider={} model={}",
@@ -673,12 +666,9 @@ fn run_pipeline(path: &Option<PathBuf>, args: RunArgs) -> anyhow::Result<i32> {
         Some(path) => Box::new(LocalAssetProvider::from_json_file(path)?),
         None => Box::new(SyntheticAssetProvider),
     };
-    let tts = PiperTts::new(
-        &config.tts.piper_path,
-        &config.tts.voice_model,
-        &config.tts.voice_name,
-        &config.render.ffprobe_path,
-    )?;
+    let mut tts_config = config.tts.clone();
+    tts_config.voice_name = voice.clone();
+    let tts = KokoroTts::new(&tts_config)?;
     let providers = PipelineProviders {
         trends: Box::new(StaticTrendSource::sample()),
         facts: Box::new(LocalEvidenceProvider),

@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { commercialVoiceError } from '../shared/voices.ts';
 import { randomUUID, createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile, rename, copyFile, realpath, stat } from 'node:fs/promises';
@@ -33,7 +34,7 @@ function qa(checks: unknown): QaStatus {
 function source(value: Script['sources'][number]) { return {title:value.title,url:value.url,publisher:value.publisher,retrieved_at:value.retrievedAt,license:value.license}; }
 function rustConfig(config: WebConfig, channelId: string): string {
   const q = (value: string) => JSON.stringify(value);
-  return `[[channels]]\nid = ${q(channelId)}\n[app]\ndry_run = true\ntelemetry = false\n[render]\nwidth = ${config.render.width}\nheight = ${config.render.height}\nfps = ${config.render.fps}\ncrf = ${config.render.crf}\npreset = ${q(config.render.preset)}\nvideo_codec = "libx264"\n[tts]\npiper_path = ${q(config.tts.piperPath)}\nvoice_model = ${q(config.tts.voiceModel)}\nvoice_name = ${q(config.tts.voiceName)}\n[asr]\nenabled = ${config.asr.enabled}\nmodel = ${q(config.asr.model)}\nlanguage = ${q(config.asr.language)}\nmin_coverage = ${config.asr.minCoverage}\n[publish]\nenabled = false\nprivacy = "private"\n`;
+  return `[[channels]]\nid = ${q(channelId)}\n[app]\ndry_run = true\ntelemetry = false\n[render]\nwidth = ${config.render.width}\nheight = ${config.render.height}\nfps = ${config.render.fps}\ncrf = ${config.render.crf}\npreset = ${q(config.render.preset)}\nvideo_codec = "libx264"\n[tts]\nengine = "kokoro"\npython_path = ${q(config.tts.pythonPath!)}\nvoice_styles = ${q(config.tts.voiceStyles!)}\nvoice_model = ${q(config.tts.voiceModel)}\nvoice_name = ${q(config.tts.voiceName)}\n[asr]\nenabled = ${config.asr.enabled}\nmodel = ${q(config.asr.model)}\nlanguage = ${q(config.asr.language)}\nmin_coverage = ${config.asr.minCoverage}\n[publish]\nenabled = false\nprivacy = "private"\n`;
 }
 function checkScript(script: Script) {
   if(!script.crossChecked) throw new RunnerError('Confirme o cruzamento das fontes no roteiro antes de produzir.');
@@ -117,7 +118,8 @@ export class LocalRunner implements RunnerApi {
     const assets=script.scenes.map(scene=>this.media.find(asset=>asset.id===input.assetIds[String(scene.id)] && asset.channelId===channelId));
     if(assets.some(asset=>!asset)) throw new RunnerError('Mídia ausente ou pertencente a outro canal.');
     const config=structuredClone(Object.hasOwn(state.channelConfigs,channelId) ? state.channelConfigs[channelId] : state.config);
-    if(!config.tts.voiceModel.trim()) throw new RunnerError('Configure um modelo de voz local em Configurações antes de produzir. Escolha uma voz com licença compatível com o uso pretendido, incluindo monetização.');
+    const voiceError=commercialVoiceError(config.tts);
+    if(voiceError) throw new RunnerError(voiceError);
     const job: WebJob={id:randomUUID(),channelId,scriptId:script.id,status:'queued',createdAt:new Date().toISOString(),message:'Aguardando o motor local.',videoAvailable:false};
     this.jobs.unshift(job); await this.persist();
     const work=()=>this.run(job,structuredClone(script),config,assets as StoredAsset[],input);

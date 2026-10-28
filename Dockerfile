@@ -6,6 +6,7 @@ FROM ${RUST_IMAGE} AS engine-build
 WORKDIR /build
 COPY Cargo.toml Cargo.lock ./
 COPY crates/ ./crates/
+COPY scripts/kokoro_tts.py ./scripts/kokoro_tts.py
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     cargo build --locked --release -p framechester-cli
@@ -27,7 +28,7 @@ LABEL org.opencontainers.image.title="Framechester Studio" \
 ENV NODE_ENV=production \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PATH="/opt/piper/bin:${PATH}" \
+    PATH="/opt/tts/bin:${PATH}" \
     FRAMECHESTER_CONTAINER=1 \
     FRAMECHESTER_WEB_PORT=4317 \
     FRAMECHESTER_WEB_HOME=/data/studio \
@@ -37,20 +38,21 @@ ENV NODE_ENV=production \
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates ffmpeg fonts-dejavu-core python3 python3-venv libgomp1 \
     && rm -rf /var/lib/apt/lists/*
-COPY docker/piper-requirements.txt /tmp/piper-requirements.txt
-RUN python3 -m venv /opt/piper \
-    && /opt/piper/bin/pip install --no-cache-dir --only-binary=:all: --require-hashes -r /tmp/piper-requirements.txt \
-    && rm /tmp/piper-requirements.txt \
-    && mkdir -p /data/private /data/studio /models /usr/share/framechester/licenses \
+COPY docker/tts-requirements.txt /tmp/tts-requirements.txt
+RUN python3 -m venv /opt/tts \
+    && /opt/tts/bin/pip install --no-cache-dir --only-binary=:all: --require-hashes -r /tmp/tts-requirements.txt \
+    && rm /tmp/tts-requirements.txt \
+    && mkdir -p /data/private /data/studio /data/tts-tmp /models /usr/share/framechester/licenses \
     && chown -R 1000:1000 /data \
-    && chmod 700 /data /data/private /data/studio \
-    && /opt/piper/bin/pip freeze > /usr/share/framechester/licenses/python-packages.txt \
+    && chmod 700 /data /data/private /data/studio /data/tts-tmp \
+    && /opt/tts/bin/pip freeze > /usr/share/framechester/licenses/python-packages.txt \
     && dpkg-query -W > /usr/share/framechester/licenses/debian-packages.txt
 WORKDIR /app
 COPY --from=engine-build /build/target/release/framechester /usr/local/bin/framechester
 COPY --from=web-build /build/web/dist/ ./web/dist/
 COPY --from=web-build /build/web/runtime/server/ ./web/server/
 COPY LICENSE THIRD_PARTY_NOTICES.md docker/THIRD_PARTY.md /usr/share/framechester/licenses/
+COPY docker/licenses/ /usr/share/framechester/licenses/
 COPY docker/healthcheck.mjs ./docker/healthcheck.mjs
 USER 1000:1000
 EXPOSE 4317

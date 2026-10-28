@@ -39,7 +39,7 @@ class DockerDeliveryTests(unittest.TestCase):
         self.assertNotIn('COPY . ', dockerfile)
         self.assertNotIn('ARG ANTHROPIC', dockerfile)
         self.assertNotIn('download_voices', dockerfile)
-        self.assertIn('piper-requirements.txt', dockerfile)
+        self.assertIn('tts-requirements.txt', dockerfile)
 
     def test_compose_limits_exposure_and_preserves_data_separately_from_image(self):
         compose = (ROOT / 'compose.yaml').read_text(encoding='utf-8')
@@ -53,9 +53,9 @@ class DockerDeliveryTests(unittest.TestCase):
                           'ANTHROPIC_API_KEY:', 'OPENAI_API_KEY:']:
             self.assertNotIn(forbidden, compose)
 
-    def test_piper_requirements_pin_all_packages_with_integrity_hashes(self):
-        requirements = (ROOT / 'docker' / 'piper-requirements.txt').read_text(encoding='utf-8')
-        self.assertIn('piper-tts==1.8.0', requirements)
+    def test_commercial_narrator_requirements_pin_all_packages_with_integrity_hashes(self):
+        requirements = (ROOT / 'docker' / 'tts-requirements.txt').read_text(encoding='utf-8')
+        self.assertIn('kokoro-onnx==0.6.1', requirements)
         self.assertIn('--hash=sha256:', requirements)
         self.assertNotIn('>=', requirements)
         self.assertIn('onnxruntime==', requirements)

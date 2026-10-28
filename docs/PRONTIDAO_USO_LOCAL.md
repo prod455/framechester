@@ -1,5 +1,7 @@
 # Prontidão para uso local
 
+> Registro do piloto/infraestrutura anterior à troca de narrador. A operação atual usa somente o [catálogo comercial Kokoro](VOZES_COMERCIAIS.md); Piper está bloqueado e seus resultados abaixo permanecem evidência histórica.
+
 Revisão de **28/10/2026**, Windows x86_64, Node 22.23.4. Foram aplicadas
 `qa-test-strategy`, `ux-operator-workflow`, `dx-maintenance`,
 `framechester-teams`, `ffmpeg-quality-gate` e as skills de marketing descritas

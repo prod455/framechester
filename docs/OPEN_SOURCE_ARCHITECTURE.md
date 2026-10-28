@@ -4,7 +4,7 @@ Operator update (2026-10-27): multiple channels under one local operator replace
 
 ## Deployment topology
 
-1. Local worker (MVP): Rust CLI + FFmpeg external binary + Piper TTS; generates script, narration, render and QA. No VPS required (`NOT_REQUIRED` decision).
+1. Local worker (MVP): Rust CLI + FFmpeg external binary + Kokoro TTS (reviewed commercial PT-BR catalogue; see VOZES_COMERCIAIS.md); generates script, narration, render and QA. No VPS required (`NOT_REQUIRED` decision).
 2. Future optional VPS: scheduler, PostgreSQL, dashboard and authenticated worker queue, only if multi-job orchestration is needed.
 3. Object storage: encrypted backup with restic using S3-compatible provider; endpoint/keys belong to operator (opt-in, not enabled by default).
 4. Platform adapters: official APIs when permitted. The current publisher is dry-run only; manual/export workflow until a real adapter is authorized and implemented.

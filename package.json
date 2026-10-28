@@ -4,6 +4,8 @@
   "type": "module",
   "engines": { "node": ">=22.12.0" },
   "scripts": {
+    "voices:setup": "node scripts/voices.mjs",
+    "voices:models": "node scripts/voices.mjs --models-only",
     "setup": "node scripts/infra.mjs setup",
     "start": "node scripts/infra.mjs start",
     "dev": "node scripts/infra.mjs dev",

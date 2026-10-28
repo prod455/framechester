@@ -3,6 +3,7 @@ pub mod authored_script;
 pub mod backup;
 pub mod ffmpeg;
 pub mod fixtures;
+pub mod kokoro;
 pub mod local_assets;
 pub mod metrics;
 pub mod piper;

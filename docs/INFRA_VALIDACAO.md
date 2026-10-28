@@ -1,5 +1,7 @@
 # Validação da infraestrutura — 28/10/2026
 
+> Registro do piloto/infraestrutura anterior à troca de narrador. A operação atual usa somente o [catálogo comercial Kokoro](VOZES_COMERCIAIS.md); Piper está bloqueado e seus resultados abaixo permanecem evidência histórica.
+
 Implementação e testes no Windows, com Docker Desktop recém-instalado pelo
 operador. A validação final utilizou Docker Engine 29.9.2 e Compose 5.6.1.
 Não foram utilizadas credenciais reais nem chamadas pagas ou publicação.

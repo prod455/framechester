@@ -20,8 +20,8 @@ impl PiperTts {
         voice_name: &str,
         ffprobe_path: &str,
     ) -> Result<Self> {
-        let piper = resolve_piper(piper_path)?;
         let model = resolve_model(voice_model)?;
+        let piper = resolve_piper(piper_path)?;
         Ok(Self {
             piper,
             model,
@@ -97,24 +97,9 @@ fn resolve_piper(configured: &str) -> Result<PathBuf> {
     ))
 }
 
-fn resolve_model(configured: &str) -> Result<PathBuf> {
-    let mut candidates = Vec::new();
-    if !configured.trim().is_empty() {
-        candidates.push(PathBuf::from(configured));
-    }
-    if let Ok(from_env) = std::env::var("FRAMECHESTER_PIPER_VOICE") {
-        if !from_env.trim().is_empty() {
-            candidates.push(PathBuf::from(from_env));
-        }
-    }
-    candidates.push(PathBuf::from("C:/piper/pt_BR-faber-medium.onnx"));
-    for candidate in candidates {
-        if candidate.is_file() {
-            return Ok(candidate);
-        }
-    }
-    Err(FramechesterError::Unavailable(
-        "modelo de voz PT-BR nao encontrado; ajuste tts.voice_model".into(),
+fn resolve_model(_configured: &str) -> Result<PathBuf> {
+    Err(FramechesterError::InvalidInput(
+        "nenhuma voz Piper possui aprovacao comercial neste catalogo; use Kokoro PT-BR".into(),
     ))
 }
 
@@ -173,7 +158,7 @@ impl TtsEngine for PiperTts {
     fn info(&self) -> AdapterInfo {
         AdapterInfo {
             name: "piper-tts".into(),
-            license: "Piper MIT; voz faber dataset CC0".into(),
+            license: "Piper legado; modelos bloqueados por falta de aprovacao comercial".into(),
             network: false,
             unit_cost: "R$ 0,00".into(),
             secrets: Vec::new(),
@@ -279,9 +264,23 @@ mod tests {
     }
 
     #[test]
-    fn resolves_default_model_when_present() {
-        if Path::new("C:/piper/pt_BR-faber-medium.onnx").is_file() {
-            assert!(resolve_model("").is_ok());
-        }
+    fn never_falls_back_to_the_pilot_voice() {
+        assert!(resolve_model("").is_err());
+    }
+
+    #[test]
+    fn unreviewed_piper_models_are_blocked_even_when_renamed() {
+        let directory = tempfile::tempdir().unwrap();
+        let model = directory.path().join("commercial.onnx");
+        std::fs::write(&model, b"synthetic model without commercial evidence").unwrap();
+        assert!(PiperTts::new(
+            "synthetic-piper",
+            model.to_str().unwrap(),
+            "approved",
+            "ffprobe"
+        )
+        .unwrap_err()
+        .to_string()
+        .contains("comercial"));
     }
 }

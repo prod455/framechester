@@ -124,15 +124,26 @@ as contas: ciphertext DPAPI não é portátil para o cofre Linux.
 ## Voz, mídia e ferramentas
 
 A imagem inclui Node, motor Rust compilado, FFmpeg/ffprobe, fontes DejaVu e
-Piper 1.8.0. Não inclui pesos de voz, modelos ASR, mídias do operador ou seus
+Kokoro ONNX 0.6.1. Não inclui pesos de voz, modelos ASR, mídias do operador ou seus
 prompts. Os pacotes Python têm versões e hashes fixados; Node/Cargo usam lockfiles.
 
-Coloque a voz autorizada e seu arquivo de configuração no diretório de modelos
-do host. Dentro do Studio Docker, use o executável `/opt/piper/bin/piper` e o
-caminho `/models/nome-da-voz.onnx`. O arquivo `.onnx.json` correspondente deve
-estar junto. Caminhos `C:\...` do perfil nativo não funcionam dentro do contêiner.
-Escolha uma voz com permissões compatíveis; a imagem não resolve a pendência
-comercial da voz Faber usada no piloto.
+Antes da primeira produção, execute no host:
+
+```powershell
+npm run voices:models
+npm run docker:up
+```
+
+O primeiro comando baixa somente o modelo e o arquivo de vozes do catálogo
+comercial, confere SHA-256 e mantém avisos de licença em `models/kokoro/`.
+Os arquivos ficam no bind mount `/models`, fora da imagem. No Studio Docker,
+o padrão é `/opt/tts/bin/python`, `/models/kokoro/kokoro-v1.0.onnx` e
+`/models/kokoro/voices-v1.0.bin`. Escolha Dora, Alex ou Santa. Caminhos `C:\...`
+do perfil nativo não funcionam dentro do contêiner.
+
+Piper e as vozes do piloto estão bloqueados. A instalação usa somente o
+[catálogo comercial verificado](VOZES_COMERCIAIS.md); o motor recusa outros
+arquivos mesmo quando renomeados.
 
 ASR/Whisper e GPU não são incluídos nem habilitados por presunção. Ative ASR
 somente com o executável/modelo apropriados disponíveis. Ollama dentro do
@@ -140,7 +151,7 @@ contêiner não aponta para o serviço do Windows: o conector local atual usa
 `127.0.0.1` e exige comprovação de execução local. Para o assistente Docker desta
 entrega, use as integrações OpenAI/Anthropic ou os editores manuais.
 
-Os componentes têm licenças próprias, incluindo Piper GPL-3.0-or-later.
+Os componentes têm licenças próprias, incluindo eSpeak NG/phonemizer GPL-3.0-or-later e Kokoro Apache-2.0.
 [Avisos da imagem](../docker/THIRD_PARTY.md) distinguem essas ferramentas do
 código Apache-2.0 do projeto e dos pesos de voz não distribuídos.
 

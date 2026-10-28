@@ -20,12 +20,12 @@ Framechester ajuda um criador independente a descobrir assuntos, verificar fonte
 - Node.js 22.12+ e npm para o Studio web
 - Rust 1.85+ (testado com 1.99.1)
 - FFmpeg/ffprobe no `PATH` (testado com 9.0.1 full build)
-- Piper + voz PT-BR, por exemplo `C:/piper/piper.exe` e `C:/piper/pt_BR-faber-medium.onnx`
+- Python 3.11–3.13 + Kokoro PT-BR: `npm run voices:setup` (runtime e modelos comerciais fixados)
 - Opcional: restic para backup/restore
 - Opcional: whisper/FFmpeg com modelo para QA ASR (`--asr`)
 - Opcional: chave Anthropic para o adaptador de LLM pago
 
-Antes de monetizar, escolha voz/modelo com cadeia de licencas que permita uso comercial. Os caminhos Faber dos exemplos e pilotos sao referencias de instalacao/teste; essa voz tem pendencia comercial documentada nos [avisos de terceiros](THIRD_PARTY_NOTICES.md). A instalacao nova do Studio exige selecionar explicitamente um arquivo de modelo em Configuracoes.
+A narração usa somente Dora, Alex e Santa, vozes brasileiras do Kokoro-82M v1.0 sob Apache-2.0. O motor confere os hashes do modelo e das vozes antes de narrar. Piper e vozes fora do catálogo ficam bloqueados; configurações antigas migram para Dora. Veja [vozes comerciais](docs/VOZES_COMERCIAIS.md).
 
 ## Studio web local
 
@@ -33,6 +33,7 @@ Na raiz do repositorio:
 
 ```powershell
 npm run setup
+npm run voices:setup
 npm start
 ```
 
@@ -44,6 +45,7 @@ Com Docker Desktop/Engine e Compose disponiveis, a instalacao das ferramentas
 do motor fica dentro da imagem:
 
 ```powershell
+npm run voices:models
 npm run docker:up
 ```
 
@@ -122,7 +124,7 @@ framechester doctor
 
 | Comando | O que faz |
 |---|---|
-| `doctor` | Checa FFmpeg, ffprobe, restic, Piper/modelo, variaveis de ambiente, telemetria e dry-run |
+| `doctor` | Checa FFmpeg, ffprobe, restic, Kokoro/modelos comerciais, variaveis de ambiente, telemetria e dry-run |
 | `config-check` | Valida `framechester.toml` e mostra os valores efetivos |
 | `trends` | Lista e pontua topicos do fixture local, com bloqueios editoriais |
 | `run` | Pipeline completo: roteiro, TTS, timeline, render, QA e dry-run publish |
@@ -139,7 +141,7 @@ Flags uteis em `run`: `--topic arquivo.json`, `--format short|long`, `--max-scen
 ## Arquitetura
 
 - `crates/framechester-core`: dominio, estagios, portas (traits), config, seguranca, editorial, financeiro, QA e pipeline.
-- `crates/framechester-adapters`: fixtures offline, TemplateLlm, AnthropicLlm, PiperTts, renderer/QA FFmpeg + ASR whisper, dry-run publisher, metricas e restic.
+- `crates/framechester-adapters`: fixtures offline, TemplateLlm, AnthropicLlm, KokoroTts, renderer/QA FFmpeg + ASR whisper, dry-run publisher, metricas e restic.
 - `crates/framechester-cli`: comandos `doctor`, `config-check`, `trends`, `run`, `qa`, `report`, `backup-check`, `backup`, `restore`, `finance`.
 - `web/`: frontend TypeScript/Vite e backend Node.js local, autenticacao, editores, configuracao por canal, cofre e integracao com o motor Rust.
 - `scripts/`: verificadores Python para Anthropic, YouTube OAuth e backup restic.

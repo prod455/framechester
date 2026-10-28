@@ -6,7 +6,8 @@
 | libx264 | inside FFmpeg build | H.264 CPU encode | GPL-2.0+ (because of x264) | Same as FFmpeg build |
 | h264_amf | inside FFmpeg build | AMD GPU encode (preview/candidate) | Follows FFmpeg build; runtime driver terms apply | Do not bundle |
 | libvmaf | inside FFmpeg build | quality measurement | BSD-2-Clause + patent considerations | Same as FFmpeg build |
-| Piper | local CLI in `C:/piper` | offline PT-BR TTS | Piper MIT | No binary bundled |
+| Kokoro-82M v1.0 | hexgrad/Kokoro-82M; ONNX export model-files-v1.1 | Dora, Alex and Santa PT-BR narration | Apache-2.0; pinned model and voice hashes in [commercial voice register](docs/VOZES_COMERCIAIS.md) | Downloaded separately; licence and attribution accompany local files |
+| kokoro-onnx | 0.6.1 | Local inference wrapper | MIT; notice in docker/licenses | Runtime bundled in local Docker build |
 | `pt_BR-faber-medium.onnx` | `rhasspy/piper-voices` `pt/pt_BR/faber/medium`; 63,201,294 B; SHA-256 `858555E3A064209C57088FE6BD70C4C3DC54D03EAA00C45D5ECAF43A33F95AA7` | Local pilot voice | Faber dataset CC0, but its Lessac checkpoint ancestry has research-only source materials. Commercial authorization of this ONNX is not established; see evidence below. | Not bundled; do not treat as commercially cleared |
 | `pt_BR-faber-medium.onnx.json` | same Piper voice directory | voice config | Same as voice model | Not bundled |
 | whisper.cpp + `ggml-base.bin` | local `C:/whisper`; 147,951,465 B; SHA-256 `60ED5BC3DD14EEA856493D334349B405782DDCAF0028D4B5DF4088345FBA2EFE` | optional PT-BR ASR QA | whisper.cpp MIT; OpenAI Whisper base weights MIT | Not bundled |
@@ -23,7 +24,7 @@ Primary sources checked on **2026-10-28**: the [Faber medium model card](https:/
 
 This establishes an unresolved licensing chain, not an automatic legal conclusion that the dataset's terms attach to every downstream weight or generated sound. The repository-wide MIT label and the final dataset's CC0 declaration do not resolve authorization for this specific ONNX. Obtain clarification for the weights/checkpoint chain or select a voice whose commercial permissions are documented before monetizing. No request for permission was sent to any third party.
 
-New web profiles leave the voice model unselected and require an explicit local model before production; existing operator configurations are preserved. The local pilot and technical QA do not certify commercial voice rights.
+Piper voices are now blocked by the production adapter. Legacy Studio voice settings migrate to Kokoro Dora while retaining channel identity and render settings. Only the reviewed Kokoro model, voice bundle and PT-BR voice IDs are accepted; see [VOZES_COMERCIAIS.md](docs/VOZES_COMERCIAIS.md). The old pilot remains historical technical evidence, not commercial approval.
 
 ## Framechester Studio web dependencies
 

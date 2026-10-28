@@ -12,16 +12,14 @@ as correções de QA/UX/DX e os limites ainda existentes para monetização.
 ## Instalar e iniciar
 
 Requisitos: Node.js **22.12 ou superior**, npm, toolchain Rust, FFmpeg/ffprobe
-e Piper com um modelo de voz local autorizado. ASR exige também o modelo e o
-suporte local correspondente. O projeto não baixa automaticamente vozes,
-modelos ou mídias quando o Studio é iniciado.
+e Python 3.11–3.13 para o Kokoro local. ASR exige seu modelo e suporte local.
+Execute `npm run voices:setup` para instalar o narrador e baixar os arquivos
+fixados. O Studio não baixa modelos quando é iniciado.
 
-Escolha explicitamente o modelo de voz em **Configurações** antes de produzir.
-A instalação nova não pré-seleciona um arquivo de voz. Os nomes/caminhos de
-modelos usados nos exemplos de CLI e nos pilotos não comprovam licença
-comercial: a cadeia do modelo Faber de exemplo tem pendência de uso comercial.
-Antes de monetizar, confira as permissões da voz, dos pesos e dos dados/modelos
-de origem, conforme [os avisos de terceiros](../THIRD_PARTY_NOTICES.md).
+Somente Dora, Alex e Santa (Kokoro-82M v1.0, Apache-2.0) podem narrar.
+Configurações antigas do Piper migram para Dora; modelos e vozes fora do
+catálogo são bloqueados por nome e por SHA-256 antes da síntese.
+Veja [licenças, arquivos e instalação](VOZES_COMERCIAIS.md).
 
 Na raiz do repositório:
 
@@ -29,6 +27,7 @@ Na raiz do repositório:
 npm --prefix web ci
 npm --prefix web run engine:build
 npm --prefix web run build
+npm run voices:setup
 npm --prefix web start
 ```
 
@@ -60,7 +59,7 @@ vários usuários.
    protege o Studio e é independente das senhas das redes sociais.
 2. Cadastre um canal com identificador local, nome, nicho, público e idioma.
    Selecione o canal antes de trabalhar com conteúdo, contas e resultados.
-3. Abra **Configurações** e confira os caminhos do Piper, do modelo de voz e,
+3. Abra **Configurações** e confira os caminhos do Python do Kokoro, do modelo, do arquivo de vozes e,
    se utilizado, do ASR. Ajuste resolução, FPS, CRF e preset para o computador.
 4. Produza um trabalho de teste com roteiro e mídia próprios, depois confira
    o vídeo e os resultados de QA no painel de produção.
@@ -234,7 +233,7 @@ Rust com roteiro e manifesto locais. Ele **não reescreve** o arquivo de
 configuração usado manualmente na CLI.
 
 Os ajustes cobrem render H.264/libx264, dimensões, FPS, CRF/preset, voz/modelo
-Piper e ASR. `short` orienta as dimensões para vertical; `long`, para horizontal.
+Kokoro e ASR. `short` orienta as dimensões para vertical; `long`, para horizontal.
 `dryRun=true` e `telemetry=false` permanecem obrigatórios. O backend verifica
 integridade das mídias e o motor executa QA técnico/editorial; metadados de
 licença preenchidos não comprovam autorização jurídica.
@@ -296,7 +295,7 @@ sendo `build` seguido de `start` na porta 4317.
 | Sintoma | Próxima verificação |
 |---|---|
 | Motor indisponível | Execute `npm --prefix web run engine:build`; no Windows, encerre jobs/processos anteriores antes de substituir o executável |
-| Piper ou modelo ausente | Confira os caminhos em Configurações e a instalação/licença do modelo local |
+| Kokoro/modelos ausentes ou hash divergente | Execute `npm run voices:setup` e confira os caminhos em Configurações; modelos fora do catálogo ficam bloqueados |
 | Sessão expirada ou CSRF inválido | Reabra a tela de acesso e faça login; reinício do backend invalida a sessão anterior |
 | Host/Origin recusado | Use a URL local da instância; no modo Vite, inicie por `run dev` |
 | Consulta social recusada | Confira identidade esperada, conexão, validade e escopos conforme o guia de redes |

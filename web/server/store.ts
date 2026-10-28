@@ -64,7 +64,8 @@ function source(value: unknown): Source {
   return { title: text(item.title, 'source.title', 500, true), url, publisher: text(item.publisher, 'source.publisher', 300, true), retrievedAt: text(item.retrievedAt, 'source.retrievedAt', 80, true), license: text(item.license, 'source.license', 500, true) };
 }
 export function defaultConfig(): WebConfig {
-  return { dryRun: true, telemetry: false, render: { width: 1080, height: 1920, fps: 30, crf: 20, preset: 'veryfast', videoCodec: 'libx264' }, tts: { piperPath: process.platform === 'win32' ? 'C:/piper/piper.exe' : 'piper', voiceModel: '', voiceName: 'voz-local' }, asr: { enabled: false, model: process.platform === 'win32' ? 'C:/whisper/models/ggml-base.bin' : '', language: 'pt', minCoverage: 0.45 } };
+  const container=process.env.FRAMECHESTER_CONTAINER==='1';
+  return { dryRun: true, telemetry: false, render: { width: 1080, height: 1920, fps: 30, crf: 20, preset: 'veryfast', videoCodec: 'libx264' }, tts: { engine:'kokoro', pythonPath:container?'/opt/tts/bin/python':process.platform==='win32'?'.framechester/tts-venv/Scripts/python.exe':'.framechester/tts-venv/bin/python', voiceStyles:container?'/models/kokoro/voices-v1.0.bin':'models/kokoro/voices-v1.0.bin', piperPath:'piper', voiceModel:container?'/models/kokoro/kokoro-v1.0.onnx':'models/kokoro/kokoro-v1.0.onnx', voiceName:'pf_dora' }, asr: { enabled: false, model: process.platform === 'win32' ? 'C:/whisper/models/ggml-base.bin' : '', language: 'pt', minCoverage: 0.45 } };
 }
 export function normalizeConfig(value: unknown, previous = defaultConfig()): WebConfig {
   const item = object(value); keys(item, ['dryRun', 'telemetry', 'render', 'tts', 'asr']);
@@ -72,12 +73,13 @@ export function normalizeConfig(value: unknown, previous = defaultConfig()): Web
   const render = { ...previous.render, ...object(item.render ?? {}) };
   const tts = { ...previous.tts, ...object(item.tts ?? {}) };
   const asr = { ...previous.asr, ...object(item.asr ?? {}) };
-  keys(render, ['width', 'height', 'fps', 'crf', 'preset', 'videoCodec']); keys(tts, ['piperPath', 'voiceModel', 'voiceName']); keys(asr, ['enabled', 'model', 'language', 'minCoverage']);
+  keys(render, ['width', 'height', 'fps', 'crf', 'preset', 'videoCodec']); keys(tts, ['piperPath', 'voiceModel', 'voiceName', 'engine', 'pythonPath', 'voiceStyles']); keys(asr, ['enabled', 'model', 'language', 'minCoverage']);
+  if(!['kokoro','piper'].includes(String(tts.engine))) throw new HttpError(400,'Motor de voz inválido.');
   const width = number(render.width, 'width', 2, 7680, true); const height = number(render.height, 'height', 2, 7680, true);
   if (width % 2 || height % 2 || render.videoCodec !== 'libx264' || !['ultrafast','superfast','veryfast','faster','fast','medium','slow','slower','veryslow'].includes(String(render.preset))) throw new HttpError(400, 'Perfil de renderização inválido.');
   if (typeof asr.enabled !== 'boolean') throw new HttpError(400, 'asr.enabled deve ser booleano.');
   const localPath = (path: unknown, name: string) => { const result = text(path, name, 1200); if (/[\r\n]/.test(result) || /^(?:https?|ftp|s3):/i.test(result)) throw new HttpError(400, 'Use um caminho local.'); return result; };
-  return { dryRun: true, telemetry: false, render: { width, height, fps: number(render.fps, 'fps', 1, 120, true), crf: number(render.crf, 'crf', 0, 51, true), preset: String(render.preset), videoCodec: 'libx264' }, tts: { piperPath: localPath(tts.piperPath, 'piperPath'), voiceModel: localPath(tts.voiceModel, 'voiceModel'), voiceName: text(tts.voiceName, 'voiceName', 150, true) }, asr: { enabled: asr.enabled, model: localPath(asr.model, 'asr.model'), language: text(asr.language, 'asr.language', 20, true), minCoverage: number(asr.minCoverage, 'minCoverage', 0, 1) } };
+  return { dryRun: true, telemetry: false, render: { width, height, fps: number(render.fps, 'fps', 1, 120, true), crf: number(render.crf, 'crf', 0, 51, true), preset: String(render.preset), videoCodec: 'libx264' }, tts: { engine:tts.engine as 'kokoro'|'piper',pythonPath:localPath(tts.pythonPath,'pythonPath'),voiceStyles:localPath(tts.voiceStyles,'voiceStyles'),piperPath: localPath(tts.piperPath, 'piperPath'), voiceModel: localPath(tts.voiceModel, 'voiceModel'), voiceName: text(tts.voiceName, 'voiceName', 150, true) }, asr: { enabled: asr.enabled, model: localPath(asr.model, 'asr.model'), language: text(asr.language, 'asr.language', 20, true), minCoverage: number(asr.minCoverage, 'minCoverage', 0, 1) } };
 }
 function normalizeChannel(value: unknown, previous?: Channel): Channel {
   const item = object(value); keys(item, ['id','name','description','niche','audience','language','youtubeChannelId','createdAt','updatedAt']);
@@ -154,7 +156,16 @@ export class LocalStore {
   constructor(readonly home: string) { this.ready = this.load(); }
   private async load(): Promise<void> {
     await mkdir(this.home, { recursive: true, mode: 0o700 });
-    try { this.state = JSON.parse(await readFile(join(this.home, 'state.json'), 'utf8')) as AppState; validateState(this.state); }
+    try {
+      this.state = JSON.parse(await readFile(join(this.home, 'state.json'), 'utf8')) as AppState;
+      // Old Piper settings are replaced as a unit; render settings and channel
+      // identity stay intact. Persistence uses the existing atomic update path.
+      for (const config of [this.state.config, ...Object.values(this.state.channelConfigs ?? {})]) {
+        if (config?.tts && (config.tts.engine === undefined || config.tts.engine === 'piper'))
+          config.tts = defaultConfig().tts;
+      }
+      validateState(this.state);
+    }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw new HttpError(503, 'O armazenamento local está inválido; preserve o arquivo para recuperação.'); }
   }
   async read(): Promise<AppState> { await this.ready; return structuredClone(this.state); }

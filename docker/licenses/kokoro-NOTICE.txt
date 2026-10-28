@@ -1,0 +1,7 @@
+Kokoro-82M v1.0 — hexgrad
+Weights and voice styles: Apache License 2.0
+https://huggingface.co/hexgrad/Kokoro-82M
+ONNX export: thewh1teagle/kokoro-onnx, model-files-v1.1
+https://github.com/thewh1teagle/kokoro-onnx/releases/tag/model-files-v1.1
+Accepted Brazilian Portuguese voices: pf_dora, pm_alex, pm_santa.
+No model modifications.

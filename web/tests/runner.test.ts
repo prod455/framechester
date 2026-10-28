@@ -10,7 +10,7 @@ const date = '2026-10-27T00:00:00.000Z';
 const source = (id: number) => ({title:`Fonte ${id}`,url:`https://example.com/${id}`,publisher:'Fixture',retrievedAt:'2026-10-27',license:'Referencia de teste'});
 function state(): AppState {
   const script: Script = {id:'script-one',channelId:'tech',topicId:'topic-one',title:'Roteiro original',series:'tecnologia',format:'short',hook:'Uma pergunta',crossChecked:true,status:'reviewed',createdAt:date,updatedAt:date,sources:[source(1),source(2)],claims:[{text:'Alegacao citada',status:'cited',sourceUrls:[source(1).url]}],scenes:[{id:42,heading:'Cena',narration:'Texto autoral preservado.',visualBrief:'Diagrama original',durationHintSecs:20}]};
-  return {schemaVersion:1,channels:['tech','science'].map(id=>({id,name:id,description:'',niche:'',audience:'',language:'pt-BR',createdAt:date,updatedAt:date})),config:{dryRun:true,telemetry:false,render:{width:640,height:360,fps:30,crf:20,preset:'veryfast',videoCodec:'libx264'},tts:{piperPath:'piper',voiceModel:'C:/synthetic/licensed-voice.onnx',voiceName:'pt-BR'},asr:{enabled:false,model:'',language:'pt',minCoverage:.45}},channelConfigs:{},research:[],scripts:[script],stories:[],monetization:[],receipts:[]};
+  return {schemaVersion:1,channels:['tech','science'].map(id=>({id,name:id,description:'',niche:'',audience:'',language:'pt-BR',createdAt:date,updatedAt:date})),config:{dryRun:true,telemetry:false,render:{width:640,height:360,fps:30,crf:20,preset:'veryfast',videoCodec:'libx264'},tts:{engine:'kokoro',pythonPath:'synthetic-python',voiceStyles:'C:/synthetic/voices.bin',piperPath:'piper',voiceModel:'C:/synthetic/licensed-voice.onnx',voiceName:'pf_dora'},asr:{enabled:false,model:'',language:'pt',minCoverage:.45}},channelConfigs:{},research:[],scripts:[script],stories:[],monetization:[],receipts:[]};
 }
 test('a channel job passes authored JSON and licensed media to the fixed Rust engine', async () => {
   const home = await mkdtemp(join(tmpdir(),'framechester-web-runner-'));
@@ -91,6 +91,21 @@ test('production requires an explicit local voice before creating a job or invok
     assert.equal(calls, 0);
     assert.deepEqual(await runner.list('tech'), []);
   } finally { await runner.close(); await rm(home, { recursive: true, force: true }); }
+});
+
+test('commercial-only production rejects legacy and unreviewed voices before creating a job', async () => {
+  for (const voiceName of ['pt_BR-faber-medium', 'pt_BR-cadu-medium', 'pt_BR-edresson-low', 'unreviewed-voice']) {
+    const home = await mkdtemp(join(tmpdir(), 'fc-commercial-voice-'));
+    const input = state(); input.config.tts.voiceName = voiceName;
+    let calls = 0;
+    const runner = await createRunner({ home, repositoryRoot: resolve('..'), readState: async () => input, execute: async () => { calls++; return { exitCode: 0, stdout: '', stderr: '' }; } });
+    try {
+      const asset = await runner.upload('tech', { filename: 'fixture.png', kind: 'image', contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB', license: 'Original', provenance: 'Fixture', restrictions: 'Teste' });
+      await assert.rejects(runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } }), /comercial|Kokoro/);
+      assert.equal(calls, 0);
+      assert.deepEqual(await runner.list('tech'), []);
+    } finally { await runner.close(); await rm(home, { recursive: true, force: true }); }
+  }
 });
 
 test('a channel named constructor uses its actual configuration rather than the object prototype',async()=>{

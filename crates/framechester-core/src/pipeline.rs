@@ -45,7 +45,7 @@ impl Default for PipelineOptions {
             format: ScriptFormat::Short,
             max_scenes: 4,
             dry_run: true,
-            voice: "pt_BR-faber-medium".into(),
+            voice: "pf_dora".into(),
             privacy: PublishPrivacy::Private,
             render_profile: crate::domain::RenderProfile::default(),
             budget: GenerationBudget::default(),

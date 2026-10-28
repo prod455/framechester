@@ -6,7 +6,7 @@ export interface Source { title: string; url: string; publisher: string; retriev
 export interface WebConfig {
   dryRun: true; telemetry: false;
   render: { width: number; height: number; fps: number; crf: number; preset: string; videoCodec: 'libx264' };
-  tts: { piperPath: string; voiceModel: string; voiceName: string };
+  tts: { piperPath: string; voiceModel: string; voiceName: string; engine?: 'kokoro' | 'piper'; pythonPath?: string; voiceStyles?: string };
   asr: { enabled: boolean; model: string; language: string; minCoverage: number };
 }
 export interface Research extends Timestamped { channelId: string; title: string; niche: string; audience: string; hypothesis: string; differentiation: string; keywords: string[]; sources: Source[]; demandScore: number; competitionScore: number; feasibilityScore: number; notes: string; status: EntityStatus }

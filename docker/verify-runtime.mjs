@@ -5,7 +5,7 @@ import {join} from 'node:path';
 
 // Piped to node inside the disposable smoke container; never part of its startup.
 assert.ok(process.getuid()!==0,'runtime must not run as root');
-for(const [binary,args]of [['framechester',['--version']],['ffmpeg',['-version']],['ffprobe',['-version']],['piper',['--help']]]){
+for(const [binary,args]of [['framechester',['--version']],['ffmpeg',['-version']],['ffprobe',['-version']],['/opt/tts/bin/python',['-c','import kokoro_onnx; print("Kokoro runtime ready")']]]){
  const result=spawnSync(binary,args,{stdio:'pipe',timeout:20_000});assert.equal(result.status,0,`${binary} is unavailable`);
 }
 assert.ok(!(await stat('/app/web/node_modules').catch(()=>null)),'development dependencies reached runtime');

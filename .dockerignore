@@ -28,8 +28,12 @@
 !web/public/licenses/**
 !docker/
 !docker/*.mjs
-!docker/piper-requirements.txt
+!docker/tts-requirements.txt
+!docker/licenses/
+!docker/licenses/*.txt
 !docker/THIRD_PARTY.md
+!scripts/
+!scripts/kokoro_tts.py
 # Defence in depth for accidental files inside an allowed source directory.
 **/.env
 **/.env.*

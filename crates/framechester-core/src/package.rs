@@ -181,7 +181,7 @@ pub fn build_description(script: &Script, topic: &Topic, timeline: &Timeline) ->
         .join("\n");
     format!(
         "{hook}\n\nNeste vídeo:\n{chapters}\nFontes e licenças:\n{sources}\n\n\
-         Transparência: a narração deste vídeo foi sintetizada localmente com Piper. \
+         Transparência: a narração deste vídeo foi sintetizada localmente com Kokoro (Apache-2.0). \
          O roteiro, os fatos e as fontes exigem revisão humana antes da publicação. \
          Este conteúdo não promete resultados financeiros, elegibilidade ou receita.",
         hook = script.hook,

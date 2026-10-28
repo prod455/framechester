@@ -51,7 +51,7 @@ function qa(checks: unknown): QaStatus {
 }
 function source(value: Script['sources'][number]) { return {title:value.title,url:value.url,publisher:value.publisher,retrieved_at:value.retrievedAt,license:value.license}; }
 function visualFingerprint(state:AppState,channelId:string,script:Script):string {
-  return hash(Buffer.from(JSON.stringify({renderer:'framechester-editorial-v1',previewRevision:2,channelId,channel:state.channels.find(channel=>channel.id===channelId)?.name,script:{id:script.id,title:script.title,format:script.format,scenes:script.scenes,sources:script.sources}})));
+  return hash(Buffer.from(JSON.stringify({renderer:'framechester-editorial-v2',previewRevision:2,channelId,channel:state.channels.find(channel=>channel.id===channelId)?.name,script:{id:script.id,title:script.title,format:script.format,scenes:script.scenes,sources:script.sources}})));
 }
 function rustConfig(config: WebConfig, channelId: string): string {
   const q = (value: string) => JSON.stringify(value);
@@ -144,7 +144,7 @@ export class LocalRunner implements RunnerApi {
       if(result.exitCode!==0) throw new RunnerError('Não foi possível criar os visuais locais. Confira os títulos e as falas das cenas e reconstrua o motor com npm run engine:build se necessário.');
       let report:unknown;
       try {report=JSON.parse(result.stdout);} catch {throw new RunnerError('O motor retornou um plano visual inválido.');}
-      if(!report||typeof report!=='object'||!('renderer'in report)||report.renderer!=='framechester-editorial-v1'||!('scenes'in report)||!Array.isArray(report.scenes)||report.scenes.length!==script.scenes.length) throw new RunnerError('O motor retornou um plano visual inválido.');
+      if(!report||typeof report!=='object'||!('renderer'in report)||report.renderer!=='framechester-editorial-v2'||!('scenes'in report)||!Array.isArray(report.scenes)||report.scenes.length!==script.scenes.length) throw new RunnerError('O motor retornou um plano visual inválido.');
       const seen=new Set<number>(),imports:Array<{sceneId:number;bytes:Buffer;captureRequired:boolean}>=[];
       for(const item of report.scenes) {
         if(!item||typeof item!=='object'||!Number.isSafeInteger(item.scene_id)||seen.has(item.scene_id)||!script.scenes.some(scene=>scene.id===item.scene_id)) throw new RunnerError('O motor retornou cenas visuais incompatíveis.');

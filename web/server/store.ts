@@ -1,4 +1,5 @@
 import type { AppState, Channel, WebConfig, Research, Script, Story, RevenueEntry, Source, SocialSnapshot, Platform } from '../shared/types.ts';
+import { SceneLayoutError, parseSceneLayout } from '../shared/scene-layouts.ts';
 import { readFile, mkdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -106,7 +107,7 @@ function normalizeResource(kind: Collection, value: unknown, state: AppState, pr
     const researchId = optionalId(item.researchId);
     if (researchId && !state.research.some(row => row.id === researchId && row.channelId === owner)) throw new HttpError(400, 'A pesquisa vinculada não pertence ao canal.');
     const sources = list(item.sources ?? [], 'sources').map(source); const seen = new Set<number>();
-    const scenes = list(item.scenes ?? [], 'scenes', 100).map(value => { const scene = object(value); keys(scene, ['id','heading','narration','visualBrief','durationHintSecs']); const sceneId = number(scene.id, 'scene.id', 0, 4294967295, true); if (seen.has(sceneId)) throw new HttpError(400, 'ID de cena duplicado.'); seen.add(sceneId); return { id: sceneId, heading: text(scene.heading, 'heading', 500), narration: text(scene.narration, 'narration', 30000), visualBrief: text(scene.visualBrief, 'visualBrief', 12000), durationHintSecs: number(scene.durationHintSecs ?? 20, 'durationHintSecs', 0.1, 3600) }; });
+    const scenes = list(item.scenes ?? [], 'scenes', 100).map(value => { const scene = object(value); keys(scene, ['id','heading','narration','visualBrief','durationHintSecs']); const sceneId = number(scene.id, 'scene.id', 0, 4294967295, true); if (seen.has(sceneId)) throw new HttpError(400, 'ID de cena duplicado.'); seen.add(sceneId); const normalized = { id: sceneId, heading: text(scene.heading, 'heading', 500), narration: text(scene.narration, 'narration', 30000), visualBrief: text(scene.visualBrief, 'visualBrief', 12000), durationHintSecs: number(scene.durationHintSecs ?? 20, 'durationHintSecs', 0.1, 3600) }; return normalized; });
     const claims = list(item.claims ?? [], 'claims', 300).map(value => { const claim = object(value); keys(claim, ['text','status','sourceUrls']); if (!['cited','unverified','contradicted'].includes(String(claim.status))) throw new HttpError(400, 'Status de alegação inválido.'); const sourceUrls = list(claim.sourceUrls ?? [], 'sourceUrls').map(url => text(url, 'sourceUrl', 3000, true)); if (sourceUrls.some(url => !sources.some(source => source.url === url))) throw new HttpError(400, 'A alegação usa fonte não documentada.'); return { text: text(claim.text, 'claim.text', 6000, true), status: claim.status as 'cited' | 'unverified' | 'contradicted', sourceUrls }; });
     if (!['short','long'].includes(String(item.format ?? 'short')) || (item.crossChecked !== undefined && typeof item.crossChecked !== 'boolean')) throw new HttpError(400, 'Formato ou declaração de checagem inválidos.');
     return { ...base, ...(researchId ? { researchId } : {}), topicId: validId(item.topicId ?? `topic-${id}`), title: text(item.title, 'title', 500, true), series: text(item.series ?? 'tecnologia', 'series', 150, true), format: (item.format ?? 'short') as 'short' | 'long', hook: text(item.hook, 'hook', 6000), scenes, sources, claims, crossChecked: item.crossChecked === true, status: status(item.status ?? 'draft') };
@@ -136,6 +137,11 @@ function normalizeSnapshot(value: unknown, state: AppState): SocialSnapshot {
   const fetchedAt = text(item.fetchedAt, 'fetchedAt', 80, true); if (!Number.isFinite(Date.parse(fetchedAt))) throw new HttpError(400, 'Data do snapshot inválida.');
   const periodStart = date(item.periodStart, 'periodStart'); const periodEnd = date(item.periodEnd, 'periodEnd'); if (periodEnd < periodStart) throw new HttpError(400, 'Período do snapshot inválido.');
   return { id: validId(item.id), channelId: owner, platform: platform(item.platform), accountId: text(item.accountId,'accountId',300,true), fetchedAt, periodStart, periodEnd, stats: { views: nullable(stats.views,'views',true), followers: nullable(stats.followers,'followers',true), watchMinutes: nullable(stats.watchMinutes,'watchMinutes'), ...(stats.likes !== undefined ? { likes:nullable(stats.likes,'likes',true) } : {}) }, revenue: { estimatedCents, paidCents:null, currency, availability:availability as SocialSnapshot['revenue']['availability'], reason:text(revenue.reason,'reason',3000,true) } };
+}
+// Checked on save only: a stored brief must never prevent the whole state from loading.
+function renderableScenes(script: Script): void {
+  try { for (const scene of script.scenes) parseSceneLayout(scene.id, scene.visualBrief, scene.narration); }
+  catch (error) { if (error instanceof SceneLayoutError) throw new HttpError(400, error.message); throw error; }
 }
 function validateState(state: AppState): void {
   const root = object(state); keys(root, ['schemaVersion','channels','config','channelConfigs','research','scripts','stories','monetization','receipts']);
@@ -190,7 +196,7 @@ export class LocalStore {
   }
   async saveResource(kind: Collection, value: unknown, id?: string): Promise<Resource> {
     let saved!: Resource;
-    await this.update(state => { const rows: Resource[] = state[kind]; const previous = id ? rows.find(row => row.id === validId(id)) : undefined; if (id && !previous) throw new HttpError(404, 'Recurso não encontrado.'); saved = normalizeResource(kind, { ...previous, ...object(value) }, state, previous); if (!previous && rows.some(row => row.id === saved.id)) throw new HttpError(409, 'Recurso duplicado.'); if (previous) rows[rows.indexOf(previous)] = saved; else rows.push(saved); }); return saved;
+    await this.update(state => { const rows: Resource[] = state[kind]; const previous = id ? rows.find(row => row.id === validId(id)) : undefined; if (id && !previous) throw new HttpError(404, 'Recurso não encontrado.'); saved = normalizeResource(kind, { ...previous, ...object(value) }, state, previous); if (kind === 'scripts') renderableScenes(saved as Script); if (!previous && rows.some(row => row.id === saved.id)) throw new HttpError(409, 'Recurso duplicado.'); if (previous) rows[rows.indexOf(previous)] = saved; else rows.push(saved); }); return saved;
   }
   async deleteResource(kind: Collection, id: string, owner: string): Promise<void> {
     await this.update(state => { const rows: Resource[] = state[kind]; const index = rows.findIndex(row => row.id === validId(id) && row.channelId === channelId(owner)); if (index < 0) throw new HttpError(404, 'Recurso não encontrado neste canal.'); if ((kind === 'research' && state.scripts.some(row => row.researchId === id)) || (kind === 'scripts' && state.stories.some(row => row.scriptId === id))) throw new HttpError(409, 'O recurso possui vínculos editoriais.'); rows.splice(index, 1); });

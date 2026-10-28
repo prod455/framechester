@@ -9,3 +9,4 @@ pub mod local_assets;
 pub mod metrics;
 pub mod piper;
 pub mod publish;
+pub mod scene_layout;

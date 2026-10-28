@@ -5,7 +5,7 @@ Framechester V4: open-source, self-hosted, single-operator media production engi
 
 Current operator decision (2026-10-27): multiple channels under one local operator. For engineering/marketing work, read `docs/EQUIPES_E_SKILLS.md` and load relevant local `.agents/skills/*/SKILL.md`; prioritize working code and verifiable artifacts.
 
-The local Studio uses TypeScript/Vite and Node.js; Rust remains the production engine. For web operation/configuration read `docs/WEB_STUDIO.md`; for social connections and API capabilities read `docs/REDES_SOCIAIS_WEB.md`.
+The local Studio uses TypeScript/Vite and Node.js; Rust remains the production engine. For web operation/configuration read `docs/WEB_STUDIO.md`; for social connections and API capabilities read `docs/REDES_SOCIAIS_WEB.md`; for video visuals, scene layouts and script styles read `docs/GUIA_VISUAL.md`.
 
 ## Source of truth
 - `docs/PLANO_OPERACIONAL_COMPLETO.md`

@@ -1,4 +1,5 @@
-import { button, dialogFrame, el, icon, replace, setButtonLabel } from './dom.ts';
+import { button, dialogFrame, el, field, icon, replace, select, setButtonLabel } from './dom.ts';
+import { videoStyle, videoStyles } from '../shared/video-styles.ts';
 import type { IconName } from './dom.ts';
 import type { WebJob } from '../shared/types.ts';
 import { protectEdits, watchForm } from './edit-protection.ts';
@@ -58,4 +59,14 @@ export function formWithSave(label:string|(()=>string),onSave:()=>Promise<void|f
     try{if(await onSave()!==false)edit.saved();}catch(error){errorBox.textContent=error instanceof Error?error.message:'Não foi possível concluir. Tente novamente.';errorBox.hidden=false;errorBox.scrollIntoView({block:'nearest'});}
     finally{edit.saving(false);fields.inert=false;actions.inert=false;saveButton.disabled=false;setButtonLabel(saveButton,resolveLabel(label),'check');form.removeAttribute('aria-busy');}
   });return {form,fields,actions};
+}
+
+const styleIntro='Define estrutura, ritmo e layouts visuais. Sem formato, a IA segue apenas o pedido.';
+/** Video style picker with a hint that summarizes the selected style. */
+export function videoStyleField(name:string):{control:HTMLSelectElement;node:HTMLDivElement} {
+  const control=select(name,[['','Sem formato definido'],...videoStyles.map((style):[string,string]=>[style.id,style.name])]);
+  const node=field('Formato do vídeo',control,styleIntro);
+  const hint=node.querySelector<HTMLElement>('.field-hint')!;
+  control.addEventListener('change',()=>{hint.textContent=videoStyle(control.value)?.summary??styleIntro;});
+  return {control,node};
 }

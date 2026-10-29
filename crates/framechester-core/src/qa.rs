@@ -23,19 +23,21 @@ pub fn editorial(script: &Script, assets: &[AssetManifest], timeline: &Timeline)
         .iter()
         .map(|source| source.url.as_str())
         .collect();
-    checks.push(if distinct_sources.len() >= 2 {
+    // One documented source is enough to produce; none is pending work for the operator,
+    // not a defect of the video.
+    checks.push(if !distinct_sources.is_empty() {
         check(
             "sources",
-            "pelo menos 2 URLs de fontes distintas",
+            "ao menos 1 fonte com URL",
             QaStatus::Pass,
-            format!("{} fontes", script.sources.len()),
+            format!("{} fonte(s)", distinct_sources.len()),
         )
     } else {
         check(
             "sources",
-            "pelo menos 2 URLs de fontes distintas",
-            QaStatus::Fail,
-            format!("apenas {} URL(s) distinta(s)", distinct_sources.len()),
+            "ao menos 1 fonte com URL",
+            QaStatus::NeedsHuman,
+            "nenhuma fonte registrada; use Buscar fontes ou registre uma antes de publicar",
         )
     });
 
@@ -100,15 +102,17 @@ pub fn editorial(script: &Script, assets: &[AssetManifest], timeline: &Timeline)
         check(
             "claims",
             "claims com fonte e sem contradicao",
-            QaStatus::Fail,
-            format!("{unsourced} claim(s) sem fonte"),
+            QaStatus::NeedsHuman,
+            format!(
+                "{unsourced} claim(s) sem fonte; vincule uma fonte ou remova antes de publicar"
+            ),
         )
     } else if unverified > 0 {
         check(
             "claims",
             "claims com fonte e sem contradicao",
-            QaStatus::Fail,
-            format!("{unverified} claim(s) nao verificado(s)"),
+            QaStatus::NeedsHuman,
+            format!("{unverified} claim(s) ainda nao verificado(s) pelo operador"),
         )
     } else if cited > 0 || script.claims.is_empty() {
         check(
@@ -362,15 +366,31 @@ mod tests {
         assert_eq!(report.overall(), QaStatus::NeedsHuman);
     }
 
-    #[test]
-    fn missing_sources_fail() {
-        let mut script = script();
-        script.sources.truncate(1);
-        let report = editorial(&script, &[asset(0), asset(1)], &timeline());
-        assert!(report
+    fn status_of(report: &crate::domain::QaReport, id: &str) -> QaStatus {
+        report
             .checks
             .iter()
-            .any(|check| check.id == "sources" && check.status == QaStatus::Fail));
+            .find(|check| check.id == id)
+            .unwrap()
+            .status
+    }
+
+    #[test]
+    fn one_source_is_enough_and_none_asks_for_review_instead_of_failing() {
+        let mut script = script();
+        script.sources.truncate(1);
+        assert_eq!(
+            status_of(
+                &editorial(&script, &[asset(0), asset(1)], &timeline()),
+                "sources"
+            ),
+            QaStatus::Pass
+        );
+        script.sources.clear();
+        script.claims.clear();
+        let report = editorial(&script, &[asset(0), asset(1)], &timeline());
+        assert_eq!(status_of(&report, "sources"), QaStatus::NeedsHuman);
+        assert_eq!(report.overall(), QaStatus::NeedsHuman);
     }
 
     #[test]
@@ -429,14 +449,24 @@ mod tests {
     }
 
     #[test]
-    fn unverified_claim_with_source_cannot_pass_claims_check() {
+    fn unverified_or_unsourced_claims_wait_for_the_operator_without_failing() {
         let mut script = script();
         script.claims[0].status = ClaimStatus::Unverified;
-        let report = editorial(&script, &[asset(0), asset(1)], &timeline());
-        assert!(report
-            .checks
-            .iter()
-            .any(|check| check.id == "claims" && check.status == QaStatus::Fail));
+        assert_eq!(
+            status_of(
+                &editorial(&script, &[asset(0), asset(1)], &timeline()),
+                "claims"
+            ),
+            QaStatus::NeedsHuman
+        );
+        script.claims[0].source_urls.clear();
+        assert_eq!(
+            status_of(
+                &editorial(&script, &[asset(0), asset(1)], &timeline()),
+                "claims"
+            ),
+            QaStatus::NeedsHuman
+        );
     }
 
     #[test]

@@ -697,7 +697,7 @@ mod tests {
     #[test]
     fn blocked_topic_returns_blocked_stage() {
         let mut topic = topic();
-        topic.sources.truncate(1);
+        topic.sources.clear();
         let pipeline = Pipeline::new(
             providers(),
             PipelineOptions {

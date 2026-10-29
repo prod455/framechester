@@ -214,6 +214,21 @@ Assinaturas dos aplicativos e o consumo das APIs seguem seus próprios contratos
 créditos. O perfil de dados deve ser usado por apenas uma instância do Studio.
 Detalhes e evidências: [CONSUMO_IA.md](CONSUMO_IA.md).
 
+### Fontes e revisão
+
+Uma fonte com URL basta para produzir. Sem nenhuma, o vídeo ainda é gerado e
+fica em revisão, não reprovado. Reprovação editorial é reservada ao que a
+máquina consegue provar: alegação contraditória, referência fora do inventário,
+URL insegura, narração duplicada, padrão de prompt injection ou asset sem
+direitos registrados.
+
+**Buscar fontes**, na aba Fontes e revisão do roteiro, procura artigos
+revisados por pares (DOI) no Crossref a partir do título, do gancho e das
+alegações; **Produzir com IA** faz a mesma busca quando o roteiro gerado não
+tem fontes. A consulta vai só para `api.crossref.org`, sem chave nem custo.
+Cada sugestão vem marcada como automática e precisa ser lida antes de
+publicar: a busca encontra o artigo, não confirma que ele sustenta a fala.
+
 ## Produção e configurações por canal
 
 1. Clique em **Produzir com IA**, informe a orientação e o formato. Uma pauta

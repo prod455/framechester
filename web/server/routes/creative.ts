@@ -65,7 +65,12 @@ export const creativeRoutes: Route[] = [
       const id = await requireChannel(context);
       const { optional, store, runner, request, response, session, params } = context;
       if (!optional.creative) unavailable('Configure o assistente de criação antes de produzir com IA.');
-      const automation = createAutomaticProduction({ store, runner: runner(), creative: optional.creative });
+      const automation = createAutomaticProduction({
+        store,
+        runner: runner(),
+        creative: optional.creative,
+        sources: optional.sources,
+      });
       const body = await readJson(request, 10_000);
       if (params.step === 'quote') json(response, 200, await automation.quote(id, body, session.csrfToken));
       else json(response, 202, await automation.start(id, body, session.csrfToken));

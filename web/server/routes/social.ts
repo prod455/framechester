@@ -9,6 +9,20 @@ import { requireChannel, unavailable } from './router.ts';
 export const socialRoutes: Route[] = [
   {
     method: 'POST',
+    pattern: '/api/channels/:id/sources/suggest',
+    async handle(context) {
+      await requireChannel(context);
+      if (!context.optional.sources) unavailable('A busca de fontes não está disponível nesta instância.');
+      const body = await readJson(context.request, 10_000);
+      allowedKeys(body, ['query']);
+      const raw = Array.isArray(body.query) ? body.query : [body.query];
+      if (raw.length > 6) throw new HttpError(400, 'Informe até seis termos de busca.');
+      const queries = raw.map((value) => string(value, 'query', 200, 0));
+      json(context.response, 200, await context.optional.sources.suggest(queries, 5));
+    },
+  },
+  {
+    method: 'POST',
     pattern: '/api/channels/:id/research/discover',
     async handle(context) {
       const id = await requireChannel(context);

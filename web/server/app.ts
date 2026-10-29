@@ -9,6 +9,7 @@ import { VaultError } from './vault.ts';
 import { RunnerError } from './runner.ts';
 import type { CreativeApi } from './creative.ts';
 import type { PrivatePromptStore } from './private-prompt.ts';
+import type { SourceFinder } from './sources.ts';
 import { allowedKeys, checkOrigin, json, readJson, securityHeaders, staticFile, string } from './http.ts';
 import { compileRoutes, matchRoute } from './routes/router.ts';
 import type { AppDependencies, Method } from './routes/router.ts';
@@ -25,6 +26,7 @@ export interface ServerOptions {
   runner?: RunnerApi;
   creative?: CreativeApi;
   privatePrompt?: PrivatePromptStore;
+  sources?: SourceFinder;
 }
 
 function requestPath(request: IncomingMessage): { decoded: string; path: string } {
@@ -79,7 +81,12 @@ export async function createApp(
       options.privatePrompt,
       'O prompt pessoal ainda não está disponível nesta instância.',
     ),
-    optional: { social: options.social, runner: options.runner, creative: options.creative },
+    optional: {
+      social: options.social,
+      runner: options.runner,
+      creative: options.creative,
+      sources: options.sources,
+    },
   };
   const table = compileRoutes(routes);
   const distDir = options.distDir ?? fileURLToPath(new URL('../dist', import.meta.url));

@@ -10,7 +10,6 @@ import type {
   SocialSnapshot,
   Platform,
 } from '../shared/types.ts';
-import { SceneLayoutError, parseSceneLayout } from '../shared/scene-layouts.ts';
 import { readFile, mkdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -500,15 +499,6 @@ function normalizeSnapshot(value: unknown, state: AppState): SocialSnapshot {
     },
   };
 }
-// Checked on save only: a stored brief must never prevent the whole state from loading.
-function renderableScenes(script: Script): void {
-  try {
-    for (const scene of script.scenes) parseSceneLayout(scene.id + 1, scene.visualBrief, scene.narration);
-  } catch (error) {
-    if (error instanceof SceneLayoutError) throw new HttpError(400, error.message);
-    throw error;
-  }
-}
 function validateState(state: AppState): void {
   const root = object(state);
   keys(root, [
@@ -672,7 +662,6 @@ export class LocalStore {
       const previous = id ? rows.find((row) => row.id === validId(id)) : undefined;
       if (id && !previous) throw new HttpError(404, 'Recurso não encontrado.');
       saved = normalizeResource(kind, { ...previous, ...object(value) }, state, previous);
-      if (kind === 'scripts') renderableScenes(saved as Script);
       if (!previous && rows.some((row) => row.id === saved.id))
         throw new HttpError(409, 'Recurso duplicado.');
       if (previous) rows[rows.indexOf(previous)] = saved;

@@ -35,7 +35,7 @@ jobs:
       - name: Fetch only reviewed commercial voice assets
         run: python3 scripts/setup_voices.py --models-only
       - name: Build local image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           load: true

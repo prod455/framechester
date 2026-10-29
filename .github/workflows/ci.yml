@@ -1,7 +1,10 @@
 name: ci
 
+# Pull requests run once (the pull_request event); pushes run only on main, so a
+# branch with an open PR is not checked twice and every push does not mail a run.
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:

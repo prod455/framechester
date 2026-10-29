@@ -220,6 +220,7 @@ impl AnthropicLlm {
             scenes,
             sources: prompt.topic.sources.clone(),
             claims: prompt.topic.claims.clone(),
+            cross_checked: false,
         })
     }
 }

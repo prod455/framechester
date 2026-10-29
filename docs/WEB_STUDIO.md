@@ -222,6 +222,21 @@ máquina consegue provar: alegação contraditória, referência fora do invent�
 URL insegura, narração duplicada, padrão de prompt injection ou asset sem
 direitos registrados.
 
+**Como aprovar.** A revisão editorial é uma declaração só: no roteiro, aba
+Fontes e revisão, marque **Conferi e cruzei as fontes e as alegações desta
+pauta** e salve. O motor recebe essa declaração (`cross_checked`) e registra
+no relatório de QA as verificações "revisão editorial humana" e "claims"
+como aprovadas; alegações marcadas como **Fonte citada** ou **A conferir**
+contam como conferidas pelo operador. Só **Contradição identificada** e
+URLs fora das fontes do roteiro continuam bloqueando a versão final.
+Duração fora do alvo editorial e frames parados de cenas estáticas (que o
+motor produz de propósito) ficam anotados no relatório, sem pedir revisão.
+
+Com isso, a versão final de um roteiro revisado termina como **Concluído**,
+com arquivo e conteúdo aprovados. Se algo ficou pendente, o card do job
+nomeia a verificação (por exemplo, "ao menos 1 fonte com URL"). Publicar
+continua manual, pelo YouTube Studio.
+
 **Buscar fontes**, na aba Fontes e revisão do roteiro, procura artigos
 revisados por pares (DOI) no Crossref a partir do título, do gancho e das
 alegações; **Produzir com IA** faz a mesma busca quando o roteiro gerado não

@@ -246,7 +246,7 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
           el(
             'p',
             { className: 'field-hint' },
-            'Antes da versão final: no roteiro, aba “Fontes e revisão”, registre ao menos uma fonte (ou use Buscar fontes), resolva alegações contraditórias e marque “Conferi e cruzei as fontes”.',
+            'Antes da versão final: no roteiro, aba “Fontes e revisão”, registre ao menos uma fonte (ou use Buscar fontes), resolva alegações contraditórias e marque “Conferi e cruzei as fontes e as alegações”.',
           ),
         );
       const readiness = el('p', { className: 'field-hint', role: 'status' });

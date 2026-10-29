@@ -499,6 +499,7 @@ mod tests {
                 ],
                 sources: prompt.topic.sources.clone(),
                 claims: prompt.topic.claims.clone(),
+                cross_checked: false,
             })
         }
     }

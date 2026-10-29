@@ -387,6 +387,7 @@ mod tests {
                 status: ClaimStatus::Cited,
                 source_urls: vec!["https://example.com".into()],
             }],
+            cross_checked: false,
         }
     }
 

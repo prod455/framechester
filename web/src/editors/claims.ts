@@ -15,9 +15,9 @@ export function claimsEditor(initial: Claim[]): {
     const status = select(
       'claim-status',
       [
-        ['unverified', 'Não verificado'],
-        ['cited', 'Citado — requer conferência'],
-        ['contradicted', 'Contraditório — bloqueio editorial'],
+        ['unverified', 'A conferir'],
+        ['cited', 'Fonte citada'],
+        ['contradicted', 'Contradição identificada — bloqueia a versão final'],
       ],
       claim?.status || 'unverified',
     );

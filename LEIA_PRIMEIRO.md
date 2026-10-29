@@ -13,8 +13,8 @@ npm start              # http://127.0.0.1:4317
 1. Crie a senha local e cadastre o canal.
 2. Em **Configurações**, escolha o provedor de IA (Ollama local, Claude ou OpenAI; chaves ficam no cofre).
 3. Em **Produção → Produzir com IA**, descreva o assunto e o formato. O Studio gera o roteiro, busca fontes no Crossref, monta os visuais, a voz e a prévia.
-4. Em **Roteiros → Fontes e revisão**, leia as fontes, ajuste o que for preciso e marque **Conferi e cruzei as fontes e as alegações**. Salve.
-5. Em **Produção → Produzir com IA → Controles avançados → Abrir preparação manual → Gerar versão final**. O job termina como **Concluído** com o vídeo aprovado.
+4. Assista à prévia em **Revisar vídeo**. Se quiser, ajuste o roteiro e as fontes em **Roteiros → Fontes e revisão**.
+5. No card da prévia, clique em **Gerar versão final**, marque **Conferi e cruzei as fontes e as alegações** e confirme. O job termina como **Concluído** (ou diz o que falta, como uma fonte).
 6. Baixe o MP4, as legendas, a descrição e as fontes em **Revisar vídeo** e publique manualmente no YouTube Studio.
 
 Guia completo: [`docs/WEB_STUDIO.md`](docs/WEB_STUDIO.md). CLI sem Studio: [README](README.md#uso-pela-cli).

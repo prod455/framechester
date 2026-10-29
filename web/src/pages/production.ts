@@ -13,6 +13,7 @@ import {
 } from '../components.ts';
 import { openCreativeDraft } from '../creative-ui.ts';
 import { button, el, field, icon, input, select, textarea } from '../dom.ts';
+import { openFinalVersion } from '../final-version-ui.ts';
 import { date, number } from '../format.ts';
 import { openProduction } from '../production-ui.ts';
 import { render } from '../studio/state.ts';
@@ -158,9 +159,40 @@ export function jobCard(job: WebJob): HTMLElement {
           'div',
           { className: 'job-artifacts' },
           button('Revisar vídeo', () => viewJob(job), 'secondary', 'film'),
+          finalVersionButton(job, script),
         )
       : null,
   );
+}
+
+/** A watched preview leads straight to its final version; no menus in between. */
+function finalVersionButton(job: WebJob, script: Script | undefined): HTMLElement | null {
+  if (!job.previewOnly || !job.videoAvailable || !script || script.status === 'archived') return null;
+  const action = button('Gerar versão final', () => generateFinal(script), 'primary', 'check');
+  action.dataset.testid = `final-from-${job.id}`;
+  return action;
+}
+
+export function generateFinal(script: Script): void {
+  const channel = currentChannel();
+  if (!channel) return;
+  openFinalVersion({
+    channel,
+    script,
+    config: effectiveConfig(),
+    onStarted: async () => {
+      await refresh();
+      toast('Versão final na fila. Acompanhe aqui; ela fica pronta em alguns minutos.');
+    },
+    onEditScript: (scriptId) => {
+      studio.activeScriptId = scriptId;
+      go('scripts');
+    },
+    onManual: (scriptId) => {
+      studio.activeScriptId = scriptId;
+      prepareProductionManually();
+    },
+  });
 }
 
 export function startProduction(): void {
@@ -328,7 +360,10 @@ export function uploadAsset(): void {
 }
 
 export function viewJob(job: WebJob): void {
-  const { body } = createDialog(
+  const script = state().scripts.find(
+    (entry) => entry.channelId === studio.channelId && entry.id === job.scriptId,
+  );
+  const { dialog, body } = createDialog(
     job.previewOnly ? 'Revisar vídeo gerado' : 'Revisar vídeo',
     `${currentChannel()?.name} · ${statusLabels[job.status] || job.status}`,
   );
@@ -376,8 +411,13 @@ export function viewJob(job: WebJob): void {
     el('div', { className: 'divider' }),
     notice(
       job.previewOnly
-        ? 'Este vídeo foi gerado para sua revisão. Confira o conteúdo e os alertas de QA. As pendências continuam registradas e nenhuma publicação foi autorizada.'
+        ? 'Esta é a prévia, com marca de revisão. Se estiver bom, gere a versão final: mesmo roteiro e mesmos visuais, sem a marca.'
         : 'Confira fatos, direitos, legibilidade e ritmo. O pacote é revisável e sua existência não comprova aprovação editorial ou publicação.',
     ),
   );
+  const next = finalVersionButton(job, script);
+  if (next) {
+    next.addEventListener('click', () => dialog.close(), { capture: true });
+    body.append(el('div', { className: 'form-actions' }, next));
+  }
 }

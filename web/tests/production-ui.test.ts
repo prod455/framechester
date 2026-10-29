@@ -244,7 +244,26 @@ test('pending captures show illustrative previews, one recovery summary and an a
   assert.equal(adapted, script.id);
 });
 
-test('a contradicted claim blocks the final video; a pending claim with one source does not', async () => {
+test('a contradicted claim blocks the final video; a pending claim or no source at all does not', async () => {
+  const sourceless = openProduction({
+    channel,
+    scripts: [{ ...script, sources: [], claims: [] }],
+    assets: [],
+    config: defaultConfig(),
+    currentChannelId: () => channel.id,
+    api: async <T>() => prepared as T,
+    onStarted: async () => {},
+    onAddAssets: () => {},
+    onEditScript: () => {},
+  });
+  await tick();
+  await tick();
+  assert.equal(
+    sourceless.querySelector<HTMLButtonElement>('[data-testid="final-video"]')!.disabled,
+    false,
+    'QA names a missing source in the report; it no longer disables the final video',
+  );
+  sourceless.close();
   const pending = openProduction({
     channel,
     scripts: [

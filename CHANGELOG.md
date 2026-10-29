@@ -4,6 +4,7 @@
 - Formatted the Studio sources with Prettier; `npm run check` now verifies formatting.
 - Split the 782-line `web/src/main.ts` into `studio/` (state, shell, toast, platforms), `pages/` (one file per page) and `editors/` (sources, claims, scenes, assistant button). Application state lives in one explicit `studio` object; pages render from it and never import each other in cycles.
 - Added a shell boot test that logs in against a stubbed API and draws every page.
+- Split the Rust CLI's 1,199-line `main.rs` into `cli.rs` (arguments and dispatch) and `commands/` (one module per subcommand); behavior, flags and output are unchanged.
 - Replaced the 800-line request handler in `web/server/app.ts` with a route table (`server/routes/`) and request helpers (`server/http.ts`); duplicate routes fail at startup. The creative quote and draft routes now forward the `style` field the Studio sends.
 
 ## Unreleased — visual guide and video styles

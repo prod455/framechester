@@ -4,7 +4,7 @@ import { mkdtemp, readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { AppState, Script } from '../shared/types.ts';
-import { createRunner, localEngineEnvironment } from '../server/runner.ts';
+import { createRunner, localEngineEnvironment, RunnerError } from '../server/runner.ts';
 
 const date = '2026-10-27T00:00:00.000Z';
 const source = (id: number) => ({
@@ -829,6 +829,35 @@ test('a stored script with an unrenderable directive fails before the engine run
       /Cena 1: diretiva visual inválida; '#grafico' não existe/,
     );
     assert.equal(calls, 0);
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('a stale engine is reported as stale with the command that fixes it, not as an invalid plan', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-visual-stale-'));
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => state(),
+    execute: async () => ({
+      exitCode: 0,
+      stdout: JSON.stringify({
+        renderer: 'framechester-editorial-v1',
+        scenes: [{ scene_id: 42, status: 'generated', file: 'scene-42.png' }],
+      }),
+      stderr: '',
+    }),
+  });
+  try {
+    await assert.rejects(
+      runner.prepareVisuals('tech', 'script-one'),
+      (error: unknown) =>
+        error instanceof RunnerError &&
+        error.status === 503 &&
+        /desatualizado.*editorial-v1.*npm start/.test(error.message),
+    );
   } finally {
     await runner.close();
     await rm(home, { recursive: true, force: true });

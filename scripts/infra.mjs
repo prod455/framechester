@@ -1,5 +1,5 @@
 import {spawn} from 'node:child_process';
-import {existsSync} from 'node:fs';
+import {existsSync,statSync} from 'node:fs';
 import {chmod,lstat,mkdir,open,readFile,readdir,readlink,realpath,rename,rm,stat} from 'node:fs/promises';
 import {randomBytes} from 'node:crypto';
 import {homedir} from 'node:os';
@@ -146,11 +146,24 @@ async function posixStop(){
  console.log(`${selected.length} processo(s) do Framechester sinalizado(s).`);
 }
 async function npm(args){const cli=process.env.npm_execpath??join(dirname(process.execPath),'node_modules','npm','bin','npm-cli.js');if(!existsSync(cli))throw fail('Execute este comando por npm, com Node.js 22.12 ou superior instalado.');await execute(process.execPath,[cli,'--prefix','web',...args]);}
+export function dependenciesStale(lockFile,installedLock){
+ if(!existsSync(installedLock))return true;
+ return statSync(lockFile).mtimeMs>statSync(installedLock).mtimeMs;
+}
+async function prepareLocal(){
+ const web=join(repositoryRoot,'web');
+ if(dependenciesStale(join(web,'package-lock.json'),join(web,'node_modules','.package-lock.json')))await npm(['ci']);
+ await npm(['run','engine:build']);
+}
 export async function main(action=process.argv[2]){
  if(action==='--select-processes'){let source='';for await(const chunk of process.stdin){source+=chunk;if(source.length>8_000_000)throw fail('Inventário de processos excessivo.');}const input=JSON.parse(source);const processes=Array.isArray(input.processes)?input.processes:input.processes?.value;if(typeof input.root!=='string'||!Array.isArray(processes))throw fail('Inventário de processos inválido.');console.log(JSON.stringify(selectFramechesterProcesses(input.root,processes,input.ownPid).map(row=>row.id)));return;}
  if(action?.startsWith('docker:'))return dockerAction(action.slice(7));
  if(action==='setup'){await npm(['ci']);await npm(['run','engine:build']);await npm(['run','build']);return;}
- if(action==='start')return npm(['start']);if(action==='dev')return npm(['run','dev']);
+ // `start` and `dev` rebuild what an update may have changed: dependencies when the lockfile is
+ // newer than the installed tree, the Rust engine (incremental, a no-op when current) and, for
+ // `start`, the served interface. Otherwise the server talks to a stale engine or bundle.
+ if(action==='start'){await prepareLocal();await npm(['run','build']);return npm(['start']);}
+ if(action==='dev'){await prepareLocal();return npm(['run','dev']);}
  if(action==='stop'){
   if(process.platform==='win32')await execute('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',join(repositoryRoot,'scripts','stop-framechester.ps1'),'-Workspace',repositoryRoot],{env:windowsShellEnvironment()});else await posixStop();
   if(existsSync(join(repositoryRoot,'.framechester','docker','compose.env')))await dockerAction('down');

@@ -4,6 +4,13 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+publish.workspace = true
+description = "FFmpeg, Kokoro TTS, LLM, visuals, backup and fixture adapters for the Framechester engine"
 
 [dependencies]
 framechester-core = { path = "../framechester-core" }

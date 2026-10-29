@@ -1,0 +1,6 @@
+# Reviews are requested from these owners automatically.
+*                     @prod455
+/crates/              @prod455
+/web/                 @prod455
+/.github/             @prod455
+/SECURITY.md          @prod455

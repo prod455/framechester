@@ -868,7 +868,7 @@ export class LocalRunner implements RunnerApi {
       if (input.previewOnly && job.videoAvailable && ['pass', 'needs_human'].includes(job.qa.technical)) {
         job.status = 'needs_review';
         job.message =
-          'Prévia do vídeo gerada com marca de revisão. Confira o resultado e as pendências de QA; nenhuma publicação foi autorizada.';
+          'Prévia do vídeo gerada com marca de revisão. Para a versão final: revise o roteiro (fontes e “Conferi e cruzei as fontes”), depois Produzir com IA → Controles avançados → preparação manual → Gerar versão final.';
       } else if (
         result.exitCode !== 0 ||
         report.stage === 'blocked' ||

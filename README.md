@@ -95,6 +95,29 @@ cargo run -p framechester-cli -- qa --format short --video artifacts/demo-short/
 
 O comando `run` usa por padrao o LLM de template offline, assets sinteticos e publicacao em dry-run. O relatorio fica em `artifacts/<run>/pipeline_report.json` e o painel local em `artifacts/<run>/report.html`; o pacote revisavel fica em `artifacts/<run>/publish/` com `final.srt`, `description.txt`, `metadata.json` e `sources.md`, e a thumbnail em `artifacts/<run>/render/thumbnail.png`.
 
+## Videos explicativos animados (motor motion)
+
+O motor motion transforma um roteiro autoral em um storyboard semantico, narra cada
+frase, anima componentes vetoriais sincronizados com a fala e exporta com legendas por
+palavra, loudness normalizada e um relatorio de QA que bloqueia falhas criticas. Use o
+perfil `--release`: a rasterizacao em `debug` e varias vezes mais lenta.
+
+```bash
+cargo run --release -p framechester-cli -- plan --script examples/skills-vs-agentes.roteiro.json --topic examples/skills-vs-agentes.topico.json --format vertical --output artifacts/storyboard.json
+cargo run --release -p framechester-cli -- produce --script examples/skills-vs-agentes.roteiro.json --topic examples/skills-vs-agentes.topico.json --format vertical --workdir artifacts/motion/vertical
+cargo run --release -p framechester-cli -- produce --script examples/skills-vs-agentes.roteiro.json --topic examples/skills-vs-agentes.topico.json --format horizontal --workdir artifacts/motion/horizontal
+cargo run --release -p framechester-cli -- run --engine motion --script examples/skills-vs-agentes.roteiro.json --topic examples/skills-vs-agentes.topico.json --format short --workdir artifacts/motion/run
+```
+
+Formatos: `vertical` (1080x1920), `horizontal` (1920x1080) e `x` (1280x720), cada um com
+layout, tipografia e areas seguras proprias. Saidas em `workdir/`: `storyboard.json`,
+`render/final.mp4`, `render/captions.srt`, `render/contact_sheet.png`,
+`render/render_manifest.json`, `qa_report.json`, `pipeline_report.json` e o pacote de
+publicacao. Documentacao: [docs/STORYBOARD.md](docs/STORYBOARD.md),
+[docs/DESIGN_SYSTEM_VIDEO.md](docs/DESIGN_SYSTEM_VIDEO.md),
+[docs/MOTOR_MOTION.md](docs/MOTOR_MOTION.md) e
+[docs/BENCHMARK_SKILLS_VS_AGENTES.md](docs/BENCHMARK_SKILLS_VS_AGENTES.md).
+
 ## Producao autoral e multicanais
 
 Use `examples/canais.exemplo.toml` como base privada de configuracao. Cada `[[channels]]` tem um `id` local e pode declarar `youtube_channel_id` no arquivo privado. Quando ha canais cadastrados, `run` exige `--channel`; canal desconhecido ou duplicado falha antes da producao.
@@ -152,7 +175,8 @@ Flags uteis em `run`: `--topic arquivo.json`, `--format short|long`, `--max-scen
 
 - `crates/framechester-core`: dominio, estagios, portas (traits), config, seguranca, editorial, financeiro, QA e pipeline.
 - `crates/framechester-adapters`: fixtures offline, TemplateLlm, AnthropicLlm, KokoroTts, renderer/QA FFmpeg + ASR whisper, dry-run publisher, metricas e restic.
-- `crates/framechester-cli`: comandos `doctor`, `config-check`, `trends`, `run`, `qa`, `report`, `backup-check`, `backup`, `restore`, `finance`.
+- `crates/framechester-motion`: motor de animacao (storyboard -> componentes -> frames -> mixagem -> QA).
+- `crates/framechester-cli`: comandos `doctor`, `config-check`, `trends`, `run`, `plan`, `produce`, `qa`, `report`, `backup-check`, `backup`, `restore`, `finance`.
 - `web/`: frontend TypeScript/Vite e backend Node.js local, autenticacao, editores, configuracao por canal, cofre e integracao com o motor Rust.
 - `scripts/`: verificadores Python para Anthropic, YouTube OAuth e backup restic.
 - `docs/`: plano operacional, inventario de viabilidade, arquitetura e ADRs.

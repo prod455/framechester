@@ -1,0 +1,58 @@
+{
+  "id": "skills-vs-agentes",
+  "title": "Skills vs. Agentes de IA",
+  "series": "ia",
+  "angle": "O que um agente decide, o que uma skill ensina e por que a diferença muda o resultado",
+  "sources": [
+    {
+      "title": "Equipping agents for the real world with Agent Skills",
+      "url": "https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills",
+      "publisher": "Anthropic (engineering blog)",
+      "retrieved_at": "2026-10-29",
+      "license": "referencia documental; texto nao redistribuido"
+    },
+    {
+      "title": "Agent Skills overview (Claude Docs)",
+      "url": "https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview",
+      "publisher": "Anthropic (documentacao)",
+      "retrieved_at": "2026-10-29",
+      "license": "referencia documental; texto nao redistribuido"
+    },
+    {
+      "title": "Building effective agents",
+      "url": "https://www.anthropic.com/engineering/building-effective-agents",
+      "publisher": "Anthropic (engineering blog)",
+      "retrieved_at": "2026-10-29",
+      "license": "referencia documental; texto nao redistribuido"
+    }
+  ],
+  "claims": [
+    {
+      "text": "Um agente e um sistema em que o modelo dirige dinamicamente seu proprio processo e o uso de ferramentas, em um ciclo de decisao, acao e observacao.",
+      "status": "cited",
+      "source_urls": ["https://www.anthropic.com/engineering/building-effective-agents"]
+    },
+    {
+      "text": "Uma skill e uma pasta com um arquivo SKILL.md (nome, descricao e instrucoes) e, opcionalmente, scripts e recursos.",
+      "status": "cited",
+      "source_urls": [
+        "https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills",
+        "https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview"
+      ]
+    },
+    {
+      "text": "No inicio, o agente carrega apenas nome e descricao de cada skill; o conteudo completo entra no contexto quando a tarefa e relevante (divulgacao progressiva).",
+      "status": "cited",
+      "source_urls": ["https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills"]
+    }
+  ],
+  "metrics": {
+    "acceleration": 0.8,
+    "demand": 0.8,
+    "alignment": 0.9,
+    "originality": 0.7,
+    "visual_feasibility": 0.9,
+    "timing": 0.8,
+    "cross_check": 0.8
+  }
+}

@@ -14,7 +14,9 @@
 | restic | 0.19.1 | encrypted backup/restore | BSD-2-Clause | User installs separately |
 | Rust crates | see `Cargo.lock` | build/runtime | Mixed permissive (MIT/Apache-2.0/BSD/ISC); run `cargo deny`/license scan before release | After scanning |
 | Blender | optional, not used by this slice | future 3D subprocess | GPL terms for software; assess bundling separately | External install |
-| Images, video, music, fonts | operator-provided or synthetic | video content | Individual rights/provenance per asset | Never ship uncertain assets |
+| Inter (Regular, SemiBold, Bold) | rsms/inter 3.19 OTF, copied from Debian `fonts-inter`; SHA-256 recorded by `framechester-motion` in every `render_manifest.json` | bundled text face of the motion engine (`assets/fonts/inter`, embedded with `include_bytes!`) | SIL OFL-1.1 (`assets/fonts/inter/LICENSE-OFL-1.1.txt`); reserved font name applies | Yes, with the licence file |
+| Liberation Mono (Regular, Bold) | Debian `fonts-liberation` 1.07 | bundled monospace face for code demonstrations (`assets/fonts/liberation`) | SIL OFL-1.1 (`assets/fonts/liberation/LICENSE-OFL-1.1.txt`) | Yes, with the licence file |
+| Images, video, music, fonts (other) | operator-provided or synthetic | video content | Individual rights/provenance per asset | Never ship uncertain assets |
 
 This file is a **release checklist**, not a completed legal audit. Re-run the dependency/license scan against the actual lockfile and FFmpeg build before any release or binary distribution.
 

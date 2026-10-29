@@ -1,0 +1,223 @@
+{
+  "video": "artifacts/bench/vertical/render/final.mp4",
+  "overall": "pass",
+  "blocking": [],
+  "checks": [
+    {
+      "id": "layout_text_overflow",
+      "name": "textos cabem sem truncar",
+      "status": "pass",
+      "detail": "ok"
+    },
+    {
+      "id": "layout_code_overflow",
+      "name": "codigo cabe na janela",
+      "status": "pass",
+      "detail": "ok"
+    },
+    {
+      "id": "layout_caption_overflow",
+      "name": "legendas cabem na faixa",
+      "status": "pass",
+      "detail": "ok"
+    },
+    {
+      "id": "layout_outside_safe_area",
+      "name": "textos dentro das areas seguras",
+      "status": "pass",
+      "detail": "ok"
+    },
+    {
+      "id": "layout_text_intersection",
+      "name": "textos nao se sobrepoem",
+      "status": "pass",
+      "detail": "ok"
+    },
+    {
+      "id": "semantic_motion",
+      "name": "cada cena anima o que a narracao explica",
+      "status": "pass",
+      "detail": "ok"
+    },
+    {
+      "id": "long_still",
+      "name": "sem trechos parados alem do limite da cena",
+      "status": "pass",
+      "detail": "ok"
+    },
+    {
+      "id": "script_scene_consistency",
+      "name": "narracao gravada corresponde ao roteiro de cada cena",
+      "status": "pass",
+      "detail": "7 cenas conferidas"
+    },
+    {
+      "id": "required_resources",
+      "name": "recursos obrigatorios presentes",
+      "status": "pass",
+      "detail": "nenhum recurso externo exigido"
+    },
+    {
+      "id": "captions_present",
+      "name": "legendas geradas para as cenas narradas",
+      "status": "pass",
+      "detail": "42 legendas"
+    },
+    {
+      "id": "captions_sync",
+      "name": "legendas em ordem, sem sobreposicao e dentro do video",
+      "status": "pass",
+      "detail": "0 sobrepostas, 0 fora do video de 64.3s"
+    },
+    {
+      "id": "resolution",
+      "name": "resolucao do formato",
+      "status": "pass",
+      "detail": "1080x1920, esperado 1080x1920"
+    },
+    {
+      "id": "fps",
+      "name": "fps do perfil",
+      "status": "pass",
+      "detail": "30.00, esperado 30"
+    },
+    {
+      "id": "codec",
+      "name": "codec de video",
+      "status": "pass",
+      "detail": "h264, esperado h264"
+    },
+    {
+      "id": "audio_stream",
+      "name": "stream de audio AAC presente",
+      "status": "pass",
+      "detail": "aac, esperado aac"
+    },
+    {
+      "id": "duration",
+      "name": "duracao igual ao storyboard",
+      "status": "pass",
+      "detail": "64.32s, storyboard 64.32s"
+    },
+    {
+      "id": "decode",
+      "name": "decodificacao completa",
+      "status": "pass",
+      "detail": "ok"
+    },
+    {
+      "id": "black",
+      "name": "sem frames pretos",
+      "status": "pass",
+      "detail": "0 trecho(s) preto(s)"
+    },
+    {
+      "id": "freeze",
+      "name": "sem imagem congelada alem do limite",
+      "status": "pass",
+      "detail": "0 congelamento(s) acima de 5.0s"
+    },
+    {
+      "id": "loudness",
+      "name": "loudness integrada em -14 LUFS (±1 LU)",
+      "status": "pass",
+      "detail": "-14.5 LUFS"
+    },
+    {
+      "id": "true_peak",
+      "name": "true peak ate -1.5 dBTP",
+      "status": "pass",
+      "detail": "-1.5 dBTP"
+    },
+    {
+      "id": "silence",
+      "name": "sem silencios longos",
+      "status": "pass",
+      "detail": "0 silencio(s) acima de 2,5s"
+    },
+    {
+      "id": "clipping",
+      "name": "sem clipping de audio",
+      "status": "pass",
+      "detail": "pico -1.53 dBFS, flat factor 0.00"
+    },
+    {
+      "id": "audio_level",
+      "name": "audio audivel",
+      "status": "pass",
+      "detail": "-14.5 LUFS"
+    },
+    {
+      "id": "contact_sheet",
+      "name": "contact sheet gerado",
+      "status": "pass",
+      "detail": "artifacts/bench/vertical/render/contact_sheet.png"
+    }
+  ],
+  "layout_issues": [],
+  "scenes": [
+    {
+      "id": 0,
+      "kind": "title",
+      "start_secs": 0.0,
+      "duration_secs": 5.9199996,
+      "visual_changes": 21,
+      "longest_still_secs": 0.68041515,
+      "caption_chunks": 3
+    },
+    {
+      "id": 1,
+      "kind": "flow_diagram",
+      "start_secs": 5.9199996,
+      "duration_secs": 11.419999,
+      "visual_changes": 46,
+      "longest_still_secs": 0.65990114,
+      "caption_chunks": 7
+    },
+    {
+      "id": 2,
+      "kind": "annotation",
+      "start_secs": 17.339998,
+      "duration_secs": 10.272,
+      "visual_changes": 43,
+      "longest_still_secs": 0.6318705,
+      "caption_chunks": 5
+    },
+    {
+      "id": 3,
+      "kind": "code",
+      "start_secs": 27.612,
+      "duration_secs": 8.494,
+      "visual_changes": 47,
+      "longest_still_secs": 0.52,
+      "caption_chunks": 7
+    },
+    {
+      "id": 4,
+      "kind": "cause_effect",
+      "start_secs": 36.106,
+      "duration_secs": 8.885333,
+      "visual_changes": 48,
+      "longest_still_secs": 0.8937378,
+      "caption_chunks": 7
+    },
+    {
+      "id": 5,
+      "kind": "comparison",
+      "start_secs": 44.991333,
+      "duration_secs": 8.756666,
+      "visual_changes": 37,
+      "longest_still_secs": 1.0799999,
+      "caption_chunks": 5
+    },
+    {
+      "id": 6,
+      "kind": "infographic",
+      "start_secs": 53.748,
+      "duration_secs": 10.571958,
+      "visual_changes": 46,
+      "longest_still_secs": 0.5953847,
+      "caption_chunks": 8
+    }
+  ]
+}

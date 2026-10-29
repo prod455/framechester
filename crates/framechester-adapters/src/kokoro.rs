@@ -104,6 +104,67 @@ impl TtsEngine for KokoroTts {
             voice: self.config.voice_name.clone(),
         })
     }
+
+    fn synthesize_batch(&self, requests: &[TtsRequest]) -> Result<Vec<TtsAudio>> {
+        if requests.is_empty() {
+            return Ok(Vec::new());
+        }
+        if requests.iter().any(|request| {
+            request.voice != self.config.voice_name || request.text.trim().is_empty()
+        }) {
+            return Err(FramechesterError::InvalidInput(
+                "voz diferente da configuracao aprovada ou narracao vazia no lote".into(),
+            ));
+        }
+        let payload = serde_json::to_vec(
+            &requests
+                .iter()
+                .map(
+                    |request| serde_json::json!({ "text": request.text, "output": request.output }),
+                )
+                .collect::<Vec<_>>(),
+        )?;
+        let mut child = self
+            .command()
+            .arg("--batch")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped())
+            .spawn()?;
+        let mut input = child.stdin.take().ok_or_else(|| {
+            FramechesterError::External("entrada do narrador indisponivel".into())
+        })?;
+        input.write_all(&payload)?;
+        drop(input);
+        let result = child.wait_with_output()?;
+        if !result.status.success() {
+            return Err(FramechesterError::External(format!(
+                "narracao em lote falhou: {}",
+                String::from_utf8_lossy(&result.stderr)
+                    .chars()
+                    .take(600)
+                    .collect::<String>()
+            )));
+        }
+        requests
+            .iter()
+            .map(|request| {
+                let (sample_rate, duration_secs) = probe_wav(&request.output).ok_or_else(|| {
+                    FramechesterError::External(format!(
+                        "narrador nao produziu WAV valido para {}",
+                        request.output.display()
+                    ))
+                })?;
+                Ok(TtsAudio {
+                    scene_id: request.scene_id,
+                    path: request.output.clone(),
+                    duration_secs,
+                    sample_rate,
+                    voice: self.config.voice_name.clone(),
+                })
+            })
+            .collect()
+    }
 }
 
 #[cfg(test)]

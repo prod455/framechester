@@ -168,10 +168,8 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
           const previewOnly = !finalRequested;
           if (!relevant(scriptId)) throw new Error('O canal ou roteiro mudou. Abra a preparação novamente.');
           if (!previewOnly && !script.crossChecked)
-            throw new Error('Confira as fontes no roteiro antes de gerar o vídeo.');
-          if (!previewOnly && new Set(script.sources.map((source) => source.url)).size < 1)
             throw new Error(
-              'O roteiro precisa de ao menos uma fonte. Use Buscar fontes no editor ou registre uma.',
+              'Marque “Conferi e cruzei as fontes e as alegações” no roteiro antes da versão final.',
             );
           const job = await api<WebJob>(path('jobs'), 'POST', {
             scriptId,
@@ -192,16 +190,17 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
         () => dialog.close(),
         'Iniciando produção…',
       );
-      // The final version needs the operator's cross-check declaration and one documented source.
-      // Claims may still be pending (QA holds the video for review); only a contradicted claim or a
-      // reference outside the source inventory blocks it, the same rule the engine applies.
-      const sourcesReady =
-        script.crossChecked && new Set(script.sources.map((source) => source.url)).size >= 1;
+      // The final version needs the operator's declaration. A missing source is named by QA in the
+      // report; only a contradicted claim or a reference outside the sources blocks it, the same
+      // rule the engine applies.
       const sourceUrls = new Set(script.sources.map((source) => source.url));
       const claimsReady = script.claims.every(
         (claim) => claim.status !== 'contradicted' && claim.sourceUrls.every((url) => sourceUrls.has(url)),
       );
-      const editorialReady = sourcesReady && claimsReady;
+      const editorialReady = script.crossChecked && claimsReady;
+      const editorialReason = !script.crossChecked
+        ? 'Para a versão final, marque “Conferi e cruzei as fontes e as alegações” no roteiro (aba Fontes e revisão).'
+        : 'Para a versão final, corrija no roteiro as alegações marcadas como contradição ou com URL fora das fontes.';
       const previewCount = Object.keys(prepared.previews ?? prepared.bindings).length;
       const summary = el(
         'section',
@@ -241,14 +240,7 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
           ),
         );
       if (recovery.childElementCount) summary.append(recovery);
-      if (!editorialReady)
-        summary.append(
-          el(
-            'p',
-            { className: 'field-hint' },
-            'Antes da versão final: no roteiro, aba “Fontes e revisão”, registre ao menos uma fonte (ou use Buscar fontes), resolva alegações contraditórias e marque “Conferi e cruzei as fontes e as alegações”.',
-          ),
-        );
+      if (!editorialReady) summary.append(el('p', { className: 'field-hint' }, editorialReason));
       const readiness = el('p', { className: 'field-hint', role: 'status' });
       const submit = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
       const finalButton = button(
@@ -272,7 +264,7 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
         readiness.textContent = missing
           ? `Falta resolver ${missing} cena${missing === 1 ? '' : 's'} para gerar a versão final. As prévias ilustrativas já estão disponíveis.`
           : !editorialReady
-            ? 'As fontes e as alegações ainda precisam de revisão para liberar a geração.'
+            ? editorialReason
             : 'Cenas prontas para gerar o vídeo neste computador.';
       };
       updateReady();

@@ -154,11 +154,9 @@ function rustConfig(config: WebConfig, channelId: string): string {
 function checkScript(script: Script, previewOnly = false) {
   if (!previewOnly && !script.crossChecked)
     throw new RunnerError('Confirme o cruzamento das fontes no roteiro antes de produzir.');
+  // A script without sources still produces its final version: editorial QA names the missing
+  // source in the report instead of keeping the operator away from the video.
   const urls = new Set(script.sources.map((item) => item.url));
-  if (!previewOnly && urls.size < 1)
-    throw new RunnerError(
-      'O roteiro precisa de ao menos uma fonte. Use Buscar fontes no editor ou registre uma.',
-    );
   if (
     script.scenes.length < 1 ||
     script.scenes.length > 32 ||
@@ -206,6 +204,33 @@ function checkScript(script: Script, previewOnly = false) {
     throw new RunnerError(
       'Resolva as alegações marcadas como contraditórias e use só URLs das fontes do roteiro.',
     );
+}
+/** Why the engine refused, in its own words: the report's failed checks or the topic gate. */
+function blockedMessage(report: {
+  technical_qa?: unknown;
+  editorial_qa?: unknown;
+  warnings?: unknown;
+}): string {
+  const reasons: string[] = [];
+  for (const section of [report.technical_qa, report.editorial_qa]) {
+    const checks = (section as { checks?: unknown } | undefined)?.checks;
+    if (!Array.isArray(checks)) continue;
+    for (const check of checks)
+      if (check && typeof check === 'object' && (check as { status?: unknown }).status === 'fail') {
+        const { name, detail } = check as { name?: unknown; detail?: unknown };
+        reasons.push([name, detail].filter((part) => typeof part === 'string' && part).join(': '));
+      }
+  }
+  if (!reasons.length && Array.isArray(report.warnings))
+    reasons.push(
+      ...report.warnings.filter(
+        (warning): warning is string => typeof warning === 'string' && !warning.startsWith('PREVIA'),
+      ),
+    );
+  const named = reasons.filter(Boolean).slice(0, 4).join('; ').slice(0, 500);
+  return named
+    ? `O motor bloqueou a entrega: ${named}.`
+    : 'O motor bloqueou a entrega. Confira o relatório de QA.';
 }
 /** Names of the checks a human still has to look at, for the job message. */
 function pendingChecks(report: { technical_qa?: unknown; editorial_qa?: unknown }): string[] {
@@ -884,7 +909,7 @@ export class LocalRunner implements RunnerApi {
       if (input.previewOnly && job.videoAvailable && ['pass', 'needs_human'].includes(job.qa.technical)) {
         job.status = 'needs_review';
         job.message =
-          'Prévia do vídeo gerada com marca de revisão. Para a versão final: revise o roteiro (fontes e “Conferi e cruzei as fontes”), depois Produzir com IA → Controles avançados → preparação manual → Gerar versão final.';
+          'Prévia gerada com marca de revisão. Assista em Revisar vídeo e use Gerar versão final neste card quando estiver bom.';
       } else if (
         result.exitCode !== 0 ||
         report.stage === 'blocked' ||
@@ -892,7 +917,7 @@ export class LocalRunner implements RunnerApi {
         job.qa.editorial === 'fail'
       ) {
         job.status = 'blocked';
-        job.message = 'O motor bloqueou a entrega. Confira o relatório de QA.';
+        job.message = blockedMessage(report);
       } else if (!job.videoAvailable || job.qa.technical === 'skipped' || job.qa.editorial === 'skipped') {
         job.status = 'blocked';
         job.message =

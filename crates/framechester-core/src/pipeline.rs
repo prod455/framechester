@@ -698,7 +698,7 @@ mod tests {
     #[test]
     fn blocked_topic_returns_blocked_stage() {
         let mut topic = topic();
-        topic.sources.clear();
+        topic.metrics.cross_check = 0.0;
         let pipeline = Pipeline::new(
             providers(),
             PipelineOptions {

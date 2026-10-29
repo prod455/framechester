@@ -23,10 +23,13 @@ pub fn mask_repository(repository: &str) -> String {
             return format!("{scheme}:...");
         }
     }
-    let name = Path::new(trimmed)
-        .file_name()
-        .map(|value| value.to_string_lossy().to_string())
-        .unwrap_or_else(|| "oculto".into());
+    // Repositories may be written with either separator regardless of the host OS.
+    let name = trimmed
+        .trim_end_matches(['/', '\\'])
+        .rsplit(['/', '\\'])
+        .next()
+        .filter(|segment| !segment.is_empty())
+        .unwrap_or("oculto");
     format!("local:{name}")
 }
 

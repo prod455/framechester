@@ -5,20 +5,34 @@ import type { WebJob } from '../shared/types.ts';
 import { protectEdits, watchForm } from './edit-protection.ts';
 import { revealControl } from './ui-tabs.ts';
 
-export function mediaThumbnail(job: Pick<WebJob, 'id' | 'channelId' | 'videoAvailable'>): HTMLElement {
+export function mediaThumbnail(
+  job: Pick<WebJob, 'id' | 'channelId' | 'videoAvailable' | 'previewOnly'>,
+): HTMLElement {
   const frame = el('div', { className: 'media-thumbnail', 'aria-hidden': 'true' });
-  if (job.videoAvailable) {
-    const image = el('img', {
-      src: `/api/channels/${encodeURIComponent(job.channelId)}/jobs/${encodeURIComponent(job.id)}/files/thumbnail`,
-      alt: '',
-      loading: 'lazy',
-      decoding: 'async',
-      width: 128,
-      height: 72,
-    });
-    image.addEventListener('error', () => replace(frame, icon('film')), { once: true });
-    frame.append(image);
-  } else frame.append(icon('film'));
+  if (!job.videoAvailable) {
+    frame.append(icon('film'));
+    return frame;
+  }
+  const files = `/api/channels/${encodeURIComponent(job.channelId)}/jobs/${encodeURIComponent(job.id)}/files`;
+  // Previews have no publishing package, hence no thumbnail file: show a frame of the video itself.
+  const media = job.previewOnly
+    ? el('video', {
+        src: `${files}/video#t=1`,
+        preload: 'metadata',
+        muted: true,
+        playsInline: true,
+        tabindex: '-1',
+      })
+    : el('img', {
+        src: `${files}/thumbnail`,
+        alt: '',
+        loading: 'lazy',
+        decoding: 'async',
+        width: 128,
+        height: 72,
+      });
+  media.addEventListener('error', () => replace(frame, icon('film')), { once: true });
+  frame.append(media);
   return frame;
 }
 

@@ -27,6 +27,8 @@ interface EngineResult {
   stdout: string;
   stderr: string;
 }
+/** Renderer id reported by `framechester visuals`; bump together with editorial_visuals.rs. */
+const visualRenderer = 'framechester-editorial-v2';
 export class RunnerError extends Error {
   constructor(
     message: string,
@@ -131,7 +133,7 @@ function visualFingerprint(state: AppState, channelId: string, script: Script): 
   return hash(
     Buffer.from(
       JSON.stringify({
-        renderer: 'framechester-editorial-v2',
+        renderer: visualRenderer,
         previewRevision: 2,
         channelId,
         channel: state.channels.find((channel) => channel.id === channelId)?.name,
@@ -379,11 +381,15 @@ export class LocalRunner implements RunnerApi {
       } catch {
         throw new RunnerError('O motor retornou um plano visual inválido.');
       }
+      if (report && typeof report === 'object' && 'renderer' in report && report.renderer !== visualRenderer)
+        throw new RunnerError(
+          `O motor Rust está desatualizado (respondeu ${String(report.renderer).slice(0, 60)}; esperado ${visualRenderer}). Encerre o Studio e rode npm start, que recompila o motor, ou npm --prefix web run engine:build.`,
+          503,
+        );
       if (
         !report ||
         typeof report !== 'object' ||
         !('renderer' in report) ||
-        report.renderer !== 'framechester-editorial-v2' ||
         !('scenes' in report) ||
         !Array.isArray(report.scenes) ||
         report.scenes.length !== script.scenes.length

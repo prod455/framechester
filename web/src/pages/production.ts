@@ -133,15 +133,7 @@ export function jobCard(job: WebJob): HTMLElement {
         el('summary', {}, 'Ver diagnóstico'),
         el('pre', { className: 'job-diagnostic' }, job.message),
       )
-    : el(
-        'p',
-        {},
-        job.previewOnly
-          ? job.message
-          : job.status === 'needs_review'
-            ? 'Vídeo gerado. Confira o conteúdo e os direitos de uso antes de publicar.'
-            : job.message,
-      );
+    : el('p', {}, job.message);
   return el(
     'article',
     { className: 'job-card', 'data-testid': `job-${job.id}` },

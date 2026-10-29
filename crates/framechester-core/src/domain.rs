@@ -179,6 +179,10 @@ pub struct Script {
     pub scenes: Vec<Scene>,
     pub sources: Vec<Source>,
     pub claims: Vec<Claim>,
+    /// The operator declared the editorial review: sources cross-checked and claims read
+    /// against them. It is the human approval the editorial QA waits for.
+    #[serde(default)]
+    pub cross_checked: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

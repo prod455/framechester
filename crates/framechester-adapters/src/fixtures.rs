@@ -198,6 +198,7 @@ impl LlmProvider for TemplateLlm {
             scenes,
             sources: topic.sources.clone(),
             claims: topic.claims.clone(),
+            cross_checked: false,
         })
     }
 }

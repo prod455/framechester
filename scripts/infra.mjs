@@ -1,6 +1,6 @@
 import {spawn} from 'node:child_process';
 import {existsSync} from 'node:fs';
-import {chmod,lstat,mkdir,open,readFile,readdir,readlink,realpath,rename,rm} from 'node:fs/promises';
+import {chmod,lstat,mkdir,open,readFile,readdir,readlink,realpath,rename,rm,stat} from 'node:fs/promises';
 import {randomBytes} from 'node:crypto';
 import {homedir} from 'node:os';
 import {dirname,isAbsolute,join,parse,resolve} from 'node:path';
@@ -78,7 +78,9 @@ export function execute(command,args,{cwd=repositoryRoot,env=process.env,capture
 async function privateDirectory(path){
  const absolute=resolve(path),ancestors=[];for(let current=absolute;;current=dirname(current)){ancestors.unshift(current);if(current===parse(current).root)break;}
  for(const directory of ancestors){try{const info=await lstat(directory);if(!info.isDirectory()||info.isSymbolicLink())throw fail('O diretório privado contém vínculo inseguro.');}catch(error){if(error.code!=='ENOENT')throw error;await mkdir(directory,{mode:0o700});}}
- if(normalize(await realpath(absolute))!==normalize(absolute))throw fail('O diretório privado contém vínculo inseguro.');
+ // Compare identities, not spellings: Windows may hand the same directory as an 8.3 short name.
+ const [leaf,canonical]=await Promise.all([lstat(absolute,{bigint:true}),stat(await realpath(absolute),{bigint:true})]);
+ if(leaf.ino!==canonical.ino||leaf.dev!==canonical.dev)throw fail('O diretório privado contém vínculo inseguro.');
  return absolute;
 }
 async function safeFile(path,maxBytes){

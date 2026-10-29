@@ -1,13 +1,15 @@
 version: 2
 updates:
+# One pull request per ecosystem per cycle: a single operator reviews one diff,
+# not one e-mail per package.
   - package-ecosystem: cargo
     directory: /
     schedule:
       interval: weekly
       day: monday
     groups:
-      rust-minor-and-patch:
-        update-types: [minor, patch]
+      cargo:
+        patterns: ["*"]
     labels: [dependencies, rust]
   - package-ecosystem: npm
     directory: /web
@@ -15,8 +17,8 @@ updates:
       interval: weekly
       day: monday
     groups:
-      npm-minor-and-patch:
-        update-types: [minor, patch]
+      npm:
+        patterns: ["*"]
     labels: [dependencies, web]
     ignore:
       # The Studio runs on Node 22 (engines, Dockerfile); its types follow the runtime major.
@@ -26,9 +28,15 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
     labels: [dependencies, ci]
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: monthly
+    groups:
+      docker:
+        patterns: ["*"]
     labels: [dependencies, docker]

@@ -7,6 +7,9 @@ compatibility and say so here.
 
 ## [Unreleased]
 
+### Changed
+- Dependencies: `toml` 1.1, `sha2` 0.11, Tailwind CSS 4.3.3, and the GitHub Actions majors (`checkout` v7, `setup-python` v7, `docker/setup-buildx-action` v4, `docker/login-action` v4, `docker/build-push-action` v7). `@types/node` stays on the Node 22 line the Studio runs on, and Dependabot no longer proposes its majors.
+
 ## [0.1.0] - 2026-10-29
 
 First release: a complete local production path, from topic to a video approved for manual upload. Automatic publishing stays disabled.

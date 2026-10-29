@@ -215,6 +215,7 @@ mod tests {
             }],
             sources: topic.sources.clone(),
             claims: topic.claims.clone(),
+            cross_checked: true,
         };
         let document = serde_json::json!({"topic_id": topic.id, "script": script});
         (

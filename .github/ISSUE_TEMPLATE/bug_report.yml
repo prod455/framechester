@@ -1,0 +1,56 @@
+name: Bug report
+description: Something the Studio or the engine did wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Nunca cole tokens, senhas, caminhos privados, dados pessoais ou mídia com direitos de terceiros. O relatório de QA e os logs do Studio já redigem segredos, mas confira antes de enviar.
+  - type: textarea
+    id: what
+    attributes:
+      label: O que aconteceu
+      description: O que você fez, o que esperava e o que o sistema mostrou (mensagem exata, se houver).
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Como reproduzir
+      placeholder: |
+        1. Roteiros → Novo roteiro → …
+        2. Produção → Produzir com IA → …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versão
+      description: Tag da release (por exemplo `v0.1.0`) ou commit (`git rev-parse --short HEAD`).
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - Studio web (interface ou servidor Node)
+        - Motor Rust (CLI, render, QA)
+        - Vozes / TTS
+        - Docker
+        - Documentação
+        - Outra
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Ambiente
+      description: Sistema operacional, saída de `cargo run -p framechester-cli -- doctor`, versão do Node e do FFmpeg.
+      render: text
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relatório ou logs
+      description: Trecho relevante de `pipeline_report.json`, da saída do terminal ou do diagnóstico do job.
+      render: text

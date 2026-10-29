@@ -247,11 +247,16 @@ export function scriptForm(record?: Script): HTMLElement {
           'Procura artigos revisados por pares (DOI) no Crossref pelos termos e pelas alegações. Só entram artigos citados e com o tema no título; leia cada um antes de publicar.',
         ),
         claims.node,
-        el('label', { className: 'checkbox-field' }, crossed, 'Conferi e cruzei as fontes desta pauta'),
+        el(
+          'label',
+          { className: 'checkbox-field' },
+          crossed,
+          'Conferi e cruzei as fontes e as alegações desta pauta',
+        ),
         el(
           'p',
           { className: 'field-hint' },
-          'Esta é uma declaração do operador. Salvar não aprova fatos, direitos ou publicação.',
+          'Esta é a revisão editorial: o motor registra a declaração no relatório de QA e libera a versão final. Publicar continua manual.',
         ),
         el(
           'div',

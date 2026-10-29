@@ -98,6 +98,23 @@ pub fn editorial(script: &Script, assets: &[AssetManifest], timeline: &Timeline)
             QaStatus::Fail,
             format!("{unlisted} referencia(s) fora das fontes documentadas"),
         )
+    } else if script.cross_checked {
+        // The operator declared the review; what remains is their call, so it is recorded
+        // in the detail instead of holding the video.
+        let total = script.claims.len();
+        let detail = if total == 0 {
+            "sem alegacoes registradas; fontes conferidas pelo operador".to_string()
+        } else if unsourced > 0 {
+            format!("{total} claim(s) conferidos pelo operador; {unsourced} sem URL vinculada")
+        } else {
+            format!("{total} claim(s) conferidos pelo operador")
+        };
+        check(
+            "claims",
+            "claims com fonte e sem contradicao",
+            QaStatus::Pass,
+            detail,
+        )
     } else if unsourced > 0 {
         check(
             "claims",
@@ -201,8 +218,8 @@ pub fn editorial(script: &Script, assets: &[AssetManifest], timeline: &Timeline)
 
     let duration = timeline.total_duration_secs();
     let (min, max) = script.format.duration_range();
-    // The range is an editorial target, so missing it asks for review. Only a Short longer
-    // than YouTube classifies as a Short is a real defect; a shorter video is still valid.
+    // The range is an editorial target, not a defect: the operator sees the video anyway.
+    // Only a Short longer than YouTube classifies as a Short is a real problem.
     checks.push(
         if script.format == ScriptFormat::Short && duration > SHORTS_MAX_SECS {
             check(
@@ -215,8 +232,8 @@ pub fn editorial(script: &Script, assets: &[AssetManifest], timeline: &Timeline)
             check(
                 "duration",
                 "duracao dentro da faixa",
-                QaStatus::NeedsHuman,
-                format!("{duration:.1}s fora da faixa alvo {min:.0}-{max:.0}s"),
+                QaStatus::Pass,
+                format!("{duration:.1}s (alvo editorial {min:.0}-{max:.0}s, nao obrigatorio)"),
             )
         } else {
             check(
@@ -266,12 +283,21 @@ pub fn editorial(script: &Script, assets: &[AssetManifest], timeline: &Timeline)
         )
     });
 
-    checks.push(check(
-        "editorial_review",
-        "revisao editorial humana",
-        QaStatus::NeedsHuman,
-        "MVP exige aprovacao humana antes de publicar",
-    ));
+    checks.push(if script.cross_checked {
+        check(
+            "editorial_review",
+            "revisao editorial humana",
+            QaStatus::Pass,
+            "operador declarou a revisao: fontes cruzadas e alegacoes conferidas",
+        )
+    } else {
+        check(
+            "editorial_review",
+            "revisao editorial humana",
+            QaStatus::NeedsHuman,
+            "marque \"Conferi e cruzei as fontes\" no roteiro para registrar a revisao",
+        )
+    });
 
     QaReport::new(checks)
 }
@@ -319,6 +345,7 @@ mod tests {
                 status: ClaimStatus::Verified,
                 source_urls: vec!["https://example.com/0".into()],
             }],
+            cross_checked: false,
         }
     }
 
@@ -364,6 +391,47 @@ mod tests {
             .iter()
             .any(|check| check.status == QaStatus::Fail));
         assert_eq!(report.overall(), QaStatus::NeedsHuman);
+    }
+
+    #[test]
+    fn the_operator_declaration_is_the_human_approval() {
+        let mut script = script();
+        script.cross_checked = true;
+        let report = editorial(&script, &[asset(0), asset(1)], &timeline());
+        assert_eq!(status_of(&report, "editorial_review"), QaStatus::Pass);
+        assert_eq!(status_of(&report, "claims"), QaStatus::Pass);
+        assert_eq!(report.overall(), QaStatus::Pass, "{:?}", report.checks);
+    }
+
+    #[test]
+    fn reviewed_script_passes_with_cited_unsourced_or_no_claims() {
+        let mut script = script();
+        script.cross_checked = true;
+        script.claims[0].status = ClaimStatus::Cited;
+        script.claims[0].source_urls.clear();
+        let report = editorial(&script, &[asset(0), asset(1)], &timeline());
+        assert_eq!(status_of(&report, "claims"), QaStatus::Pass);
+        assert!(report
+            .checks
+            .iter()
+            .any(|check| check.id == "claims" && check.detail.contains("1 sem URL vinculada")));
+        script.claims.clear();
+        let report = editorial(&script, &[asset(0), asset(1)], &timeline());
+        assert_eq!(status_of(&report, "claims"), QaStatus::Pass);
+        assert_eq!(report.overall(), QaStatus::Pass);
+    }
+
+    #[test]
+    fn the_operator_declaration_never_hides_a_contradiction_or_a_foreign_reference() {
+        let mut script = script();
+        script.cross_checked = true;
+        script.claims[0].status = ClaimStatus::Contradicted;
+        let report = editorial(&script, &[asset(0), asset(1)], &timeline());
+        assert_eq!(status_of(&report, "claims"), QaStatus::Fail);
+        script.claims[0].status = ClaimStatus::Cited;
+        script.claims[0].source_urls = vec!["https://example.com/not-listed".into()];
+        let report = editorial(&script, &[asset(0), asset(1)], &timeline());
+        assert_eq!(status_of(&report, "claims"), QaStatus::Fail);
     }
 
     fn status_of(report: &crate::domain::QaReport, id: &str) -> QaStatus {
@@ -508,24 +576,19 @@ mod tests {
     }
 
     #[test]
-    fn duration_outside_the_target_asks_for_review_instead_of_blocking() {
-        assert_eq!(
-            duration_status(ScriptFormat::Short, 22.5),
-            QaStatus::NeedsHuman
-        );
+    fn duration_outside_the_editorial_target_is_noted_without_holding_the_video() {
+        assert_eq!(duration_status(ScriptFormat::Short, 22.5), QaStatus::Pass);
         assert_eq!(duration_status(ScriptFormat::Short, 75.0), QaStatus::Pass);
-        assert_eq!(
-            duration_status(ScriptFormat::Short, 150.0),
-            QaStatus::NeedsHuman
-        );
-        assert_eq!(
-            duration_status(ScriptFormat::Long, 90.0),
-            QaStatus::NeedsHuman
-        );
-        assert_eq!(
-            duration_status(ScriptFormat::Long, 2000.0),
-            QaStatus::NeedsHuman
-        );
+        assert_eq!(duration_status(ScriptFormat::Short, 150.0), QaStatus::Pass);
+        assert_eq!(duration_status(ScriptFormat::Long, 90.0), QaStatus::Pass);
+        assert_eq!(duration_status(ScriptFormat::Long, 2000.0), QaStatus::Pass);
+        let mut script = script();
+        script.format = ScriptFormat::Short;
+        let report = editorial(&script, &[asset(0), asset(1)], &timed(22.5));
+        assert!(report
+            .checks
+            .iter()
+            .any(|check| check.id == "duration" && check.detail.contains("alvo editorial 65-90s")));
     }
 
     #[test]

@@ -1,5 +1,12 @@
 {
   "name": "framechester",
+  "version": "0.1.0",
+  "description": "Open-source, self-hosted, single-operator media production engine: Rust engine and local TypeScript Studio",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/prod455/framechester.git"
+  },
   "private": true,
   "type": "module",
   "engines": { "node": ">=22.12.0" },

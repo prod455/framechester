@@ -11,6 +11,13 @@ version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 rust-version = "1.85"
+repository = "https://github.com/prod455/framechester"
+homepage = "https://github.com/prod455/framechester"
+readme = "README.md"
+keywords = ["video", "youtube", "ffmpeg", "tts", "media-production"]
+categories = ["multimedia::video", "command-line-utilities"]
+# The crates are built from this repository; they are not published to crates.io.
+publish = false
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }

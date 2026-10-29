@@ -193,19 +193,34 @@ function checkScript(script: Script, previewOnly = false) {
     )
       throw new RunnerError('Fonte incompleta ou URL insegura.');
   }
+  // The operator's declaration covers which claims they checked; the machine only refuses
+  // what it can prove: a contradiction the operator flagged or a reference outside the sources.
   if (
-    (!previewOnly && !script.claims.length) ||
     script.claims.some(
       (claim) =>
-        (!previewOnly && (claim.status !== 'cited' || !claim.sourceUrls.length)) ||
         claim.status === 'contradicted' ||
         !claim.text.trim() ||
         claim.sourceUrls.some((url) => !urls.has(url)),
     )
   )
     throw new RunnerError(
-      'Alegações precisam estar citadas nas fontes do roteiro, sem contradições pendentes.',
+      'Resolva as alegações marcadas como contraditórias e use só URLs das fontes do roteiro.',
     );
+}
+/** Names of the checks a human still has to look at, for the job message. */
+function pendingChecks(report: { technical_qa?: unknown; editorial_qa?: unknown }): string[] {
+  const names: string[] = [];
+  for (const section of [report.technical_qa, report.editorial_qa]) {
+    const checks = (section as { checks?: unknown } | undefined)?.checks;
+    if (!Array.isArray(checks)) continue;
+    for (const check of checks) {
+      if (check && typeof check === 'object' && (check as { status?: unknown }).status === 'needs_human')
+        names.push(
+          String((check as { name?: unknown }).name ?? (check as { id?: unknown }).id ?? 'verificação'),
+        );
+    }
+  }
+  return names;
 }
 
 export class LocalRunner implements RunnerApi {
@@ -812,6 +827,7 @@ export class LocalRunner implements RunnerApi {
           })),
           sources,
           claims,
+          cross_checked: script.crossChecked,
         },
       };
       await Promise.all([
@@ -881,9 +897,14 @@ export class LocalRunner implements RunnerApi {
         job.status = 'blocked';
         job.message =
           'Entrega incompleta: confira o arquivo de vídeo e os relatórios de QA antes de criar um novo trabalho.';
+      } else if (job.qa.technical === 'pass' && job.qa.editorial === 'pass') {
+        job.status = 'completed';
+        job.message =
+          'Vídeo aprovado: QA técnico e editorial sem pendências. Publicar continua manual, pelo YouTube Studio.';
       } else {
+        const pending = pendingChecks(report);
         job.status = 'needs_review';
-        job.message = 'Vídeo produzido. Revisão editorial e autorização de publicação continuam pendentes.';
+        job.message = `Vídeo produzido. Confira no relatório: ${pending.join('; ') || 'verificações pendentes'}.`;
       }
     } catch (error) {
       job.status = 'failed';

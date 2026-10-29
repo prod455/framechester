@@ -1,0 +1,34 @@
+name: Feature request
+description: Something the project should do, within its principles
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Framechester é self-hosted, single-operator e editorial-first. Pedidos de compra de audiência, automação de engajamento, burla de políticas de plataforma ou publicação sem revisão não entram.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema que você quer resolver
+      description: Descreva a situação de uso, não só a solução.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposta
+      description: O que mudaria no Studio, na CLI ou na documentação.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas
+  - type: checkboxes
+    id: principles
+    attributes:
+      label: Princípios
+      options:
+        - label: Funciona offline ou com provedores que o operador escolhe e paga diretamente.
+        - label: Não publica, compra nem automatiza engajamento sem ação humana explícita.
+        - label: Mantém fontes, direitos de mídia e QA antes de publicar.

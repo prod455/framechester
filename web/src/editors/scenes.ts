@@ -1,4 +1,4 @@
-import { SceneLayoutError, parseSceneLayout } from '../../shared/scene-layouts.ts';
+import { sceneLayoutOrFallback } from '../../shared/scene-layouts.ts';
 import { iconButton } from '../components.ts';
 import { button, el, field, input, textarea } from '../dom.ts';
 import type { ScriptScene } from '../../shared/types.ts';
@@ -19,16 +19,15 @@ export function sceneEditor(initial: ScriptScene[]): {
     narration.setAttribute('data-testid', `scene-${id}-narration`);
     const visual = textarea('scene-visual', scene?.visualBrief || '', 3);
     visual.required = true;
-    // Same check as the server, shown before saving.
+    // Advisory only: the engine renders any brief, a bad directive just means the default layout.
+    const layoutHint = el('span', { className: 'field-hint' });
     const checkLayout = () => {
-      try {
-        parseSceneLayout(id + 1, visual.value, narration.value);
-        visual.setCustomValidity('');
-      } catch (error) {
-        visual.setCustomValidity(
-          error instanceof SceneLayoutError ? error.message : 'Diretiva visual inválida.',
-        );
-      }
+      const { layout, problem } = sceneLayoutOrFallback(id + 1, visual.value, narration.value);
+      layoutHint.textContent = problem
+        ? `${problem} A cena usará o visual padrão.`
+        : layout === 'destaque'
+          ? 'Visual padrão: título da cena e trecho da narração.'
+          : `Layout: #${layout}.`;
     };
     visual.addEventListener('input', checkLayout);
     narration.addEventListener('input', checkLayout);
@@ -65,10 +64,15 @@ export function sceneEditor(initial: ScriptScene[]): {
         ),
         field('Narração autoral', narration),
         count,
-        field(
-          'O que aparece na tela?',
-          visual,
-          'Opcional na 1ª linha: #pergunta, #numero, #lista, #comparacao, #linha-do-tempo ou #citacao (ver docs/GUIA_VISUAL.md). O resto é nota livre.',
+        el(
+          'div',
+          {},
+          field(
+            'O que aparece na tela?',
+            visual,
+            'Opcional na 1ª linha: #pergunta, #numero, #lista, #comparacao, #linha-do-tempo ou #citacao (ver docs/GUIA_VISUAL.md). O resto é nota livre.',
+          ),
+          layoutHint,
         ),
       ),
     );

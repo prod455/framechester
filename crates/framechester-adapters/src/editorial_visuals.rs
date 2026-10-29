@@ -617,12 +617,14 @@ pub fn prepare(plan: &VisualPlan, output: &Path) -> Result<VisualReport> {
             "plano visual invalido; informe de 1 a 32 cenas completas, sem IDs duplicados".into(),
         ));
     }
-    // Reject every invalid directive before touching the output directory.
-    let layouts = plan
+    // A malformed directive is a note, not a defect: the scene falls back to the default layout.
+    let layouts: Vec<_> = plan
         .scenes
         .iter()
-        .map(|scene| scene_layout::parse(scene.id, &scene.visual_brief, &scene.narration))
-        .collect::<Result<Vec<_>>>()?;
+        .map(|scene| {
+            scene_layout::parse_or_default(scene.id, &scene.visual_brief, &scene.narration)
+        })
+        .collect();
     let (width, height) = match plan.format {
         ScriptFormat::Long => (1920, 1080),
         ScriptFormat::Short => (1080, 1920),
@@ -630,7 +632,7 @@ pub fn prepare(plan: &VisualPlan, output: &Path) -> Result<VisualReport> {
     let options = fonts()?;
     std::fs::create_dir_all(output)?;
     let mut scenes = Vec::new();
-    for (index, (scene, layout)) in plan.scenes.iter().zip(&layouts).enumerate() {
+    for (index, (scene, (layout, fallback))) in plan.scenes.iter().zip(&layouts).enumerate() {
         let file = format!("scene-{}.png", scene.id);
         render_scene(plan, scene, layout, index, width, height, &options)?
             .save_png(output.join(&file))
@@ -642,7 +644,9 @@ pub fn prepare(plan: &VisualPlan, output: &Path) -> Result<VisualReport> {
                 scene_id: scene.id,
                 status: "generated",
                 file: Some(file),
-                reason: None,
+                reason: fallback
+                    .as_ref()
+                    .map(|detail| format!("layout padrao usado; {detail}")),
             });
         }
     }
@@ -687,7 +691,7 @@ mod tests {
         assert!(!directory.path().join("out").exists());
     }
     #[test]
-    fn invalid_directive_fails_before_writing() {
+    fn invalid_directive_falls_back_to_the_default_layout() {
         let plan = VisualPlan {
             channel: "demo".into(),
             title: "Demo".into(),
@@ -701,9 +705,14 @@ mod tests {
             }],
         };
         let directory = tempfile::tempdir().unwrap();
-        let error = prepare(&plan, &directory.path().join("out")).unwrap_err();
-        assert!(error.to_string().contains("cena 3"));
-        assert!(!directory.path().join("out").exists());
+        let report = prepare(&plan, &directory.path().join("out")).unwrap();
+        assert_eq!(report.scenes[0].status, "generated");
+        assert!(report.scenes[0]
+            .reason
+            .as_deref()
+            .unwrap()
+            .contains("cena 3"));
+        assert!(directory.path().join("out").join("scene-3.png").is_file());
     }
     #[test]
     fn every_layout_renders_in_both_formats() {

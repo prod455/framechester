@@ -43,16 +43,11 @@ uma diretiva. O restante do campo continua sendo nota livre para o operador.
 
 Cada campo aceita até 160 caracteres; em `#comparacao` e `#linha-do-tempo`,
 o rótulo antes dos dois-pontos aceita até 40 e o texto depois, até 160. Uma
-diretiva desconhecida ou mal formada (`#grafico`, `#Lista`, `#lista só um`)
-gera erro com o número da cena. Isso acontece ao salvar o roteiro, na
-resposta da IA, ao preparar os visuais e no render. Nenhum caso cai num
-layout padrão sem aviso. `# Título` com espaço é tratado como nota em
-Markdown.
-
-No Studio, o número da cena no erro é o que aparece na tela: no editor,
-"Cena 1" para a primeira cena; na produção, a posição no roteiro. A CLI usa o
-`id` do JSON, como no restante da saída. Roteiros salvos antes deste guia
-continuam abrindo; a checagem só roda ao salvar, gerar ou preparar visuais.
+diretiva desconhecida ou mal formada (`#grafico`, `#Lista`, `#lista só um`,
+`#destaque com texto`) **nunca impede nada**: a linha vira nota livre e a
+cena usa o visual padrão. O editor mostra o motivo abaixo do campo e o
+relatório do motor registra "layout padrao usado". `# Título` com espaço é
+tratado como nota em Markdown.
 
 Por que números e citações precisam estar na narração: assim, o que aparece
 na tela também passa pela revisão de alegações do roteiro. Sem essa regra,

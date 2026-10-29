@@ -809,7 +809,7 @@ test('restart blocks interrupted jobs while preserving completed history and imp
   }
 });
 
-test('a stored script with an unrenderable directive fails before the engine runs, naming the scene by position', async () => {
+test('a stored script with an invalid directive still goes to the engine, which renders the default layout', async () => {
   const home = await mkdtemp(join(tmpdir(), 'fc-visual-legacy-'));
   const current = state();
   let calls = 0;
@@ -824,11 +824,8 @@ test('a stored script with an unrenderable directive fails before the engine run
     },
   });
   try {
-    await assert.rejects(
-      runner.prepareVisuals('tech', 'script-one'),
-      /Cena 1: diretiva visual inválida; '#grafico' não existe/,
-    );
-    assert.equal(calls, 0);
+    await assert.rejects(runner.prepareVisuals('tech', 'script-one'), /visuais locais/);
+    assert.equal(calls, 1);
   } finally {
     await runner.close();
     await rm(home, { recursive: true, force: true });

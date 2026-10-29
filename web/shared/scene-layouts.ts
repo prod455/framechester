@@ -99,6 +99,20 @@ export function parseSceneLayout(sceneNumber: number, visualBrief: string, narra
   }
 }
 
+/** The layout a scene renders with: an invalid directive becomes a free note and the scene uses `destaque`. */
+export function sceneLayoutOrFallback(
+  sceneNumber: number,
+  visualBrief: string,
+  narration: string,
+): { layout: SceneLayout; problem?: string } {
+  try {
+    return { layout: parseSceneLayout(sceneNumber, visualBrief, narration) };
+  } catch (error) {
+    if (error instanceof SceneLayoutError) return { layout: 'destaque', problem: error.message };
+    throw error;
+  }
+}
+
 /** Grammar given to the model and shown in the editor; docs/GUIA_VISUAL.md explains each layout. */
 export const sceneLayoutGrammar = `Primeira linha opcional de visualBrief, uma diretiva por cena (o restante do visualBrief é nota livre):
 #pergunta TEXTO — pergunta grande; use no gancho ou para abrir um loop.
@@ -107,5 +121,5 @@ export const sceneLayoutGrammar = `Primeira linha opcional de visualBrief, uma d
 #comparacao RÓTULO: texto | RÓTULO: texto — dois lados.
 #linha-do-tempo MARCO: texto; MARCO: texto — 2 a 5 marcos em ordem.
 #citacao FRASE | ATRIBUIÇÃO — FRASE dita literalmente na narração; só citação documentada nas fontes.
-Sem diretiva (ou #destaque) — título da cena e trecho da narração.
+Sem diretiva — título da cena e trecho da narração; não escreva #destaque.
 Cada campo tem até 160 caracteres. Não use outras diretivas.`;

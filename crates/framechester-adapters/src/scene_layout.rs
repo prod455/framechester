@@ -103,6 +103,19 @@ fn spoken(scene_id: u32, value: &str, narration: &str, what: &str) -> Result<()>
     }
 }
 
+/// The layout a scene renders with: an invalid directive is treated as a free note and the
+/// scene uses `Destaque`. The reason is returned so the report can say so; it never fails.
+pub fn parse_or_default(
+    scene_id: u32,
+    visual_brief: &str,
+    narration: &str,
+) -> (SceneLayout, Option<String>) {
+    match parse(scene_id, visual_brief, narration) {
+        Ok(layout) => (layout, None),
+        Err(error) => (SceneLayout::Destaque, Some(error.to_string())),
+    }
+}
+
 pub fn parse(scene_id: u32, visual_brief: &str, narration: &str) -> Result<SceneLayout> {
     let first = visual_brief.lines().next().unwrap_or("").trim();
     // `# Titulo` (Markdown) is a free note; a directive starts with a letter.

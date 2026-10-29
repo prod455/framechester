@@ -6,12 +6,12 @@ import { claimsEditor } from '../editors/claims.ts';
 import { creativeEditorButton, documentPicker, statusControl } from '../editors/common.ts';
 import { sceneEditor } from '../editors/scenes.ts';
 import { sourceEditor } from '../editors/sources.ts';
-import { currentChannel, go, refresh, render, scoped, state, studio } from '../studio/state.ts';
+import { channelPath, currentChannel, go, refresh, render, scoped, state, studio } from '../studio/state.ts';
 import { toast } from '../studio/toast.ts';
 import { editorTabs } from '../ui-tabs.ts';
 import { deleteRecord, requiredChannel } from './channels.ts';
 import type { ScriptCreativeValues } from '../../shared/creative-types.ts';
-import type { Script } from '../../shared/types.ts';
+import type { Script, Source } from '../../shared/types.ts';
 
 export function startScript(researchId = ''): void {
   protectEdits(() => {
@@ -150,6 +150,42 @@ export function scriptForm(record?: Script): HTMLElement {
     },
     () => form,
   );
+  const searchTerms = input('source-search', record?.title || startingResearch?.title || '');
+  searchTerms.placeholder = 'Termos de busca; em inglês encontra mais artigos';
+  const findSources = button(
+    'Buscar fontes',
+    async () => {
+      if (findSources.disabled) return;
+      findSources.disabled = true;
+      try {
+        const query = [
+          searchTerms.value,
+          ...claims
+            .read()
+            .slice(0, 3)
+            .map((claim) => claim.text),
+        ];
+        const found = await request<Source[]>(channelPath('/sources/suggest'), 'POST', { query });
+        const known = new Set(sources.read().map((source) => source.url));
+        const added = found.filter((source) => !known.has(source.url));
+        if (!added.length) {
+          toast(
+            'Nenhum artigo novo encontrado para este título e alegações. Refine o título ou registre a fonte.',
+            true,
+          );
+          return;
+        }
+        sources.write([...sources.read(), ...added]);
+        toast(`${added.length} fonte(s) sugerida(s). Leia cada artigo antes de publicar.`);
+      } catch (error) {
+        toast(error instanceof Error ? error.message : 'A busca de fontes falhou.', true);
+      } finally {
+        findSources.disabled = false;
+      }
+    },
+    'secondary',
+    'search',
+  );
   const { form, fields, actions } = formWithSave('Salvar roteiro', async () => {
     const savingChannelId = studio.channelId;
     const sceneValues = scenes.read();
@@ -199,6 +235,17 @@ export function scriptForm(record?: Script): HTMLElement {
         'div',
         { className: 'form-stack' },
         sources.node,
+        el(
+          'div',
+          { className: 'form-grid' },
+          field('Buscar artigos sobre', searchTerms),
+          el('div', { className: 'field' }, findSources),
+        ),
+        el(
+          'p',
+          { className: 'field-hint' },
+          'Procura artigos revisados por pares (DOI) no Crossref pelos termos e pelas alegações. Só entram artigos citados e com o tema no título; leia cada um antes de publicar.',
+        ),
         claims.node,
         el('label', { className: 'checkbox-field' }, crossed, 'Conferi e cruzei as fontes desta pauta'),
         el(

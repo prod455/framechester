@@ -9,6 +9,7 @@ import { createSocialService } from './social.ts';
 import { createLocalVault } from './vault.ts';
 import { PrivatePromptStore } from './private-prompt.ts';
 import { createCreativeService } from './creative.ts';
+import { createSourceFinder } from './sources.ts';
 import { AIUsageStore } from './ai-usage.ts';
 import { createFileVault } from './file-vault.ts';
 import { existsSync } from 'node:fs';
@@ -61,6 +62,7 @@ export async function startLocalServer() {
     social,
     privatePrompt,
     creative,
+    sources: createSourceFinder(),
     publicPort: runtime.publicPort,
     distDir: join(webRoot, 'dist'),
     dev: process.env.FRAMECHESTER_WEB_DEV === '1',

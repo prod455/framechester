@@ -166,7 +166,10 @@ function checkScript(script: Script, previewOnly = false) {
   if (!previewOnly && !script.crossChecked)
     throw new RunnerError('Confirme o cruzamento das fontes no roteiro antes de produzir.');
   const urls = new Set(script.sources.map((item) => item.url));
-  if (!previewOnly && urls.size < 2) throw new RunnerError('O roteiro precisa de duas fontes distintas.');
+  if (!previewOnly && urls.size < 1)
+    throw new RunnerError(
+      'O roteiro precisa de ao menos uma fonte. Use Buscar fontes no editor ou registre uma.',
+    );
   if (
     script.scenes.length < 1 ||
     script.scenes.length > 32 ||

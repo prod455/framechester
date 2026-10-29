@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — sources and review policy
+- One documented source is enough to produce. A script without sources, or with claims not yet verified, is held for the operator's review instead of being marked as failed; only machine-provable defects fail editorial QA (contradicted claims, references outside the inventory, unsafe URLs, duplicated narration, prompt injection, missing asset rights).
+- "Produzir com IA" looks up peer-reviewed sources (DOI, via Crossref's public API) when the generated script has none; the script editor gains a "Buscar fontes" button that does the same from the title, hook and claims. Suggestions are labelled as such and still need to be read before publishing.
+
 ## Unreleased — video production fixes
 - `npm start` and `npm run dev` now reinstall dependencies when the lockfile changed and rebuild the Rust engine; `npm start` also rebuilds the interface. A stale engine previously surfaced as "O motor retornou um plano visual inválido."
 - A stale engine is now reported as such, with the command that fixes it.

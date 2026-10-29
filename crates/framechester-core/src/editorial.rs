@@ -59,8 +59,8 @@ fn reasons(topic: &Topic, require_review: bool) -> Vec<String> {
         .iter()
         .map(|source| source.url.as_str())
         .collect();
-    if require_review && distinct_sources.len() < 2 {
-        reasons.push("menos de 2 fontes com URLs distintas".to_string());
+    if require_review && distinct_sources.is_empty() {
+        reasons.push("nenhuma fonte com URL registrada".to_string());
     }
     if unlisted_claim_sources(&topic.claims, &topic.sources) > 0 {
         reasons.push("claim referencia fonte fora do inventario da pauta".to_string());
@@ -245,11 +245,15 @@ mod tests {
 
     #[test]
     fn missing_sources_and_cross_check_block() {
-        let signal = evaluate(&topic_with(1, 0.0, ClaimStatus::Unverified));
+        let signal = evaluate(&topic_with(0, 0.0, ClaimStatus::Unverified));
         assert!(signal
             .blocked_reasons
             .iter()
-            .any(|reason| reason.contains("2 fontes")));
+            .any(|reason| reason.contains("nenhuma fonte")));
+        assert!(evaluate(&topic_with(1, 1.0, ClaimStatus::Verified))
+            .blocked_reasons
+            .iter()
+            .all(|reason| !reason.contains("fonte com URL")));
         assert!(signal
             .blocked_reasons
             .iter()
@@ -279,10 +283,13 @@ mod tests {
     }
 
     #[test]
-    fn repeated_source_does_not_satisfy_two_source_requirement() {
-        let mut topic = topic_with(2, 1.0, ClaimStatus::Cited);
+    fn one_distinct_source_satisfies_the_source_requirement() {
+        let mut topic = topic_with(2, 1.0, ClaimStatus::Verified);
         topic.sources[1] = topic.sources[0].clone();
-        assert!(!evaluate(&topic).blocked_reasons.is_empty());
+        assert!(evaluate(&topic)
+            .blocked_reasons
+            .iter()
+            .all(|reason| !reason.contains("fonte com URL")));
     }
 
     #[test]

@@ -1,5 +1,5 @@
 //! `run`: the full dry-run pipeline from topic to package.
-use crate::cli::{load_config, LlmArg, RunArgs};
+use crate::cli::{load_config, EngineArg, LlmArg, ProduceArgs, RunArgs};
 use crate::commands::report::{print_report, write_html_report};
 use anyhow::{bail, Context};
 use framechester_adapters::anthropic::AnthropicLlm;
@@ -68,6 +68,47 @@ pub(crate) fn build_llm(
 
 pub(crate) fn run_pipeline(path: &Option<PathBuf>, args: RunArgs) -> anyhow::Result<i32> {
     let config = load_config(path)?;
+    let engine = args.engine.unwrap_or(if config.motion.enabled {
+        EngineArg::Motion
+    } else {
+        EngineArg::Legacy
+    });
+    if engine == EngineArg::Motion {
+        if args.preview_only {
+            bail!("--preview-only ainda nao existe no motor motion; use --engine legacy");
+        }
+        if args.assets.is_some() {
+            eprintln!(
+                "aviso: --assets ignorado no motor motion; os visuais sao gerados do storyboard"
+            );
+        }
+        if args.script.is_none() {
+            bail!("o motor motion exige --script (roteiro autoral revisado)");
+        }
+        let format = match args
+            .format
+            .map(ScriptFormat::from)
+            .unwrap_or(ScriptFormat::Short)
+        {
+            ScriptFormat::Short => "vertical",
+            ScriptFormat::Long => "horizontal",
+        };
+        return crate::commands::produce::produce(
+            path,
+            ProduceArgs {
+                script: args.script.clone(),
+                storyboard: None,
+                topic: args.topic.clone(),
+                topic_index: args.topic_index,
+                format: Some(format.into()),
+                channel: args.channel.clone(),
+                workdir: args.workdir.clone(),
+                output: None,
+                voice: args.voice.clone(),
+                json: args.json,
+            },
+        );
+    }
     let channel = config.select_channel(args.channel.as_deref())?;
     if args.script.is_none()
         && (matches!(args.llm, Some(LlmArg::Anthropic))

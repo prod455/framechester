@@ -410,6 +410,7 @@ dependencies = [
  "clap",
  "framechester-adapters",
  "framechester-core",
+ "framechester-motion",
  "serde",
  "serde_json",
  "tempfile",
@@ -423,6 +424,18 @@ dependencies = [
  "serde_json",
  "thiserror",
  "toml",
+]
+
+[[package]]
+name = "framechester-motion"
+version = "0.1.0"
+dependencies = [
+ "framechester-core",
+ "resvg",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
 ]
 
 [[package]]

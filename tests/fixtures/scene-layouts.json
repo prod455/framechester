@@ -107,7 +107,7 @@
 {
 "brief": "#grafico 1, 2, 3",
 "narration": "x",
-"layout": null
+"layout": "destaque"
 },
 {
 "brief": "#Lista A; B",
@@ -138,5 +138,20 @@
 "brief": "#numero 10 | dez\r\nnota com CRLF",
 "narration": "São 10 casos.",
 "layout": "numero"
+},
+{
+"brief": "#fluxo Objetivo -> Decidir -> Agir -> loop",
+"narration": "x",
+"layout": "destaque"
+},
+{
+"brief": "#causa A => B",
+"narration": "x",
+"layout": "destaque"
+},
+{
+"brief": "#grafico3d x",
+"narration": "x",
+"layout": null
 }
 ]

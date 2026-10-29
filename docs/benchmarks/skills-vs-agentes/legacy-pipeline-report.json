@@ -1,0 +1,262 @@
+{
+  "channel": null,
+  "topic_id": "skills-vs-agentes",
+  "stage": "editorial_qa",
+  "artifacts_dir": "artifacts/bench/legacy",
+  "script": {
+    "title": "Skills vs. Agentes de IA: a diferença na prática",
+    "hook": "Agente ou skill: qual é a diferença na prática?",
+    "series": "ia",
+    "format": "short",
+    "scenes": [
+      {
+        "id": 0,
+        "heading": "Agente ou skill?",
+        "narration": "Agente de IA e skill não são a mesma coisa. Qual é a diferença na prática?",
+        "visual_brief": "#pergunta Agente ou skill: qual é a diferença na prática?\nAbrir o loop: o espectador precisa querer a resposta.",
+        "duration_hint_secs": 6.0
+      },
+      {
+        "id": 1,
+        "heading": "O agente decide em um loop",
+        "narration": "Um agente é um loop. Ele recebe um objetivo, decide o próximo passo, age com uma ferramenta e observa o resultado. Depois repete, até concluir a tarefa.",
+        "visual_brief": "#fluxo Objetivo [user] -> Decidir [brain] {primary} -> Agir [tool] -> Observar [search] -> loop\nMostrar que a decisão é do agente: cada etapa acende quando é dita.",
+        "duration_hint_secs": 13.0
+      },
+      {
+        "id": 2,
+        "heading": "Uma skill é uma pasta",
+        "narration": "Uma skill é uma pasta. Dentro dela, um arquivo SKILL.md traz nome, descrição e instruções passo a passo. Scripts e recursos são opcionais.",
+        "visual_brief": "#anotacao revisar-pr/SKILL.md: nome, descrição e instruções; revisar-pr/scripts: código opcional; revisar-pr/recursos: exemplos e modelos\nEstrutura da skill: pasta, arquivo obrigatório e extras.",
+        "duration_hint_secs": 12.0
+      },
+      {
+        "id": 3,
+        "heading": "Por dentro do SKILL.md",
+        "narration": "O começo do arquivo diz o nome e quando usar a skill. O resto ensina o processo: ler o diff, rodar os testes e resumir o risco.",
+        "visual_brief": "#codigo markdown | SKILL.md\n---\nname: revisar-pr\ndescription: Revisa pull requests\n---\n1. Leia o diff\n2. Rode os testes\n3. Resuma o risco",
+        "duration_hint_secs": 11.0
+      },
+      {
+        "id": 4,
+        "heading": "Como o agente usa a skill",
+        "narration": "No início, o agente lê só o nome e a descrição de cada skill. Quando a tarefa combina, ele carrega a skill inteira e segue as instruções.",
+        "visual_brief": "#causa Tarefa chega [user] => Agente lê nomes e descrições [search] => Tarefa combina com revisar-pr [check] => Carrega a skill inteira [skill] => Segue as instruções [tool]\nDivulgação progressiva: pouco contexto no início, a skill inteira só quando é relevante.",
+        "duration_hint_secs": 12.0
+      },
+      {
+        "id": 5,
+        "heading": "Agente versus skill",
+        "narration": "O agente decide e executa. A skill empacota o conhecimento que ele consulta. Um age; a outra ensina como agir.",
+        "visual_brief": "#comparacao Agente: decide o próximo passo; executa ferramentas; observa resultados | Skill: empacota o conhecimento; instruções versionadas; reutilizável em qualquer agente\nContraste direto, lado a lado.",
+        "duration_hint_secs": 10.0
+      },
+      {
+        "id": 6,
+        "heading": "Por que isso importa",
+        "narration": "Sem skills, o agente improvisa a cada tarefa. Com skills, ele repete o processo certo e carrega no contexto só o que precisa. Agente decide. Skill ensina.",
+        "visual_brief": "#infografico Com skills | Processo repetível [check]: o agente segue as mesmas etapas; Contexto enxuto [bolt]: carrega só o que precisa; Conhecimento reutilizável [book]: a mesma skill serve a vários agentes\nFechar o loop retomando o gancho.",
+        "duration_hint_secs": 12.0
+      }
+    ],
+    "sources": [
+      {
+        "title": "Equipping agents for the real world with Agent Skills",
+        "url": "https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills",
+        "publisher": "Anthropic (engineering blog)",
+        "retrieved_at": "2026-10-29",
+        "license": "referencia documental; texto nao redistribuido"
+      },
+      {
+        "title": "Agent Skills overview (Claude Docs)",
+        "url": "https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview",
+        "publisher": "Anthropic (documentacao)",
+        "retrieved_at": "2026-10-29",
+        "license": "referencia documental; texto nao redistribuido"
+      },
+      {
+        "title": "Building effective agents",
+        "url": "https://www.anthropic.com/engineering/building-effective-agents",
+        "publisher": "Anthropic (engineering blog)",
+        "retrieved_at": "2026-10-29",
+        "license": "referencia documental; texto nao redistribuido"
+      }
+    ],
+    "claims": [
+      {
+        "text": "Um agente e um sistema em que o modelo dirige dinamicamente seu proprio processo e o uso de ferramentas, em um ciclo de decisao, acao e observacao.",
+        "status": "cited",
+        "source_urls": [
+          "https://www.anthropic.com/engineering/building-effective-agents"
+        ]
+      },
+      {
+        "text": "Uma skill e uma pasta com um arquivo SKILL.md (nome, descricao e instrucoes) e, opcionalmente, scripts e recursos.",
+        "status": "cited",
+        "source_urls": [
+          "https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills",
+          "https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview"
+        ]
+      },
+      {
+        "text": "No inicio, o agente carrega apenas nome e descricao de cada skill; o conteudo completo entra no contexto quando a tarefa e relevante (divulgacao progressiva).",
+        "status": "cited",
+        "source_urls": [
+          "https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills"
+        ]
+      }
+    ],
+    "cross_checked": true
+  },
+  "render": {
+    "path": "artifacts/bench/legacy/render/final.mp4",
+    "duration_secs": 56.13333,
+    "bytes": 1918195,
+    "sha256": "f668f94bc1e06e659f0b914fbc2473b074290f442e439c1745bc49419b4e64fa",
+    "video_codec": "h264",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30
+  },
+  "technical_qa": {
+    "checks": [
+      {
+        "id": "file",
+        "name": "arquivo de video existe",
+        "status": "pass",
+        "detail": "artifacts/bench/legacy/render/final.mp4"
+      },
+      {
+        "id": "duration",
+        "name": "duracao valida",
+        "status": "pass",
+        "detail": "56.13s"
+      },
+      {
+        "id": "resolution",
+        "name": "resolucao do perfil",
+        "status": "pass",
+        "detail": "1080x1920, esperado 1080x1920"
+      },
+      {
+        "id": "fps",
+        "name": "fps do perfil",
+        "status": "pass",
+        "detail": "30.00, esperado 30"
+      },
+      {
+        "id": "codec",
+        "name": "codec de video",
+        "status": "pass",
+        "detail": "h264, esperado h264"
+      },
+      {
+        "id": "audio_stream",
+        "name": "stream de audio presente",
+        "status": "pass",
+        "detail": "aac, esperado aac"
+      },
+      {
+        "id": "decode",
+        "name": "decodificacao completa",
+        "status": "pass",
+        "detail": "ok"
+      },
+      {
+        "id": "black",
+        "name": "sem tela preta prolongada",
+        "status": "pass",
+        "detail": "ok"
+      },
+      {
+        "id": "freeze",
+        "name": "sem congelamento prolongado",
+        "status": "pass",
+        "detail": "frames parados previstos pela timeline de cenas estaticas; ritmo fica a criterio do operador"
+      },
+      {
+        "id": "audio_level",
+        "name": "audio audivel",
+        "status": "pass",
+        "detail": "max_volume -7.4 dB"
+      }
+    ]
+  },
+  "editorial_qa": {
+    "checks": [
+      {
+        "id": "sources",
+        "name": "ao menos 1 fonte com URL",
+        "status": "pass",
+        "detail": "3 fonte(s)"
+      },
+      {
+        "id": "source_urls",
+        "name": "URLs de fontes seguras",
+        "status": "pass",
+        "detail": "ok"
+      },
+      {
+        "id": "claims",
+        "name": "claims com fonte e sem contradicao",
+        "status": "pass",
+        "detail": "3 claim(s) conferidos pelo operador"
+      },
+      {
+        "id": "scenes",
+        "name": "cenas com narracao e titulo",
+        "status": "pass",
+        "detail": "7 cenas"
+      },
+      {
+        "id": "repetition",
+        "name": "sem narracao duplicada",
+        "status": "pass",
+        "detail": "ok"
+      },
+      {
+        "id": "injection",
+        "name": "sem padrao de prompt injection",
+        "status": "pass",
+        "detail": "ok"
+      },
+      {
+        "id": "duration",
+        "name": "duracao dentro da faixa",
+        "status": "pass",
+        "detail": "56.1s (alvo editorial 65-90s, nao obrigatorio)"
+      },
+      {
+        "id": "assets",
+        "name": "assets com licenca e proveniencia",
+        "status": "pass",
+        "detail": "7 assets"
+      },
+      {
+        "id": "editorial_review",
+        "name": "revisao editorial humana",
+        "status": "pass",
+        "detail": "operador declarou a revisao: fontes cruzadas e alegacoes conferidas"
+      }
+    ]
+  },
+  "publish": {
+    "provider": "dry-run",
+    "status": "dry_run",
+    "video_id": null,
+    "message": "dry-run: Skills vs. Agentes de IA: a diferença na prática -> artifacts/bench/legacy/render/final.mp4 (Private, canal None)",
+    "published_at_unix": null,
+    "dry_run": true
+  },
+  "package": {
+    "subtitles": "artifacts/bench/legacy/publish/final.srt",
+    "description": "artifacts/bench/legacy/publish/description.txt",
+    "metadata": "artifacts/bench/legacy/publish/metadata.json",
+    "sources": "artifacts/bench/legacy/publish/sources.md",
+    "thumbnail": "artifacts/bench/legacy/render/thumbnail.png"
+  },
+  "metrics": [],
+  "warnings": [
+    "publicacao em dry-run; nenhum upload foi feito"
+  ]
+}

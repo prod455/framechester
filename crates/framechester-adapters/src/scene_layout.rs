@@ -24,6 +24,20 @@ pub enum SceneLayout {
     Citacao { quote: String, author: String },
 }
 
+/// Directives of the motion engine (`framechester_core::planner`). The still-image
+/// renderer does not animate them, so they render as `Destaque` without a warning; the
+/// Studio mirror accepts them the same way.
+pub const MOTION_DIRECTIVES: [&str; 8] = [
+    "fluxo",
+    "grafico",
+    "arquitetura",
+    "codigo",
+    "transformacao",
+    "anotacao",
+    "infografico",
+    "causa",
+];
+
 const MAX_SLOT: usize = 160;
 const MAX_VALUE: usize = 16;
 
@@ -163,10 +177,11 @@ pub fn parse(scene_id: u32, visual_brief: &str, narration: &str) -> Result<Scene
             spoken(scene_id, &quote, narration, "a citacao")?;
             Ok(SceneLayout::Citacao { quote, author })
         }
+        name if MOTION_DIRECTIVES.contains(&name) => Ok(SceneLayout::Destaque),
         other => Err(invalid(
             scene_id,
             &format!(
-                "'#{other}' nao existe; use destaque, pergunta, numero, lista, comparacao, linha-do-tempo ou citacao"
+                "'#{other}' nao existe; use destaque, pergunta, numero, lista, comparacao, linha-do-tempo, citacao ou uma diretiva do motor motion (fluxo, grafico, arquitetura, codigo, transformacao, anotacao, infografico, causa)"
             ),
         )),
     }

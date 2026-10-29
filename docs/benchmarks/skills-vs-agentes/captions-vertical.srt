@@ -1,0 +1,168 @@
+1
+00:00:00,030 --> 00:00:01,145
+Agente de IA e skill
+
+2
+00:00:01,185 --> 00:00:03,192
+não são a mesma coisa.
+
+3
+00:00:03,282 --> 00:00:05,680
+Qual é a diferença na prática?
+
+4
+00:00:05,960 --> 00:00:07,635
+Um agente é um loop.
+
+5
+00:00:07,805 --> 00:00:09,240
+Ele recebe um objetivo,
+
+6
+00:00:09,280 --> 00:00:10,715
+decide o próximo passo,
+
+7
+00:00:10,755 --> 00:00:12,133
+age com uma ferramenta e
+
+8
+00:00:12,173 --> 00:00:14,125
+observa o resultado.
+
+9
+00:00:14,165 --> 00:00:15,101
+Depois repete,
+
+10
+00:00:15,141 --> 00:00:17,090
+até concluir a tarefa.
+
+11
+00:00:17,380 --> 00:00:19,271
+Uma skill é uma pasta.
+
+12
+00:00:19,311 --> 00:00:20,056
+Dentro dela,
+
+13
+00:00:20,096 --> 00:00:21,938
+um arquivo SKILL.md traz nome,
+
+14
+00:00:21,978 --> 00:00:24,786
+descrição e instruções passo a passo.
+
+15
+00:00:24,826 --> 00:00:27,222
+Scripts e recursos são opcionais.
+
+16
+00:00:27,642 --> 00:00:28,843
+O começo do arquivo diz
+
+17
+00:00:28,883 --> 00:00:29,888
+o nome e quando usar
+
+18
+00:00:29,928 --> 00:00:31,083
+a skill.
+
+19
+00:00:31,123 --> 00:00:32,637
+O resto ensina o processo:
+
+20
+00:00:32,677 --> 00:00:33,305
+ler o diff,
+
+21
+00:00:33,345 --> 00:00:34,737
+rodar os testes e resumir
+
+22
+00:00:34,777 --> 00:00:35,856
+o risco.
+
+23
+00:00:36,136 --> 00:00:36,741
+No início,
+
+24
+00:00:36,781 --> 00:00:37,531
+o agente lê só o
+
+25
+00:00:37,571 --> 00:00:38,650
+nome e a descrição de
+
+26
+00:00:38,690 --> 00:00:40,047
+cada skill.
+
+27
+00:00:40,147 --> 00:00:41,424
+Quando a tarefa combina,
+
+28
+00:00:41,464 --> 00:00:42,813
+ele carrega a skill inteira
+
+29
+00:00:42,853 --> 00:00:44,591
+e segue as instruções.
+
+30
+00:00:45,021 --> 00:00:47,488
+O agente decide e executa.
+
+31
+00:00:47,528 --> 00:00:49,331
+A skill empacota o conhecimento
+
+32
+00:00:49,371 --> 00:00:50,457
+que ele consulta.
+
+33
+00:00:50,497 --> 00:00:51,401
+Um age;
+
+34
+00:00:51,441 --> 00:00:53,388
+a outra ensina como agir.
+
+35
+00:00:53,788 --> 00:00:54,462
+Sem skills,
+
+36
+00:00:54,502 --> 00:00:57,044
+o agente improvisa a cada tarefa.
+
+37
+00:00:57,084 --> 00:00:57,779
+Com skills,
+
+38
+00:00:57,819 --> 00:00:59,344
+ele repete o processo certo
+
+39
+00:00:59,384 --> 00:01:00,706
+e carrega no contexto só
+
+40
+00:01:00,746 --> 00:01:01,624
+o que precisa.
+
+41
+00:01:01,664 --> 00:01:02,611
+Agente decide.
+
+42
+00:01:02,651 --> 00:01:04,070
+Skill ensina.
+

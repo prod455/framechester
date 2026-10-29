@@ -1,0 +1,89 @@
+{
+  "engine": "framechester-motion",
+  "engine_version": "0.1.0",
+  "ffmpeg_version": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+  "format": "x",
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "frames": 1930,
+  "duration_secs": 64.31996,
+  "storyboard_sha256": "9dc6e50871557c1bcd216ed25d5bbad68498842d044d753fcf9bcfd2e6ff34bd",
+  "fonts": [
+    [
+      "Inter-Regular.otf",
+      "be6d709dcb730ddaf050cbdae6fe89bd56d5d14dc66885639bbf6f06bd03521b"
+    ],
+    [
+      "Inter-SemiBold.otf",
+      "bd68706b7bf8b3c580ae57685a2116bb1704b3a9998309ccfec7cd486f8a593e"
+    ],
+    [
+      "Inter-Bold.otf",
+      "00fd6f4691ee8884a33b46bf45851b341927c37c30064f558e1befb242971c49"
+    ],
+    [
+      "LiberationMono-Regular.ttf",
+      "395fa5ab8d40c8eba390ced528744ea75a7f69aabf3e68b6f925ca0e39a27370"
+    ],
+    [
+      "LiberationMono-Bold.ttf",
+      "626655e94dd82f3f42549daf995c921b0915fa8ab1f4b839559e8892ea41d240"
+    ]
+  ],
+  "loudness_target": {
+    "integrated_lufs": -14.0,
+    "true_peak_dbtp": -1.5,
+    "range_lu": 9.0
+  },
+  "loudness_measured": {
+    "input_i": "-26.63",
+    "input_tp": "-7.08",
+    "input_lra": "2.90",
+    "input_thresh": "-37.17",
+    "target_offset": "0.97"
+  },
+  "loudness_applied": {
+    "input_i": "-26.63",
+    "input_tp": "-7.08",
+    "input_lra": "2.90",
+    "input_thresh": "-37.17",
+    "target_offset": "0.39"
+  },
+  "music": null,
+  "sfx": true,
+  "timings": [
+    {
+      "phase": "compose",
+      "seconds": 0.044165675,
+      "peak_memory_mb": 13.792969
+    },
+    {
+      "phase": "frames",
+      "seconds": 18.432995,
+      "peak_memory_mb": 59.44922
+    },
+    {
+      "phase": "soundtrack",
+      "seconds": 0.009584667,
+      "peak_memory_mb": 59.44922
+    },
+    {
+      "phase": "loudness",
+      "seconds": 4.9339695,
+      "peak_memory_mb": 59.44922
+    },
+    {
+      "phase": "mux",
+      "seconds": 2.0010564,
+      "peak_memory_mb": 59.44922
+    },
+    {
+      "phase": "contact_sheet",
+      "seconds": 1.2882941,
+      "peak_memory_mb": 59.44922
+    }
+  ],
+  "peak_memory_mb": 59.44922,
+  "video_sha256": "ca620d1882a46fe1d65fa7a9c6d6d8818c8a146b3faa0e13afa94bf891e38587"
+}

@@ -5,7 +5,7 @@ Framechester V4: open-source, self-hosted, single-operator media production engi
 
 Current operator decision (2026-10-27): multiple channels under one local operator. For engineering/marketing work, read `docs/EQUIPES_E_SKILLS.md` and load relevant local `.agents/skills/*/SKILL.md`; prioritize working code and verifiable artifacts.
 
-The local Studio uses TypeScript/Vite and Node.js; Rust remains the production engine. For web operation/configuration read `docs/WEB_STUDIO.md`; for social connections and API capabilities read `docs/REDES_SOCIAIS_WEB.md`; for video visuals, scene layouts and script styles read `docs/GUIA_VISUAL.md`.
+The local Studio uses TypeScript/Vite and Node.js; Rust remains the production engine. The motion engine (`crates/framechester-motion`, storyboard schema in `docs/STORYBOARD.md`, design system in `docs/DESIGN_SYSTEM_VIDEO.md`, decisions in `docs/MOTOR_MOTION.md`) renders animated explanatory videos from a semantic storyboard; the legacy still-image path in `run` stays available. For web operation/configuration read `docs/WEB_STUDIO.md`; for social connections and API capabilities read `docs/REDES_SOCIAIS_WEB.md`; for video visuals, scene layouts and script styles read `docs/GUIA_VISUAL.md`.
 
 ## Source of truth
 - `docs/PLANO_OPERACIONAL_COMPLETO.md`
@@ -19,7 +19,9 @@ The local Studio uses TypeScript/Vite and Node.js; Rust remains the production e
 - Lint: `cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings`
 - Python verifiers: `python -m unittest discover -s tests -v`
 - Doctor: `cargo run -p framechester-cli -- doctor`
-- Demo pipeline: `cargo run -p framechester-cli -- run --workdir artifacts/demo-short`
+- Demo pipeline (legacy stills): `cargo run -p framechester-cli -- run --workdir artifacts/demo-short`
+- Motion engine (animated storyboard; use `--release`, debug is 5-8x slower): `cargo run --release -p framechester-cli -- produce --script examples/skills-vs-agentes.roteiro.json --topic examples/skills-vs-agentes.topico.json --format vertical --workdir artifacts/motion-vertical`
+- Plan only (no TTS/render): `cargo run -p framechester-cli -- plan --script examples/skills-vs-agentes.roteiro.json --topic examples/skills-vs-agentes.topico.json --format horizontal --output storyboard.json`
 - QA video: `cargo run -p framechester-cli -- qa --format short --video artifacts/demo-short/render/final.mp4`
 - Simular custos: `python scripts/calculadora_monetizacao.py --storage-gb 50 --provider b2`
 - FFmpeg: `ffmpeg -version`, `ffmpeg -encoders`, `ffmpeg -hwaccels`

@@ -7,6 +7,17 @@ compatibility and say so here.
 
 ## [Unreleased]
 
+### Added
+- **Motion engine** (`crates/framechester-motion`): animated explanatory videos rendered from a semantic storyboard instead of one still image per scene. Eleven reusable components (title, flow diagram with loop, comparison, timeline, chart/counters, software architecture, code demonstration, transformation, annotated tree, infographic, cause and effect) with keyframes, easing and cues tied to narration words; dynamic captions with the spoken word highlighted; per-format layout for vertical 1080×1920, horizontal 1920×1080 and X 1280×720 with social-UI safe areas; push/fade/zoom transitions; bundled OFL fonts (Inter, Liberation Mono) for reproducible typography.
+- **Semantic storyboard** (`framechester_core::storyboard`, `docs/schemas/storyboard.schema.json`, `docs/STORYBOARD.md`): renderer-independent plan validated in Rust (unknown fields rejected, numbers and emphasis words must be spoken), a deterministic planner from script directives (`#fluxo`, `#grafico`, `#arquitetura`, `#codigo`, `#transformacao`, `#anotacao`, `#infografico`, `#causa`, plus the existing ones) and narration segmentation by sentence with real audio timing.
+- **Soundtrack**: narration synthesized per sentence (Kokoro batch mode, cache by text and voice), semantic pauses, procedural transition sounds, optional licensed music with ducking, two-pass `loudnorm` to configurable targets (`[audio]`, default −14 LUFS / −1.5 dBTP) and a true-peak limiter.
+- **Extended QA** (`qa_report.json`): text overflow without ellipsis, text intersections, safe areas, semantic motion per scene, long stills, black frames, freezes, loudness, true peak, silence, clipping, codec/fps/resolution/duration, caption sync and storyboard–narration consistency; contact sheet; `render_manifest.json` with versions, hashes, loudness measurements, phase timings and peak memory; structured `render.log.jsonl`.
+- CLI: `plan`, `produce` and `run --engine motion` (legacy stays the default; `[motion] enabled = true` switches it). Benchmark "Skills vs. Agentes de IA" in `examples/` and `docs/BENCHMARK_SKILLS_VS_AGENTES.md`; decisions and trade-offs in `docs/MOTOR_MOTION.md`; visual direction in `docs/DESIGN_SYSTEM_VIDEO.md`.
+
+### Changed
+- The still-image catalog and the Studio accept the motion directives as the default layout, so a script written for the motion engine still renders on the legacy path.
+- `TtsEngine::synthesize_batch` lets engines load their model once per batch; Kokoro implements it.
+
 ## [0.1.0] - 2026-10-29
 
 First release: a complete local production path, from topic to a video approved for manual upload. Automatic publishing stays disabled.

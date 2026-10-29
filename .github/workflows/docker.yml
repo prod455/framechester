@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: "22"
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - name: Delivery contracts
         run: python3 -m unittest discover -s tests -p test_docker_delivery.py -v
       - name: Prepare synthetic secret and model directory

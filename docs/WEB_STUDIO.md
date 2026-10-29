@@ -222,20 +222,29 @@ máquina consegue provar: alegação contraditória, referência fora do invent�
 URL insegura, narração duplicada, padrão de prompt injection ou asset sem
 direitos registrados.
 
-**Como aprovar.** A revisão editorial é uma declaração só: no roteiro, aba
-Fontes e revisão, marque **Conferi e cruzei as fontes e as alegações desta
-pauta** e salve. O motor recebe essa declaração (`cross_checked`) e registra
-no relatório de QA as verificações "revisão editorial humana" e "claims"
-como aprovadas; alegações marcadas como **Fonte citada** ou **A conferir**
-contam como conferidas pelo operador. Só **Contradição identificada** e
-URLs fora das fontes do roteiro continuam bloqueando a versão final.
-Duração fora do alvo editorial e frames parados de cenas estáticas (que o
-motor produz de propósito) ficam anotados no relatório, sem pedir revisão.
+**Como aprovar e gerar a versão final.** Depois de **Produzir com IA**, o
+card da prévia na fila de produção tem o botão **Gerar versão final** (ele
+também aparece em **Revisar vídeo**). O diálogo mostra quantas fontes o
+roteiro tem, pede a declaração **Conferi e cruzei as fontes e as alegações
+desta pauta** e inicia a versão final com os mesmos visuais da prévia, sem a
+marca de revisão. A declaração fica gravada no roteiro; não é preciso abrir o
+editor.
 
-Com isso, a versão final de um roteiro revisado termina como **Concluído**,
-com arquivo e conteúdo aprovados. Se algo ficou pendente, o card do job
-nomeia a verificação (por exemplo, "ao menos 1 fonte com URL"). Publicar
-continua manual, pelo YouTube Studio.
+O motor recebe essa declaração (`cross_checked`) e registra no relatório de
+QA as verificações "revisão editorial humana" e "claims" como aprovadas;
+alegações marcadas como **Fonte citada** ou **A conferir** contam como
+conferidas pelo operador. Só **Contradição identificada**, URLs fora das
+fontes do roteiro e cenas que pedem gravação real impedem a versão final, e
+o diálogo diz qual é o caso. Um roteiro sem fonte gera a versão final; o
+relatório e o card pedem "ao menos 1 fonte com URL" antes de publicar.
+Duração fora do alvo editorial e frames parados de cenas estáticas ficam
+anotados no relatório, sem pedir revisão.
+
+A versão final de um roteiro revisado e com fonte termina como **Concluído**,
+com arquivo e conteúdo aprovados. Se o motor bloquear, o card diz o motivo.
+Publicar continua manual, pelo YouTube Studio. A preparação manual
+(**Produzir com IA → Controles avançados → Abrir preparação manual**)
+continua disponível para trocar visuais ou usar gravações próprias.
 
 **Buscar fontes**, na aba Fontes e revisão do roteiro, procura artigos
 revisados por pares (DOI) no Crossref a partir do título, do gancho e das

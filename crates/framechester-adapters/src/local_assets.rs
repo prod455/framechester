@@ -56,7 +56,11 @@ pub fn validate_local_asset(asset: &AssetManifest) -> Result<()> {
         }
         digest.update(&buffer[..read]);
     }
-    let actual = format!("{:x}", digest.finalize());
+    let actual: String = digest
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
     if !actual.eq_ignore_ascii_case(asset.checksum.trim()) {
         return Err(FramechesterError::InvalidInput(format!(
             "checksum SHA256 divergente para asset da cena {}",
@@ -164,7 +168,10 @@ mod tests {
             path: Some(PathBuf::from("image.png")),
             license: "CC0-1.0".into(),
             provenance: "fixture sintetica local".into(),
-            checksum: format!("{:x}", Sha256::digest(b"fixture")),
+            checksum: Sha256::digest(b"fixture")
+                .iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect(),
             restrictions: "nenhuma; fixture sintetica".into(),
         }
     }

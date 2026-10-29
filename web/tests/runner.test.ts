@@ -447,6 +447,7 @@ test('a channel job passes authored JSON and licensed media to the fixed Rust en
       const authored = JSON.parse(await readFile(args[args.indexOf('--script') + 1], 'utf8'));
       assert.equal(authored.script.scenes[0].id, 42);
       assert.equal(authored.script.scenes[0].narration, 'Texto autoral preservado.');
+      assert.equal(authored.script.cross_checked, true, 'The operator declaration reaches the engine');
       const out = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
       await mkdir(join(out, 'render'), { recursive: true });
       await writeFile(join(out, 'render', 'final.mp4'), 'synthetic fixture');
@@ -456,7 +457,9 @@ test('a channel job passes authored JSON and licensed media to the fixed Rust en
           stage: 'editorial_qa',
           render: { path: join(out, 'render', 'final.mp4') },
           technical_qa: { checks: [{ status: 'pass' }, { status: 'skipped' }] },
-          editorial_qa: { checks: [{ status: 'needs_human' }] },
+          editorial_qa: {
+            checks: [{ id: 'sources', name: 'ao menos 1 fonte com URL', status: 'needs_human' }],
+          },
           publish: { status: 'dry_run' },
         }),
       );
@@ -481,6 +484,7 @@ test('a channel job passes authored JSON and licensed media to the fixed Rust en
     assert.equal(called, true);
     const done = (await runner.list('tech')).find((item) => item.id === job.id)!;
     assert.equal(done.status, 'needs_review', done.message);
+    assert.match(done.message, /ao menos 1 fonte com URL/, 'The message names what is pending');
     assert.equal(done.videoAvailable, true);
     assert.equal(done.qa?.technical, 'pass');
     assert.ok(await runner.file('tech', job.id, 'video'));
@@ -854,6 +858,68 @@ test('a stale engine is reported as stale with the command that fixes it, not as
         error instanceof RunnerError &&
         error.status === 503 &&
         /desatualizado.*editorial-v1.*npm start/.test(error.message),
+    );
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('a job with no QA pending is completed, and the operator declaration covers cited or unsourced claims', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'framechester-web-approved-'));
+  const input = state();
+  input.scripts[0].claims = [
+    { text: 'Alegacao sem URL', status: 'cited', sourceUrls: [] },
+    { text: 'Alegacao a conferir', status: 'unverified', sourceUrls: [source(2).url] },
+  ];
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => structuredClone(input),
+    execute: async (args) => {
+      const out = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
+      await mkdir(join(out, 'render'), { recursive: true });
+      await writeFile(join(out, 'render', 'final.mp4'), 'synthetic fixture');
+      await writeFile(
+        join(out, 'pipeline_report.json'),
+        JSON.stringify({
+          stage: 'editorial_qa',
+          technical_qa: { checks: [{ status: 'pass' }] },
+          editorial_qa: { checks: [{ status: 'pass' }, { status: 'pass' }] },
+          publish: { status: 'dry_run' },
+        }),
+      );
+      return { exitCode: 0, stdout: '', stderr: '' };
+    },
+  });
+  try {
+    const asset = await runner.upload('tech', {
+      filename: 'diagram.png',
+      kind: 'image',
+      contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+      license: 'Original de teste',
+      provenance: 'Fixture local',
+      restrictions: 'Teste',
+    });
+    const job = await runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } });
+    await runner.idle();
+    const done = (await runner.list('tech')).find((item) => item.id === job.id)!;
+    assert.equal(done.status, 'completed', done.message);
+    assert.match(done.message, /aprovado/);
+    assert.match(done.message, /manual/);
+    input.scripts[0].claims[0].status = 'contradicted';
+    await assert.rejects(
+      runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } }),
+      /contraditórias/,
+    );
+    input.scripts[0].claims[0] = {
+      text: 'Fora do inventario',
+      status: 'cited',
+      sourceUrls: ['https://example.com/x'],
+    };
+    await assert.rejects(
+      runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } }),
+      /URLs das fontes/,
     );
   } finally {
     await runner.close();

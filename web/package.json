@@ -1,6 +1,13 @@
 {
   "name": "framechester-studio",
   "version": "0.1.0",
+  "description": "Local Studio (Vite frontend and loopback Node server) of the Framechester media production engine",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/prod455/framechester.git",
+    "directory": "web"
+  },
   "private": true,
   "type": "module",
   "engines": {

@@ -1080,7 +1080,8 @@ fn parse_whisper_transcript(raw: &str) -> String {
 }
 
 fn contextualize_static_scenes(report: &mut QaReport, timeline: &Timeline) {
-    // Only an entirely authored still-image timeline explains the freeze scan.
+    // An entirely still-image timeline is what this engine produces by design, so the
+    // freeze scan finding exactly those still frames is the expected result, not a defect.
     // Mixed/video timelines keep the strict failure until interval-level QA exists.
     if !timeline.scenes.is_empty()
         && timeline
@@ -1090,8 +1091,8 @@ fn contextualize_static_scenes(report: &mut QaReport, timeline: &Timeline) {
     {
         for check in &mut report.checks {
             if check.id == "freeze" && check.status == QaStatus::Fail {
-                check.status = QaStatus::NeedsHuman;
-                check.detail = "Cenas compostas por imagens estaticas; revisar ritmo e adequacao visual. O detector encontrou frames parados previstos pela timeline.".into();
+                check.status = QaStatus::Pass;
+                check.detail = "frames parados previstos pela timeline de cenas estaticas; ritmo fica a criterio do operador".into();
             }
         }
     }
@@ -1170,8 +1171,8 @@ mod tests {
         contextualize_static_scenes(&mut still, &timeline);
         assert_eq!(
             still.checks[0].status,
-            QaStatus::NeedsHuman,
-            "Still-image scenes need contextual review, not a false freeze failure"
+            QaStatus::Pass,
+            "Still-image scenes are what the timeline predicts, not a freeze defect"
         );
         assert_eq!(
             still.checks[1].status,

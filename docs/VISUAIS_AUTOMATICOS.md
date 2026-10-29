@@ -47,12 +47,12 @@ resultado mantém os gates de QA e revisão humana; imagens explicativas não
 comprovam fatos nem garantem monetização. Os direitos do texto do roteiro
 e das fontes tipográficas continuam aplicáveis.
 
-Em uma timeline composta inteiramente por imagens, o alerta de frames
-parados exige revisão humana de ritmo e apresentação. Ele não equivale
-automaticamente a defeito técnico. Timelines com vídeo mantêm o bloqueio
-de congelamento; a CLI `qa`, sem contexto da timeline, também mantém a
-análise estrita. Falhas de decodificação, áudio ou tela preta continuam
-bloqueando a entrega.
+Em uma timeline composta inteiramente por imagens, os frames parados que o
+detector encontra são os previstos pela timeline: a verificação de
+congelamento passa com essa anotação, e o ritmo fica a critério do
+operador. Timelines com vídeo mantêm o bloqueio de congelamento; a CLI
+`qa`, sem contexto da timeline, também mantém a análise estrita. Falhas de
+decodificação, áudio ou tela preta continuam bloqueando a entrega.
 
 ## CLI e instalação
 

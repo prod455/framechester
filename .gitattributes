@@ -1,0 +1,13 @@
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.mp4 binary
+*.wav binary
+*.onnx binary
+Cargo.lock linguist-generated
+web/package-lock.json linguist-generated
+docs/img/* -diff

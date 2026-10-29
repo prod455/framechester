@@ -25,7 +25,7 @@ for (const name of [
   });
 }
 const { button, field, input, select } = await import('../src/dom.ts');
-const { createDialog, formWithSave } = await import('../src/components.ts');
+const { createDialog, formWithSave, mediaThumbnail } = await import('../src/components.ts');
 const { protectEdits } = await import('../src/edit-protection.ts');
 const { editorTabs } = await import('../src/ui-tabs.ts');
 const tick = () => new Promise<void>((resolve) => setImmediate(resolve));
@@ -224,4 +224,22 @@ test('saving reveals the first invalid tab and progresses through required field
   submit();
   await tick();
   assert.equal(saves, 1);
+});
+
+test('previews show a frame of their own video because they have no thumbnail file', () => {
+  const preview = mediaThumbnail({ id: 'job-1', channelId: 'tech', videoAvailable: true, previewOnly: true });
+  assert.equal(preview.querySelector('img'), null);
+  assert.equal(
+    preview.querySelector('video')?.getAttribute('src'),
+    '/api/channels/tech/jobs/job-1/files/video#t=1',
+  );
+  const packaged = mediaThumbnail({ id: 'job-2', channelId: 'tech', videoAvailable: true });
+  assert.equal(
+    packaged.querySelector('img')?.getAttribute('src'),
+    '/api/channels/tech/jobs/job-2/files/thumbnail',
+  );
+  assert.equal(
+    mediaThumbnail({ id: 'job-3', channelId: 'tech', videoAvailable: false }).querySelector('img, video'),
+    null,
+  );
 });

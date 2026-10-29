@@ -40,7 +40,10 @@ para `start`, que usa `tsx`.
 
 Na raiz, os atalhos equivalentes sao `npm run setup` (instalacao/build inicial),
 `npm start` (uso cotidiano), `npm run dev` (desenvolvimento) e `npm stop`
-(encerramento dos processos identificados desta instalacao). `npm stop` tambem
+(encerramento dos processos identificados desta instalacao). `npm start` e
+`npm run dev` reinstalam as dependências quando o `package-lock.json` mudou e
+recompilam o motor Rust (incremental) antes de iniciar; `npm start` também
+recompila a interface. Depois de atualizar o código, basta `npm start`. `npm stop` tambem
 para o Compose deste projeto quando ja preparado, sem remover os volumes.
 
 Para Docker Desktop/Engine + Compose, use `npm run docker:up`; o comando prepara

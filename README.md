@@ -39,7 +39,8 @@ npm run voices:setup
 npm start
 ```
 
-Nas proximas execucoes, basta `npm start`. Para encerrar os processos desta
+Nas proximas execucoes, basta `npm start`: ele recompila o motor Rust e a
+interface quando o codigo muda, entao continua valendo depois de atualizar. Para encerrar os processos desta
 instalacao, use `npm stop`. O comando identifica o projeto antes de parar;
 nao encerra processos Node ou containers de outros projetos.
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — video production fixes
+- `npm start` and `npm run dev` now reinstall dependencies when the lockfile changed and rebuild the Rust engine; `npm start` also rebuilds the interface. A stale engine previously surfaced as "O motor retornou um plano visual inválido."
+- A stale engine is now reported as such, with the command that fixes it.
+- Editorial QA no longer blocks delivery when a video misses the target duration; it asks for review. Only a Short over YouTube's 180 s limit fails.
+- AI-produced previews show a frame of their own video instead of requesting a thumbnail file that previews never have (404 on every list render).
+
 ## Unreleased — Studio refactor
 - Formatted the Studio sources with Prettier; `npm run check` now verifies formatting.
 - Split the 782-line `web/src/main.ts` into `studio/` (state, shell, toast, platforms), `pages/` (one file per page) and `editors/` (sources, claims, scenes, assistant button). Application state lives in one explicit `studio` object; pages render from it and never import each other in cycles.

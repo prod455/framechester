@@ -104,3 +104,19 @@ test('compose commands are project scoped and never remove volumes or prune reso
  assert.deepEqual(args,['compose','--project-name','framechester','--project-directory','/repo','--env-file','/repo/.framechester/docker/compose.env','-f',join('/repo','compose.yaml'),'down']);
  assert.ok(!args.some(value=>['-v','--volumes','prune'].includes(value)));
 });
+
+test('dependencies are reinstalled when missing or when the lockfile changed after installation',async()=>{
+  const {dependenciesStale}=await import('./infra.mjs');
+  const root=await mkdtemp(join(tmpdir(),'fc-deps-'));
+  try{
+    const lock=join(root,'package-lock.json'),installed=join(root,'installed.json');
+    await writeFile(lock,'{}');
+    assert.equal(dependenciesStale(lock,installed),true);
+    await writeFile(installed,'{}');
+    const {utimes}=await import('node:fs/promises');
+    await utimes(lock,new Date(1_000_000_000_000),new Date(1_000_000_000_000));
+    assert.equal(dependenciesStale(lock,installed),false);
+    await utimes(lock,new Date(),new Date(Date.now()+60_000));
+    assert.equal(dependenciesStale(lock,installed),true);
+  }finally{await rm(root,{recursive:true,force:true});}
+});

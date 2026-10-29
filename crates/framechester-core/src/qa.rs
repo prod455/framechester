@@ -1,4 +1,6 @@
-use crate::domain::{AssetManifest, ClaimStatus, QaCheck, QaReport, QaStatus, Script, Timeline};
+use crate::domain::{
+    AssetManifest, ClaimStatus, QaCheck, QaReport, QaStatus, Script, ScriptFormat, Timeline,
+};
 use crate::security::{detect_injection, validate_source_url};
 
 fn check(id: &str, name: &str, status: QaStatus, detail: impl Into<String>) -> QaCheck {
@@ -9,6 +11,9 @@ fn check(id: &str, name: &str, status: QaStatus, detail: impl Into<String>) -> Q
         detail: detail.into(),
     }
 }
+
+/// YouTube classifies vertical uploads up to three minutes as Shorts.
+const SHORTS_MAX_SECS: f32 = 180.0;
 
 pub fn editorial(script: &Script, assets: &[AssetManifest], timeline: &Timeline) -> QaReport {
     let mut checks = Vec::new();
@@ -192,28 +197,32 @@ pub fn editorial(script: &Script, assets: &[AssetManifest], timeline: &Timeline)
 
     let duration = timeline.total_duration_secs();
     let (min, max) = script.format.duration_range();
-    checks.push(if duration < min * 0.5 || duration > max * 1.5 {
-        check(
-            "duration",
-            "duracao dentro da faixa",
-            QaStatus::Fail,
-            format!("{duration:.1}s fora de {min:.0}-{max:.0}s"),
-        )
-    } else if duration < min || duration > max {
-        check(
-            "duration",
-            "duracao dentro da faixa",
-            QaStatus::NeedsHuman,
-            format!("{duration:.1}s fora da faixa alvo {min:.0}-{max:.0}s"),
-        )
-    } else {
-        check(
-            "duration",
-            "duracao dentro da faixa",
-            QaStatus::Pass,
-            format!("{duration:.1}s"),
-        )
-    });
+    // The range is an editorial target, so missing it asks for review. Only a Short longer
+    // than YouTube classifies as a Short is a real defect; a shorter video is still valid.
+    checks.push(
+        if script.format == ScriptFormat::Short && duration > SHORTS_MAX_SECS {
+            check(
+                "duration",
+                "duracao dentro da faixa",
+                QaStatus::Fail,
+                format!("{duration:.1}s excede o limite de {SHORTS_MAX_SECS:.0}s para Shorts"),
+            )
+        } else if duration < min || duration > max {
+            check(
+                "duration",
+                "duracao dentro da faixa",
+                QaStatus::NeedsHuman,
+                format!("{duration:.1}s fora da faixa alvo {min:.0}-{max:.0}s"),
+            )
+        } else {
+            check(
+                "duration",
+                "duracao dentro da faixa",
+                QaStatus::Pass,
+                format!("{duration:.1}s"),
+            )
+        },
+    );
 
     let missing_or_duplicate_assets = script
         .scenes
@@ -266,7 +275,7 @@ pub fn editorial(script: &Script, assets: &[AssetManifest], timeline: &Timeline)
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::{AssetManifest, Claim, Scene, ScriptFormat, Source, TimelineScene};
+    use crate::domain::{AssetManifest, Claim, Scene, Source, TimelineScene};
 
     fn source(index: usize) -> Source {
         Source {
@@ -448,5 +457,49 @@ mod tests {
                 .iter()
                 .any(|check| check.id == "assets" && check.status == QaStatus::Fail));
         }
+    }
+
+    fn timed(seconds: f32) -> Timeline {
+        let mut timeline = timeline();
+        timeline.scenes.truncate(1);
+        timeline.scenes[0].duration_secs = seconds;
+        timeline
+    }
+
+    fn duration_status(format: ScriptFormat, seconds: f32) -> QaStatus {
+        let mut script = script();
+        script.format = format;
+        editorial(&script, &[asset(0), asset(1)], &timed(seconds))
+            .checks
+            .into_iter()
+            .find(|check| check.id == "duration")
+            .unwrap()
+            .status
+    }
+
+    #[test]
+    fn duration_outside_the_target_asks_for_review_instead_of_blocking() {
+        assert_eq!(
+            duration_status(ScriptFormat::Short, 22.5),
+            QaStatus::NeedsHuman
+        );
+        assert_eq!(duration_status(ScriptFormat::Short, 75.0), QaStatus::Pass);
+        assert_eq!(
+            duration_status(ScriptFormat::Short, 150.0),
+            QaStatus::NeedsHuman
+        );
+        assert_eq!(
+            duration_status(ScriptFormat::Long, 90.0),
+            QaStatus::NeedsHuman
+        );
+        assert_eq!(
+            duration_status(ScriptFormat::Long, 2000.0),
+            QaStatus::NeedsHuman
+        );
+    }
+
+    #[test]
+    fn a_short_longer_than_youtube_accepts_as_a_short_fails() {
+        assert_eq!(duration_status(ScriptFormat::Short, 181.0), QaStatus::Fail);
     }
 }

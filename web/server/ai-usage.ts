@@ -195,6 +195,7 @@ export class AIUsageStore {
   ) {
     this.path = resolve(directory);
   }
+  private canonical: string | undefined;
   private now(): Date {
     const value = this.options.now?.() ?? new Date();
     if (!Number.isFinite(value.getTime())) throw invalid();
@@ -216,11 +217,15 @@ export class AIUsageStore {
         if (!info.isDirectory() || info.isSymbolicLink()) throw storageError();
       }
     }
+    // The loop above already rejected links, so the first resolved path is the directory's
+    // identity; a later mismatch means it was replaced. Comparing with the configured path
+    // instead would fail on Windows, where temp paths may be 8.3 short names.
     const canonical = resolve(await realpath(this.path));
+    this.canonical ??= canonical;
     if (
       process.platform === 'win32'
-        ? canonical.toLowerCase() !== this.path.toLowerCase()
-        : canonical !== this.path
+        ? canonical.toLowerCase() !== this.canonical.toLowerCase()
+        : canonical !== this.canonical
     )
       throw storageError();
   }

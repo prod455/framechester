@@ -398,6 +398,15 @@ test('HTTP structured drafts require the same authenticated channel and CSRF and
       (await call('/api/channels/tech/creative/draft', 'POST', { ...request, path: '../outside' })).status,
       400,
     );
+    // The route forwards `style`; the service, not the allowlist, decides whether it is valid.
+    const styled = await call('/api/channels/tech/creative/draft', 'POST', { ...request, style: 'ranking' });
+    assert.equal(styled.status, 400);
+    assert.match((await styled.json()).error, /pesquisa/);
+    assert.match(
+      (await (await call('/api/channels/tech/creative/draft', 'POST', { ...request, style: 'viral' })).json())
+        .error,
+      /Formato editorial inválido/,
+    );
     const draft = await call('/api/channels/tech/creative/draft', 'POST', request);
     assert.equal(draft.status, 200);
     const value = await draft.json();

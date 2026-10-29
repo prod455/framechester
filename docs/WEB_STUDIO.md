@@ -336,6 +336,18 @@ e páginas:
 | `components.ts`, `dom.ts`, `ui-tabs.ts` | controles Basecoat e utilitários de DOM, sem estado da aplicação |
 | `*-ui.ts` | diálogos de produção, assistente e consumo de IA, abertos pelas páginas |
 
+O backend em `web/server` segue a mesma divisão:
+
+| Arquivo | Responsabilidade |
+|---|---|
+| `app.ts` | cabeçalhos de segurança, origem local, rotas públicas (health, login, retorno OAuth, arquivos estáticos), autenticação e o despacho das rotas de API |
+| `http.ts` | leitura de JSON com limite, envio de arquivos com `Range`, estáticos e validação de campos; não conhece as rotas |
+| `routes/router.ts` | tabela de rotas: padrão com `:nome` e `:nome(a\|b)`, primeiro match vence, `requireChannel` para rotas de canal |
+| `routes/{studio,creative,production,social,resources}.ts` | as rotas autenticadas por domínio; cada uma recebe `request`, `response`, `params`, `session` e os serviços |
+
+Uma rota nova é um objeto `{ method, pattern, handle }` no arquivo do seu
+domínio; `compileRoutes` recusa duplicatas de método e padrão na inicialização.
+
 As páginas não importam umas às outras em ciclo: `overview` abre pauta, canal
 e produção; `research` inicia roteiro; o restante só depende de `studio`.
 `tests/studio-shell.test.ts` inicia a casca com uma API simulada e desenha

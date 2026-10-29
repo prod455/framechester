@@ -4,11 +4,14 @@ import type { CreativeApi, CreativeInput } from './creative.ts';
 import type { CreativeEditorContext } from '../shared/creative-types.ts';
 import { HttpError } from './auth.ts';
 import { LocalStore, object, validId } from './store.ts';
+import type { SourceFinder } from './sources.ts';
 
 export interface AutomaticProductionOptions {
   store: LocalStore;
   runner: RunnerApi;
   creative: CreativeApi;
+  /** Finds peer-reviewed sources when the generated script has none. */
+  sources?: SourceFinder;
 }
 const direction =
   'Produza um roteiro explicativo original e completo, pronto para narração e composições tipográficas automáticas. Preserve o assunto, o formato e as referências fornecidas. Desenvolva uma progressão narrativa com gancho, explicação, exemplo hipotético identificado e conclusão útil. Não peça capturas, gravações ou tarefas manuais. Reescreva promessas de testes ainda não realizados; não invente resultados, fontes ou pesquisa efetuada. O sistema montará as cenas com texto e voz local. Lacunas factuais continuam pendentes e devem ficar explícitas. Não declare aprovação editorial ou monetização garantida.';
@@ -113,8 +116,18 @@ export function createAutomaticProduction(options: AutomaticProductionOptions) {
         )
           throw new HttpError(503, 'A IA não retornou um roteiro válido para este canal.');
         const fields = draft.fields;
+        // The model may not invent references, so a brief without a research record yields none;
+        // look them up instead of handing the operator a script QA can only hold for review.
+        const sources =
+          fields.sources.length || !options.sources
+            ? fields.sources
+            : await options.sources.suggest(
+                [...fields.claims.slice(0, 3).map((claim) => claim.text), fields.title],
+                3,
+              );
         const saved = await options.store.saveResource('scripts', {
           ...fields,
+          sources,
           channelId: owner,
           researchId: prepared.researchId,
           topicId: `topico-${randomUUID()}`,

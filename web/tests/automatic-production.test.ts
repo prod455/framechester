@@ -149,3 +149,87 @@ test('one authorized AI call saves a new channel draft and delegates all local p
     await rm(home, { recursive: true, force: true });
   }
 });
+
+test('a generated script without references gets peer-reviewed sources looked up before it is saved', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-automatic-sources-'));
+  const store = new LocalStore(home);
+  await store.ready;
+  await store.saveChannel({ id: 'tech', name: 'Teste' });
+  const fields = {
+    title: 'Por que a GPU venceu',
+    series: 'Tecnologia',
+    format: 'short' as const,
+    hook: 'Uma pergunta',
+    scenes: [{ id: 0, heading: 'Cena', narration: 'Fala.', visualBrief: 'Composição', durationHintSecs: 5 }],
+    sources: [],
+    claims: [{ text: 'GPUs treinam redes mais rápido.', status: 'unverified' as const, sourceUrls: [] }],
+  };
+  const creative: CreativeApi = {
+    capabilities: async () => ({
+      available: true,
+      models: ['m'],
+      selectedModel: 'm',
+      reason: '',
+      provider: 'ollama',
+      endpoint: '',
+      supports: ['script'],
+    }),
+    draft: async () => ({
+      channelId: 'tech',
+      task: 'script',
+      title: fields.title,
+      body: 'Prévia',
+      model: 'm',
+      createdAt: new Date().toISOString(),
+      status: 'draft',
+      crossChecked: false,
+      reviewRequired: true,
+      fields,
+      guides: [],
+    }),
+  };
+  let asked: string[] = [];
+  const found = {
+    title: 'Deep learning',
+    url: 'https://doi.org/10.1038/nature14539',
+    publisher: 'Nature',
+    retrievedAt: '2026-10-29',
+    license:
+      'Artigo revisado por pares (DOI) · sugerido automaticamente via Crossref; conferir antes de publicar',
+  };
+  const runner = {
+    startAutomated: async (_owner: string, _seed: string, prepare: () => Promise<string>) => {
+      const id = await prepare();
+      return {
+        id,
+        channelId: 'tech',
+        scriptId: id,
+        status: 'queued',
+        createdAt: '',
+        message: '',
+        videoAvailable: false,
+      } as const;
+    },
+  } as unknown as RunnerApi;
+  const automation = createAutomaticProduction({
+    store,
+    runner,
+    creative,
+    sources: {
+      suggest: async (queries) => {
+        asked = queries;
+        return [found];
+      },
+    },
+  });
+  try {
+    await automation.start('tech', { brief: 'GPUs e IA', format: 'short' }, 'scope');
+    const saved = (await store.read()).scripts[0]!;
+    assert.deepEqual(saved.sources, [found]);
+    assert.deepEqual(asked, ['GPUs treinam redes mais rápido.', 'Por que a GPU venceu']);
+    assert.equal(saved.claims[0]!.status, 'unverified');
+    assert.equal(saved.crossChecked, false);
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+});

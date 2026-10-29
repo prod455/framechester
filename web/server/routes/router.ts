@@ -9,6 +9,7 @@ import { HttpError } from '../auth.ts';
 import { channelId } from '../store.ts';
 import type { CreativeApi } from '../creative.ts';
 import type { PrivatePromptStore } from '../private-prompt.ts';
+import type { SourceFinder } from '../sources.ts';
 
 export type Method = 'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE';
 
@@ -22,7 +23,7 @@ export interface AppDependencies {
   creative: () => CreativeApi;
   privatePrompt: () => PrivatePromptStore;
   /** Optional services, for routes that degrade instead of failing without them. */
-  optional: { social?: SocialApi; runner?: RunnerApi; creative?: CreativeApi };
+  optional: { social?: SocialApi; runner?: RunnerApi; creative?: CreativeApi; sources?: SourceFinder };
 }
 
 export interface RouteContext extends AppDependencies {

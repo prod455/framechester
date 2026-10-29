@@ -2,7 +2,14 @@
 
 **Motor open-source, self-hosted e single-operator de producao e analise de midia.**
 
-> **Status:** pre-alpha executavel com Studio web local, editores e producao por canal: topico -> roteiro autoral -> midia local declarada -> TTS PT-BR -> render FFmpeg -> QA -> pacote revisavel. Upload real continua desativado; elegibilidade e receita dependem de cada canal.
+[![CI](https://github.com/prod455/framechester/actions/workflows/ci.yml/badge.svg)](https://github.com/prod455/framechester/actions/workflows/ci.yml)
+[![Docker](https://github.com/prod455/framechester/actions/workflows/docker.yml/badge.svg)](https://github.com/prod455/framechester/actions/workflows/docker.yml)
+[![Release](https://img.shields.io/github/v/release/prod455/framechester?include_prereleases&sort=semver)](https://github.com/prod455/framechester/releases)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+![Rust 1.85+](https://img.shields.io/badge/rust-1.85%2B-orange.svg)
+![Node 22.12+](https://img.shields.io/badge/node-22.12%2B-brightgreen.svg)
+
+> **Status:** versao 0.1.0. Studio web local, editores e producao completa por canal: topico -> roteiro (manual ou com IA) -> fontes revisadas por pares -> visuais explicativos -> TTS PT-BR -> render FFmpeg -> QA -> video aprovado para upload manual. Publicacao automatica continua desativada; elegibilidade e receita dependem de cada canal. Veja o [CHANGELOG](CHANGELOG.md) e [como aprovar um video](docs/WEB_STUDIO.md#fontes-e-revisão).
 
 Framechester ajuda um criador independente a descobrir assuntos, verificar fontes, escrever roteiros originais, gerar narracao, renderizar video, rodar QA audiovisual e analisar monetizacao oficial da plataforma. Nao e fabrica de engajamento, nao compra views e nao garante elegibilidade ou receita.
 
@@ -177,9 +184,18 @@ npm --prefix web run build
 
 Codigo proprio: [Apache License 2.0](LICENSE). FFmpeg, modelos, vozes, midia e fontes sao licenciados separadamente; consulte [third-party notices](THIRD_PARTY_NOTICES.md).
 
-## Contribuicao e seguranca
+## Versoes e instalacao por binario
 
-Leia [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md) e [GOVERNANCE](GOVERNANCE.md). Nunca envie tokens reais, dados pessoais, midia nao autorizada ou URLs privadas.
+Cada tag `vX.Y.Z` gera uma [release no GitHub](https://github.com/prod455/framechester/releases) com a CLI para Linux (x86_64), Windows (x86_64) e macOS (Apple Silicon), checksums SHA-256 e a imagem `ghcr.io/prod455/framechester:X.Y.Z`. O Studio continua sendo executado a partir do codigo (`npm start`) ou da imagem Docker. O projeto segue [SemVer](https://semver.org/lang/pt-BR/) e o changelog segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); antes de 1.0, versoes minor podem quebrar compatibilidade e dizem isso no changelog.
+
+## Comunidade, contribuicao e seguranca
+
+- [Ajuda e duvidas](SUPPORT.md) · [Discussions](https://github.com/prod455/framechester/discussions)
+- [Como contribuir](CONTRIBUTING.md) · [Codigo de conduta](CODE_OF_CONDUCT.md) · [Governanca](GOVERNANCE.md)
+- [Politica de seguranca](SECURITY.md): relato privado, nunca issue publica
+- Templates de [issue](.github/ISSUE_TEMPLATE) e de [pull request](.github/PULL_REQUEST_TEMPLATE.md); dependencias atualizadas pelo Dependabot e auditadas semanalmente (`cargo audit`, `npm audit`)
+
+Nunca envie tokens reais, dados pessoais, midia nao autorizada ou URLs privadas.
 
 As [equipes e skills locais](docs/EQUIPES_E_SKILLS.md) apoiam implementacao Rust e marketing por canal. Consulte a [auditoria de engenharia](docs/AUDITORIA_ENGENHARIA.md), o [plano de marketing](docs/MARKETING_YOUTUBE_OPERACIONAL.md) e a [curadoria de fontes](docs/skills-sources.lock.md) para evidencias e limites.
 

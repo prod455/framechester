@@ -244,10 +244,27 @@ test('pending captures show illustrative previews, one recovery summary and an a
   assert.equal(adapted, script.id);
 });
 
-test('unreviewed claims keep a newly adapted script visibly blocked despite confirmed source fields', async () => {
+test('a contradicted claim blocks the final video; a pending claim with one source does not', async () => {
+  const pending = openProduction({
+    channel,
+    scripts: [
+      { ...script, sources: [script.sources[0]], claims: [{ ...script.claims[0], status: 'unverified' }] },
+    ],
+    assets: [],
+    config: defaultConfig(),
+    currentChannelId: () => channel.id,
+    api: async <T>() => prepared as T,
+    onStarted: async () => {},
+    onAddAssets: () => {},
+    onEditScript: () => {},
+  });
+  await tick();
+  await tick();
+  assert.equal(pending.querySelector<HTMLButtonElement>('[data-testid="final-video"]')!.disabled, false);
+  pending.close();
   const dialog = openProduction({
     channel,
-    scripts: [{ ...script, claims: [{ ...script.claims[0], status: 'unverified' }] }],
+    scripts: [{ ...script, claims: [{ ...script.claims[0], status: 'contradicted' }] }],
     assets: [],
     config: defaultConfig(),
     currentChannelId: () => channel.id,

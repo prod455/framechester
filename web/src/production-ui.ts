@@ -169,8 +169,10 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
           if (!relevant(scriptId)) throw new Error('O canal ou roteiro mudou. Abra a preparação novamente.');
           if (!previewOnly && !script.crossChecked)
             throw new Error('Confira as fontes no roteiro antes de gerar o vídeo.');
-          if (!previewOnly && new Set(script.sources.map((source) => source.url)).size < 2)
-            throw new Error('O roteiro precisa de pelo menos duas URLs de fontes distintas.');
+          if (!previewOnly && new Set(script.sources.map((source) => source.url)).size < 1)
+            throw new Error(
+              'O roteiro precisa de ao menos uma fonte. Use Buscar fontes no editor ou registre uma.',
+            );
           const job = await api<WebJob>(path('jobs'), 'POST', {
             scriptId,
             assetIds: Object.fromEntries(
@@ -190,18 +192,15 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
         () => dialog.close(),
         'Iniciando produção…',
       );
+      // The final version needs the operator's cross-check declaration and one documented source.
+      // Claims may still be pending (QA holds the video for review); only a contradicted claim or a
+      // reference outside the source inventory blocks it, the same rule the engine applies.
       const sourcesReady =
-        script.crossChecked && new Set(script.sources.map((source) => source.url)).size >= 2;
+        script.crossChecked && new Set(script.sources.map((source) => source.url)).size >= 1;
       const sourceUrls = new Set(script.sources.map((source) => source.url));
-      const claimsReady =
-        script.claims.length > 0 &&
-        script.claims.every(
-          (claim) =>
-            claim.status === 'cited' &&
-            claim.text.trim() &&
-            claim.sourceUrls.length > 0 &&
-            claim.sourceUrls.every((url) => sourceUrls.has(url)),
-        );
+      const claimsReady = script.claims.every(
+        (claim) => claim.status !== 'contradicted' && claim.sourceUrls.every((url) => sourceUrls.has(url)),
+      );
       const editorialReady = sourcesReady && claimsReady;
       const previewCount = Object.keys(prepared.previews ?? prepared.bindings).length;
       const summary = el(
@@ -247,7 +246,7 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
           el(
             'p',
             { className: 'field-hint' },
-            'Antes de gerar o vídeo: confira as fontes e as alegações na aba “Fontes e revisão” do roteiro.',
+            'Antes da versão final: no roteiro, aba “Fontes e revisão”, registre ao menos uma fonte (ou use Buscar fontes), resolva alegações contraditórias e marque “Conferi e cruzei as fontes”.',
           ),
         );
       const readiness = el('p', { className: 'field-hint', role: 'status' });

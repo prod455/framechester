@@ -15,7 +15,11 @@ test('password setup persists only a derived secret and sessions stay in memory'
     assert.equal(initial.status.authenticated, false);
     assert.ok(initial.status.csrfToken);
     await assert.rejects(auth.setup('synthetic password long enough', initial.cookie, 'wrong csrf'));
-    const established = await auth.setup('synthetic password long enough', initial.cookie, initial.status.csrfToken);
+    const established = await auth.setup(
+      'synthetic password long enough',
+      initial.cookie,
+      initial.status.csrfToken,
+    );
     assert.equal(established.status.authenticated, true);
     assert.match(established.cookie, /HttpOnly/);
     assert.match(established.cookie, /SameSite=Strict/);
@@ -26,20 +30,47 @@ test('password setup persists only a derived secret and sessions stay in memory'
     const status = await restarted.status(established.cookie);
     assert.equal(status.status.configured, true);
     assert.equal(status.status.authenticated, false);
-    await assert.rejects(restarted.login('wrong password for a local test', status.cookie, status.status.csrfToken));
-    const loggedIn = await restarted.login('synthetic password long enough', status.cookie, status.status.csrfToken);
+    await assert.rejects(
+      restarted.login('wrong password for a local test', status.cookie, status.status.csrfToken),
+    );
+    const loggedIn = await restarted.login(
+      'synthetic password long enough',
+      status.cookie,
+      status.status.csrfToken,
+    );
     assert.equal(loggedIn.status.authenticated, true);
     assert.notEqual(loggedIn.status.csrfToken, status.status.csrfToken);
-  } finally { await rm(home, { recursive: true, force: true }); }
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
 });
 
 test('login rate limit applies before another password derivation', async () => {
   const home = await mkdtemp(join(tmpdir(), 'fc-auth-rate-'));
   try {
-    const auth = new LocalAuth(home); const initial = await auth.status();
-    const setup = await auth.setup('synthetic password for throttling',initial.cookie,initial.status.csrfToken);
-    const anonymous = await auth.logout(setup.cookie,setup.status.csrfToken);
-    for (let attempt = 0; attempt < 5; attempt++) await assert.rejects(auth.login('wrong synthetic password',anonymous.cookie,anonymous.status.csrfToken,'loopback'), error => error instanceof HttpError && error.status === 401);
-    await assert.rejects(auth.login('synthetic password for throttling',anonymous.cookie,anonymous.status.csrfToken,'loopback'), error => error instanceof HttpError && error.status === 429);
-  } finally { await rm(home,{recursive:true,force:true}); }
+    const auth = new LocalAuth(home);
+    const initial = await auth.status();
+    const setup = await auth.setup(
+      'synthetic password for throttling',
+      initial.cookie,
+      initial.status.csrfToken,
+    );
+    const anonymous = await auth.logout(setup.cookie, setup.status.csrfToken);
+    for (let attempt = 0; attempt < 5; attempt++)
+      await assert.rejects(
+        auth.login('wrong synthetic password', anonymous.cookie, anonymous.status.csrfToken, 'loopback'),
+        (error) => error instanceof HttpError && error.status === 401,
+      );
+    await assert.rejects(
+      auth.login(
+        'synthetic password for throttling',
+        anonymous.cookie,
+        anonymous.status.csrfToken,
+        'loopback',
+      ),
+      (error) => error instanceof HttpError && error.status === 429,
+    );
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
 });

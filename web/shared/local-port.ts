@@ -1,5 +1,7 @@
 export class InvalidLocalPort extends Error {
-  constructor() { super('FRAMECHESTER_WEB_PORT deve ser uma porta inteira entre 1024 e 65535.'); }
+  constructor() {
+    super('FRAMECHESTER_WEB_PORT deve ser uma porta inteira entre 1024 e 65535.');
+  }
 }
 
 /** Shared by the backend and Vite so development never selects another instance. */

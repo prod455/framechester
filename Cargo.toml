@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/framechester-core",
     "crates/framechester-adapters",
+    "crates/framechester-motion",
     "crates/framechester-cli",
 ]
 

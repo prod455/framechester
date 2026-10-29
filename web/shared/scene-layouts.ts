@@ -11,6 +11,17 @@ export const sceneLayouts = [
   'citacao',
 ] as const;
 export type SceneLayout = (typeof sceneLayouts)[number];
+/** Directives of the Rust motion engine (`framechester produce`); the still renderer shows them as `destaque`. */
+export const motionDirectives = [
+  'fluxo',
+  'grafico',
+  'arquitetura',
+  'codigo',
+  'transformacao',
+  'anotacao',
+  'infografico',
+  'causa',
+] as const;
 
 const maxSlot = 160,
   maxValue = 16;
@@ -95,7 +106,11 @@ export function parseSceneLayout(sceneNumber: number, visualBrief: string, narra
       return name;
     }
     default:
-      throw fail(sceneNumber, `'#${name}' não existe; use ${sceneLayouts.join(', ')}`);
+      if ((motionDirectives as readonly string[]).includes(name)) return 'destaque';
+      throw fail(
+        sceneNumber,
+        `'#${name}' não existe; use ${sceneLayouts.join(', ')} ou uma diretiva do motor motion (${motionDirectives.join(', ')})`,
+      );
   }
 }
 
@@ -122,4 +137,13 @@ export const sceneLayoutGrammar = `Primeira linha opcional de visualBrief, uma d
 #linha-do-tempo MARCO: texto; MARCO: texto — 2 a 5 marcos em ordem.
 #citacao FRASE | ATRIBUIÇÃO — FRASE dita literalmente na narração; só citação documentada nas fontes.
 Sem diretiva — título da cena e trecho da narração; não escreva #destaque.
+Diretivas animadas do motor motion (framechester produce), quando o vídeo for renderizado por ele:
+#fluxo A -> B -> C (-> loop fecha o ciclo) — diagrama de fluxo animado.
+#grafico TÍTULO | rótulo=valor; rótulo=valor — barras e contadores; valores ditos na narração.
+#arquitetura Camada/Caixa; Camada/Caixa2; Caixa -> Caixa2 — arquitetura em camadas.
+#codigo linguagem | arquivo (linhas de código nas linhas seguintes) — demonstração de código.
+#transformacao A; B => C — objetos que viram outros.
+#anotacao pasta/arquivo: nota; … — árvore com anotações.
+#infografico TÍTULO | rótulo=valor: detalhe; … — cartões de dados.
+#causa A => B => C — causa e consequência.
 Cada campo tem até 160 caracteres. Não use outras diretivas.`;

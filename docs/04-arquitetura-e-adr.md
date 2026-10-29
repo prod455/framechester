@@ -66,3 +66,8 @@ Manter `libx264` CPU como baseline obrigatoria do MVP (`-preset veryfast -crf 20
 - `docs/00-inventario-e-viabilidade.md` secoes 3.2-3.3.
 - Comandos: `ffmpeg -version`, `ffmpeg -encoders`, `ffmpeg -hwaccels`, baseline libx264, `h264_amf` balanced/high_quality/qvbr, `ffmpeg -lavfi libvmaf`, `ffprobe`.
 - Render e2e local: 66,5 s 1080p30, QA tecnico pass (decodificacao, blackdetect, freezedetect, audio level).
+
+
+# ADR-0002 - Motor de animacao proprio (Rust + resvg) em vez de Motion Canvas ou Manim
+
+**Status:** aceita (29/10/2026). Texto completo, alternativas e trade-offs em [MOTOR_MOTION.md](MOTOR_MOTION.md).

@@ -6,6 +6,7 @@ FROM ${RUST_IMAGE} AS engine-build
 WORKDIR /build
 COPY Cargo.toml Cargo.lock ./
 COPY crates/ ./crates/
+COPY assets/ ./assets/
 COPY scripts/kokoro_tts.py ./scripts/kokoro_tts.py
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \

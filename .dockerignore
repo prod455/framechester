@@ -11,6 +11,9 @@
 !crates/*/Cargo.toml
 !crates/*/src/
 !crates/*/src/**
+!assets/
+!assets/fonts/
+!assets/fonts/**
 !web/
 !web/package.json
 !web/package-lock.json

@@ -47,21 +47,17 @@ pub fn blocked_reasons(topic: &Topic) -> Vec<String> {
     reasons(topic, true)
 }
 
-/// Draft rendering relaxes evidence completeness, never unsafe inputs or contradictions.
+/// Draft rendering also renders without the operator's declaration, never unsafe inputs or
+/// contradictions.
 pub fn preview_blocked_reasons(topic: &Topic) -> Vec<String> {
     reasons(topic, false)
 }
 
+/// Refuses only what the machine can prove wrong, plus the missing operator declaration for a
+/// final render. Missing sources and claims still to check are not defects of the video: the
+/// editorial QA report names them for the operator, as it does for previews.
 fn reasons(topic: &Topic, require_review: bool) -> Vec<String> {
     let mut reasons = Vec::new();
-    let distinct_sources: std::collections::HashSet<&str> = topic
-        .sources
-        .iter()
-        .map(|source| source.url.as_str())
-        .collect();
-    if require_review && distinct_sources.is_empty() {
-        reasons.push("nenhuma fonte com URL registrada".to_string());
-    }
     if unlisted_claim_sources(&topic.claims, &topic.sources) > 0 {
         reasons.push("claim referencia fonte fora do inventario da pauta".to_string());
     }
@@ -83,14 +79,12 @@ fn reasons(topic: &Topic, require_review: bool) -> Vec<String> {
         if claim.status == ClaimStatus::Contradicted {
             reasons.push(format!("claim contraditorio: {}", claim.text));
         }
-        if require_review
-            && (claim.status == ClaimStatus::Unverified || claim.source_urls.is_empty())
-        {
-            reasons.push(format!("claim sem fonte: {}", claim.text));
-        }
     }
     if require_review && topic.metrics.cross_check <= 0.0 {
-        reasons.push("sem verificacao cruzada".to_string());
+        reasons.push(
+            "sem verificacao cruzada: marque \"Conferi e cruzei as fontes e as alegacoes\" no roteiro"
+                .to_string(),
+        );
     }
     let mut texts: Vec<&str> = vec![&topic.title, &topic.angle];
     for source in &topic.sources {
@@ -244,24 +238,28 @@ mod tests {
     }
 
     #[test]
-    fn missing_sources_and_cross_check_block() {
-        let signal = evaluate(&topic_with(0, 0.0, ClaimStatus::Unverified));
-        assert!(signal
-            .blocked_reasons
-            .iter()
-            .any(|reason| reason.contains("nenhuma fonte")));
-        assert!(evaluate(&topic_with(1, 1.0, ClaimStatus::Verified))
-            .blocked_reasons
-            .iter()
-            .all(|reason| !reason.contains("fonte com URL")));
-        assert!(signal
-            .blocked_reasons
-            .iter()
-            .any(|reason| reason.contains("cruzada")));
-        assert!(signal
-            .blocked_reasons
-            .iter()
-            .any(|reason| reason.contains("sem fonte")));
+    fn only_the_missing_declaration_holds_a_topic_without_sources_or_checked_claims() {
+        // What "Produzir com IA" saves when no source is found: claims to check, no URLs.
+        let ai_script = |cross_check| {
+            let mut topic = topic_with(0, cross_check, ClaimStatus::Unverified);
+            topic.claims[0].source_urls.clear();
+            topic
+        };
+        let undeclared = evaluate(&ai_script(0.0));
+        assert_eq!(
+            undeclared.blocked_reasons.len(),
+            1,
+            "{:?}",
+            undeclared.blocked_reasons
+        );
+        assert!(undeclared.blocked_reasons[0].contains("cruzada"));
+        assert!(
+            evaluate(&ai_script(1.0)).blocked_reasons.is_empty(),
+            "a declared AI script with no source found renders its final version"
+        );
+        let mut cited = ai_script(1.0);
+        cited.claims[0].status = ClaimStatus::Cited;
+        assert!(evaluate(&cited).blocked_reasons.is_empty());
     }
 
     #[test]

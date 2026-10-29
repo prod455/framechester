@@ -921,8 +921,67 @@ test('a job with no QA pending is completed, and the operator declaration covers
       runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } }),
       /URLs das fontes/,
     );
+    input.scripts[0].sources = [];
+    input.scripts[0].claims = [];
+    const sourceless = await runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } });
+    await runner.idle();
+    assert.equal(
+      (await runner.list('tech')).find((item) => item.id === sourceless.id)!.videoAvailable,
+      true,
+      'A reviewed script without sources still gets its final version; QA names the missing source',
+    );
   } finally {
     await runner.close();
     await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('a blocked job names what the engine refused instead of a generic message', async () => {
+  for (const [report, expected] of [
+    [
+      { stage: 'blocked', warnings: ['claim contraditorio: A Terra é plana'] },
+      /bloqueou a entrega: claim contraditorio: A Terra é plana/,
+    ],
+    [
+      {
+        stage: 'editorial_qa',
+        technical_qa: { checks: [{ status: 'pass' }] },
+        editorial_qa: {
+          checks: [{ name: 'sem narracao duplicada', status: 'fail', detail: 'duas cenas iguais' }],
+        },
+      },
+      /sem narracao duplicada: duas cenas iguais/,
+    ],
+  ] as const) {
+    const home = await mkdtemp(join(tmpdir(), 'framechester-web-blocked-reason-'));
+    const runner = await createRunner({
+      home,
+      repositoryRoot: resolve('..'),
+      readState: async () => state(),
+      execute: async (args) => {
+        const out = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
+        await mkdir(join(out, 'render'), { recursive: true });
+        await writeFile(join(out, 'pipeline_report.json'), JSON.stringify(report));
+        return { exitCode: 1, stdout: '', stderr: '' };
+      },
+    });
+    try {
+      const asset = await runner.upload('tech', {
+        filename: 'fixture.png',
+        kind: 'image',
+        contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+        license: 'Original',
+        provenance: 'Fixture',
+        restrictions: 'Teste',
+      });
+      const job = await runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } });
+      await runner.idle();
+      const result = (await runner.list('tech')).find((item) => item.id === job.id)!;
+      assert.equal(result.status, 'blocked');
+      assert.match(result.message, expected);
+    } finally {
+      await runner.close();
+      await rm(home, { recursive: true, force: true });
+    }
   }
 });

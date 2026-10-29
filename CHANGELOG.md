@@ -7,7 +7,15 @@ compatibility and say so here.
 
 ## [Unreleased]
 
+### Fixed
+- The final version of an AI-produced script was always refused by the engine before rendering: its pre-render gate required at least one source and every claim checked with a URL, which "Produzir com IA" never produces (claims arrive to check, and Crossref rarely finds an article for a Portuguese title). The gate now refuses only what QA fails (contradictions, references outside the sources, unsafe sources, prompt injection) plus the missing operator declaration; missing sources and claims to check are named in the QA report.
+- A blocked job now says why on its card, with the engine's reasons, instead of "O motor bloqueou a entrega".
+
+### Added
+- **Gerar versão final** on the card of a preview and in its review dialog: one dialog records the operator's declaration on the script and starts the final version with the preview's visuals. It names what would stop it (a contradiction, a foreign reference, a scene that needs a real recording) with the way out.
+
 ### Changed
+- A script without sources reaches the final version; the QA report and the job card ask for a source before publishing. The manual preparation dialog says exactly which requirement keeps its final button disabled.
 - Dependencies: `toml` 1.1, `sha2` 0.11, Tailwind CSS 4.3.3, and the GitHub Actions majors (`checkout` v7, `setup-python` v7, `docker/setup-buildx-action` v4, `docker/login-action` v4, `docker/build-push-action` v7, `docker/metadata-action` v6, `upload-artifact` v7 with `download-artifact` v8, `softprops/action-gh-release` v3). Dependabot now opens one grouped pull request per ecosystem, and CI runs once per pull request (pushes only on `main`). `@types/node` stays on the Node 22 line the Studio runs on, and Dependabot no longer proposes its majors.
 
 ## [0.1.0] - 2026-10-29

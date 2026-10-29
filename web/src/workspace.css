@@ -220,6 +220,8 @@
 .production-summary h3, .production-summary p { margin: 0; overflow-wrap: anywhere; }
 .production-summary h3 { font-size: var(--font-md); line-height: var(--line-copy); font-weight: 600; }
 .production-summary-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); }
+.final-checks { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; overflow-wrap: anywhere; }
+.final-checks .final-blocker { color: var(--danger); font-weight: 600; }
 .production-scenes { display: grid; gap: var(--space-6); min-width: 0; }
 .production-scene { display: grid; gap: var(--space-3); min-width: 0; padding-block: var(--space-4); border-bottom: 1px solid var(--border); }
 .production-scene h3, .production-scene p { margin: 0; overflow-wrap: anywhere; }

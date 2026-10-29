@@ -17,7 +17,7 @@ import { ProviderResponseError } from './ai-provider.ts';
 import type { ProviderUsage } from './ai-provider.ts';
 import type { AIUsageStore } from './ai-usage.ts';
 import type { AIUsageRecord, AIUsageSnapshot } from '../shared/ai-usage-types.ts';
-import { SceneLayoutError, sceneLayoutGrammar } from '../shared/scene-layouts.ts';
+import { sceneLayoutGrammar } from '../shared/scene-layouts.ts';
 import { videoStyle, videoStyleGuide } from '../shared/video-styles.ts';
 
 export type { CreativeTask } from '../shared/creative-types.ts';
@@ -667,12 +667,7 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
               prepared,
               references.flatMap((item) => item.sources),
             );
-          } catch (error) {
-            if (error instanceof SceneLayoutError)
-              throw new HttpError(
-                503,
-                `A IA usou uma diretiva visual inválida. ${error.message} Gere novamente.`,
-              );
+          } catch {
             throw invalidResponse();
           }
         }

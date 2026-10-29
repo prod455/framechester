@@ -469,7 +469,7 @@ test('a selected video style and the layout grammar reach the system prompt; unk
   }
 });
 
-test('a generated scene with an unrenderable directive is discarded with the scene and the reason', async () => {
+test('a generated scene with an invalid directive is kept verbatim; the engine falls back to the default layout', async () => {
   const ctx = await fixture(() =>
     result({
       title: 'Um vídeo concreto',
@@ -489,14 +489,13 @@ test('a generated scene with an unrenderable directive is discarded with the sce
     }),
   );
   try {
-    await assert.rejects(
-      ctx.service.draft('tech', {
-        task: 'script',
-        brief: 'Adapte o roteiro ao formato escolhido.',
-        editorContext: { task: 'script', values: script },
-      }),
-      /diretiva visual inválida.*Cena 8.*narração/s,
-    );
+    const draft = await ctx.service.draft('tech', {
+      task: 'script',
+      brief: 'Adapte o roteiro ao formato escolhido.',
+      editorContext: { task: 'script', values: script },
+    });
+    assert.ok(draft.fields && 'scenes' in draft.fields);
+    assert.equal(draft.fields.scenes[0]!.visualBrief, '#numero 90% | dos casos');
   } finally {
     await ctx.close();
   }

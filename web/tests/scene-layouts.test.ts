@@ -3,10 +3,14 @@ import assert from 'node:assert/strict';
 import { readFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { parseSceneLayout, sceneLayouts, SceneLayoutError } from '../shared/scene-layouts.ts';
+import {
+  parseSceneLayout,
+  sceneLayoutOrFallback,
+  sceneLayouts,
+  SceneLayoutError,
+} from '../shared/scene-layouts.ts';
 import { videoStyles, videoStyleGuide } from '../shared/video-styles.ts';
 import { LocalStore } from '../server/store.ts';
-import { HttpError } from '../server/auth.ts';
 
 test('the Studio validator accepts exactly what the Rust renderer accepts', async () => {
   const cases: { brief: string; narration: string; layout: string | null }[] = JSON.parse(
@@ -28,7 +32,7 @@ test('every style guide only recommends layouts from the closed catalog and keep
   }
 });
 
-test('a script with an unrenderable directive is rejected on save, while stored data keeps loading', async () => {
+test('a script with an invalid directive saves and loads; the directive is advisory', async () => {
   const home = await mkdtemp(join(tmpdir(), 'fc-layout-store-'));
   try {
     const store = new LocalStore(home);
@@ -54,16 +58,19 @@ test('a script with an unrenderable directive is rejected on save, while stored 
       sources: [],
       claims: [],
     });
-    await assert.rejects(
-      store.saveResource('scripts', script('#numero 90% | dos casos')),
-      (error: unknown) => error instanceof HttpError && error.status === 400 && /Cena 2/.test(error.message),
+    await store.saveResource('scripts', script('#numero 90% | dos casos'));
+    assert.equal(
+      sceneLayoutOrFallback(1, '#numero 90% | dos casos', 'Sem número falado.').layout,
+      'destaque',
     );
+    assert.match(sceneLayoutOrFallback(1, '#destaque sobra', '').problem ?? '', /não recebe campos/);
+    assert.equal(sceneLayoutOrFallback(1, '#lista A; B', '').problem, undefined);
     const saved = await store.saveResource('scripts', script('#lista Coletar; Treinar'));
     // A brief that predates the catalog must not brick the state on load.
     await store.update((state) => {
       state.scripts[0]!.scenes[0]!.visualBrief = '#legado nota antiga';
     });
-    assert.equal((await new LocalStore(home).read()).scripts[0]!.id, saved.id);
+    assert.ok((await new LocalStore(home).read()).scripts.some((row) => row.id === saved.id));
   } finally {
     await rm(home, { recursive: true, force: true });
   }

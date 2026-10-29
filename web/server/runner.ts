@@ -1,7 +1,6 @@
 import { spawn } from 'node:child_process';
 import { commercialVoiceError } from '../shared/voices.ts';
 import { HttpError } from './auth.ts';
-import { SceneLayoutError, parseSceneLayout } from '../shared/scene-layouts.ts';
 import { randomUUID, createHash } from 'node:crypto';
 import { existsSync, statSync } from 'node:fs';
 import { mkdir, readFile, writeFile, rename, copyFile, realpath, stat } from 'node:fs/promises';
@@ -151,16 +150,6 @@ function visualFingerprint(state: AppState, channelId: string, script: Script): 
 function rustConfig(config: WebConfig, channelId: string): string {
   const q = (value: string) => JSON.stringify(value);
   return `[[channels]]\nid = ${q(channelId)}\n[app]\ndry_run = true\ntelemetry = false\n[render]\nwidth = ${config.render.width}\nheight = ${config.render.height}\nfps = ${config.render.fps}\ncrf = ${config.render.crf}\npreset = ${q(config.render.preset)}\nvideo_codec = "libx264"\n[tts]\nengine = "kokoro"\npython_path = ${q(config.tts.pythonPath!)}\nvoice_styles = ${q(config.tts.voiceStyles!)}\nvoice_model = ${q(config.tts.voiceModel)}\nvoice_name = ${q(config.tts.voiceName)}\n[asr]\nenabled = ${config.asr.enabled}\nmodel = ${q(config.asr.model)}\nlanguage = ${q(config.asr.language)}\nmin_coverage = ${config.asr.minCoverage}\n[publish]\nenabled = false\nprivacy = "private"\n`;
-}
-/** Same check as the engine, with the scene numbered as the production view shows it. */
-function renderableScenes(script: Script): void {
-  try {
-    script.scenes.forEach((scene, index) => parseSceneLayout(index + 1, scene.visualBrief, scene.narration));
-  } catch (error) {
-    if (error instanceof SceneLayoutError)
-      throw new RunnerError(`${error.message} Revise o roteiro antes de preparar os visuais.`);
-    throw error;
-  }
 }
 function checkScript(script: Script, previewOnly = false) {
   if (!previewOnly && !script.crossChecked)
@@ -324,7 +313,6 @@ export class LocalRunner implements RunnerApi {
       throw new RunnerError(
         'Complete os títulos e as falas das cenas no roteiro antes de preparar os visuais.',
       );
-    renderableScenes(script);
     const fingerprint = visualFingerprint(state, channelId, script);
     const bindings: Record<string, string> = {};
     const previews: Record<string, string> = {};

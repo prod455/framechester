@@ -8,7 +8,6 @@ import type {
   StoryCreativeValues,
 } from '../shared/creative-types.ts';
 import { HttpError } from './auth.ts';
-import { parseSceneLayout } from '../shared/scene-layouts.ts';
 
 const researchKeys = [
   'title',
@@ -123,8 +122,6 @@ function scenes(value: unknown, output = false): ScriptScene[] {
       visualBrief: text(row.visualBrief, 12_000, output),
       durationHintSecs: row.durationHintSecs,
     };
-    // Generated directives must render; editor input is checked when the script is saved.
-    if (output) parseSceneLayout(scene.id + 1, scene.visualBrief, scene.narration);
     return scene;
   });
 }

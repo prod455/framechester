@@ -104,7 +104,7 @@ jobs:
           ' CHANGELOG.md > notes.md
           if [ ! -s notes.md ]; then echo "CHANGELOG.md has no section for ${version}" >&2; exit 1; fi
           printf '\n\nImagem: `ghcr.io/%s:%s`\n' "${{ github.repository }}" "$version" >> notes.md
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           body_path: notes.md
           files: dist/*

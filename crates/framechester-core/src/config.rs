@@ -15,6 +15,48 @@ pub struct Config {
     pub publish: PublishConfig,
     pub backup: BackupConfig,
     pub asr: AsrConfig,
+    pub audio: AudioConfig,
+    pub motion: MotionConfig,
+}
+
+/// Soundtrack export targets of the motion engine. Loudness values are editorial
+/// starting points subject to listening tests, not platform guarantees.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct AudioConfig {
+    pub target_lufs: f32,
+    pub true_peak_dbtp: f32,
+    pub loudness_range_lu: f32,
+    /// Optional licensed music bed (local file); empty means no music.
+    pub music_path: String,
+    pub music_gain_db: f32,
+    pub transition_sfx: bool,
+    /// Linear gain of the procedural transition sound (0..1).
+    pub sfx_gain: f32,
+}
+
+impl Default for AudioConfig {
+    fn default() -> Self {
+        Self {
+            target_lufs: -14.0,
+            true_peak_dbtp: -1.5,
+            loudness_range_lu: 9.0,
+            music_path: String::new(),
+            music_gain_db: -22.0,
+            transition_sfx: true,
+            sfx_gain: 0.22,
+        }
+    }
+}
+
+/// Motion engine settings.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MotionConfig {
+    /// Rasterization threads; 0 uses every CPU up to eight.
+    pub threads: usize,
+    /// Enables the motion engine for `run`; the legacy still-image renderer stays default.
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -267,6 +309,14 @@ impl Config {
                 "asr.language nao pode ser vazio".into(),
             ));
         }
+        if !(-30.0..=-8.0).contains(&self.audio.target_lufs)
+            || !(-6.0..=0.0).contains(&self.audio.true_peak_dbtp)
+            || !(0.0..=1.0).contains(&self.audio.sfx_gain)
+        {
+            return Err(FramechesterError::Config(
+                "audio.target_lufs entre -30 e -8, true_peak_dbtp entre -6 e 0, sfx_gain entre 0 e 1".into(),
+            ));
+        }
         if !matches!(self.llm.provider.as_str(), "template" | "anthropic") {
             return Err(FramechesterError::Config(
                 "llm.provider deve ser template ou anthropic".into(),
@@ -383,6 +433,17 @@ mod tests {
         let mut empty_language = Config::default();
         empty_language.asr.language = " ".into();
         assert!(empty_language.validate().is_err());
+    }
+
+    #[test]
+    fn audio_targets_default_to_minus_14_lufs_and_are_bounded() {
+        let config = Config::default();
+        assert_eq!(config.audio.target_lufs, -14.0);
+        assert_eq!(config.audio.true_peak_dbtp, -1.5);
+        assert!(!config.motion.enabled);
+        let mut invalid = Config::default();
+        invalid.audio.true_peak_dbtp = 1.0;
+        assert!(invalid.validate().is_err());
     }
 
     #[test]

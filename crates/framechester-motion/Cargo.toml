@@ -1,0 +1,23 @@
+[package]
+name = "framechester-motion"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+publish.workspace = true
+description = "Programmatic motion engine of Framechester: storyboard to animated frames, captions, audio mix and QA"
+
+[dependencies]
+framechester-core = { path = "../framechester-core" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+resvg = { version = "=0.49.0", default-features = false, features = ["text", "system-fonts"] }
+
+[dev-dependencies]
+tempfile.workspace = true

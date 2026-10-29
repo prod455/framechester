@@ -3,6 +3,7 @@ use crate::commands::analytics::analytics_report;
 use crate::commands::backup::{backup_check, backup_restore, backup_snapshot};
 use crate::commands::doctor::{config_check, doctor};
 use crate::commands::finance::finance_report;
+use crate::commands::produce::{plan_command, produce};
 use crate::commands::qa::qa_video;
 use crate::commands::report::report_command;
 use crate::commands::run::run_pipeline;
@@ -58,6 +59,12 @@ pub(crate) enum Commands {
     },
     #[command(about = "executa o pipeline completo em dry-run")]
     Run(RunArgs),
+    #[command(about = "planeja o storyboard semantico de um roteiro autoral (sem TTS nem render)")]
+    Plan(ProduceArgs),
+    #[command(
+        about = "produz um video explicativo animado: storyboard, narracao por segmento, render vetorial, mixagem e QA"
+    )]
+    Produce(ProduceArgs),
     #[command(
         about = "prepara visuais explicativos locais; nao usa API nem substitui capturas reais"
     )]
@@ -168,6 +175,49 @@ pub(crate) struct RunArgs {
     pub(crate) burn_subtitles: bool,
     #[arg(long, requires_all = ["script", "assets"], help = "renderiza previa com marca de revisao; sem pacote ou publicacao")]
     pub(crate) preview_only: bool,
+    #[arg(
+        long,
+        value_enum,
+        help = "legacy: imagens estaticas por cena (padrao); motion: storyboard semantico animado"
+    )]
+    pub(crate) engine: Option<EngineArg>,
+    #[arg(long)]
+    pub(crate) json: bool,
+}
+
+#[derive(Debug, Clone, clap::Args)]
+pub(crate) struct ProduceArgs {
+    #[arg(
+        long,
+        conflicts_with = "storyboard",
+        help = "roteiro JSON autoral vinculado ao topico"
+    )]
+    pub(crate) script: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "storyboard JSON pronto (schema docs/schemas/storyboard.schema.json)"
+    )]
+    pub(crate) storyboard: Option<PathBuf>,
+    #[arg(long, help = "arquivo JSON com Topic ou lista de Topic")]
+    pub(crate) topic: Option<PathBuf>,
+    #[arg(long, default_value_t = 0)]
+    pub(crate) topic_index: usize,
+    #[arg(
+        long,
+        help = "vertical (1080x1920), horizontal (1920x1080) ou x (1280x720)"
+    )]
+    pub(crate) format: Option<String>,
+    #[arg(
+        long,
+        help = "id local cadastrado em [[channels]]; obrigatorio quando ha canais"
+    )]
+    pub(crate) channel: Option<String>,
+    #[arg(long)]
+    pub(crate) workdir: Option<PathBuf>,
+    #[arg(long, help = "destino do storyboard em `plan`")]
+    pub(crate) output: Option<PathBuf>,
+    #[arg(long)]
+    pub(crate) voice: Option<String>,
     #[arg(long)]
     pub(crate) json: bool,
 }
@@ -238,6 +288,12 @@ impl From<PrivacyArg> for PublishPrivacy {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum EngineArg {
+    Legacy,
+    Motion,
+}
+
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub(crate) enum LlmArg {
     Template,
@@ -265,6 +321,8 @@ pub(crate) fn run(cli: Cli) -> anyhow::Result<i32> {
             json,
         } => trends(&cli.config, limit, &region, json),
         Commands::Run(args) => run_pipeline(&cli.config, args),
+        Commands::Plan(args) => plan_command(&cli.config, args),
+        Commands::Produce(args) => produce(&cli.config, args),
         Commands::Visuals { input, output } => visuals(&input, &output),
         Commands::Qa {
             video,

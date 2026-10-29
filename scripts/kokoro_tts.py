@@ -67,12 +67,42 @@ def synthesize(model, voices, voice, text, output):
         wav.writeframes(pcm.tobytes())
 
 
+def synthesize_batch(model, voices, voice, requests):
+    """Narrates several texts with one model load. `requests` is a list of
+    {"text": ..., "output": ...}; outputs are written as 24 kHz mono 16-bit WAV."""
+    validate(model, voices, voice)
+    if not requests or len(requests) > 512:
+        raise ValueError("Lote de narração vazio ou com mais de 512 trechos.")
+    import numpy as np
+    import onnxruntime
+    onnxruntime.disable_telemetry_events()
+    from kokoro_onnx import Kokoro
+
+    narrator = Kokoro(str(model), str(voices))
+    for request in requests:
+        text = str(request.get("text", ""))
+        output = pathlib.Path(str(request.get("output", "")))
+        if not text.strip() or len(text) > 50_000 or not request.get("output"):
+            raise ValueError("Trecho de narração vazio, sem destino ou maior que 50.000 caracteres.")
+        samples, rate = narrator.create(text, voice=voice, lang="pt-br", speed=1.0)
+        if rate != 24_000 or samples.size == 0 or not np.isfinite(samples).all():
+            raise ValueError("O narrador não produziu áudio válido.")
+        pcm = (np.clip(samples, -1, 1) * 32767).astype("<i2")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with wave.open(str(output), "wb") as wav:
+            wav.setnchannels(1)
+            wav.setsampwidth(2)
+            wav.setframerate(rate)
+            wav.writeframes(pcm.tobytes())
+
+
 def main():
     parser = argparse.ArgumentParser(description="Kokoro PT-BR · catálogo comercial Apache-2.0")
     parser.add_argument("--model", required=True)
     parser.add_argument("--voices", required=True)
     parser.add_argument("--voice", required=True, choices=VOICES)
     parser.add_argument("--output")
+    parser.add_argument("--batch", action="store_true", help="lê JSON [{text, output}] da entrada padrão")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     try:
@@ -81,6 +111,12 @@ def main():
             if importlib.util.find_spec("kokoro_onnx") is None:
                 raise ValueError("Runtime Kokoro ausente; execute npm run voices:setup.")
             print("Kokoro PT-BR: arquivos conferidos; licença Apache-2.0.")
+        elif args.batch:
+            import json
+            requests = json.loads(sys.stdin.buffer.read(4_000_000).decode("utf-8"))
+            if not isinstance(requests, list):
+                raise ValueError("O lote precisa ser uma lista JSON.")
+            synthesize_batch(args.model, args.voices, args.voice, requests)
         elif args.output:
             text = sys.stdin.buffer.read(200_005).decode("utf-8")
             synthesize(args.model, args.voices, args.voice, text, args.output)

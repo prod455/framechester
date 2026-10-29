@@ -26,6 +26,16 @@ roteiro (visualBrief) ──► diretiva #layout ──► parser Rust ──►
 - Espelho no Studio: `web/shared/scene-layouts.ts`
 - Casos compartilhados pelos dois testes: `tests/fixtures/scene-layouts.json`
 
+## Motor motion
+
+As diretivas abaixo continuam valendo para o renderizador de imagens estáticas. O
+motor motion (`framechester produce`) usa um storyboard semântico com cenas
+animadas e aceita, além delas, `#fluxo`, `#grafico`, `#arquitetura`, `#codigo`,
+`#transformacao`, `#anotacao`, `#infografico` e `#causa`. No caminho antigo essas
+diretivas viram o layout padrão, sem erro. Gramática completa em
+[STORYBOARD.md](STORYBOARD.md); direção de arte em
+[DESIGN_SYSTEM_VIDEO.md](DESIGN_SYSTEM_VIDEO.md).
+
 ## Diretivas
 
 A primeira linha do campo **O que aparece na tela?** (`visualBrief`) pode ter

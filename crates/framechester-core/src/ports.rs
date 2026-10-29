@@ -92,6 +92,14 @@ pub trait LlmProvider {
 pub trait TtsEngine {
     fn info(&self) -> AdapterInfo;
     fn synthesize(&self, request: &TtsRequest) -> Result<TtsAudio>;
+    /// Several requests at once; engines that load a model per call override this to
+    /// load it once. The default is sequential and keeps the input order.
+    fn synthesize_batch(&self, requests: &[TtsRequest]) -> Result<Vec<TtsAudio>> {
+        requests
+            .iter()
+            .map(|request| self.synthesize(request))
+            .collect()
+    }
 }
 
 pub trait AssetProvider {

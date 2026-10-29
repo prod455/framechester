@@ -319,6 +319,41 @@ sendo `build` seguido de `start` na porta 4317.
 | Consulta social recusada | Confira identidade esperada, conexão, validade e escopos conforme o guia de redes |
 | QA bloqueado | Leia o relatório e revise o artefato; não trate um check pendente como aprovação |
 
+### Estrutura do código do Studio
+
+`npm --prefix web run format` aplica o Prettier; `run check` falha se algum
+arquivo estiver fora do padrão. O frontend em `web/src` separa estado, casca
+e páginas:
+
+| Pasta ou arquivo | Responsabilidade |
+|---|---|
+| `main.ts` | importa o CSS e inicia a casca; nada mais |
+| `studio/state.ts` | o objeto `studio` (dados carregados, canal, documento ativo), navegação (`pages`, `go`, `render`), `refresh`/`save`/`action` e o poll de jobs |
+| `studio/shell.ts` | login, barra lateral, seletor de canal e montagem da página atual em `#main-content` |
+| `studio/toast.ts`, `studio/platforms.ts`, `format.ts` | avisos, rótulos das redes e formatação de número/data |
+| `pages/*.ts` | uma página por arquivo, registrada em `pages/index.ts`; cada uma lê e escreve só pelo `studio` |
+| `editors/*.ts` | editores reutilizados pelas páginas: fontes, alegações, cenas, seletor de documento e botão da IA |
+| `components.ts`, `dom.ts`, `ui-tabs.ts` | controles Basecoat e utilitários de DOM, sem estado da aplicação |
+| `*-ui.ts` | diálogos de produção, assistente e consumo de IA, abertos pelas páginas |
+
+O backend em `web/server` segue a mesma divisão:
+
+| Arquivo | Responsabilidade |
+|---|---|
+| `app.ts` | cabeçalhos de segurança, origem local, rotas públicas (health, login, retorno OAuth, arquivos estáticos), autenticação e o despacho das rotas de API |
+| `http.ts` | leitura de JSON com limite, envio de arquivos com `Range`, estáticos e validação de campos; não conhece as rotas |
+| `routes/router.ts` | tabela de rotas: padrão com `:nome` e `:nome(a\|b)`, primeiro match vence, `requireChannel` para rotas de canal |
+| `routes/{studio,creative,production,social,resources}.ts` | as rotas autenticadas por domínio; cada uma recebe `request`, `response`, `params`, `session` e os serviços |
+
+Uma rota nova é um objeto `{ method, pattern, handle }` no arquivo do seu
+domínio; `compileRoutes` recusa duplicatas de método e padrão na inicialização.
+
+As páginas não importam umas às outras em ciclo: `overview` abre pauta, canal
+e produção; `research` inicia roteiro; o restante só depende de `studio`.
+`tests/studio-shell.test.ts` inicia a casca com uma API simulada e desenha
+todas as páginas; é o teste que falha primeiro se uma página perder um import
+ou ler dados antes do carregamento.
+
 Os resultados do Studio, testes web, build e auditoria de dependências ficam
 registrados na [validação web](WEB_STUDIO_VALIDACAO.md). A [validação do motor](VALIDACAO_ENTREGA.md)
 registra Rust/Python e seus pilotos, com as respectivas contagens e limitações. O smoke

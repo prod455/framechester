@@ -7,262 +7,756 @@ import type { AppState, Script } from '../shared/types.ts';
 import { createRunner, localEngineEnvironment } from '../server/runner.ts';
 
 const date = '2026-10-27T00:00:00.000Z';
-const source = (id: number) => ({title:`Fonte ${id}`,url:`https://example.com/${id}`,publisher:'Fixture',retrievedAt:'2026-10-27',license:'Referencia de teste'});
+const source = (id: number) => ({
+  title: `Fonte ${id}`,
+  url: `https://example.com/${id}`,
+  publisher: 'Fixture',
+  retrievedAt: '2026-10-27',
+  license: 'Referencia de teste',
+});
 
 test('the local runner prepares script visuals without a manual upload', async () => {
   const home = await mkdtemp(join(tmpdir(), 'fc-auto-visuals-'));
-  const runner = await createRunner({home, repositoryRoot:resolve('..'), readState:async()=>state()});
+  const runner = await createRunner({ home, repositoryRoot: resolve('..'), readState: async () => state() });
   try {
-    assert.equal(typeof Reflect.get(runner, 'prepareVisuals'), 'function', 'A production operator needs automatic script visuals');
-  } finally { await runner.close(); await rm(home,{recursive:true,force:true}); }
+    assert.equal(
+      typeof Reflect.get(runner, 'prepareVisuals'),
+      'function',
+      'A production operator needs automatic script visuals',
+    );
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
 });
 
-const visualPng=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jMMAAAAAASUVORK5CYII=','base64');
+const visualPng = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jMMAAAAAASUVORK5CYII=',
+  'base64',
+);
 
-test('automatic visuals preserve scene IDs, stay in the channel and survive restart without repeated generation',async()=>{
-  const home=await mkdtemp(join(tmpdir(),'fc-visual-generation-'));
-  const current=state();let calls=0;
-  const options={home,repositoryRoot:resolve('..'),readState:async()=>structuredClone(current),execute:async(args:string[])=>{
-    calls++;assert.equal(args[0],'visuals');
-    const plan=JSON.parse(await readFile(args[args.indexOf('--input')+1],'utf8'));
-    assert.equal(plan.scenes[0].id,42);assert.equal(plan.scenes[0].narration,'Texto autoral preservado.');
-    const output=args[args.indexOf('--output')+1];await mkdir(output,{recursive:true});await writeFile(join(output,'scene-42.png'),visualPng);
-    return {exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v1',scenes:[{scene_id:42,status:'generated',file:'scene-42.png'}]}),stderr:''};
-  }};
-  let runner=await createRunner(options);
+test('automatic visuals preserve scene IDs, stay in the channel and survive restart without repeated generation', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-visual-generation-'));
+  const current = state();
+  let calls = 0;
+  const options = {
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => structuredClone(current),
+    execute: async (args: string[]) => {
+      calls++;
+      assert.equal(args[0], 'visuals');
+      const plan = JSON.parse(await readFile(args[args.indexOf('--input') + 1], 'utf8'));
+      assert.equal(plan.scenes[0].id, 42);
+      assert.equal(plan.scenes[0].narration, 'Texto autoral preservado.');
+      const output = args[args.indexOf('--output') + 1];
+      await mkdir(output, { recursive: true });
+      await writeFile(join(output, 'scene-42.png'), visualPng);
+      return {
+        exitCode: 0,
+        stdout: JSON.stringify({
+          renderer: 'framechester-editorial-v2',
+          scenes: [{ scene_id: 42, status: 'generated', file: 'scene-42.png' }],
+        }),
+        stderr: '',
+      };
+    },
+  };
+  let runner = await createRunner(options);
   try {
-    const prepared=await runner.prepareVisuals('tech','script-one');
-    assert.equal(calls,1);assert.equal(prepared.assets.length,1);assert.deepEqual(prepared.pending,[]);
-    const asset=prepared.assets[0];assert.equal(asset.generated?.sceneId,42);assert.equal(asset.channelId,'tech');
-    assert.equal(prepared.bindings['42'],asset.id);assert.equal('diskName'in asset,false);
-    assert.deepEqual(await runner.assets('science'),[]);assert.equal(await runner.assetFile('science',asset.id),undefined);
-    assert.ok(await runner.assetFile('tech',asset.id));
-    await assert.rejects(runner.prepareVisuals('science','script-one'),/neste canal/);assert.equal(calls,1);
-    await runner.close();runner=await createRunner(options);
-    assert.deepEqual((await runner.prepareVisuals('tech','script-one')).bindings,prepared.bindings);assert.equal(calls,1);
-    current.scripts[0].title='Título revisado';
-    await assert.rejects(runner.start('tech',{scriptId:'script-one',assetIds:{42:asset.id}}),/roteiro mudou/);
-    const revised=await runner.prepareVisuals('tech','script-one');assert.notEqual(revised.bindings['42'],asset.id);assert.equal(calls,2);
-    assert.equal(current.scripts[0].crossChecked,true);assert.deepEqual(await runner.list('tech'),[]);
-  }finally{await runner.close();await rm(home,{recursive:true,force:true});}
+    const prepared = await runner.prepareVisuals('tech', 'script-one');
+    assert.equal(calls, 1);
+    assert.equal(prepared.assets.length, 1);
+    assert.deepEqual(prepared.pending, []);
+    const asset = prepared.assets[0];
+    assert.equal(asset.generated?.sceneId, 42);
+    assert.equal(asset.channelId, 'tech');
+    assert.equal(prepared.bindings['42'], asset.id);
+    assert.equal('diskName' in asset, false);
+    assert.deepEqual(await runner.assets('science'), []);
+    assert.equal(await runner.assetFile('science', asset.id), undefined);
+    assert.ok(await runner.assetFile('tech', asset.id));
+    await assert.rejects(runner.prepareVisuals('science', 'script-one'), /neste canal/);
+    assert.equal(calls, 1);
+    await runner.close();
+    runner = await createRunner(options);
+    assert.deepEqual((await runner.prepareVisuals('tech', 'script-one')).bindings, prepared.bindings);
+    assert.equal(calls, 1);
+    current.scripts[0].title = 'Título revisado';
+    await assert.rejects(
+      runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } }),
+      /roteiro mudou/,
+    );
+    const revised = await runner.prepareVisuals('tech', 'script-one');
+    assert.notEqual(revised.bindings['42'], asset.id);
+    assert.equal(calls, 2);
+    assert.equal(current.scripts[0].crossChecked, true);
+    assert.deepEqual(await runner.list('tech'), []);
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
 });
 
-test('a required real capture is reported as pending without inventing an asset',async()=>{
-  const home=await mkdtemp(join(tmpdir(),'fc-pending-capture-'));
-  const current=state();current.scripts[0].scenes[0].visualBrief='[CAPTURA PENDENTE] Gravação real.';current.scripts[0].crossChecked=false;
-  let executions=0;
-  const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>current,execute:async(args)=>{
-    executions++;const output=args[args.indexOf('--output')+1];await mkdir(output,{recursive:true});await writeFile(join(output,'scene-42.png'),visualPng);
-    return {exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v1',scenes:[{scene_id:42,status:'requires_capture',file:'scene-42.png'}]}),stderr:''};
-  }});
+test('a required real capture is reported as pending without inventing an asset', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-pending-capture-'));
+  const current = state();
+  current.scripts[0].scenes[0].visualBrief = '[CAPTURA PENDENTE] Gravação real.';
+  current.scripts[0].crossChecked = false;
+  let executions = 0;
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => current,
+    execute: async (args) => {
+      executions++;
+      const output = args[args.indexOf('--output') + 1];
+      await mkdir(output, { recursive: true });
+      await writeFile(join(output, 'scene-42.png'), visualPng);
+      return {
+        exitCode: 0,
+        stdout: JSON.stringify({
+          renderer: 'framechester-editorial-v2',
+          scenes: [{ scene_id: 42, status: 'requires_capture', file: 'scene-42.png' }],
+        }),
+        stderr: '',
+      };
+    },
+  });
   try {
-    const result=await runner.prepareVisuals('tech','script-one');
-    assert.equal(result.assets.length,1,'A pending capture still needs an illustrative preview');assert.deepEqual(result.bindings,{});assert.equal(result.pending[0].sceneId,42);
-    assert.equal(result.assets[0].generated?.captureRequired,true);
-    assert.equal(result.previews?.['42'],result.assets[0].id);
-    assert.match(result.pending[0].reason,/gravação real/);assert.equal(current.scripts[0].crossChecked,false);
-    assert.deepEqual((await runner.prepareVisuals('tech','script-one')).previews,result.previews);assert.equal(executions,1,'Pending previews must also be cached');
-    current.scripts[0].crossChecked=true;
-    await assert.rejects(runner.start('tech',{scriptId:'script-one',assetIds:{42:result.assets[0].id}}),/prévia|gravação/i);
-  }finally{await runner.close();await rm(home,{recursive:true,force:true});}
+    const result = await runner.prepareVisuals('tech', 'script-one');
+    assert.equal(result.assets.length, 1, 'A pending capture still needs an illustrative preview');
+    assert.deepEqual(result.bindings, {});
+    assert.equal(result.pending[0].sceneId, 42);
+    assert.equal(result.assets[0].generated?.captureRequired, true);
+    assert.equal(result.previews?.['42'], result.assets[0].id);
+    assert.match(result.pending[0].reason, /gravação real/);
+    assert.equal(current.scripts[0].crossChecked, false);
+    assert.deepEqual((await runner.prepareVisuals('tech', 'script-one')).previews, result.previews);
+    assert.equal(executions, 1, 'Pending previews must also be cached');
+    current.scripts[0].crossChecked = true;
+    await assert.rejects(
+      runner.start('tech', { scriptId: 'script-one', assetIds: { 42: result.assets[0].id } }),
+      /prévia|gravação/i,
+    );
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
 });
 
-test('invalid renderer paths are rejected before importing any generated file',async()=>{
-  const home=await mkdtemp(join(tmpdir(),'fc-visual-path-'));
-  const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>state(),execute:async()=>({exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v1',scenes:[{scene_id:42,status:'generated',file:'../private.png'}]}),stderr:''})});
+test('invalid renderer paths are rejected before importing any generated file', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-visual-path-'));
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => state(),
+    execute: async () => ({
+      exitCode: 0,
+      stdout: JSON.stringify({
+        renderer: 'framechester-editorial-v2',
+        scenes: [{ scene_id: 42, status: 'generated', file: '../private.png' }],
+      }),
+      stderr: '',
+    }),
+  });
   try {
-    await assert.rejects(runner.prepareVisuals('tech','script-one'),/arquivo visual inválido/);
-    assert.deepEqual(await runner.assets('tech'),[]);
-  }finally{await runner.close();await rm(home,{recursive:true,force:true});}
+    await assert.rejects(runner.prepareVisuals('tech', 'script-one'), /arquivo visual inválido/);
+    assert.deepEqual(await runner.assets('tech'), []);
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
 });
 function state(): AppState {
-  const script: Script = {id:'script-one',channelId:'tech',topicId:'topic-one',title:'Roteiro original',series:'tecnologia',format:'short',hook:'Uma pergunta',crossChecked:true,status:'reviewed',createdAt:date,updatedAt:date,sources:[source(1),source(2)],claims:[{text:'Alegacao citada',status:'cited',sourceUrls:[source(1).url]}],scenes:[{id:42,heading:'Cena',narration:'Texto autoral preservado.',visualBrief:'Diagrama original',durationHintSecs:20}]};
-  return {schemaVersion:1,channels:['tech','science'].map(id=>({id,name:id,description:'',niche:'',audience:'',language:'pt-BR',createdAt:date,updatedAt:date})),config:{dryRun:true,telemetry:false,render:{width:640,height:360,fps:30,crf:20,preset:'veryfast',videoCodec:'libx264'},tts:{engine:'kokoro',pythonPath:'synthetic-python',voiceStyles:'C:/synthetic/voices.bin',piperPath:'piper',voiceModel:'C:/synthetic/licensed-voice.onnx',voiceName:'pf_dora'},asr:{enabled:false,model:'',language:'pt',minCoverage:.45}},channelConfigs:{},research:[],scripts:[script],stories:[],monetization:[],receipts:[]};
+  const script: Script = {
+    id: 'script-one',
+    channelId: 'tech',
+    topicId: 'topic-one',
+    title: 'Roteiro original',
+    series: 'tecnologia',
+    format: 'short',
+    hook: 'Uma pergunta',
+    crossChecked: true,
+    status: 'reviewed',
+    createdAt: date,
+    updatedAt: date,
+    sources: [source(1), source(2)],
+    claims: [{ text: 'Alegacao citada', status: 'cited', sourceUrls: [source(1).url] }],
+    scenes: [
+      {
+        id: 42,
+        heading: 'Cena',
+        narration: 'Texto autoral preservado.',
+        visualBrief: 'Diagrama original',
+        durationHintSecs: 20,
+      },
+    ],
+  };
+  return {
+    schemaVersion: 1,
+    channels: ['tech', 'science'].map((id) => ({
+      id,
+      name: id,
+      description: '',
+      niche: '',
+      audience: '',
+      language: 'pt-BR',
+      createdAt: date,
+      updatedAt: date,
+    })),
+    config: {
+      dryRun: true,
+      telemetry: false,
+      render: { width: 640, height: 360, fps: 30, crf: 20, preset: 'veryfast', videoCodec: 'libx264' },
+      tts: {
+        engine: 'kokoro',
+        pythonPath: 'synthetic-python',
+        voiceStyles: 'C:/synthetic/voices.bin',
+        piperPath: 'piper',
+        voiceModel: 'C:/synthetic/licensed-voice.onnx',
+        voiceName: 'pf_dora',
+      },
+      asr: { enabled: false, model: '', language: 'pt', minCoverage: 0.45 },
+    },
+    channelConfigs: {},
+    research: [],
+    scripts: [script],
+    stories: [],
+    monetization: [],
+    receipts: [],
+  };
 }
 
-test('a local draft preview renders unreviewed material without approving it or accepting it as a final video',async()=>{
-  const home=await mkdtemp(join(tmpdir(),'fc-draft-video-'));const current=state();current.scripts[0].crossChecked=false;current.scripts[0].sources=[];current.scripts[0].claims=[];let previews=false;
-  const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>current,execute:async args=>{
-    if(args[0]==='visuals'){
-      const output=args[args.indexOf('--output')+1];await mkdir(output,{recursive:true});await writeFile(join(output,'scene-42.png'),visualPng);
-      return {exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v1',scenes:[{scene_id:42,status:'requires_capture',file:'scene-42.png'}]}),stderr:''};
-    }
-    previews=args.includes('--preview-only');assert.equal(previews,true);
-    const topic=JSON.parse(await readFile(args[args.indexOf('--topic')+1],'utf8'));assert.equal(topic.metrics.cross_check,0);assert.deepEqual(topic.sources,[]);
-    const output=join(args[args.indexOf('--workdir')+1],'channels','tech');await mkdir(join(output,'render'),{recursive:true});await writeFile(join(output,'render/final.mp4'),'synthetic preview fixture');
-    await writeFile(join(output,'pipeline_report.json'),JSON.stringify({stage:'blocked',technical_qa:{checks:[{status:'pass'}]},editorial_qa:{checks:[{status:'fail'}]}}));
-    return {exitCode:1,stdout:'',stderr:''};
-  }});
-  try{
-    const prepared=await runner.prepareVisuals('tech','script-one');const assetIds=prepared.previews!;
-    await assert.rejects(runner.start('tech',{scriptId:'script-one',assetIds}),/fontes/);
-    const job=await runner.start('tech',{scriptId:'script-one',assetIds,previewOnly:true});await runner.idle();
-    const saved=(await runner.list('tech')).find(item=>item.id===job.id)!;
-    assert.equal(saved.previewOnly,true);assert.equal(saved.videoAvailable,true);assert.equal(saved.qa?.editorial,'fail');assert.match(saved.message,/Prévia/);assert.equal(previews,true);assert.equal(current.scripts[0].crossChecked,false);
-  }finally{await runner.close();await rm(home,{recursive:true,force:true});}
+test('a local draft preview renders unreviewed material without approving it or accepting it as a final video', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-draft-video-'));
+  const current = state();
+  current.scripts[0].crossChecked = false;
+  current.scripts[0].sources = [];
+  current.scripts[0].claims = [];
+  let previews = false;
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => current,
+    execute: async (args) => {
+      if (args[0] === 'visuals') {
+        const output = args[args.indexOf('--output') + 1];
+        await mkdir(output, { recursive: true });
+        await writeFile(join(output, 'scene-42.png'), visualPng);
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify({
+            renderer: 'framechester-editorial-v2',
+            scenes: [{ scene_id: 42, status: 'requires_capture', file: 'scene-42.png' }],
+          }),
+          stderr: '',
+        };
+      }
+      previews = args.includes('--preview-only');
+      assert.equal(previews, true);
+      const topic = JSON.parse(await readFile(args[args.indexOf('--topic') + 1], 'utf8'));
+      assert.equal(topic.metrics.cross_check, 0);
+      assert.deepEqual(topic.sources, []);
+      const output = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
+      await mkdir(join(output, 'render'), { recursive: true });
+      await writeFile(join(output, 'render/final.mp4'), 'synthetic preview fixture');
+      await writeFile(
+        join(output, 'pipeline_report.json'),
+        JSON.stringify({
+          stage: 'blocked',
+          technical_qa: { checks: [{ status: 'pass' }] },
+          editorial_qa: { checks: [{ status: 'fail' }] },
+        }),
+      );
+      return { exitCode: 1, stdout: '', stderr: '' };
+    },
+  });
+  try {
+    const prepared = await runner.prepareVisuals('tech', 'script-one');
+    const assetIds = prepared.previews!;
+    await assert.rejects(runner.start('tech', { scriptId: 'script-one', assetIds }), /fontes/);
+    const job = await runner.start('tech', { scriptId: 'script-one', assetIds, previewOnly: true });
+    await runner.idle();
+    const saved = (await runner.list('tech')).find((item) => item.id === job.id)!;
+    assert.equal(saved.previewOnly, true);
+    assert.equal(saved.videoAvailable, true);
+    assert.equal(saved.qa?.editorial, 'fail');
+    assert.match(saved.message, /Prévia/);
+    assert.equal(previews, true);
+    assert.equal(current.scripts[0].crossChecked, false);
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
 });
 
-test('automatic production continues from a generated script through visuals and render in the server queue',async()=>{
-  const home=await mkdtemp(join(tmpdir(),'fc-auto-run-'));const current=state();let generated=false,rendered=false;
-  const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>current,execute:async args=>{
-    if(args[0]==='visuals'){const output=args[args.indexOf('--output')+1];await mkdir(output,{recursive:true});await writeFile(join(output,'scene-42.png'),visualPng);return {exitCode:0,stdout:JSON.stringify({renderer:'framechester-editorial-v1',scenes:[{scene_id:42,status:'generated',file:'scene-42.png'}]}),stderr:''};}
-    rendered=true;assert.ok(args.includes('--preview-only'));const output=join(args[args.indexOf('--workdir')+1],'channels','tech');await mkdir(join(output,'render'),{recursive:true});await writeFile(join(output,'render/final.mp4'),'synthetic automated preview');await writeFile(join(output,'pipeline_report.json'),JSON.stringify({stage:'blocked',technical_qa:{checks:[{status:'pass'}]},editorial_qa:{checks:[{status:'needs_human'}]}}));return {exitCode:1,stdout:'',stderr:''};
-  }});
-  try{
-    const method=Reflect.get(runner,'startAutomated');assert.equal(typeof method,'function');
-    const job=await runner.startAutomated('tech','script-one',async()=>{generated=true;const draft={...current.scripts[0],id:'script-generated',crossChecked:false,status:'draft' as const};current.scripts.push(draft);return draft.id;});
-    assert.equal(job.automated,true);await runner.idle();const saved=(await runner.list('tech')).find(item=>item.id===job.id)!;
-    assert.equal(generated,true);assert.equal(rendered,true);assert.equal(saved.scriptId,'script-generated');assert.equal(saved.videoAvailable,true);assert.equal(saved.previewOnly,true);assert.equal(current.scripts[0].crossChecked,true);
-  }finally{await runner.close();await rm(home,{recursive:true,force:true});}
+test('automatic production continues from a generated script through visuals and render in the server queue', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-auto-run-'));
+  const current = state();
+  let generated = false,
+    rendered = false;
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => current,
+    execute: async (args) => {
+      if (args[0] === 'visuals') {
+        const output = args[args.indexOf('--output') + 1];
+        await mkdir(output, { recursive: true });
+        await writeFile(join(output, 'scene-42.png'), visualPng);
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify({
+            renderer: 'framechester-editorial-v2',
+            scenes: [{ scene_id: 42, status: 'generated', file: 'scene-42.png' }],
+          }),
+          stderr: '',
+        };
+      }
+      rendered = true;
+      assert.ok(args.includes('--preview-only'));
+      const output = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
+      await mkdir(join(output, 'render'), { recursive: true });
+      await writeFile(join(output, 'render/final.mp4'), 'synthetic automated preview');
+      await writeFile(
+        join(output, 'pipeline_report.json'),
+        JSON.stringify({
+          stage: 'blocked',
+          technical_qa: { checks: [{ status: 'pass' }] },
+          editorial_qa: { checks: [{ status: 'needs_human' }] },
+        }),
+      );
+      return { exitCode: 1, stdout: '', stderr: '' };
+    },
+  });
+  try {
+    const method = Reflect.get(runner, 'startAutomated');
+    assert.equal(typeof method, 'function');
+    const job = await runner.startAutomated('tech', 'script-one', async () => {
+      generated = true;
+      const draft = {
+        ...current.scripts[0],
+        id: 'script-generated',
+        crossChecked: false,
+        status: 'draft' as const,
+      };
+      current.scripts.push(draft);
+      return draft.id;
+    });
+    assert.equal(job.automated, true);
+    await runner.idle();
+    const saved = (await runner.list('tech')).find((item) => item.id === job.id)!;
+    assert.equal(generated, true);
+    assert.equal(rendered, true);
+    assert.equal(saved.scriptId, 'script-generated');
+    assert.equal(saved.videoAvailable, true);
+    assert.equal(saved.previewOnly, true);
+    assert.equal(current.scripts[0].crossChecked, true);
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
 });
 
-test('automatic narration preflight resolves installed files from the repository rather than the server working directory',async()=>{
-  const home=await mkdtemp(join(tmpdir(),'fc-narrator-root-'));const root=join(home,'repository');const current=state();
-  current.config.tts={...current.config.tts,pythonPath:'.framechester/tts-venv/Scripts/python.exe',voiceModel:'models/kokoro/kokoro-v1.0.onnx',voiceStyles:'models/kokoro/voices-v1.0.bin'};
-  for(const relative of [current.config.tts.pythonPath!,current.config.tts.voiceModel,current.config.tts.voiceStyles!,'engine.exe']){const path=join(root,relative);await mkdir(join(path,'..'),{recursive:true});await writeFile(path,'synthetic path fixture');}
-  let prepared=false;const runner=await createRunner({home:join(home,'profile'),repositoryRoot:root,binary:join(root,'engine.exe'),readState:async()=>current});
-  try{
-    const job=await runner.startAutomated('tech','script-one',async()=>{prepared=true;throw new Error('Synthetic stop before any engine or model call');});
-    await runner.idle();assert.equal(prepared,true,'The installed narrator must be accepted even when the Node working directory is elsewhere');
-    assert.equal((await runner.list('tech')).find(item=>item.id===job.id)!.status,'failed');
-    assert.equal(current.config.tts.pythonPath,'.framechester/tts-venv/Scripts/python.exe','Runtime resolution must preserve saved operator paths');
-    await rm(join(root,current.config.tts.voiceStyles!));prepared=false;
-    await assert.rejects(runner.startAutomated('tech','script-one',async()=>{prepared=true;return 'script-one';}),error=>error instanceof Error&&error.message.includes('voiceStyles')&&!error.message.includes('voices:setup'));
-    assert.equal(prepared,false,'A genuinely missing file must be reported before the AI call');
-  }finally{await runner.close();await rm(home,{recursive:true,force:true});}
+test('automatic narration preflight resolves installed files from the repository rather than the server working directory', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-narrator-root-'));
+  const root = join(home, 'repository');
+  const current = state();
+  current.config.tts = {
+    ...current.config.tts,
+    pythonPath: '.framechester/tts-venv/Scripts/python.exe',
+    voiceModel: 'models/kokoro/kokoro-v1.0.onnx',
+    voiceStyles: 'models/kokoro/voices-v1.0.bin',
+  };
+  for (const relative of [
+    current.config.tts.pythonPath!,
+    current.config.tts.voiceModel,
+    current.config.tts.voiceStyles!,
+    'engine.exe',
+  ]) {
+    const path = join(root, relative);
+    await mkdir(join(path, '..'), { recursive: true });
+    await writeFile(path, 'synthetic path fixture');
+  }
+  let prepared = false;
+  const runner = await createRunner({
+    home: join(home, 'profile'),
+    repositoryRoot: root,
+    binary: join(root, 'engine.exe'),
+    readState: async () => current,
+  });
+  try {
+    const job = await runner.startAutomated('tech', 'script-one', async () => {
+      prepared = true;
+      throw new Error('Synthetic stop before any engine or model call');
+    });
+    await runner.idle();
+    assert.equal(
+      prepared,
+      true,
+      'The installed narrator must be accepted even when the Node working directory is elsewhere',
+    );
+    assert.equal((await runner.list('tech')).find((item) => item.id === job.id)!.status, 'failed');
+    assert.equal(
+      current.config.tts.pythonPath,
+      '.framechester/tts-venv/Scripts/python.exe',
+      'Runtime resolution must preserve saved operator paths',
+    );
+    await rm(join(root, current.config.tts.voiceStyles!));
+    prepared = false;
+    await assert.rejects(
+      runner.startAutomated('tech', 'script-one', async () => {
+        prepared = true;
+        return 'script-one';
+      }),
+      (error) =>
+        error instanceof Error &&
+        error.message.includes('voiceStyles') &&
+        !error.message.includes('voices:setup'),
+    );
+    assert.equal(prepared, false, 'A genuinely missing file must be reported before the AI call');
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
 });
 test('a channel job passes authored JSON and licensed media to the fixed Rust engine', async () => {
-  const home = await mkdtemp(join(tmpdir(),'framechester-web-runner-'));
+  const home = await mkdtemp(join(tmpdir(), 'framechester-web-runner-'));
   const input = state();
   let called = false;
-  const runner = await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>structuredClone(input),execute:async(args)=>{
-    called=true;
-    assert.equal(args.includes('--script'),true);
-    assert.equal(args.includes('--assets'),true);
-    assert.equal(args.includes('anthropic'),false);
-    const topic=JSON.parse(await readFile(args[args.indexOf('--topic')+1],'utf8'));
-    assert.deepEqual(topic.metrics,{acceleration:0,demand:0,alignment:0,originality:0,visual_feasibility:0,timing:0,cross_check:1});
-    const authored=JSON.parse(await readFile(args[args.indexOf('--script')+1],'utf8'));
-    assert.equal(authored.script.scenes[0].id,42);
-    assert.equal(authored.script.scenes[0].narration,'Texto autoral preservado.');
-    const out=join(args[args.indexOf('--workdir')+1],'channels','tech');
-    await mkdir(join(out,'render'),{recursive:true});
-    await writeFile(join(out,'render','final.mp4'),'synthetic fixture');
-    await writeFile(join(out,'pipeline_report.json'),JSON.stringify({stage:'editorial_qa',render:{path:join(out,'render','final.mp4')},technical_qa:{checks:[{status:'pass'},{status:'skipped'}]},editorial_qa:{checks:[{status:'needs_human'}]},publish:{status:'dry_run'}}));
-    return {exitCode:0,stdout:'',stderr:''};
-  }});
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => structuredClone(input),
+    execute: async (args) => {
+      called = true;
+      assert.equal(args.includes('--script'), true);
+      assert.equal(args.includes('--assets'), true);
+      assert.equal(args.includes('anthropic'), false);
+      const topic = JSON.parse(await readFile(args[args.indexOf('--topic') + 1], 'utf8'));
+      assert.deepEqual(topic.metrics, {
+        acceleration: 0,
+        demand: 0,
+        alignment: 0,
+        originality: 0,
+        visual_feasibility: 0,
+        timing: 0,
+        cross_check: 1,
+      });
+      const authored = JSON.parse(await readFile(args[args.indexOf('--script') + 1], 'utf8'));
+      assert.equal(authored.script.scenes[0].id, 42);
+      assert.equal(authored.script.scenes[0].narration, 'Texto autoral preservado.');
+      const out = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
+      await mkdir(join(out, 'render'), { recursive: true });
+      await writeFile(join(out, 'render', 'final.mp4'), 'synthetic fixture');
+      await writeFile(
+        join(out, 'pipeline_report.json'),
+        JSON.stringify({
+          stage: 'editorial_qa',
+          render: { path: join(out, 'render', 'final.mp4') },
+          technical_qa: { checks: [{ status: 'pass' }, { status: 'skipped' }] },
+          editorial_qa: { checks: [{ status: 'needs_human' }] },
+          publish: { status: 'dry_run' },
+        }),
+      );
+      return { exitCode: 0, stdout: '', stderr: '' };
+    },
+  });
   try {
-    const asset=await runner.upload('tech',{filename:'diagram.png',kind:'image',contentBase64:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',license:'Original de teste',provenance:'Fixture local',restrictions:'Teste'});
-    const job=await runner.start('tech',{scriptId:'script-one',assetIds:{42:asset.id},burnSubtitles:true});
+    const asset = await runner.upload('tech', {
+      filename: 'diagram.png',
+      kind: 'image',
+      contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+      license: 'Original de teste',
+      provenance: 'Fixture local',
+      restrictions: 'Teste',
+    });
+    const job = await runner.start('tech', {
+      scriptId: 'script-one',
+      assetIds: { 42: asset.id },
+      burnSubtitles: true,
+    });
     await runner.idle();
-    assert.equal(called,true);
-    const done=(await runner.list('tech')).find(item=>item.id===job.id)!;
-    assert.equal(done.status,'needs_review',done.message);
-    assert.equal(done.videoAvailable,true);
-    assert.equal(done.qa?.technical,'pass');
-    assert.ok(await runner.file('tech',job.id,'video'));
-    assert.equal(await runner.file('science',job.id,'video'),undefined);
-    assert.deepEqual(await runner.list('science'),[]);
-  } finally { await runner.close(); await rm(home,{recursive:true,force:true}); }
+    assert.equal(called, true);
+    const done = (await runner.list('tech')).find((item) => item.id === job.id)!;
+    assert.equal(done.status, 'needs_review', done.message);
+    assert.equal(done.videoAvailable, true);
+    assert.equal(done.qa?.technical, 'pass');
+    assert.ok(await runner.file('tech', job.id, 'video'));
+    assert.equal(await runner.file('science', job.id, 'video'), undefined);
+    assert.deepEqual(await runner.list('science'), []);
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
 });
 
-test('a job refuses another channel script, foreign media and unconfirmed evidence before executing',async()=>{
-  const home=await mkdtemp(join(tmpdir(),'framechester-web-isolation-'));
-  const input=state(); let calls=0;
-  const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>structuredClone(input),execute:async()=>{calls++;return {exitCode:0,stdout:'',stderr:''};}});
+test('a job refuses another channel script, foreign media and unconfirmed evidence before executing', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'framechester-web-isolation-'));
+  const input = state();
+  let calls = 0;
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => structuredClone(input),
+    execute: async () => {
+      calls++;
+      return { exitCode: 0, stdout: '', stderr: '' };
+    },
+  });
   try {
-    const asset=await runner.upload('science',{filename:'fixture.png',kind:'image',contentBase64:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',license:'Original',provenance:'Fixture',restrictions:'Teste'});
-    await assert.rejects(runner.start('science',{scriptId:'script-one',assetIds:{42:asset.id}}),/Roteiro/);
-    await assert.rejects(runner.start('tech',{scriptId:'script-one',assetIds:{42:asset.id}}),/outro canal/);
-    input.scripts[0].crossChecked=false;
-    await assert.rejects(runner.start('tech',{scriptId:'script-one',assetIds:{42:asset.id}}),/cruzamento/);
-    assert.equal(calls,0);
-    assert.deepEqual(await runner.list('tech'),[]);
-  } finally {await runner.close();await rm(home,{recursive:true,force:true});}
+    const asset = await runner.upload('science', {
+      filename: 'fixture.png',
+      kind: 'image',
+      contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+      license: 'Original',
+      provenance: 'Fixture',
+      restrictions: 'Teste',
+    });
+    await assert.rejects(
+      runner.start('science', { scriptId: 'script-one', assetIds: { 42: asset.id } }),
+      /Roteiro/,
+    );
+    await assert.rejects(
+      runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } }),
+      /outro canal/,
+    );
+    input.scripts[0].crossChecked = false;
+    await assert.rejects(
+      runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } }),
+      /cruzamento/,
+    );
+    assert.equal(calls, 0);
+    assert.deepEqual(await runner.list('tech'), []);
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
 });
 
-test('uploads reject traversal, fake signatures and absent rights metadata',async()=>{
-  const home=await mkdtemp(join(tmpdir(),'framechester-web-upload-'));
-  const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>state()});
-  const normal={filename:'fixture.png',kind:'image' as const,contentBase64:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',license:'Original',provenance:'Fixture',restrictions:'Teste'};
+test('uploads reject traversal, fake signatures and absent rights metadata', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'framechester-web-upload-'));
+  const runner = await createRunner({ home, repositoryRoot: resolve('..'), readState: async () => state() });
+  const normal = {
+    filename: 'fixture.png',
+    kind: 'image' as const,
+    contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+    license: 'Original',
+    provenance: 'Fixture',
+    restrictions: 'Teste',
+  };
   try {
-    await assert.rejects(runner.upload('tech',{...normal,filename:'../escape.png'}),/Nome/);
-    await assert.rejects(runner.upload('tech',{...normal,contentBase64:Buffer.from('this is not a PNG image').toString('base64')}),/corresponde/);
-    await assert.rejects(runner.upload('tech',{...normal,license:''}),/licença/);
-    assert.deepEqual(await runner.assets('tech'),[]);
-  } finally {await runner.close();await rm(home,{recursive:true,force:true});}
+    await assert.rejects(runner.upload('tech', { ...normal, filename: '../escape.png' }), /Nome/);
+    await assert.rejects(
+      runner.upload('tech', {
+        ...normal,
+        contentBase64: Buffer.from('this is not a PNG image').toString('base64'),
+      }),
+      /corresponde/,
+    );
+    await assert.rejects(runner.upload('tech', { ...normal, license: '' }), /licença/);
+    assert.deepEqual(await runner.assets('tech'), []);
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
 });
 
-test('offline engine processes receive tool paths without platform or API credentials',()=>{
-  const original={Path:'C:/tools',SystemRoot:'C:/Windows',ANTHROPIC_API_KEY:'synthetic-secret',YOUTUBE_TOKEN_FILE:'private-token-path',RESTIC_PASSWORD:'synthetic-password',AWS_ACCESS_KEY_ID:'synthetic-id',FRAMECHESTER_WEB_HOME:'private-web-home'};
-  assert.deepEqual(localEngineEnvironment(original),{Path:'C:/tools',SystemRoot:'C:/Windows'});
-  assert.equal(original.ANTHROPIC_API_KEY,'synthetic-secret');
+test('offline engine processes receive tool paths without platform or API credentials', () => {
+  const original = {
+    Path: 'C:/tools',
+    SystemRoot: 'C:/Windows',
+    ANTHROPIC_API_KEY: 'synthetic-secret',
+    YOUTUBE_TOKEN_FILE: 'private-token-path',
+    RESTIC_PASSWORD: 'synthetic-password',
+    AWS_ACCESS_KEY_ID: 'synthetic-id',
+    FRAMECHESTER_WEB_HOME: 'private-web-home',
+  };
+  assert.deepEqual(localEngineEnvironment(original), { Path: 'C:/tools', SystemRoot: 'C:/Windows' });
+  assert.equal(original.ANTHROPIC_API_KEY, 'synthetic-secret');
 });
 
 test('production requires an explicit local voice before creating a job or invoking the engine', async () => {
   const home = await mkdtemp(join(tmpdir(), 'fc-unconfigured-voice-'));
-  const input = state(); input.config.tts.voiceModel = '';
+  const input = state();
+  input.config.tts.voiceModel = '';
   let calls = 0;
-  const runner = await createRunner({ home, repositoryRoot: resolve('..'), readState: async () => structuredClone(input), execute: async () => { calls++; return { exitCode: 0, stdout: '', stderr: '' }; } });
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => structuredClone(input),
+    execute: async () => {
+      calls++;
+      return { exitCode: 0, stdout: '', stderr: '' };
+    },
+  });
   try {
-    const asset = await runner.upload('tech', { filename: 'fixture.png', kind: 'image', contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB', license: 'Original', provenance: 'Fixture', restrictions: 'Teste' });
-    await assert.rejects(runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } }), /Configure.*voz/);
+    const asset = await runner.upload('tech', {
+      filename: 'fixture.png',
+      kind: 'image',
+      contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+      license: 'Original',
+      provenance: 'Fixture',
+      restrictions: 'Teste',
+    });
+    await assert.rejects(
+      runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } }),
+      /Configure.*voz/,
+    );
     assert.equal(calls, 0);
     assert.deepEqual(await runner.list('tech'), []);
-  } finally { await runner.close(); await rm(home, { recursive: true, force: true }); }
-});
-
-test('commercial-only production rejects legacy and unreviewed voices before creating a job', async () => {
-  for (const voiceName of ['pt_BR-faber-medium', 'pt_BR-cadu-medium', 'pt_BR-edresson-low', 'unreviewed-voice']) {
-    const home = await mkdtemp(join(tmpdir(), 'fc-commercial-voice-'));
-    const input = state(); input.config.tts.voiceName = voiceName;
-    let calls = 0;
-    const runner = await createRunner({ home, repositoryRoot: resolve('..'), readState: async () => input, execute: async () => { calls++; return { exitCode: 0, stdout: '', stderr: '' }; } });
-    try {
-      const asset = await runner.upload('tech', { filename: 'fixture.png', kind: 'image', contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB', license: 'Original', provenance: 'Fixture', restrictions: 'Teste' });
-      await assert.rejects(runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } }), /comercial|Kokoro/);
-      assert.equal(calls, 0);
-      assert.deepEqual(await runner.list('tech'), []);
-    } finally { await runner.close(); await rm(home, { recursive: true, force: true }); }
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
   }
 });
 
-test('a channel named constructor uses its actual configuration rather than the object prototype',async()=>{
-  const home=await mkdtemp(join(tmpdir(),'framechester-web-prototype-'));
-  const input=state(); input.channels[0].id='constructor'; input.scripts[0].channelId='constructor'; let calls=0;
-  const runner=await createRunner({home,repositoryRoot:resolve('..'),readState:async()=>structuredClone(input),execute:async(args)=>{calls++;const config=await readFile(args[args.indexOf('--config')+1],'utf8');assert.match(config,/width = 640/);return {exitCode:1,stdout:'',stderr:'fixture'};}});
+test('commercial-only production rejects legacy and unreviewed voices before creating a job', async () => {
+  for (const voiceName of [
+    'pt_BR-faber-medium',
+    'pt_BR-cadu-medium',
+    'pt_BR-edresson-low',
+    'unreviewed-voice',
+  ]) {
+    const home = await mkdtemp(join(tmpdir(), 'fc-commercial-voice-'));
+    const input = state();
+    input.config.tts.voiceName = voiceName;
+    let calls = 0;
+    const runner = await createRunner({
+      home,
+      repositoryRoot: resolve('..'),
+      readState: async () => input,
+      execute: async () => {
+        calls++;
+        return { exitCode: 0, stdout: '', stderr: '' };
+      },
+    });
+    try {
+      const asset = await runner.upload('tech', {
+        filename: 'fixture.png',
+        kind: 'image',
+        contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+        license: 'Original',
+        provenance: 'Fixture',
+        restrictions: 'Teste',
+      });
+      await assert.rejects(
+        runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } }),
+        /comercial|Kokoro/,
+      );
+      assert.equal(calls, 0);
+      assert.deepEqual(await runner.list('tech'), []);
+    } finally {
+      await runner.close();
+      await rm(home, { recursive: true, force: true });
+    }
+  }
+});
+
+test('a channel named constructor uses its actual configuration rather than the object prototype', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'framechester-web-prototype-'));
+  const input = state();
+  input.channels[0].id = 'constructor';
+  input.scripts[0].channelId = 'constructor';
+  let calls = 0;
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => structuredClone(input),
+    execute: async (args) => {
+      calls++;
+      const config = await readFile(args[args.indexOf('--config') + 1], 'utf8');
+      assert.match(config, /width = 640/);
+      return { exitCode: 1, stdout: '', stderr: 'fixture' };
+    },
+  });
   try {
-    const asset=await runner.upload('constructor',{filename:'fixture.png',kind:'image',contentBase64:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',license:'Original',provenance:'Fixture',restrictions:'Teste'});
-    await runner.start('constructor',{scriptId:'script-one',assetIds:{42:asset.id}});await runner.idle();assert.equal(calls,1);
-  } finally {await runner.close();await rm(home,{recursive:true,force:true});}
+    const asset = await runner.upload('constructor', {
+      filename: 'fixture.png',
+      kind: 'image',
+      contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+      license: 'Original',
+      provenance: 'Fixture',
+      restrictions: 'Teste',
+    });
+    await runner.start('constructor', { scriptId: 'script-one', assetIds: { 42: asset.id } });
+    await runner.idle();
+    assert.equal(calls, 1);
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
 });
 
 test('an incomplete engine delivery is blocked rather than presented as a produced video', async () => {
   const cases = [
-    { name: 'missing technical QA', technical: undefined, editorial: [{ status: 'needs_human' }], video: 'fixture' },
+    {
+      name: 'missing technical QA',
+      technical: undefined,
+      editorial: [{ status: 'needs_human' }],
+      video: 'fixture',
+    },
     { name: 'missing editorial QA', technical: [{ status: 'pass' }], editorial: undefined, video: 'fixture' },
-    { name: 'unknown check status', technical: [{ status: 'unexpected' }], editorial: [{ status: 'needs_human' }], video: 'fixture' },
-    { name: 'no video', technical: [{ status: 'pass' }], editorial: [{ status: 'needs_human' }], video: undefined },
-    { name: 'empty video', technical: [{ status: 'pass' }], editorial: [{ status: 'needs_human' }], video: '' },
+    {
+      name: 'unknown check status',
+      technical: [{ status: 'unexpected' }],
+      editorial: [{ status: 'needs_human' }],
+      video: 'fixture',
+    },
+    {
+      name: 'no video',
+      technical: [{ status: 'pass' }],
+      editorial: [{ status: 'needs_human' }],
+      video: undefined,
+    },
+    {
+      name: 'empty video',
+      technical: [{ status: 'pass' }],
+      editorial: [{ status: 'needs_human' }],
+      video: '',
+    },
   ];
   for (const entry of cases) {
     const home = await mkdtemp(join(tmpdir(), 'fc-incomplete-delivery-'));
-    const runner = await createRunner({ home, repositoryRoot: resolve('..'), readState: async () => state(), execute: async args => {
-      const output = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
-      await mkdir(join(output, 'render'), { recursive: true });
-      if (entry.video !== undefined) await writeFile(join(output, 'render', 'final.mp4'), entry.video);
-      await writeFile(join(output, 'pipeline_report.json'), JSON.stringify({ stage: 'editorial_qa', technical_qa: entry.technical ? { checks: entry.technical } : undefined, editorial_qa: entry.editorial ? { checks: entry.editorial } : undefined }));
-      return { exitCode: 0, stdout: '', stderr: '' };
-    } });
+    const runner = await createRunner({
+      home,
+      repositoryRoot: resolve('..'),
+      readState: async () => state(),
+      execute: async (args) => {
+        const output = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
+        await mkdir(join(output, 'render'), { recursive: true });
+        if (entry.video !== undefined) await writeFile(join(output, 'render', 'final.mp4'), entry.video);
+        await writeFile(
+          join(output, 'pipeline_report.json'),
+          JSON.stringify({
+            stage: 'editorial_qa',
+            technical_qa: entry.technical ? { checks: entry.technical } : undefined,
+            editorial_qa: entry.editorial ? { checks: entry.editorial } : undefined,
+          }),
+        );
+        return { exitCode: 0, stdout: '', stderr: '' };
+      },
+    });
     try {
-      const asset = await runner.upload('tech', { filename: 'fixture.png', kind: 'image', contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB', license: 'Original', provenance: 'Fixture', restrictions: 'Teste' });
+      const asset = await runner.upload('tech', {
+        filename: 'fixture.png',
+        kind: 'image',
+        contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+        license: 'Original',
+        provenance: 'Fixture',
+        restrictions: 'Teste',
+      });
       const job = await runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } });
       await runner.idle();
-      const result = (await runner.list('tech')).find(item => item.id === job.id)!;
+      const result = (await runner.list('tech')).find((item) => item.id === job.id)!;
       assert.equal(result.status, 'blocked', entry.name);
       assert.match(result.message, /incompleta|bloqueou/, entry.name);
       assert.equal(result.videoAvailable, Boolean(entry.video), entry.name);
-    } finally { await runner.close(); await rm(home, { recursive: true, force: true }); }
+    } finally {
+      await runner.close();
+      await rm(home, { recursive: true, force: true });
+    }
   }
 });
 
@@ -270,18 +764,73 @@ test('restart blocks interrupted jobs while preserving completed history and imp
   const home = await mkdtemp(join(tmpdir(), 'fc-runner-restart-'));
   const options = { home, repositoryRoot: resolve('..'), readState: async () => state() };
   const first = await createRunner(options);
-  const asset = await first.upload('tech', { filename: 'fixture.png', kind: 'image', contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB', license: 'Original', provenance: 'Fixture', restrictions: 'Teste' });
+  const asset = await first.upload('tech', {
+    filename: 'fixture.png',
+    kind: 'image',
+    contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+    license: 'Original',
+    provenance: 'Fixture',
+    restrictions: 'Teste',
+  });
   await first.close();
-  const jobs = ['queued', 'running', 'needs_review'].map((status, index) => ({ id: `job-${index}`, channelId: 'tech', scriptId: 'script-one', status, createdAt: date, message: 'Synthetic fixture', videoAvailable: index === 2 }));
+  const jobs = ['queued', 'running', 'needs_review'].map((status, index) => ({
+    id: `job-${index}`,
+    channelId: 'tech',
+    scriptId: 'script-one',
+    status,
+    createdAt: date,
+    message: 'Synthetic fixture',
+    videoAvailable: index === 2,
+  }));
   await writeFile(join(home, 'production', 'jobs.json'), JSON.stringify(jobs));
   const restarted = await createRunner(options);
   try {
     const results = await restarted.list('tech');
-    assert.deepEqual(results.map(job => job.status), ['blocked', 'blocked', 'needs_review']);
+    assert.deepEqual(
+      results.map((job) => job.status),
+      ['blocked', 'blocked', 'needs_review'],
+    );
     assert.match(results[0].message, /interrompida/);
     assert.equal(results[2].videoAvailable, true);
-    assert.deepEqual((await restarted.assets('tech')).map(item => item.id), [asset.id]);
+    assert.deepEqual(
+      (await restarted.assets('tech')).map((item) => item.id),
+      [asset.id],
+    );
     assert.deepEqual(await restarted.list('science'), []);
-    assert.deepEqual(JSON.parse(await readFile(join(home, 'production', 'jobs.json'), 'utf8')).map((job: { status: string }) => job.status), ['blocked', 'blocked', 'needs_review']);
-  } finally { await restarted.close(); await rm(home, { recursive: true, force: true }); }
+    assert.deepEqual(
+      JSON.parse(await readFile(join(home, 'production', 'jobs.json'), 'utf8')).map(
+        (job: { status: string }) => job.status,
+      ),
+      ['blocked', 'blocked', 'needs_review'],
+    );
+  } finally {
+    await restarted.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('a stored script with an unrenderable directive fails before the engine runs, naming the scene by position', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-visual-legacy-'));
+  const current = state();
+  let calls = 0;
+  current.scripts[0].scenes[0].visualBrief = '#grafico 1, 2, 3';
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => structuredClone(current),
+    execute: async () => {
+      calls++;
+      return { exitCode: 1, stdout: '', stderr: '' };
+    },
+  });
+  try {
+    await assert.rejects(
+      runner.prepareVisuals('tech', 'script-one'),
+      /Cena 1: diretiva visual inválida; '#grafico' não existe/,
+    );
+    assert.equal(calls, 0);
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
 });

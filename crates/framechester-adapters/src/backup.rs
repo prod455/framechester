@@ -1,8 +1,10 @@
 use framechester_core::domain::BackupReceipt;
 use framechester_core::error::{FramechesterError, Result};
 use framechester_core::ports::{AdapterInfo, BackupProvider};
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Duration;
 
 fn truncate(text: &str, limit: usize) -> String {
     text.chars().take(limit).collect()
@@ -23,10 +25,13 @@ pub fn mask_repository(repository: &str) -> String {
             return format!("{scheme}:...");
         }
     }
-    let name = Path::new(trimmed)
-        .file_name()
-        .map(|value| value.to_string_lossy().to_string())
-        .unwrap_or_else(|| "oculto".into());
+    // Repositories may be written with either separator regardless of the host OS.
+    let name = trimmed
+        .trim_end_matches(['/', '\\'])
+        .rsplit(['/', '\\'])
+        .next()
+        .filter(|segment| !segment.is_empty())
+        .unwrap_or("oculto");
     format!("local:{name}")
 }
 
@@ -87,7 +92,18 @@ impl ResticBackup {
         if let Some(directory) = current_dir {
             command.current_dir(directory);
         }
-        command.output()
+        // A freshly written executable can still be held open for writing by a process
+        // forked elsewhere in the meantime (ETXTBSY); that window closes within milliseconds.
+        let mut attempts = 0;
+        loop {
+            match command.output() {
+                Err(error) if error.kind() == ErrorKind::ExecutableFileBusy && attempts < 10 => {
+                    attempts += 1;
+                    std::thread::sleep(Duration::from_millis(20));
+                }
+                result => return result,
+            }
+        }
     }
 
     fn sanitize(&self, text: &str) -> String {

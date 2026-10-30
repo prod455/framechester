@@ -65,9 +65,7 @@ pub(crate) enum Commands {
         about = "produz um video explicativo animado: storyboard, narracao por segmento, render vetorial, mixagem e QA"
     )]
     Produce(ProduceArgs),
-    #[command(
-        about = "prepara visuais explicativos locais; nao usa API nem substitui capturas reais"
-    )]
+    #[command(about = "prepara visuais explicativos locais; nao usa API nem chaves")]
     Visuals {
         #[arg(long)]
         input: PathBuf,
@@ -218,6 +216,11 @@ pub(crate) struct ProduceArgs {
     pub(crate) output: Option<PathBuf>,
     #[arg(long)]
     pub(crate) voice: Option<String>,
+    #[arg(
+        long,
+        help = "renderiza previa com marca de revisao; sem aprovacao editorial nem pacote"
+    )]
+    pub(crate) preview_only: bool,
     #[arg(long)]
     pub(crate) json: bool,
 }

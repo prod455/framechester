@@ -27,7 +27,7 @@ interface EngineResult {
   stderr: string;
 }
 /** Renderer id reported by `framechester visuals`; bump together with editorial_visuals.rs. */
-const visualRenderer = 'framechester-editorial-v2';
+const visualRenderer = 'framechester-editorial-v3';
 export class RunnerError extends Error {
   constructor(
     message: string,
@@ -266,7 +266,7 @@ export class LocalRunner implements RunnerApi {
       join(
         resolve(options.repositoryRoot),
         'target',
-        'debug',
+        'release',
         process.platform === 'win32' ? 'framechester.exe' : 'framechester',
       );
   }
@@ -356,9 +356,6 @@ export class LocalRunner implements RunnerApi {
     const fingerprint = visualFingerprint(state, channelId, script);
     const bindings: Record<string, string> = {};
     const previews: Record<string, string> = {};
-    const pending: PreparedVisuals['pending'] = [];
-    const captureReason =
-      'Prévia ilustrativa criada. A gravação real desta cena continua pendente para a versão final.';
     for (const asset of this.media.filter(
       (asset) =>
         asset.channelId === channelId &&
@@ -368,12 +365,11 @@ export class LocalRunner implements RunnerApi {
       if (await this.assetFile(channelId, asset.id)) {
         const sceneId = asset.generated!.sceneId;
         previews[String(sceneId)] = asset.id;
-        if (asset.generated!.captureRequired) pending.push({ sceneId, reason: captureReason });
-        else bindings[String(sceneId)] = asset.id;
+        bindings[String(sceneId)] = asset.id;
       }
     }
     if (Object.keys(previews).length === script.scenes.length)
-      return { scriptId, assets: await this.assets(channelId), bindings, previews, pending };
+      return { scriptId, assets: await this.assets(channelId), bindings, previews };
     const directory = join(this.root, 'visuals', channelId, randomUUID());
     await mkdir(directory, { recursive: true, mode: 0o700 });
     const input = join(directory, 'plan.json'),
@@ -427,7 +423,7 @@ export class LocalRunner implements RunnerApi {
       )
         throw new RunnerError('O motor retornou um plano visual inválido.');
       const seen = new Set<number>(),
-        imports: Array<{ sceneId: number; bytes: Buffer; captureRequired: boolean }> = [];
+        imports: Array<{ sceneId: number; bytes: Buffer }> = [];
       for (const item of report.scenes) {
         if (
           !item ||
@@ -438,13 +434,7 @@ export class LocalRunner implements RunnerApi {
         )
           throw new RunnerError('O motor retornou cenas visuais incompatíveis.');
         seen.add(item.scene_id);
-        const captureRequired = item.status === 'requires_capture';
-        if (captureRequired && !pending.some((scene) => scene.sceneId === item.scene_id))
-          pending.push({ sceneId: item.scene_id, reason: captureReason });
-        if (
-          !['generated', 'requires_capture'].includes(item.status) ||
-          item.file !== `scene-${item.scene_id}.png`
-        )
+        if (item.status !== 'generated' || item.file !== `scene-${item.scene_id}.png`)
           throw new RunnerError(
             'O motor retornou um arquivo visual inválido. Reconstrua o motor local se necessário.',
           );
@@ -473,13 +463,13 @@ export class LocalRunner implements RunnerApi {
           bytes.readUInt32BE(20) > 7680
         )
           throw new RunnerError('O motor não produziu uma imagem PNG válida.');
-        imports.push({ sceneId: item.scene_id, bytes, captureRequired });
+        imports.push({ sceneId: item.scene_id, bytes });
       }
       // All output is validated before any new asset enters the channel library.
       const mediaDirectory = join(this.root, 'media', channelId);
       await mkdir(mediaDirectory, { recursive: true, mode: 0o700 });
       const created: StoredAsset[] = [];
-      for (const { sceneId, bytes, captureRequired } of imports) {
+      for (const { sceneId, bytes } of imports) {
         const scene = script.scenes.find((scene) => scene.id === sceneId)!;
         const asset: StoredAsset = {
           id: randomUUID(),
@@ -491,27 +481,21 @@ export class LocalRunner implements RunnerApi {
           license: 'Original — visual explicativo gerado localmente pelo Framechester',
           provenance:
             'Composição própria com título e trecho do roteiro; sem busca de imagens, API paga ou mídia de terceiros.',
-          restrictions: captureRequired
-            ? 'Prévia ilustrativa; gravação real pendente. Não usar como demonstração ou evidência de teste.'
-            : 'Ilustração editorial para revisão; não representa captura real, experimento ou comprovação das alegações.',
+          restrictions:
+            'Ilustração editorial; não representa captura real, experimento ou comprovação das alegações.',
           createdAt: new Date().toISOString(),
-          generated: {
-            scriptId,
-            sceneId,
-            fingerprint,
-            ...(captureRequired ? { captureRequired: true } : {}),
-          },
+          generated: { scriptId, sceneId, fingerprint },
           diskName: '',
         };
         asset.diskName = `${asset.id}.png`;
         await writeFile(join(mediaDirectory, asset.diskName), bytes, { flag: 'wx', mode: 0o600 });
         created.push(asset);
         previews[String(sceneId)] = asset.id;
-        if (!captureRequired) bindings[String(sceneId)] = asset.id;
+        bindings[String(sceneId)] = asset.id;
       }
       this.media.push(...created);
       await this.persist();
-      return { scriptId, assets: await this.assets(channelId), bindings, previews, pending };
+      return { scriptId, assets: await this.assets(channelId), bindings, previews };
     } finally {
       clearTimeout(timer);
       this.visualControllers.delete(controller);
@@ -641,10 +625,6 @@ export class LocalRunner implements RunnerApi {
       ),
     );
     if (assets.some((asset) => !asset)) throw new RunnerError('Mídia ausente ou pertencente a outro canal.');
-    if (!input.previewOnly && assets.some((asset) => asset?.generated?.captureRequired))
-      throw new RunnerError(
-        'Esta imagem é uma prévia ilustrativa. Adicione a gravação real ou adapte o roteiro antes de gerar a versão final.',
-      );
     if (
       assets.some(
         (asset, index) =>
@@ -792,7 +772,12 @@ export class LocalRunner implements RunnerApi {
     try {
       job.status = 'running';
       job.startedAt ??= new Date().toISOString();
-      job.message = 'Gerando a voz, montando as cenas e executando o QA local.';
+      // The motion engine draws every scene from the storyboard; it cannot embed the operator's own files.
+      job.engine = assets.some((asset) => !asset.generated) ? 'legacy' : 'motion';
+      job.message =
+        job.engine === 'motion'
+          ? 'Motor motion: gerando a voz, animando as cenas e executando o QA local.'
+          : 'Gerando a voz, montando as cenas com seus arquivos e executando o QA local.';
       await this.persist();
       await mkdir(join(directory, 'assets'), { recursive: true, mode: 0o700 });
       const manifest = [];
@@ -865,6 +850,8 @@ export class LocalRunner implements RunnerApi {
         '--config',
         join(directory, 'config.toml'),
         'run',
+        '--engine',
+        job.engine,
         '--channel',
         job.channelId,
         '--topic',

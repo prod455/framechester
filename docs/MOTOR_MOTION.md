@@ -75,9 +75,11 @@ no QA.
   continua disponível).
 - Sem imagens ou vídeos externos nas composições: o motor é vetorial e original por
   decisão; `resources[]` registra necessidades externas e o QA bloqueia se faltarem.
-- O Studio web ainda produz pelo caminho legado; aceita as diretivas novas, mas não
-  chama `produce` (próxima fatia: opção de motor na fila de produção).
-- `preview-only` não existe no motor motion.
+- O Studio web produz pelo motor motion (`run --engine motion`). Uma cena com arquivo
+  próprio do operador (gravação ou imagem) usa o caminho legado no vídeo inteiro, porque o
+  motor motion não embute mídia externa; o card mostra qual motor rodou.
+- `--preview-only` no motor motion aplica a mesma trava editorial do legado, carimba
+  **PRÉVIA · REVISÃO PENDENTE** em todos os quadros e não gera pacote nem aprovação.
 - Qualidade perceptual foi conferida por contact sheets e quadros extraídos, não por
   teste com espectadores; os alvos de loudness exigem validação auditiva por plataforma.
 

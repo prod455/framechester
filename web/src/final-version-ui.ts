@@ -113,7 +113,7 @@ export function openFinalVersion(options: FinalVersionOptions): HTMLDialogElemen
         .filter(({ scene }) => !prepared.bindings[String(scene.id)]);
       if (pending.length)
         return fail(
-          `${pending.map(({ index }) => `Cena ${index + 1}`).join(', ')} pede${pending.length === 1 ? '' : 'm'} uma gravação real. Adicione o arquivo ou troque o visual na preparação manual.`,
+          `${pending.map(({ index }) => `Cena ${index + 1}`).join(', ')} ficou sem visual. Prepare os visuais novamente.`,
           true,
         );
       status.textContent = 'Iniciando a versão final…';

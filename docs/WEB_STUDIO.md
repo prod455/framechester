@@ -33,8 +33,9 @@ npm --prefix web start
 
 Abra [http://127.0.0.1:4317](http://127.0.0.1:4317). Mantenha o terminal do
 servidor aberto; `Ctrl+C` encerra o servidor e interrompe a produção ativa.
-`engine:build` executa o build do workspace e disponibiliza o binário local em
-`target/debug/`, utilizado pelo backend. O build web verifica TypeScript e
+`engine:build` executa o build do workspace em `--release` e disponibiliza o
+binário local em `target/release/`, utilizado pelo backend (o motor motion em
+debug é 5–8× mais lento). O build web verifica TypeScript e
 gera `web/dist/`. A instalação completa de dependências é necessária também
 para `start`, que usa `tsx`.
 
@@ -234,8 +235,7 @@ O motor recebe essa declaração (`cross_checked`) e registra no relatório de
 QA as verificações "revisão editorial humana" e "claims" como aprovadas;
 alegações marcadas como **Fonte citada** ou **A conferir** contam como
 conferidas pelo operador. Só **Contradição identificada**, URLs fora das
-fontes do roteiro e cenas que pedem gravação real impedem a versão final, e
-o diálogo diz qual é o caso. Um roteiro sem fonte gera a versão final; o
+fontes do roteiro impedem a versão final, e o diálogo diz qual é o caso. Um roteiro sem fonte gera a versão final; o
 relatório e o card pedem "ao menos 1 fonte com URL" antes de publicar.
 Duração fora do alvo editorial e frames parados de cenas estáticas ficam
 anotados no relatório, sem pedir revisão.

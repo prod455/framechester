@@ -20,21 +20,13 @@ composições de texto, sem pesquisa de imagens ou geração fotográfica por IA
 Não há chamada de API, cobrança de provedor ou autorização de gasto nessa
 etapa. O render e a voz continuam locais.
 
-Uma cena marcada com `CAPTURA PENDENTE`, `gravação real`, `gravação de tela`
-ou equivalente recebe uma composição com o aviso **Prévia ilustrativa ·
-gravação pendente**. A prévia fica visível e na biblioteca, mas não pode ser
-usada como gravação real na versão final. **Gerar prévia do vídeo** permite
-assistir à montagem antes de resolver as pendências e inclui uma marca de
-revisão em todos os frames. A tela mostra um resumo das
-pendências, com os arquivos próprios sob uma seção expansível de cada cena.
-
-Para um vídeo explicativo sem demonstração, **Adaptar roteiro com IA** abre
-o assistente com o pedido preenchido. Nenhuma geração começa ao abrir esse
-pedido. Claude/OpenAI conservam a estimativa e a autorização separada para
-cada chamada paga. Após revisar a proposta, **Salvar como novo roteiro**
-preserva o original e salva uma cópia em rascunho, com fontes e alegações
-pendentes de revisão. Sem assistente disponível, **Revisar roteiro** permite
-adaptar manualmente as falas e os briefings.
+Toda cena recebe uma composição explicativa, inclusive quando o briefing
+visual menciona gravação real, gravação de tela ou `CAPTURA PENDENTE`; o texto
+livre do briefing não aparece na tela e o rodapé diz **Visual explicativo ·
+trecho do roteiro**. Nenhuma cena exige arquivo próprio para a versão final.
+Para usar uma gravação ou imagem sua, abra **Usar outro recurso visual** na
+cena e escolha ou adicione o arquivo. O assistente de roteiro é instruído a
+não pedir gravações nos briefings.
 
 Os arquivos e vínculos ficam no canal. Preparar novamente um roteiro
 inalterado reutiliza os arquivos íntegros. Mudanças no título, formato,
@@ -62,10 +54,9 @@ cargo run -p framechester-cli -- visuals --input plano.json --output visuais
 
 O JSON contém `channel`, `title`, `format` (`long` ou `short`) e `scenes`,
 usando o contrato Rust de cena: `id`, `heading`, `narration`, `visual_brief`,
-`duration_hint_secs`. A resposta JSON lista cada `scene_id` como `generated`
-com seu arquivo, ou `requires_capture` com o arquivo de prévia e o motivo
-da pendência da gravação. Os dois casos geram PNG; apenas `generated` pode
-ser vinculado automaticamente como visual para a versão final.
+`duration_hint_secs`. A resposta JSON (renderer `framechester-editorial-v3`)
+lista cada `scene_id` como `generated` com seu arquivo PNG, vinculado
+automaticamente como visual da versão final.
 
 O comando não precisa de TTS ou chaves. Precisa de fontes locais; o Docker
 já inclui DejaVu Sans. Na instalação nativa são usadas Segoe UI, DejaVu Sans

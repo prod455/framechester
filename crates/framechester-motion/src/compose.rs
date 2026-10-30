@@ -645,6 +645,28 @@ pub fn compose(storyboard: &Storyboard, typesetter: &Typesetter) -> Result<Compo
 }
 
 /// SVG of the whole frame at absolute time `t`, including transitions between scenes.
+const PREVIEW_MARK: &str = "PRÉVIA · REVISÃO PENDENTE";
+
+/// Stamps the draft mark on a finished frame, top-left, above every layer.
+pub fn stamp_preview(svg: &mut String, canvas_width: u32) {
+    let closing = "</svg>";
+    assert!(
+        svg.ends_with(closing),
+        "frame SVG must be complete before stamping"
+    );
+    svg.truncate(svg.len() - closing.len());
+    let size = (canvas_width / 40).max(18) as f32;
+    let pad = size * 0.5;
+    let width = PREVIEW_MARK.chars().count() as f32 * size * 0.56 + pad * 2.0;
+    svg.push_str(&format!(
+        "<g font-family='{}' font-weight='700'><rect x='16' y='16' width='{width}' height='{}' rx='6' fill='#000000' fill-opacity='0.75'/><text x='{}' y='{}' font-size='{size}' fill='#FFFFFF'>{PREVIEW_MARK}</text></g></svg>",
+        tokens::FONT_SANS,
+        size + pad * 2.0,
+        16.0 + pad,
+        16.0 + pad + size * 0.82,
+    ));
+}
+
 pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
     let canvas = &composed.canvas;
     let (width, height) = (canvas.width, canvas.height);
@@ -772,6 +794,15 @@ mod tests {
             ("#infografico O que muda | Tokens=40%: do contexto [chart]; Passos=3: etapas fixas [check]; Erros [shield]: menos retrabalho", "Caem para 40% os tokens, sao 3 passos fixos e menos erros."),
             ("#causa Sem skill => O agente improvisa => Resultados variam => Mais retrabalho", "Sem skill, o agente improvisa, os resultados variam e ha mais retrabalho."),
         ]
+    }
+
+    #[test]
+    fn preview_stamp_is_the_last_layer_of_a_complete_frame() {
+        let mut svg = "<svg xmlns='http://www.w3.org/2000/svg'><g></g></svg>".to_string();
+        stamp_preview(&mut svg, 1080);
+        assert!(svg.ends_with("</text></g></svg>"));
+        assert_eq!(svg.matches("</svg>").count(), 1);
+        assert!(svg.contains(PREVIEW_MARK));
     }
 
     #[test]

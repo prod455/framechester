@@ -153,16 +153,17 @@ export interface WebAsset {
   provenance: string;
   restrictions: string;
   createdAt: string;
-  generated?: { scriptId: string; sceneId: number; fingerprint: string; captureRequired?: boolean };
+  generated?: { scriptId: string; sceneId: number; fingerprint: string };
 }
 export interface PreparedVisuals {
   scriptId: string;
   assets: WebAsset[];
   bindings: Record<string, string>;
   previews?: Record<string, string>;
-  pending: Array<{ sceneId: number; reason: string }>;
 }
 export type QaStatus = 'pass' | 'fail' | 'needs_human' | 'skipped';
+/** motion: animated storyboard; legacy: one still per scene, needed for the operator's own files. */
+export type VideoEngine = 'motion' | 'legacy';
 export interface WebJob {
   id: string;
   channelId: string;
@@ -176,6 +177,7 @@ export interface WebJob {
   videoAvailable: boolean;
   previewOnly?: boolean;
   automated?: boolean;
+  engine?: VideoEngine;
 }
 export interface AppState {
   schemaVersion: 1;

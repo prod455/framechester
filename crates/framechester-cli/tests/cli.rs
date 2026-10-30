@@ -42,13 +42,16 @@ fn visuals_command_generates_local_art_without_tts_or_paid_services() {
     );
     let report: serde_json::Value = serde_json::from_slice(&result.stdout).unwrap();
     assert_eq!(report["scenes"][0]["status"], "generated");
-    assert_eq!(report["scenes"][1]["status"], "requires_capture");
+    assert_eq!(
+        report["scenes"][1]["status"], "generated",
+        "A brief asking for a recording still gets an explanatory composition"
+    );
     let png = std::fs::read(output.join("scene-42.png")).unwrap();
     assert_eq!(&png[..8], b"\x89PNG\r\n\x1a\n");
     assert_eq!(u32::from_be_bytes(png[16..20].try_into().unwrap()), 1920);
     assert!(
         output.join("scene-77.png").is_file(),
-        "A pending recording still needs a visibly marked illustrative preview"
+        "Every scene gets its own explanatory composition"
     );
     assert_eq!(report["scenes"][1]["file"], "scene-77.png");
 }
@@ -160,4 +163,90 @@ fn analytics_keeps_fixture_revenue_unknown_and_rejects_another_channel() {
         .output()
         .unwrap();
     assert!(!wrong.status.success());
+}
+
+fn example_topic(
+    edit: impl FnOnce(&mut serde_json::Value),
+) -> (tempfile::TempDir, std::path::PathBuf) {
+    let directory = tempfile::tempdir().unwrap();
+    let mut topic: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../examples/skills-vs-agentes.topico.json"
+        ))
+        .unwrap(),
+    )
+    .unwrap();
+    edit(&mut topic);
+    let path = directory.path().join("topic.json");
+    std::fs::write(&path, topic.to_string()).unwrap();
+    (directory, path)
+}
+
+fn blocked_report(
+    args: &[&str],
+    topic: &std::path::Path,
+    workdir: &std::path::Path,
+) -> serde_json::Value {
+    let output = binary()
+        .args(args)
+        .arg("--script")
+        .arg(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../examples/skills-vs-agentes.roteiro.json"
+        ))
+        .arg("--topic")
+        .arg(topic)
+        .arg("--workdir")
+        .arg(workdir)
+        .output()
+        .unwrap();
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let report: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(workdir.join("pipeline_report.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(report["stage"], "blocked");
+    assert!(
+        report["render"].is_null(),
+        "The gate runs before narration and render"
+    );
+    report
+}
+
+#[test]
+fn motion_final_render_requires_the_operator_declaration_before_narrating() {
+    let (directory, topic) = example_topic(|topic| topic["metrics"]["cross_check"] = 0.0.into());
+    let report = blocked_report(&["produce"], &topic, &directory.path().join("out"));
+    assert!(report["warnings"]
+        .to_string()
+        .contains("sem verificacao cruzada"));
+}
+
+#[test]
+fn motion_preview_still_refuses_a_contradicted_claim() {
+    let (directory, topic) = example_topic(|topic| {
+        topic["metrics"]["cross_check"] = 0.0.into();
+        topic["claims"][0]["status"] = "contradicted".into();
+    });
+    let report = blocked_report(
+        &[
+            "run",
+            "--engine",
+            "motion",
+            "--preview-only",
+            "--assets",
+            "unused.json",
+        ],
+        &topic,
+        &directory.path().join("out"),
+    );
+    let warnings = report["warnings"].to_string();
+    assert!(warnings.contains("PREVIA"));
+    assert!(warnings.contains("claim contraditorio"));
 }

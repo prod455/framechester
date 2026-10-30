@@ -392,7 +392,7 @@ test('automatic visual preparation and image previews preserve authentication, C
     prepareVisuals: async (owner, scriptId) => {
       calls++;
       assert.equal(owner, 'tech');
-      return { scriptId, assets: [], bindings: {}, pending: [] };
+      return { scriptId, assets: [], bindings: {} };
     },
     assetFile: async (owner, asset) =>
       owner === 'tech' && asset === 'asset-one' ? { path: previewPath, contentType: 'image/png' } : undefined,

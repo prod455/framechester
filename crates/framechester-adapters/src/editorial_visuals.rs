@@ -33,21 +33,6 @@ pub struct VisualReport {
     pub scenes: Vec<PreparedVisual>,
 }
 
-pub fn requires_capture(brief: &str) -> bool {
-    let lower = brief.to_lowercase();
-    [
-        "captura pendente",
-        "gravação real",
-        "gravacao real",
-        "gravação de tela",
-        "gravacao de tela",
-        "screen recording",
-        "captura real",
-    ]
-    .iter()
-    .any(|marker| lower.contains(marker))
-}
-
 fn xml(text: &str) -> String {
     text.chars()
         .filter(|c| !c.is_control() || c.is_whitespace())
@@ -555,11 +540,7 @@ fn render_scene(
     ));
     text(
         &mut svg,
-        &[if requires_capture(&scene.visual_brief) {
-            "Prévia ilustrativa · gravação pendente".into()
-        } else {
-            "Visual explicativo · trecho do roteiro".into()
-        }],
+        &["Visual explicativo · trecho do roteiro".into()],
         margin,
         footer_y + 90.0,
         26.0,
@@ -637,21 +618,17 @@ pub fn prepare(plan: &VisualPlan, output: &Path) -> Result<VisualReport> {
         render_scene(plan, scene, layout, index, width, height, &options)?
             .save_png(output.join(&file))
             .map_err(|error| FramechesterError::External(error.to_string()))?;
-        if requires_capture(&scene.visual_brief) {
-            scenes.push(PreparedVisual { scene_id: scene.id, status: "requires_capture", file: Some(file), reason: Some("Previa ilustrativa criada; a gravacao real continua pendente para a versao final.".into()) });
-        } else {
-            scenes.push(PreparedVisual {
-                scene_id: scene.id,
-                status: "generated",
-                file: Some(file),
-                reason: fallback
-                    .as_ref()
-                    .map(|detail| format!("layout padrao usado; {detail}")),
-            });
-        }
+        scenes.push(PreparedVisual {
+            scene_id: scene.id,
+            status: "generated",
+            file: Some(file),
+            reason: fallback
+                .as_ref()
+                .map(|detail| format!("layout padrao usado; {detail}")),
+        });
     }
     Ok(VisualReport {
-        renderer: "framechester-editorial-v2",
+        renderer: "framechester-editorial-v3",
         width,
         height,
         scenes,
@@ -661,12 +638,6 @@ pub fn prepare(plan: &VisualPlan, output: &Path) -> Result<VisualReport> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn explicit_capture_requirements_are_not_replaced_with_invented_evidence() {
-        assert!(requires_capture("[CAPTURA PENDENTE] Resultado da tela"));
-        assert!(requires_capture("Gravação real do terminal"));
-        assert!(!requires_capture("Diagrama ilustrativo de uma tarefa"));
-    }
     #[test]
     fn data_is_escaped_before_entering_the_graphic() {
         assert_eq!(xml("<script>&\"'"), "&lt;script&gt;&amp;&quot;&apos;");

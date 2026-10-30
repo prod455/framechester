@@ -66,7 +66,7 @@ pub(crate) enum Commands {
     )]
     Produce(ProduceArgs),
     #[command(
-        about = "prepara visuais explicativos locais; nao usa API nem substitui capturas reais"
+        about = "prepara visuais explicativos locais; nao usa API nem chaves"
     )]
     Visuals {
         #[arg(long)]

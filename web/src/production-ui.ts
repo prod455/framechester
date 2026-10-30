@@ -14,7 +14,6 @@ interface ProductionOptions {
   onStarted: (job: WebJob) => Promise<void>;
   onAddAssets: () => void;
   onEditScript: (scriptId: string) => void;
-  onAdaptScript?: (script: Script) => void;
   onPrepared?: (prepared: PreparedVisuals) => void;
   api?: typeof request;
 }
@@ -79,7 +78,6 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
       options.onPrepared?.(prepared);
       const script = scripts.find((script) => script.id === scriptId)!;
       const available = prepared.assets.filter((asset) => asset.channelId === owner);
-      const usable = available.filter((asset) => !asset.generated?.captureRequired);
       const mapping = el('div', { className: 'production-scenes' });
       const bindings: Array<{ sceneId: number; control: HTMLSelectElement }> = [];
       let updateReady = () => {};
@@ -88,8 +86,8 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
         const control = select(
           `asset-${scene.id}`,
           [
-            ['', 'Selecione uma gravação ou imagem própria'],
-            ...usable.map((asset): [string, string] => [asset.id, asset.name]),
+            ['', 'Selecione uma imagem ou clipe do canal'],
+            ...available.map((asset): [string, string] => [asset.id, asset.name]),
           ],
           selected,
         );
@@ -118,43 +116,26 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
           updateReady();
         });
         showPreview();
-        const pending = prepared.pending.find((item) => item.sceneId === scene.id);
         const row = el(
           'section',
           { className: 'production-scene' },
           el('h3', {}, `Cena ${index + 1} · ${scene.heading}`),
           preview,
         );
-        if (pending && !selected) {
-          row.append(
+        row.append(
+          el('p', { className: 'field-hint' }, 'Visual explicativo criado e associado a esta cena.'),
+          el(
+            'details',
+            {},
+            el('summary', {}, 'Usar outro recurso visual'),
             el(
-              'p',
-              { className: 'field-hint' },
-              'Prévia ilustrativa · gravação pendente para a versão final',
-            ),
-            el(
-              'details',
-              {},
-              el('summary', {}, 'Usar uma gravação real nesta cena'),
-              el(
-                'div',
-                { className: 'production-scene-source' },
-                field('Gravação ou captura própria', control),
-                button('Adicionar arquivo próprio', () => leaveFor(options.onAddAssets), 'secondary', 'plus'),
-              ),
-            ),
-          );
-        } else {
-          row.append(
-            el('p', { className: 'field-hint' }, 'Visual explicativo criado e associado a esta cena.'),
-            el(
-              'details',
-              {},
-              el('summary', {}, 'Usar outro recurso visual'),
+              'div',
+              { className: 'production-scene-source' },
               field('Imagem ou clipe do canal', control),
+              button('Adicionar arquivo próprio', () => leaveFor(options.onAddAssets), 'secondary', 'plus'),
             ),
-          );
-        }
+          ),
+        );
         mapping.append(row);
       }
       const asr = input('asr', '', 'checkbox');
@@ -215,22 +196,11 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
         el(
           'p',
           {},
-          prepared.pending.length
-            ? 'O roteiro pede gravações reais. As imagens abaixo ajudam a revisar as cenas; para um vídeo só com visuais automáticos, adapte o roteiro para uma explicação.'
-            : 'Os visuais explicativos já estão vinculados às cenas. Confira as imagens antes de continuar.',
+          'Os visuais explicativos já estão vinculados às cenas. Confira as imagens antes de continuar.',
         ),
       );
       const recovery = el('div', { className: 'production-summary-actions' });
-      if (prepared.pending.length && options.onAdaptScript)
-        recovery.append(
-          button(
-            'Adaptar roteiro com IA',
-            () => leaveFor(() => options.onAdaptScript!(script)),
-            'secondary',
-            'spark',
-          ),
-        );
-      if (prepared.pending.length || !editorialReady)
+      if (!editorialReady)
         recovery.append(
           button(
             'Revisar roteiro',

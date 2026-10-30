@@ -146,4 +146,5 @@ Diretivas animadas do motor motion (framechester produce), quando o vídeo for r
 #anotacao pasta/arquivo: nota; … — árvore com anotações.
 #infografico TÍTULO | rótulo=valor: detalhe; … — cartões de dados.
 #causa A => B => C — causa e consequência.
-Cada campo tem até 160 caracteres. Não use outras diretivas.`;
+Cada campo tem até 160 caracteres. Não use outras diretivas.
+Toda cena vira composição gerada localmente: não peça gravação real, gravação de tela, captura de tela nem CAPTURA PENDENTE.`;

@@ -42,13 +42,16 @@ fn visuals_command_generates_local_art_without_tts_or_paid_services() {
     );
     let report: serde_json::Value = serde_json::from_slice(&result.stdout).unwrap();
     assert_eq!(report["scenes"][0]["status"], "generated");
-    assert_eq!(report["scenes"][1]["status"], "requires_capture");
+    assert_eq!(
+        report["scenes"][1]["status"], "generated",
+        "A brief asking for a recording still gets an explanatory composition"
+    );
     let png = std::fs::read(output.join("scene-42.png")).unwrap();
     assert_eq!(&png[..8], b"\x89PNG\r\n\x1a\n");
     assert_eq!(u32::from_be_bytes(png[16..20].try_into().unwrap()), 1920);
     assert!(
         output.join("scene-77.png").is_file(),
-        "A pending recording still needs a visibly marked illustrative preview"
+        "Every scene gets its own explanatory composition"
     );
     assert_eq!(report["scenes"][1]["file"], "scene-77.png");
 }

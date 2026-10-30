@@ -74,7 +74,6 @@ const prepared: PreparedVisuals = {
   assets: [],
   bindings: { 0: 'visual-0', 1: 'visual-1' },
   previews: { 0: 'visual-0', 1: 'visual-1' },
-  pending: [],
 };
 const job: WebJob = {
   id: 'job-final',
@@ -163,17 +162,17 @@ test('a contradiction or a foreign reference keeps the button disabled and says 
   }
 });
 
-test('a scene that needs a real recording is named instead of failing silently', async () => {
+test('a scene left without a visual is named instead of failing silently', async () => {
   let jobs = 0;
   const { dialog, started } = open({ ...script, crossChecked: true }, async (path) => {
     if (path.endsWith('/jobs')) jobs++;
-    return { ...prepared, bindings: { 0: 'visual-0' }, pending: [{ sceneId: 1, reason: 'Gravação' }] };
+    return { ...prepared, bindings: { 0: 'visual-0' } };
   });
   dialog.querySelector<HTMLButtonElement>('[data-testid="final-start"]')!.click();
   for (let i = 0; i < 6; i++) await tick();
   assert.equal(jobs, 0);
   assert.equal(started.length, 0);
-  assert.match(dialog.querySelector('[role="alert"]')!.textContent!, /Cena 2 pede uma gravação real/);
+  assert.match(dialog.querySelector('[role="alert"]')!.textContent!, /Cena 2 ficou sem visual/);
   assert.match(dialog.textContent!, /Abrir preparação manual/);
   assert.equal(dialog.querySelector<HTMLButtonElement>('[data-testid="final-start"]')!.disabled, false);
 });

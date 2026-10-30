@@ -55,7 +55,7 @@ test('automatic visuals preserve scene IDs, stay in the channel and survive rest
       return {
         exitCode: 0,
         stdout: JSON.stringify({
-          renderer: 'framechester-editorial-v2',
+          renderer: 'framechester-editorial-v3',
           scenes: [{ scene_id: 42, status: 'generated', file: 'scene-42.png' }],
         }),
         stderr: '',
@@ -67,7 +67,6 @@ test('automatic visuals preserve scene IDs, stay in the channel and survive rest
     const prepared = await runner.prepareVisuals('tech', 'script-one');
     assert.equal(calls, 1);
     assert.equal(prepared.assets.length, 1);
-    assert.deepEqual(prepared.pending, []);
     const asset = prepared.assets[0];
     assert.equal(asset.generated?.sceneId, 42);
     assert.equal(asset.channelId, 'tech');
@@ -98,26 +97,23 @@ test('automatic visuals preserve scene IDs, stay in the channel and survive rest
   }
 });
 
-test('a required real capture is reported as pending without inventing an asset', async () => {
-  const home = await mkdtemp(join(tmpdir(), 'fc-pending-capture-'));
+test('a brief asking for a recording gets an explanatory composition bound like any other scene', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-capture-brief-'));
   const current = state();
   current.scripts[0].scenes[0].visualBrief = '[CAPTURA PENDENTE] Gravação real.';
-  current.scripts[0].crossChecked = false;
-  let executions = 0;
   const runner = await createRunner({
     home,
     repositoryRoot: resolve('..'),
     readState: async () => current,
     execute: async (args) => {
-      executions++;
       const output = args[args.indexOf('--output') + 1];
       await mkdir(output, { recursive: true });
       await writeFile(join(output, 'scene-42.png'), visualPng);
       return {
         exitCode: 0,
         stdout: JSON.stringify({
-          renderer: 'framechester-editorial-v2',
-          scenes: [{ scene_id: 42, status: 'requires_capture', file: 'scene-42.png' }],
+          renderer: 'framechester-editorial-v3',
+          scenes: [{ scene_id: 42, status: 'generated', file: 'scene-42.png' }],
         }),
         stderr: '',
       };
@@ -125,20 +121,37 @@ test('a required real capture is reported as pending without inventing an asset'
   });
   try {
     const result = await runner.prepareVisuals('tech', 'script-one');
-    assert.equal(result.assets.length, 1, 'A pending capture still needs an illustrative preview');
-    assert.deepEqual(result.bindings, {});
-    assert.equal(result.pending[0].sceneId, 42);
-    assert.equal(result.assets[0].generated?.captureRequired, true);
-    assert.equal(result.previews?.['42'], result.assets[0].id);
-    assert.match(result.pending[0].reason, /gravação real/);
-    assert.equal(current.scripts[0].crossChecked, false);
-    assert.deepEqual((await runner.prepareVisuals('tech', 'script-one')).previews, result.previews);
-    assert.equal(executions, 1, 'Pending previews must also be cached');
-    current.scripts[0].crossChecked = true;
-    await assert.rejects(
-      runner.start('tech', { scriptId: 'script-one', assetIds: { 42: result.assets[0].id } }),
-      /prévia|gravação/i,
-    );
+    assert.equal(result.bindings['42'], result.assets[0].id);
+    assert.match(result.assets[0].restrictions, /não representa captura real/);
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('a stale engine status is rejected instead of importing an unbound preview', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-stale-status-'));
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => state(),
+    execute: async (args) => {
+      const output = args[args.indexOf('--output') + 1];
+      await mkdir(output, { recursive: true });
+      await writeFile(join(output, 'scene-42.png'), visualPng);
+      return {
+        exitCode: 0,
+        stdout: JSON.stringify({
+          renderer: 'framechester-editorial-v3',
+          scenes: [{ scene_id: 42, status: 'requires_capture', file: 'scene-42.png' }],
+        }),
+        stderr: '',
+      };
+    },
+  });
+  try {
+    await assert.rejects(runner.prepareVisuals('tech', 'script-one'), /arquivo visual inválido/);
+    assert.deepEqual(await runner.assets('tech'), []);
   } finally {
     await runner.close();
     await rm(home, { recursive: true, force: true });
@@ -154,7 +167,7 @@ test('invalid renderer paths are rejected before importing any generated file', 
     execute: async () => ({
       exitCode: 0,
       stdout: JSON.stringify({
-        renderer: 'framechester-editorial-v2',
+        renderer: 'framechester-editorial-v3',
         scenes: [{ scene_id: 42, status: 'generated', file: '../private.png' }],
       }),
       stderr: '',
@@ -247,8 +260,8 @@ test('a local draft preview renders unreviewed material without approving it or 
         return {
           exitCode: 0,
           stdout: JSON.stringify({
-            renderer: 'framechester-editorial-v2',
-            scenes: [{ scene_id: 42, status: 'requires_capture', file: 'scene-42.png' }],
+            renderer: 'framechester-editorial-v3',
+            scenes: [{ scene_id: 42, status: 'generated', file: 'scene-42.png' }],
           }),
           stderr: '',
         };
@@ -308,7 +321,7 @@ test('automatic production continues from a generated script through visuals and
         return {
           exitCode: 0,
           stdout: JSON.stringify({
-            renderer: 'framechester-editorial-v2',
+            renderer: 'framechester-editorial-v3',
             scenes: [{ scene_id: 42, status: 'generated', file: 'scene-42.png' }],
           }),
           stderr: '',

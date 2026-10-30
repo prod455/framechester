@@ -29,6 +29,8 @@ pub struct RenderRequest {
     pub audio_bitrate_kbps: u32,
     pub output_dir: PathBuf,
     pub log: Option<PathBuf>,
+    /// Draft render: every frame carries the review mark.
+    pub preview_watermark: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -198,11 +200,15 @@ pub fn render(storyboard: &Storyboard, request: &RenderRequest) -> Result<Render
             frames,
             &silent_video,
             &|index| {
-                compose::frame_svg(
+                let mut svg = compose::frame_svg(
                     &composed,
                     index as f32 / fps as f32,
                     crate::tokens::FONT_SANS,
-                )
+                );
+                if request.preview_watermark {
+                    compose::stamp_preview(&mut svg, canvas.width);
+                }
+                svg
             },
         )
     })?;

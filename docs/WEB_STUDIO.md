@@ -33,8 +33,9 @@ npm --prefix web start
 
 Abra [http://127.0.0.1:4317](http://127.0.0.1:4317). Mantenha o terminal do
 servidor aberto; `Ctrl+C` encerra o servidor e interrompe a produção ativa.
-`engine:build` executa o build do workspace e disponibiliza o binário local em
-`target/debug/`, utilizado pelo backend. O build web verifica TypeScript e
+`engine:build` executa o build do workspace em `--release` e disponibiliza o
+binário local em `target/release/`, utilizado pelo backend (o motor motion em
+debug é 5–8× mais lento). O build web verifica TypeScript e
 gera `web/dist/`. A instalação completa de dependências é necessária também
 para `start`, que usa `tsx`.
 

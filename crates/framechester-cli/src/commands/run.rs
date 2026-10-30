@@ -74,9 +74,6 @@ pub(crate) fn run_pipeline(path: &Option<PathBuf>, args: RunArgs) -> anyhow::Res
         EngineArg::Legacy
     });
     if engine == EngineArg::Motion {
-        if args.preview_only {
-            bail!("--preview-only ainda nao existe no motor motion; use --engine legacy");
-        }
         if args.assets.is_some() {
             eprintln!(
                 "aviso: --assets ignorado no motor motion; os visuais sao gerados do storyboard"
@@ -105,6 +102,7 @@ pub(crate) fn run_pipeline(path: &Option<PathBuf>, args: RunArgs) -> anyhow::Res
                 workdir: args.workdir.clone(),
                 output: None,
                 voice: args.voice.clone(),
+                preview_only: args.preview_only,
                 json: args.json,
             },
         );

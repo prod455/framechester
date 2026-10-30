@@ -145,7 +145,11 @@ export function jobCard(job: WebJob): HTMLElement {
         'div',
         {},
         el('h3', { title: script?.title || 'Produção do canal' }, script?.title || 'Produção do canal'),
-        el('p', {}, `Solicitado em ${date(job.createdAt)}`),
+        el(
+          'p',
+          {},
+          `Solicitado em ${date(job.createdAt)}${job.engine ? ` · ${job.engine === 'motion' ? 'Motor motion' : 'Imagens por cena'}` : ''}`,
+        ),
       ),
       el('span', { className: 'spacer' }),
       badge(job.status),

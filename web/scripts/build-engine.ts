@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const local = join(homedir(), '.cargo', 'bin', process.platform === 'win32' ? 'cargo.exe' : 'cargo');
-const child = spawn(existsSync(local) ? local : 'cargo', ['build', '--workspace'], {
+const child = spawn(existsSync(local) ? local : 'cargo', ['build', '--workspace', '--release'], {
   cwd: fileURLToPath(new URL('../..', import.meta.url)),
   stdio: 'inherit',
   shell: false,

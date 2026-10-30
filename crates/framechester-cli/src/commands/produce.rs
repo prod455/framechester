@@ -14,6 +14,7 @@ use framechester_core::domain::{
     now_unix, AssetManifest, PipelineReport, PublishPrivacy, QaStatus, RenderProfile, Script,
     ScriptFormat, Stage, Timeline, TimelineScene, Topic,
 };
+use framechester_core::editorial;
 use framechester_core::planner::plan_script;
 use framechester_core::ports::{
     FactEvidenceProvider, GenerationBudget, LlmProvider, ScriptPrompt, TrendRequest, TrendSource,
@@ -228,6 +229,47 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
     }
     std::fs::create_dir_all(&workdir)?;
     let planned = plan_from_args(&config, &args, format, &channel_name)?;
+    // Same editorial gate as the legacy pipeline: a draft renders without the operator's
+    // declaration, never with unsafe inputs or contradictions.
+    let mut warnings = Vec::new();
+    if args.preview_only {
+        warnings.push(
+            "PREVIA: rascunho para revisao; sem aprovacao editorial, pacote ou publicacao".into(),
+        );
+    }
+    if let Some(topic) = &planned.topic {
+        let blocked = if args.preview_only {
+            warnings.extend(editorial::blocked_reasons(topic));
+            editorial::preview_blocked_reasons(topic)
+        } else {
+            editorial::blocked_reasons(topic)
+        };
+        if !blocked.is_empty() {
+            warnings.extend(blocked);
+            let report = PipelineReport {
+                channel: channel.clone(),
+                topic_id: topic.id.clone(),
+                stage: Stage::Blocked,
+                artifacts_dir: workdir.clone(),
+                script: planned.script.clone(),
+                render: None,
+                technical_qa: None,
+                editorial_qa: None,
+                publish: None,
+                package: None,
+                metrics: Vec::new(),
+                warnings,
+            };
+            framechester_core::pipeline::write_report(&workdir, &report)?;
+            write_html_report(&report, &workdir)?;
+            if args.json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                print_report(&report);
+            }
+            return Ok(2);
+        }
+    }
     let mut storyboard = planned.storyboard;
     std::fs::write(
         workdir.join("storyboard.plan.json"),
@@ -280,6 +322,7 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
         audio_bitrate_kbps: config.render.audio_bitrate_kbps,
         output_dir: workdir.join("render"),
         log: Some(workdir.join("render.log.jsonl")),
+        preview_watermark: args.preview_only,
     };
     let artifacts = render(&storyboard, &request)?;
 
@@ -314,7 +357,7 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
     let (editorial, package) = match (&planned.script, &planned.topic) {
         (Some(script), Some(topic)) => {
             let editorial = framechester_core::qa::editorial(script, &assets, &timeline);
-            let package = if technical.overall() != QaStatus::Fail {
+            let package = if !args.preview_only && technical.overall() != QaStatus::Fail {
                 let package = framechester_core::package::write_package(
                     &workdir,
                     script,
@@ -337,12 +380,14 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
         }
         _ => (None, None),
     };
-    let mut warnings = vec![format!(
+    warnings.push(format!(
         "motor motion: {} segmentos narrados, {} do cache; timing por palavra estimado dentro de cada segmento",
         narration.segments_synthesized, narration.segments_cached
-    )];
+    ));
     let stage = if technical.overall() == QaStatus::Fail {
         warnings.push("QA tecnico falhou; render nao aprovado".into());
+        Stage::Blocked
+    } else if args.preview_only {
         Stage::Blocked
     } else {
         Stage::EditorialQa

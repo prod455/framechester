@@ -234,8 +234,7 @@ O motor recebe essa declaração (`cross_checked`) e registra no relatório de
 QA as verificações "revisão editorial humana" e "claims" como aprovadas;
 alegações marcadas como **Fonte citada** ou **A conferir** contam como
 conferidas pelo operador. Só **Contradição identificada**, URLs fora das
-fontes do roteiro e cenas que pedem gravação real impedem a versão final, e
-o diálogo diz qual é o caso. Um roteiro sem fonte gera a versão final; o
+fontes do roteiro impedem a versão final, e o diálogo diz qual é o caso. Um roteiro sem fonte gera a versão final; o
 relatório e o card pedem "ao menos 1 fonte com URL" antes de publicar.
 Duração fora do alvo editorial e frames parados de cenas estáticas ficam
 anotados no relatório, sem pedir revisão.

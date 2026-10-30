@@ -85,7 +85,6 @@ const prepared: PreparedVisuals = {
   scriptId: 'script-one',
   assets: [asset],
   bindings: { 42: 'asset-auto' },
-  pending: [],
 };
 const job: WebJob = {
   id: 'job-one',
@@ -145,7 +144,7 @@ test('an empty library automatically prepares and binds scene visuals without up
   });
 });
 
-test('a scene requiring a real recording stays unbound and cannot silently use a fabricated image', async () => {
+test('a scene without a bound visual cannot start a job', async () => {
   let jobs = 0;
   const dialog = openProduction({
     channel,
@@ -159,7 +158,6 @@ test('a scene requiring a real recording stays unbound and cannot silently use a
         scriptId: 'script-one',
         assets: [],
         bindings: {},
-        pending: [{ sceneId: 42, reason: 'Esta cena pede uma gravação real.' }],
       } as T;
     },
     onStarted: async () => {},
@@ -168,7 +166,6 @@ test('a scene requiring a real recording stays unbound and cannot silently use a
   });
   await tick();
   await tick();
-  assert.match(dialog.textContent!, /gravação real/);
   assert.equal(dialog.querySelector('img'), null);
   assert.equal((dialog.querySelector('select[name="asset-42"]') as HTMLSelectElement).value, '');
   dialog.querySelector<HTMLButtonElement>('button[type=submit]')!.click();
@@ -200,48 +197,6 @@ test('late visual responses cannot fill a closed preparation or another channel'
   await tick();
   assert.equal(document.querySelector('img'), null);
   assert.equal(document.querySelector('button[type=submit]'), null);
-});
-
-test('pending captures show illustrative previews, one recovery summary and an adaptation action', async () => {
-  let adapted = '';
-  const dialog = openProduction({
-    channel,
-    scripts: [script],
-    assets: [],
-    config: defaultConfig(),
-    currentChannelId: () => channel.id,
-    api: async <T>() =>
-      ({
-        scriptId: script.id,
-        assets: [{ ...asset, generated: { ...asset.generated!, captureRequired: true } }],
-        bindings: {},
-        previews: { 42: asset.id },
-        pending: [{ sceneId: 42, reason: 'Gravação real pendente.' }],
-      }) as T,
-    onStarted: async () => {},
-    onAddAssets: () => {},
-    onEditScript: () => {},
-    onAdaptScript: (record) => {
-      adapted = record.id;
-    },
-  });
-  await tick();
-  await tick();
-  assert.equal(
-    dialog.querySelectorAll('img').length,
-    1,
-    'The preview must exist even when a recording is pending',
-  );
-  assert.match(dialog.textContent!, /Prévia ilustrativa/);
-  assert.equal(dialog.querySelector<HTMLButtonElement>('[data-testid="final-video"]')!.disabled, true);
-  assert.equal(dialog.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled, false);
-  const adapt = [...dialog.querySelectorAll('button')].find((button) =>
-    button.textContent?.includes('Adaptar roteiro com IA'),
-  )!;
-  assert.ok(adapt);
-  adapt.click();
-  await tick();
-  assert.equal(adapted, script.id);
 });
 
 test('a contradicted claim blocks the final video; a pending claim or no source at all does not', async () => {
@@ -299,7 +254,7 @@ test('a contradicted claim blocks the final video; a pending claim or no source 
   assert.match(dialog.textContent!, /alegações/);
 });
 
-test('pending sources and recordings still allow an explicitly marked video preview', async () => {
+test('pending sources still allow an explicitly marked video preview', async () => {
   let sent: unknown;
   const dialog = openProduction({
     channel,
@@ -314,10 +269,9 @@ test('pending sources and recordings still allow an explicitly marked video prev
       }
       return {
         scriptId: script.id,
-        assets: [{ ...asset, generated: { ...asset.generated!, captureRequired: true } }],
-        bindings: {},
+        assets: [asset],
+        bindings: { 42: asset.id },
         previews: { 42: asset.id },
-        pending: [{ sceneId: 42, reason: 'Gravação pendente' }],
       } as T;
     },
     onStarted: async () => {},

@@ -11,7 +11,6 @@ import {
   panel,
   statusLabels,
 } from '../components.ts';
-import { openCreativeDraft } from '../creative-ui.ts';
 import { button, el, field, icon, input, select, textarea } from '../dom.ts';
 import { openFinalVersion } from '../final-version-ui.ts';
 import { date, number } from '../format.ts';
@@ -237,46 +236,7 @@ export function prepareProductionManually(): void {
           ...prepared.assets,
         ];
     },
-    onAdaptScript: (script) =>
-      openCreativeDraft('script', channel.id, channel.name, {
-        context: {
-          task: 'script',
-          values: {
-            title: script.title,
-            researchId: script.researchId,
-            series: script.series,
-            format: script.format,
-            hook: script.hook,
-            scenes: structuredClone(script.scenes),
-            sources: structuredClone(script.sources),
-            claims: structuredClone(script.claims),
-          },
-        },
-        initialBrief:
-          'Crie uma versão explicativa deste roteiro para um vídeo com narração e composições tipográficas geradas localmente. Preserve o assunto, o formato e a duração escolhidos. Reescreva o título, o gancho e as falas que prometem testes, comparações ou resultados ainda não realizados. Não invente resultados, fontes, experiências ou funcionalidades. Use apenas afirmações sustentadas pelas referências fornecidas e explicite o que falta verificar. Nos briefings visuais, peça composições explicativas com texto; não peça gravações, capturas de tela ou CAPTURA PENDENTE. Entregue um novo rascunho para revisão, sem aprovar alegações ou fontes.',
-        applyLabel: 'Salvar como novo roteiro',
-        onApply: async (fields) => {
-          if (studio.channelId !== channel.id || !('scenes' in fields))
-            throw new Error('O canal mudou. Abra a adaptação novamente neste canal.');
-          const response = await request<Script>('/api/scripts', 'POST', {
-            channelId: channel.id,
-            ...fields,
-            researchId: script.researchId,
-            topicId: `topico-${crypto.randomUUID()}`,
-            claims: fields.claims.map((claim) => ({ ...claim, status: 'unverified' })),
-            status: 'draft',
-            crossChecked: false,
-          });
-          if (studio.channelId === channel.id) {
-            studio.activeScriptId = response.id;
-            await refresh();
-            go('scripts');
-            toast(
-              'Versão explicativa salva como novo roteiro. O original foi preservado; confira as fontes e as alegações.',
-            );
-          }
-        },
-      }),
+
     onAddAssets: () => uploadAsset(),
     onEditScript: (scriptId) => {
       studio.activeScriptId = scriptId;

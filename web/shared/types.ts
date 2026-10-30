@@ -153,14 +153,13 @@ export interface WebAsset {
   provenance: string;
   restrictions: string;
   createdAt: string;
-  generated?: { scriptId: string; sceneId: number; fingerprint: string; captureRequired?: boolean };
+  generated?: { scriptId: string; sceneId: number; fingerprint: string };
 }
 export interface PreparedVisuals {
   scriptId: string;
   assets: WebAsset[];
   bindings: Record<string, string>;
   previews?: Record<string, string>;
-  pending: Array<{ sceneId: number; reason: string }>;
 }
 export type QaStatus = 'pass' | 'fail' | 'needs_human' | 'skipped';
 export interface WebJob {

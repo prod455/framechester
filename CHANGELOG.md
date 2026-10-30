@@ -17,6 +17,9 @@ compatibility and say so here.
 ### Changed
 - The still-image catalog and the Studio accept the motion directives as the default layout, so a script written for the motion engine still renders on the legacy path.
 - `TtsEngine::synthesize_batch` lets engines load their model once per batch; Kokoro implements it.
+- The Studio queue renders with the motion engine (`run --engine motion`); a job that binds an operator's own file falls back to the legacy path for the whole video. The job card names the engine. `engine:build` compiles `--release` and the Studio runs `target/release`.
+- `produce --preview-only` stamps PRÉVIA · REVISÃO PENDENTE on every frame and writes no package; `produce` applies the legacy editorial gate (operator declaration, contradictions, unsafe sources) before narrating.
+- A visual brief asking for a recording no longer blocks the final version: every scene gets the explanatory composition (renderer `framechester-editorial-v3`), an own file stays optional per scene, and the script assistant is told not to ask for recordings. `requires_capture`, `PreparedVisuals.pending` and the adapt-script shortcut are removed.
 
 ## [0.1.0] - 2026-10-29
 

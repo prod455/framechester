@@ -65,9 +65,7 @@ pub(crate) enum Commands {
         about = "produz um video explicativo animado: storyboard, narracao por segmento, render vetorial, mixagem e QA"
     )]
     Produce(ProduceArgs),
-    #[command(
-        about = "prepara visuais explicativos locais; nao usa API nem chaves"
-    )]
+    #[command(about = "prepara visuais explicativos locais; nao usa API nem chaves")]
     Visuals {
         #[arg(long)]
         input: PathBuf,

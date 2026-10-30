@@ -42,3 +42,37 @@ class CommercialVoices(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+setup_spec = importlib.util.spec_from_file_location("setup_voices", ROOT / "scripts/setup_voices.py")
+
+
+class NarratorEnvironment(unittest.TestCase):
+    def setUp(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        self.addCleanup(sys.path.remove, str(ROOT / "scripts"))
+        self.setup = importlib.util.module_from_spec(setup_spec)
+        setup_spec.loader.exec_module(self.setup)
+
+    def test_an_interpreter_that_cannot_start_is_reported_as_broken(self):
+        import sys
+        self.assertTrue(self.setup.runs(sys.executable))
+        self.assertFalse(self.setup.runs(pathlib.Path("C:/Python312-removido/python.exe")))
+
+    def test_a_broken_environment_is_recreated_and_a_working_one_is_kept(self):
+        for works, clear in ((False, True), (True, False)):
+            with self.subTest(works=works), tempfile.TemporaryDirectory() as temporary:
+                environment = pathlib.Path(temporary) / ".framechester/tts-venv"
+                executable = self.setup.environment_python(environment)
+                executable.parent.mkdir(parents=True)
+                executable.write_bytes(b"")
+                with patch.object(self.setup, "ROOT", pathlib.Path(temporary)), \
+                        patch.object(self.setup, "runs", return_value=works), \
+                        patch.object(self.setup.venv, "create") as create, \
+                        patch.object(self.setup.subprocess, "run"), \
+                        patch.object(self.setup, "download_models"), \
+                        patch.object(self.setup.sys, "version_info", (3, 12, 0)), \
+                        patch("sys.argv", ["setup_voices.py"]):
+                    self.setup.main()
+                create.assert_called_once_with(environment, with_pip=True, clear=clear)

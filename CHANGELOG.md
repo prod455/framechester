@@ -18,6 +18,7 @@ compatibility and say so here.
 - The still-image catalog and the Studio accept the motion directives as the default layout, so a script written for the motion engine still renders on the legacy path.
 - `TtsEngine::synthesize_batch` lets engines load their model once per batch; Kokoro implements it.
 - The Studio queue renders with the motion engine (`run --engine motion`); a job that binds an operator's own file falls back to the legacy path for the whole video. The job card names the engine. `engine:build` compiles `--release` and the Studio runs `target/release`.
+- `npm run voices:setup` recreates the narrator environment when the Python that created it no longer starts (reinstalled or moved), instead of keeping a venv that fails with "No Python at ...".
 - `npm --prefix web start` builds the engine first (`prestart`), so a Studio update can no longer run against an older engine binary.
 - A malformed motion directive falls back to the title layout and is reported in the pipeline warnings instead of failing the whole render, as in the still-image catalog. The Studio no longer passes `--assets` to motion jobs.
 - `produce --preview-only` stamps PRÉVIA · REVISÃO PENDENTE on every frame and writes no package; `produce` applies the legacy editorial gate (operator declaration, contradictions, unsafe sources) before narrating.

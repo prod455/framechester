@@ -171,7 +171,11 @@ pub(crate) struct RunArgs {
     pub(crate) asr: bool,
     #[arg(long, help = "queima legendas PT-BR no MP4 final")]
     pub(crate) burn_subtitles: bool,
-    #[arg(long, requires_all = ["script", "assets"], help = "renderiza previa com marca de revisao; sem pacote ou publicacao")]
+    #[arg(
+        long,
+        requires = "script",
+        help = "renderiza previa com marca de revisao; sem pacote ou publicacao"
+    )]
     pub(crate) preview_only: bool,
     #[arg(
         long,

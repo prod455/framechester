@@ -858,8 +858,6 @@ export class LocalRunner implements RunnerApi {
         join(directory, 'topic.json'),
         '--script',
         join(directory, 'script.json'),
-        '--assets',
-        join(directory, 'assets', 'manifest.json'),
         '--workdir',
         join(directory, 'output'),
         '--max-scenes',
@@ -870,6 +868,8 @@ export class LocalRunner implements RunnerApi {
         'private',
         '--json',
       ];
+      // Motion draws every scene from the storyboard; only the still-image path reads the files.
+      if (job.engine === 'legacy') args.push('--assets', join(directory, 'assets', 'manifest.json'));
       if (input.burnSubtitles !== false) args.push('--burn-subtitles');
       if (input.previewOnly) args.push('--preview-only');
       if (input.asr ?? config.asr.enabled) args.push('--asr');

@@ -891,13 +891,30 @@ pub fn plan_scene(scene: &Scene, index: usize) -> Result<StoryboardScene> {
 }
 
 /// Plans a whole script. Timing is filled later by narration.
-pub fn plan_script(script: &Script, channel: &str, format: VideoFormat) -> Result<Storyboard> {
-    let scenes = script
-        .scenes
-        .iter()
-        .enumerate()
-        .map(|(index, scene)| plan_scene(scene, index))
-        .collect::<Result<Vec<_>>>()?;
+///
+/// As in the still-image catalog, a malformed directive is a note, not a defect: the scene
+/// falls back to the default title layout and the reason is returned for the report.
+pub fn plan_script(
+    script: &Script,
+    channel: &str,
+    format: VideoFormat,
+) -> Result<(Storyboard, Vec<String>)> {
+    let mut fallbacks = Vec::new();
+    let mut scenes = Vec::with_capacity(script.scenes.len());
+    for (index, scene) in script.scenes.iter().enumerate() {
+        match plan_scene(scene, index) {
+            Ok(planned) => scenes.push(planned),
+            Err(error) => {
+                let (_, note) = split_brief(&scene.visual_brief);
+                let plain = Scene {
+                    visual_brief: note.to_string(),
+                    ..scene.clone()
+                };
+                scenes.push(plan_scene(&plain, index)?);
+                fallbacks.push(format!("{error}; layout padrao usado"));
+            }
+        }
+    }
     let storyboard = Storyboard {
         version: SCHEMA_VERSION,
         title: script.title.clone(),
@@ -908,7 +925,7 @@ pub fn plan_script(script: &Script, channel: &str, format: VideoFormat) -> Resul
         source_hash: None,
     };
     storyboard.validate()?;
-    Ok(storyboard)
+    Ok((storyboard, fallbacks))
 }
 
 #[cfg(test)]
@@ -1015,6 +1032,44 @@ mod tests {
         }
         assert!(parse_composition(&scene("#grafico3d x", "n")).is_err());
         assert!(parse_composition(&scene("#fluxo so-um", "n")).is_err());
+    }
+
+    #[test]
+    fn a_malformed_directive_falls_back_to_the_title_layout_and_is_reported() {
+        let mut bad = scene(
+            "#grafico Teste | qualidade=atendeu ao padrão?\nComparar os dois resultados",
+            "Compare a qualidade do resultado.",
+        );
+        bad.id = 8;
+        let good = Scene {
+            id: 9,
+            ..scene("#lista Mostrar; Medir", "Mostrar e medir.")
+        };
+        let script = Script {
+            title: "Roteiro".into(),
+            hook: "Gancho".into(),
+            series: String::new(),
+            format: crate::domain::ScriptFormat::Short,
+            scenes: vec![bad, good],
+            sources: Vec::new(),
+            claims: Vec::new(),
+            cross_checked: false,
+        };
+        let (storyboard, fallbacks) = plan_script(&script, "Canal", VideoFormat::Vertical).unwrap();
+        assert!(matches!(
+            storyboard.scenes[0].composition,
+            Composition::Title { .. }
+        ));
+        assert_eq!(
+            storyboard.scenes[0].learning_goal,
+            "Comparar os dois resultados"
+        );
+        assert!(!matches!(
+            storyboard.scenes[1].composition,
+            Composition::Title { .. }
+        ));
+        assert_eq!(fallbacks.len(), 1);
+        assert!(fallbacks[0].contains("cena 8") && fallbacks[0].contains("nao e numerico"));
     }
 
     #[test]

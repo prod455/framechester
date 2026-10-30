@@ -875,7 +875,7 @@ test('a stale engine is reported as stale with the command that fixes it, not as
       (error: unknown) =>
         error instanceof RunnerError &&
         error.status === 503 &&
-        /desatualizado.*editorial-v1.*npm start/.test(error.message),
+        /desatualizado.*editorial-v1.*npm --prefix web start/.test(error.message),
     );
   } finally {
     await runner.close();

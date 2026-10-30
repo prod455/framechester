@@ -162,6 +162,8 @@ export interface PreparedVisuals {
   previews?: Record<string, string>;
 }
 export type QaStatus = 'pass' | 'fail' | 'needs_human' | 'skipped';
+/** motion: animated storyboard; legacy: one still per scene, needed for the operator's own files. */
+export type VideoEngine = 'motion' | 'legacy';
 export interface WebJob {
   id: string;
   channelId: string;
@@ -175,6 +177,7 @@ export interface WebJob {
   videoAvailable: boolean;
   previewOnly?: boolean;
   automated?: boolean;
+  engine?: VideoEngine;
 }
 export interface AppState {
   schemaVersion: 1;

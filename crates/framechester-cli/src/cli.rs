@@ -216,6 +216,11 @@ pub(crate) struct ProduceArgs {
     pub(crate) output: Option<PathBuf>,
     #[arg(long)]
     pub(crate) voice: Option<String>,
+    #[arg(
+        long,
+        help = "renderiza previa com marca de revisao; sem aprovacao editorial nem pacote"
+    )]
+    pub(crate) preview_only: bool,
     #[arg(long)]
     pub(crate) json: bool,
 }

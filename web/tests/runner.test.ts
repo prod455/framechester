@@ -268,6 +268,7 @@ test('a local draft preview renders unreviewed material without approving it or 
       }
       previews = args.includes('--preview-only');
       assert.equal(previews, true);
+      assert.equal(args[args.indexOf('--engine') + 1], 'motion', 'Generated visuals render with motion');
       const topic = JSON.parse(await readFile(args[args.indexOf('--topic') + 1], 'utf8'));
       assert.equal(topic.metrics.cross_check, 0);
       assert.deepEqual(topic.sources, []);
@@ -293,6 +294,7 @@ test('a local draft preview renders unreviewed material without approving it or 
     await runner.idle();
     const saved = (await runner.list('tech')).find((item) => item.id === job.id)!;
     assert.equal(saved.previewOnly, true);
+    assert.equal(saved.engine, 'motion');
     assert.equal(saved.videoAvailable, true);
     assert.equal(saved.qa?.editorial, 'fail');
     assert.match(saved.message, /Prévia/);
@@ -461,6 +463,7 @@ test('a channel job passes authored JSON and licensed media to the fixed Rust en
       assert.equal(authored.script.scenes[0].id, 42);
       assert.equal(authored.script.scenes[0].narration, 'Texto autoral preservado.');
       assert.equal(authored.script.cross_checked, true, 'The operator declaration reaches the engine');
+      assert.equal(args[args.indexOf('--engine') + 1], 'legacy', 'An own file needs the still-image path');
       const out = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
       await mkdir(join(out, 'render'), { recursive: true });
       await writeFile(join(out, 'render', 'final.mp4'), 'synthetic fixture');
@@ -498,6 +501,7 @@ test('a channel job passes authored JSON and licensed media to the fixed Rust en
     const done = (await runner.list('tech')).find((item) => item.id === job.id)!;
     assert.equal(done.status, 'needs_review', done.message);
     assert.match(done.message, /ao menos 1 fonte com URL/, 'The message names what is pending');
+    assert.equal(done.engine, 'legacy');
     assert.equal(done.videoAvailable, true);
     assert.equal(done.qa?.technical, 'pass');
     assert.ok(await runner.file('tech', job.id, 'video'));

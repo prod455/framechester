@@ -266,7 +266,7 @@ export class LocalRunner implements RunnerApi {
       join(
         resolve(options.repositoryRoot),
         'target',
-        'debug',
+        'release',
         process.platform === 'win32' ? 'framechester.exe' : 'framechester',
       );
   }
@@ -772,7 +772,12 @@ export class LocalRunner implements RunnerApi {
     try {
       job.status = 'running';
       job.startedAt ??= new Date().toISOString();
-      job.message = 'Gerando a voz, montando as cenas e executando o QA local.';
+      // The motion engine draws every scene from the storyboard; it cannot embed the operator's own files.
+      job.engine = assets.some((asset) => !asset.generated) ? 'legacy' : 'motion';
+      job.message =
+        job.engine === 'motion'
+          ? 'Motor motion: gerando a voz, animando as cenas e executando o QA local.'
+          : 'Gerando a voz, montando as cenas com seus arquivos e executando o QA local.';
       await this.persist();
       await mkdir(join(directory, 'assets'), { recursive: true, mode: 0o700 });
       const manifest = [];
@@ -845,6 +850,8 @@ export class LocalRunner implements RunnerApi {
         '--config',
         join(directory, 'config.toml'),
         'run',
+        '--engine',
+        job.engine,
         '--channel',
         job.channelId,
         '--topic',

@@ -33,6 +33,8 @@ npm --prefix web start
 
 Abra [http://127.0.0.1:4317](http://127.0.0.1:4317). Mantenha o terminal do
 servidor aberto; `Ctrl+C` encerra o servidor e interrompe a produção ativa.
+`start` roda `engine:build` antes de subir o servidor, então o motor nunca fica
+mais antigo que o Studio (o build é incremental; só a primeira vez demora).
 `engine:build` executa o build do workspace em `--release` e disponibiliza o
 binário local em `target/release/`, utilizado pelo backend (o motor motion em
 debug é 5–8× mais lento). O build web verifica TypeScript e

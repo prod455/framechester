@@ -41,6 +41,19 @@ def download_models():
     print("Dora, Alex e Santa: modelos comerciais verificados por SHA-256.")
 
 
+def environment_python(environment):
+    return environment / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+
+
+def runs(executable):
+    """A venv keeps the absolute path of the Python that created it; reinstalling or
+    moving that Python leaves an interpreter that no longer starts."""
+    try:
+        return subprocess.run([str(executable), "-c", "import sys"], capture_output=True, timeout=60).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--models-only", action="store_true", help="Baixar apenas os arquivos para o Docker")
@@ -49,8 +62,11 @@ def main():
         if not (3, 11) <= sys.version_info[:2] < (3, 14):
             raise ValueError("O narrador exige Python 3.11, 3.12 ou 3.13. Use npm run voices:models para o Docker.")
         environment = ROOT / ".framechester/tts-venv"
-        venv.create(environment, with_pip=True)
-        executable = environment / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+        executable = environment_python(environment)
+        broken = executable.exists() and not runs(executable)
+        if broken:
+            print("Ambiente do narrador aponta para um Python que nao existe mais; recriando.")
+        venv.create(environment, with_pip=True, clear=broken)
         subprocess.run([str(executable), "-m", "pip", "install", "--only-binary=:all:", "--require-hashes", "-r", str(ROOT / "docker/tts-requirements.txt")], check=True)
     download_models()
 

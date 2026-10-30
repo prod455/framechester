@@ -19,6 +19,7 @@
     "dev:ui": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "check": "tsc --noEmit && npm run format:check",
+    "prestart": "npm run engine:build",
     "start": "tsx server/index.ts",
     "test": "tsx --test tests/*.test.ts",
     "engine:build": "tsx scripts/build-engine.ts",

@@ -410,7 +410,7 @@ export class LocalRunner implements RunnerApi {
       }
       if (report && typeof report === 'object' && 'renderer' in report && report.renderer !== visualRenderer)
         throw new RunnerError(
-          `O motor Rust está desatualizado (respondeu ${String(report.renderer).slice(0, 60)}; esperado ${visualRenderer}). Encerre o Studio e rode npm start, que recompila o motor, ou npm --prefix web run engine:build.`,
+          `O motor Rust está desatualizado (respondeu ${String(report.renderer).slice(0, 60)}; esperado ${visualRenderer}). Encerre o Studio e rode npm --prefix web start, que recompila o motor antes de subir.`,
           503,
         );
       if (

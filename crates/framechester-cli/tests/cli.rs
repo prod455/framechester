@@ -235,18 +235,47 @@ fn motion_preview_still_refuses_a_contradicted_claim() {
         topic["claims"][0]["status"] = "contradicted".into();
     });
     let report = blocked_report(
-        &[
-            "run",
-            "--engine",
-            "motion",
-            "--preview-only",
-            "--assets",
-            "unused.json",
-        ],
+        &["run", "--engine", "motion", "--preview-only"],
         &topic,
         &directory.path().join("out"),
     );
     let warnings = report["warnings"].to_string();
     assert!(warnings.contains("PREVIA"));
     assert!(warnings.contains("claim contraditorio"));
+}
+
+#[test]
+fn plan_turns_a_malformed_motion_directive_into_a_reported_title_scene() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut script: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../examples/skills-vs-agentes.roteiro.json"
+        ))
+        .unwrap(),
+    )
+    .unwrap();
+    script["script"]["scenes"][0]["visual_brief"] =
+        "#grafico Teste | qualidade=atendeu ao padrão?".into();
+    let script_path = directory.path().join("script.json");
+    std::fs::write(&script_path, script.to_string()).unwrap();
+    let output = binary()
+        .args(["plan", "--format", "vertical", "--script"])
+        .arg(&script_path)
+        .arg("--topic")
+        .arg(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../examples/skills-vs-agentes.topico.json"
+        ))
+        .arg("--output")
+        .arg(directory.path().join("storyboard.json"))
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("nao e numerico") && stderr.contains("layout padrao usado"));
 }

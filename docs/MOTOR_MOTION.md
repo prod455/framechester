@@ -78,6 +78,9 @@ no QA.
 - O Studio web produz pelo motor motion (`run --engine motion`). Uma cena com arquivo
   próprio do operador (gravação ou imagem) usa o caminho legado no vídeo inteiro, porque o
   motor motion não embute mídia externa; o card mostra qual motor rodou.
+- Diretiva mal formada (por exemplo `#grafico` com valor não numérico) não derruba o vídeo:
+  como no catálogo de imagens, a cena usa o layout de título e o motivo entra nos avisos
+  do relatório (`plan` imprime em stderr).
 - `--preview-only` no motor motion aplica a mesma trava editorial do legado, carimba
   **PRÉVIA · REVISÃO PENDENTE** em todos os quadros e não gera pacote nem aprovação.
 - Qualidade perceptual foi conferida por contact sheets e quadros extraídos, não por

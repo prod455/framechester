@@ -268,6 +268,7 @@ test('a local draft preview renders unreviewed material without approving it or 
       }
       previews = args.includes('--preview-only');
       assert.equal(previews, true);
+      assert.equal(args.includes('--assets'), false, 'Motion does not read scene files');
       assert.equal(args[args.indexOf('--engine') + 1], 'motion', 'Generated visuals render with motion');
       const topic = JSON.parse(await readFile(args[args.indexOf('--topic') + 1], 'utf8'));
       assert.equal(topic.metrics.cross_check, 0);

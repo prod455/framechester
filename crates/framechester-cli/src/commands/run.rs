@@ -107,6 +107,9 @@ pub(crate) fn run_pipeline(path: &Option<PathBuf>, args: RunArgs) -> anyhow::Res
             },
         );
     }
+    if args.preview_only && args.assets.is_none() {
+        bail!("--preview-only no motor legacy exige --assets com as imagens das cenas");
+    }
     let channel = config.select_channel(args.channel.as_deref())?;
     if args.script.is_none()
         && (matches!(args.llm, Some(LlmArg::Anthropic))

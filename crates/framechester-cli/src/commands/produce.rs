@@ -72,6 +72,8 @@ pub(crate) struct Planned {
     pub topic: Option<Topic>,
     pub script: Option<Script>,
     pub storyboard: Storyboard,
+    /// Scenes whose directive was malformed and fell back to the title layout.
+    pub fallbacks: Vec<String>,
 }
 
 /// Builds the storyboard from `--storyboard` or from topic + authored script.
@@ -92,6 +94,7 @@ pub(crate) fn plan_from_args(
             topic: None,
             script: None,
             storyboard,
+            fallbacks: Vec::new(),
         });
     }
     let Some(script_path) = &args.script else {
@@ -108,11 +111,12 @@ pub(crate) fn plan_from_args(
     let mut script = provider.generate(&prompt, &GenerationBudget::default())?;
     script.claims = LocalEvidenceProvider.verify(&script.claims)?;
     let _ = config;
-    let storyboard = plan_script(&script, channel_name, format)?;
+    let (storyboard, fallbacks) = plan_script(&script, channel_name, format)?;
     Ok(Planned {
         topic: Some(topic),
         script: Some(script),
         storyboard,
+        fallbacks,
     })
 }
 
@@ -147,6 +151,9 @@ pub(crate) fn plan_command(
         }
     }
     std::fs::write(&output, serde_json::to_string_pretty(&planned.storyboard)?)?;
+    for fallback in &planned.fallbacks {
+        eprintln!("aviso: {fallback}");
+    }
     if args.json {
         println!("{}", serde_json::to_string_pretty(&planned.storyboard)?);
     } else {
@@ -231,7 +238,7 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
     let planned = plan_from_args(&config, &args, format, &channel_name)?;
     // Same editorial gate as the legacy pipeline: a draft renders without the operator's
     // declaration, never with unsafe inputs or contradictions.
-    let mut warnings = Vec::new();
+    let mut warnings = planned.fallbacks.clone();
     if args.preview_only {
         warnings.push(
             "PREVIA: rascunho para revisao; sem aprovacao editorial, pacote ou publicacao".into(),

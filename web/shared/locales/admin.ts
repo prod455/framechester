@@ -283,6 +283,7 @@ export default {
     'Envio não público disponível': 'Non-public upload available',
     'Nome de usuário no TikTok': 'TikTok username',
     'ID da conta profissional do Instagram': 'Instagram professional account ID',
+    '@ do Instagram (ou ID da conta profissional)': 'Instagram @ (or professional account ID)',
     'ID da Página do Facebook': 'Facebook Page ID',
     'Aplicativo próprio no TikTok for Developers, plataforma Web, com o endereço de retorno abaixo registrado exatamente.':
       'Your own app on TikTok for Developers, Web platform, with the redirect URI below registered exactly.',
@@ -607,6 +608,7 @@ export default {
     'Envio não público disponível': 'Subida no pública disponible',
     'Nome de usuário no TikTok': 'Nombre de usuario en TikTok',
     'ID da conta profissional do Instagram': 'ID de la cuenta profesional de Instagram',
+    '@ do Instagram (ou ID da conta profissional)': '@ de Instagram (o ID de la cuenta profesional)',
     'ID da Página do Facebook': 'ID de la Página de Facebook',
     'Aplicativo próprio no TikTok for Developers, plataforma Web, com o endereço de retorno abaixo registrado exatamente.':
       'Tu propia app en TikTok for Developers, plataforma Web, con la URI de redirección de abajo registrada exactamente.',

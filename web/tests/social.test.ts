@@ -936,7 +936,12 @@ test('TikTok sends nothing when SELF_ONLY is not offered or the upload URL leave
 
 function metaFetch(
   calls: Array<{ url: string; init?: RequestInit; body?: string }>,
-  options: { permissions?: string[]; pages?: Array<{ id: string; access_token: string }> } = {},
+  options: {
+    permissions?: string[];
+    pages?: Array<{ id: string; access_token: string }>;
+    /** Pages without a linked Instagram professional account. */
+    unlinked?: boolean;
+  } = {},
 ): SocialFetch {
   return async (raw, init) => {
     const url = new URL(raw);
@@ -967,7 +972,11 @@ function metaFetch(
       assert.equal(auth, 'Bearer fixture-long-user');
       if (url.searchParams.get('fields') === 'id,access_token')
         return json({ data: options.pages ?? [{ id: PAGE, access_token: 'fixture-page-token' }] });
-      return json({ data: [{ id: PAGE, instagram_business_account: { id: IG } }] });
+      return json({
+        data: options.unlinked
+          ? [{ id: PAGE }]
+          : [{ id: PAGE, instagram_business_account: { id: IG, username: 'Fixture.IG' } }],
+      });
     }
     if (url.pathname === '/v26.0/me') {
       assert.equal(auth, 'Bearer fixture-page-token');
@@ -1189,6 +1198,38 @@ test('Instagram OAuth can use a Facebook Login for Business configuration instea
   assert.equal(url.searchParams.has('scope'), false);
   await assert.rejects(service.startOAuth({ ...input, configId: 'abc' }), /configuração/);
   await assert.rejects(service.startOAuth({ ...input, platform: 'youtube', configId: '1' } as never));
+});
+
+test('Instagram can be connected by its @: the ID is found among the authorized Pages', async () => {
+  const connect = async (accountId: string, unlinked = false) => {
+    const service = createSocialService({
+      vault: new MemoryVault(),
+      fetch: metaFetch([], { unlinked }),
+      now: () => NOW,
+    });
+    const started = await service.startOAuth({
+      platform: 'instagram',
+      channelId: 'tech',
+      accountId,
+      clientId: '1122334455',
+      clientSecret: 'fixture-app-secret',
+      redirectUri: 'http://127.0.0.1:4317/api/oauth/instagram/callback',
+    });
+    return service.callbackOAuth('instagram', {
+      state: new URL(started.authorizationUrl).searchParams.get('state')!,
+      code: 'fixture-code',
+    });
+  };
+  const connection = await connect('@fixture.ig');
+  assert.equal(connection.accountId, IG, 'the numeric ID is what the Studio keeps');
+  assert.equal((await connect(' Fixture.IG ')).accountId, IG, 'without @ and in any case');
+  assert.equal((await connect(IG)).accountId, IG, 'the numeric ID still works');
+  await assert.rejects(
+    connect('@outra.conta'),
+    /@outra\.conta não está ligado.*Contas encontradas: @Fixture\.IG/,
+  );
+  await assert.rejects(connect('@fixture.ig', true), /Nenhuma Página autorizada tem uma conta profissional/);
+  await assert.rejects(connect('@nome inválido'), /Identidade da conta/);
 });
 
 test('an Instagram Reel is published only after processing finishes, with caption and permalink', async () => {

@@ -2,6 +2,7 @@ import type { Bootstrap, Research, Script, WebJob } from '../shared/types.ts';
 import { summarizeWorkflow } from '../shared/workflow.ts';
 import { button, el } from './dom.ts';
 import { badge, empty, heading, mediaThumbnail } from './components.ts';
+import { languageTag, t, translateMessage } from '../shared/i18n.ts';
 
 type Destination = 'channels' | 'research' | 'scripts' | 'production' | 'connections' | 'analytics';
 interface OverviewActions {
@@ -32,7 +33,7 @@ export function renderOverview(
     const script = state.scripts.find((item) => item.channelId === channelId && item.id === job.scriptId);
     const thumbnail = mediaThumbnail(job);
     const title = button(
-      script?.title || 'Vídeo deste canal',
+      script?.title || t('Vídeo deste canal'),
       () => (job.videoAvailable ? actions.review(job) : actions.go('production')),
       'ghost',
     );
@@ -41,18 +42,19 @@ export function renderOverview(
     const meta = el(
       'div',
       { className: 'production-meta' },
-      el('span', {}, new Date(job.createdAt).toLocaleDateString('pt-BR')),
-      script ? el('span', {}, script.format === 'short' ? 'Vídeo curto' : 'Vídeo longo') : null,
-      script ? el('span', {}, `${script.scenes.length} cenas`) : null,
+      el('span', {}, new Date(job.createdAt).toLocaleDateString(languageTag())),
+      script ? el('span', {}, script.format === 'short' ? t('Vídeo curto') : t('Vídeo longo')) : null,
+      script ? el('span', {}, t('{count} cenas', { count: script.scenes.length })) : null,
     );
     const action = button(
-      job.videoAvailable ? 'Revisar' : 'Ver produção',
+      job.videoAvailable ? t('Revisar') : t('Ver produção'),
       () => (job.videoAvailable ? actions.review(job) : actions.go('production')),
       'secondary',
     );
+    const target = script?.title || t('vídeo');
     action.setAttribute(
       'aria-label',
-      `${job.videoAvailable ? 'Revisar' : 'Ver produção de'} ${script?.title || 'vídeo'}`,
+      job.videoAvailable ? t('Revisar {target}', { target }) : t('Ver produção de {target}', { target }),
     );
     productions.append(
       el(
@@ -74,10 +76,10 @@ export function renderOverview(
   if (!jobs.length)
     productions.append(
       empty(
-        'Nenhum vídeo produzido',
-        'Comece por uma pauta ou continue um roteiro salvo.',
+        t('Nenhum vídeo produzido'),
+        t('Comece por uma pauta ou continue um roteiro salvo.'),
         'film',
-        button('Ver roteiros', () => actions.go('scripts'), 'secondary'),
+        button(t('Ver roteiros'), () => actions.go('scripts'), 'secondary'),
       ),
     );
 
@@ -95,7 +97,7 @@ export function renderOverview(
       el(
         'span',
         {},
-        el('span', { className: 'draft-kind' }, 'Roteiro'),
+        el('span', { className: 'draft-kind' }, t('Roteiro')),
         el('strong', { title: script.title }, script.title),
       ),
       badge(script.status),
@@ -109,7 +111,7 @@ export function renderOverview(
       el(
         'span',
         {},
-        el('span', { className: 'draft-kind' }, 'Pesquisa'),
+        el('span', { className: 'draft-kind' }, t('Pesquisa')),
         el('strong', { title: item.title }, item.title),
       ),
       badge(item.status),
@@ -118,8 +120,8 @@ export function renderOverview(
   }
   if (!scripts.length && !research.length)
     drafts.append(
-      el('p', { className: 'muted' }, 'Suas pautas e roteiros vão aparecer aqui.'),
-      button('Criar pauta', actions.createResearch, 'ghost'),
+      el('p', { className: 'muted' }, t('Suas pautas e roteiros vão aparecer aqui.')),
+      button(t('Criar pauta'), actions.createResearch, 'ghost'),
     );
 
   const accounts = el('div', { className: 'account-list' });
@@ -137,7 +139,7 @@ export function renderOverview(
         'div',
         { className: 'account-row' },
         el('span', {}, label),
-        connection ? badge(connection.status) : el('span', { className: 'field-hint' }, 'Não conectado'),
+        connection ? badge(connection.status) : el('span', { className: 'field-hint' }, t('Não conectado')),
       ),
     );
   }
@@ -148,52 +150,54 @@ export function renderOverview(
         el(
           'span',
           {},
-          `${counts.review} ${counts.review === 1 ? 'vídeo aguarda' : 'vídeos aguardam'} sua revisão.`,
+          counts.review === 1
+            ? t('{count} vídeo aguarda sua revisão.', { count: counts.review })
+            : t('{count} vídeos aguardam sua revisão.', { count: counts.review }),
         ),
-        button('Revisar agora', () => actions.review(reviewed), 'ghost'),
+        button(t('Revisar agora'), () => actions.review(reviewed), 'ghost'),
       )
     : !jobs.length
       ? el(
           'div',
           { className: 'review-line' },
-          el('span', {}, next.description),
-          button(next.action, () => actions.go(next.page), 'ghost'),
+          el('span', {}, translateMessage(next.description)),
+          button(translateMessage(next.action), () => actions.go(next.page), 'ghost'),
         )
       : null;
   const finance = el(
     'details',
     { className: 'overview-finance' },
-    el('summary', {}, 'Recebimentos e custos'),
+    el('summary', {}, t('Recebimentos e custos')),
     cash,
   );
   return el(
     'div',
     { className: 'overview' },
     heading(
-      'Visão geral',
+      t('Visão geral'),
       channel?.niche || '',
-      button('Nova pauta', actions.createResearch, 'primary', 'plus'),
+      button(t('Nova pauta'), actions.createResearch, 'primary', 'plus'),
     ),
     nextAction,
     el(
       'section',
       { className: 'content-section' },
       sectionHeading(
-        'Produções',
-        button('Ver fila', () => actions.go('production'), 'ghost'),
+        t('Produções'),
+        button(t('Ver fila'), () => actions.go('production'), 'ghost'),
       ),
       productions,
     ),
     el(
       'div',
       { className: 'overview-secondary' },
-      el('section', {}, sectionHeading('Em desenvolvimento'), drafts),
+      el('section', {}, sectionHeading(t('Em desenvolvimento')), drafts),
       el(
         'section',
         {},
         sectionHeading(
-          'Contas',
-          button('Gerenciar', () => actions.go('connections'), 'ghost'),
+          t('Contas'),
+          button(t('Gerenciar'), () => actions.go('connections'), 'ghost'),
         ),
         accounts,
       ),

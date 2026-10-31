@@ -316,6 +316,21 @@ jobs, assets ou conexões a preservar. Num canal vazio, os vínculos/autorizaç�
 pendentes locais são limpos antes da exclusão; falha nessa limpeza preserva o
 canal. Desconectar não revoga consentimentos globais no provedor.
 
+## Idioma da interface
+
+O Studio fala português, inglês e espanhol. Troque em **Idioma**, no rodapé da barra
+lateral ou da tela de acesso; a página recarrega no idioma escolhido, e a escolha fica
+salva neste navegador. No primeiro acesso, ele segue o idioma do navegador.
+
+O idioma da interface não muda o conteúdo: roteiros, narração e legendas seguem o
+idioma do canal.
+
+Para quem mexe no código: escreva a mensagem em pt-BR dentro de `t()`
+(`t('Short na fila: {title}', { title })`) e acrescente as traduções em inglês e espanhol
+no catálogo da área em `web/shared/locales/`. Mensagens já montadas, como erros do
+servidor e o status das produções, passam por `translateMessage()`. O teste
+`web/tests/i18n.test.ts` falha se faltar tradução ou se uma frase escapar do `t()`.
+
 ## Duração do vídeo é regra
 
 O formato define a duração, e o Studio confere antes de aceitar o roteiro:

@@ -1,3 +1,5 @@
+import { t } from '../shared/i18n.ts';
+
 type Child = Node | string | number | null | undefined | false;
 type Attributes = Record<string, string | number | boolean | undefined>;
 
@@ -95,7 +97,7 @@ export function dialogFrame(
     const close = button('', onClose, 'ghost', 'close');
     close.classList.add('dialog-close');
     close.dataset.size = 'icon';
-    close.setAttribute('aria-label', 'Fechar janela');
+    close.setAttribute('aria-label', t('Fechar janela'));
     surface.append(close);
   }
   return { dialog, body };
@@ -105,7 +107,8 @@ export function externalLink(label: string, destination: string): HTMLElement {
   try {
     const url = new URL(destination);
     if (url.protocol !== 'https:' && url.protocol !== 'http:') return el('span', {}, label);
-    return el('a', { href: url.href, target: '_blank', rel: 'noopener noreferrer' }, label, icon('external'));
+    const rel = 'noopener noreferrer'; // i18n-ignore: link attribute, not text
+    return el('a', { href: url.href, target: '_blank', rel }, label, icon('external'));
   } catch {
     return el('span', {}, label);
   }

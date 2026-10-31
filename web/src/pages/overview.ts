@@ -6,13 +6,14 @@ import { currentChannel, go, state, studio } from '../studio/state.ts';
 import { editChannel } from './channels.ts';
 import { viewJob } from './production.ts';
 import { editResearch } from './research.ts';
+import { t, translateMessage } from '../../shared/i18n.ts';
 
 export function dataTile(label: string, value: string, detail: string): HTMLElement {
   return el(
     'div',
     { className: 'data-tile' },
     el('div', { className: 'data-tile-label' }, label),
-    el('div', { className: 'data-tile-value' }, value),
+    el('div', { className: 'data-tile-value' }, translateMessage(value)),
     el('div', { className: 'data-tile-detail' }, detail),
   );
 }
@@ -25,9 +26,9 @@ export function recordedCashPanel(): HTMLElement {
       el(
         'div',
         { className: 'cash-grid' },
-        dataTile('Recebimentos', '—', 'Nenhum pagamento registrado'),
-        dataTile('Custos', '—', 'Nenhum custo registrado'),
-        dataTile('Saldo entre registros', '—', 'Requer recebimentos e custos na mesma moeda'),
+        dataTile(t('Recebimentos'), '—', t('Nenhum pagamento registrado')),
+        dataTile(t('Custos'), '—', t('Nenhum custo registrado')),
+        dataTile(t('Saldo entre registros'), '—', t('Requer recebimentos e custos na mesma moeda')),
       ),
     );
   }
@@ -40,12 +41,16 @@ export function recordedCashPanel(): HTMLElement {
         el(
           'div',
           { className: 'cash-grid' },
-          dataTile('Recebimentos', recordedMoney(payments, currency), 'Pagamentos registrados pelo operador'),
-          dataTile('Custos', recordedMoney(costs, currency), 'Custos registrados pelo operador'),
           dataTile(
-            'Saldo entre registros',
+            t('Recebimentos'),
+            recordedMoney(payments, currency),
+            t('Pagamentos registrados pelo operador'),
+          ),
+          dataTile(t('Custos'), recordedMoney(costs, currency), t('Custos registrados pelo operador')),
+          dataTile(
+            t('Saldo entre registros'),
             recordedMoney(balance, currency),
-            'Recebimentos menos custos registrados',
+            t('Recebimentos menos custos registrados'),
           ),
         ),
       ),
@@ -55,14 +60,16 @@ export function recordedCashPanel(): HTMLElement {
     el(
       'p',
       { className: 'field-hint cash-note' },
-      'Estimativas não entram neste resumo. O saldo considera os registros existentes; não representa lucro econômico nem conciliação automática da plataforma.',
+      t(
+        'Estimativas não entram neste resumo. O saldo considera os registros existentes; não representa lucro econômico nem conciliação automática da plataforma.',
+      ),
     ),
   );
   return panel(
-    'Recebimentos e custos',
-    'Todas as redes. Valores registrados por você, separados por moeda.',
+    t('Recebimentos e custos'),
+    t('Todas as redes. Valores registrados por você, separados por moeda.'),
     body,
-    button('Ver registros', () => go('analytics'), 'ghost', 'arrow'),
+    button(t('Ver registros'), () => go('analytics'), 'ghost', 'arrow'),
   );
 }
 

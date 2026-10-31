@@ -8,8 +8,32 @@ import { action, currentPage, go, onRender, pages, refresh, studio } from './sta
 import { toast } from './toast.ts';
 import type { AuthStatus } from '../../shared/types.ts';
 import type { Page } from './state.ts';
+import { LOCALES, isLocale, locale, setLocale, t } from '../../shared/i18n.ts';
 
 const root = document.querySelector<HTMLDivElement>('#app')!;
+
+/** Interface language. Switching reloads the page, so every screen and message is built
+ * again in the new language; unsaved edits are protected first. */
+export function languagePicker(): HTMLSelectElement {
+  const picker = select(
+    'locale',
+    LOCALES.map((item) => [item.id, item.label]),
+    locale(),
+  );
+  picker.setAttribute('aria-label', t('Idioma'));
+  picker.setAttribute('data-testid', 'locale-picker');
+  picker.addEventListener('change', () => {
+    const chosen = picker.value;
+    if (!isLocale(chosen) || chosen === locale()) return;
+    protectEdits(() => {
+      setLocale(chosen);
+      window.location.reload();
+    });
+    // Cancelled: show the language still in use.
+    picker.value = locale();
+  });
+  return picker;
+}
 
 export async function start(): Promise<void> {
   studio.loading = true;
@@ -25,11 +49,11 @@ export async function start(): Promise<void> {
         'main',
         { className: 'initial-loading' },
         empty(
-          'O estúdio ainda não respondeu',
-          error instanceof Error ? error.message : 'Verifique o servidor local.',
+          t('O estúdio ainda não respondeu'),
+          error instanceof Error ? error.message : t('Verifique o servidor local.'),
           'plug',
           button(
-            'Tentar de novo',
+            t('Tentar de novo'),
             () => {
               void start();
             },
@@ -57,33 +81,38 @@ export function renderAuth(configured: boolean): void {
   const confirmation = input('confirmation', '', 'password');
   confirmation.autocomplete = 'new-password';
   confirmation.required = !configured;
-  const { form, fields } = formWithSave(configured ? 'Entrar no estúdio' : 'Criar acesso local', async () => {
-    if (!configured && password.value !== confirmation.value)
-      throw new Error('As senhas precisam ser iguais.');
-    const secret = password.value;
-    password.value = '';
-    confirmation.value = '';
-    const status = await request<AuthStatus>(`/api/auth/${configured ? 'login' : 'setup'}`, 'POST', {
-      password: secret,
-    });
-    setCsrfToken(status.csrfToken || '');
-    await refresh();
-  });
-  fields.append(field('Sua senha local', password, configured ? undefined : 'Use pelo menos 12 caracteres.'));
-  if (!configured) fields.append(field('Confirme a senha', confirmation));
+  const { form, fields } = formWithSave(
+    configured ? t('Entrar no estúdio') : t('Criar acesso local'),
+    async () => {
+      if (!configured && password.value !== confirmation.value)
+        throw new Error(t('As senhas precisam ser iguais.'));
+      const secret = password.value;
+      password.value = '';
+      confirmation.value = '';
+      const status = await request<AuthStatus>(`/api/auth/${configured ? 'login' : 'setup'}`, 'POST', {
+        password: secret,
+      });
+      setCsrfToken(status.csrfToken || '');
+      await refresh();
+    },
+  );
+  fields.append(
+    field(t('Sua senha local'), password, configured ? undefined : t('Use pelo menos 12 caracteres.')),
+  );
+  if (!configured) fields.append(field(t('Confirme a senha'), confirmation));
   const authBox = el(
     'section',
     { className: 'auth-box' },
-    el('h1', {}, configured ? 'Entrar no Framechester' : 'Configurar acesso local'),
+    el('h1', {}, configured ? t('Entrar no Framechester') : t('Configurar acesso local')),
     el(
       'p',
       {},
       configured
-        ? 'Use a senha desta instalação.'
-        : 'Defina uma senha para proteger seus canais neste computador.',
+        ? t('Use a senha desta instalação.')
+        : t('Defina uma senha para proteger seus canais neste computador.'),
     ),
     form,
-    el('p', { className: 'auth-privacy' }, 'As credenciais das redes sociais ficam no cofre local.'),
+    el('p', { className: 'auth-privacy' }, t('As credenciais das redes sociais ficam no cofre local.')),
   );
   replace(
     root,
@@ -92,10 +121,10 @@ export function renderAuth(configured: boolean): void {
       { className: 'auth-layout' },
       el('header', { className: 'auth-brand' }, brand()),
       el('div', { className: 'auth-main' }, authBox),
-      el('footer', { className: 'auth-footer' }, 'Somente neste computador'),
+      el('footer', { className: 'auth-footer' }, t('Somente neste computador'), languagePicker()),
     ),
   );
-  document.title = 'Acesso local · Framechester';
+  document.title = t('Acesso local · Framechester');
 }
 
 export function brand(): HTMLElement {
@@ -111,7 +140,7 @@ function render(): void {
   if (!studio.data) return;
   const page = currentPage();
   document.title = `${pages[page].title} · Framechester`;
-  const nav = el('nav', { className: 'nav', 'aria-label': 'Navegação principal' });
+  const nav = el('nav', { className: 'nav', 'aria-label': t('Navegação principal') });
   // Everything beyond making a video is one click away, collapsed unless you are there.
   const advanced = el(
     'details',
@@ -123,7 +152,7 @@ function render(): void {
           'nav-group-label flex cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden',
       },
       icon('chevron'),
-      'Avançado',
+      t('Avançado'),
     ),
   );
   advanced.open = pages[page].advanced;
@@ -156,18 +185,19 @@ function render(): void {
     el(
       'div',
       { className: 'studio-sidebar-bottom' },
-      el('span', { className: 'field-hint' }, 'Execução local'),
+      el('span', { className: 'field-hint' }, t('Execução local')),
+      languagePicker(),
       button(
-        'Sair',
+        t('Sair'),
         () => {
           protectEdits(() => {
             void request('/api/auth/logout', 'POST', {})
               .then(async () => {
                 setCsrfToken('');
                 await start();
-                toast('Sessão encerrada.');
+                toast(t('Sessão encerrada.'));
               })
-              .catch(() => toast('Não foi possível encerrar a sessão.', true));
+              .catch(() => toast(t('Não foi possível encerrar a sessão.'), true));
           });
         },
         'ghost',
@@ -179,10 +209,10 @@ function render(): void {
     'channel',
     studio.data.channels.length
       ? studio.data.channels.map((channel) => [channel.id, channel.name])
-      : [['', 'Nenhum canal criado']],
+      : [['', t('Nenhum canal criado')]],
     studio.channelId,
   );
-  picker.setAttribute('aria-label', 'Canal selecionado');
+  picker.setAttribute('aria-label', t('Canal selecionado'));
   picker.setAttribute('data-testid', 'channel-select');
   picker.addEventListener('change', () => {
     const selected = picker.value;
@@ -197,7 +227,7 @@ function render(): void {
       render();
     });
   });
-  const mobile = iconButton('Abrir menu', 'menu', () => {
+  const mobile = iconButton(t('Abrir menu'), 'menu', () => {
     const opened = sidebar.classList.toggle('open');
     mobile.setAttribute('aria-expanded', String(opened));
     if (opened) sidebar.querySelector<HTMLAnchorElement>('a[aria-current="page"]')?.focus();
@@ -211,18 +241,18 @@ function render(): void {
     'header',
     { className: 'topbar' },
     mobile,
-    el('label', { className: 'channel-picker' }, el('span', {}, 'Canal'), picker),
+    el('label', { className: 'channel-picker' }, el('span', {}, t('Canal')), picker),
     el('div', { className: 'spacer' }),
-    engine?.available === false ? el('span', { className: 'field-hint' }, 'Produção indisponível') : null,
-    iconButton('Atualizar dados do estúdio', 'refresh', () =>
+    engine?.available === false ? el('span', { className: 'field-hint' }, t('Produção indisponível')) : null,
+    iconButton(t('Atualizar dados do estúdio'), 'refresh', () =>
       protectEdits(() => {
-        void action(async () => undefined, 'Dados atualizados.');
+        void action(async () => undefined, t('Dados atualizados.'));
       }),
     ),
   );
   const content = el('main', { className: 'content', id: 'main-content', tabindex: '-1' });
   content.append(renderers[page]());
-  const skip = el('a', { href: '#main-content', className: 'skip-link' }, 'Ir para o conteúdo');
+  const skip = el('a', { href: '#main-content', className: 'skip-link' }, t('Ir para o conteúdo'));
   skip.addEventListener('click', (event) => {
     event.preventDefault();
     content.focus();
@@ -267,7 +297,7 @@ window.addEventListener('hashchange', () => {
 
 window.addEventListener('session-expired', () => {
   if (!studio.loading) {
-    toast('Sua sessão terminou. Entre novamente para continuar.', true);
+    toast(t('Sua sessão terminou. Entre novamente para continuar.'), true);
     void start();
   }
 });

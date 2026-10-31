@@ -4,6 +4,10 @@ import type { AreaCatalog } from './index.ts';
 
 export default {
   en: {
+    'O Instagram @{username} não está ligado a nenhuma Página autorizada. Contas encontradas: {found}.':
+      'Instagram @{username} is not linked to any authorized Page. Accounts found: {found}.',
+    'Nenhuma Página autorizada tem uma conta profissional do Instagram ligada. Ligue o Instagram à Página (Configurações da Página → Contas vinculadas) e autorize a Página e o Instagram ao conectar.':
+      'No authorized Page has a linked Instagram professional account. Link Instagram to the Page (Page settings → Linked accounts) and authorize both the Page and Instagram when connecting.',
     'O armazenamento privado de consumo está indisponível ou é inválido. Preserve o histórico e verifique as permissões antes de tentar novamente.':
       'Private usage storage is unavailable or invalid. Keep the history and check the permissions before trying again.',
     'O registro de consumo contém campos, tokens, custo, canal, provedor ou modelo inválidos.':
@@ -474,6 +478,10 @@ export default {
       'Voice without commercial approval in this installation. Choose a Kokoro voice from the catalog (PT-BR, EN-US or ES) in Settings. Legacy Piper voices are blocked.',
   },
   es: {
+    'O Instagram @{username} não está ligado a nenhuma Página autorizada. Contas encontradas: {found}.':
+      'El Instagram @{username} no está vinculado a ninguna Página autorizada. Cuentas encontradas: {found}.',
+    'Nenhuma Página autorizada tem uma conta profissional do Instagram ligada. Ligue o Instagram à Página (Configurações da Página → Contas vinculadas) e autorize a Página e o Instagram ao conectar.':
+      'Ninguna Página autorizada tiene una cuenta profesional de Instagram vinculada. Vincula Instagram a la Página (Configuración de la Página → Cuentas vinculadas) y autoriza la Página e Instagram al conectar.',
     'O armazenamento privado de consumo está indisponível ou é inválido. Preserve o histórico e verifique as permissões antes de tentar novamente.':
       'El almacenamiento privado de consumo no está disponible o no es válido. Conserva el historial y revisa los permisos antes de volver a intentarlo.',
     'O registro de consumo contém campos, tokens, custo, canal, provedor ou modelo inválidos.':

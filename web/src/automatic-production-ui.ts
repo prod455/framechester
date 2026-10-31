@@ -174,12 +174,13 @@ export function openAutomaticProduction(options: AutomaticProductionOptions): HT
     'settings',
   );
   setup.hidden = true;
+  setup.classList.add('w-fit', 'justify-self-start');
   // Only what every video needs stays in view; references, format and manual paths wait in
   // one disclosure (Hick's law, progressive disclosure). Cost and status never hide.
   const more = el(
     'details',
-    { className: 'more-options' },
-    el('summary', {}, 'Mais opções'),
+    { className: 'grid gap-3' },
+    el('summary', { className: 'w-fit cursor-pointer text-sm font-medium' }, 'Mais opções'),
     el(
       'div',
       { className: 'form-stack' },

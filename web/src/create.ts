@@ -1,6 +1,6 @@
 import type { Bootstrap, Script, WebJob } from '../shared/types.ts';
 import { button, el } from './dom.ts';
-import { empty } from './components.ts';
+import { empty, heading } from './components.ts';
 
 export type StepState = 'done' | 'current' | 'waiting' | 'stopped';
 export interface Step {
@@ -110,9 +110,10 @@ export interface CreateActions {
   allVideos: () => void;
 }
 
+// Basecoat badge variants; "primary" is the default look.
 const stateVariants: Record<StepState, string> = {
   done: 'secondary',
-  current: 'default',
+  current: 'primary',
   waiting: 'outline',
   stopped: 'destructive',
 };
@@ -122,19 +123,17 @@ const stateLabels: Record<StepState, string> = {
   waiting: 'Depois',
   stopped: 'Parou',
 };
+// Static class names so Tailwind generates them (no inline styles under the CSP).
+const meterWidths = ['w-0', 'w-1/4', 'w-1/2', 'w-3/4', 'w-full'];
 
 export function renderCreate(state: Bootstrap, channelId: string, actions: CreateActions): HTMLElement {
   const channel = state.channels.find((item) => item.id === channelId);
   if (!channel)
-    return el(
-      'section',
-      { className: 'create-flow' },
-      empty(
-        'Crie seu canal para começar',
-        'Um canal guarda o nome, o público e as contas conectadas. Depois disso, é só mandar a pauta.',
-        'channels',
-        button('Criar canal', actions.createChannel, 'primary', 'plus'),
-      ),
+    return empty(
+      'Crie seu canal para começar',
+      'Um canal guarda o nome, o público e as contas conectadas. Depois disso, é só mandar a pauta.',
+      'channels',
+      button('Criar canal', actions.createChannel, 'primary', 'plus'),
     );
   const progress = videoProgress(state, channelId);
   const { job } = progress;
@@ -142,25 +141,54 @@ export function renderCreate(state: Bootstrap, channelId: string, actions: Creat
   // How far this video is (goal-gradient): the bar fills as steps finish.
   const meter = el(
     'div',
-    { className: 'create-meter' },
-    el('progress', { max: '4', value: String(done), 'aria-label': 'Passos concluídos' }),
+    { className: 'flex items-center gap-3' },
+    el(
+      'div',
+      {
+        className: 'progress max-w-xs flex-1',
+        role: 'progressbar',
+        'aria-label': 'Passos concluídos',
+        'aria-valuemin': '0',
+        'aria-valuemax': '4',
+        'aria-valuenow': String(done),
+      },
+      el('span', { className: meterWidths[done] }),
+    ),
     el(
       'span',
-      { role: 'status' },
+      { className: 'shrink-0 text-sm whitespace-nowrap text-muted-foreground', role: 'status' },
       done === 4 ? 'Vídeo enviado. Falta só publicar no YouTube Studio.' : `${done} de 4 passos`,
     ),
   );
-  const list = el('ol', { className: 'create-steps' });
+  const list = el('ol', { className: 'item-group' });
   for (const [index, step] of progress.steps.entries()) {
     const action = stepAction(step, progress, actions);
     list.append(
       el(
         'li',
-        { className: 'create-step', 'data-state': step.state, 'data-testid': `step-${step.key}` },
-        el('span', { className: 'create-step-number', 'aria-hidden': 'true' }, String(index + 1)),
+        {
+          className: `item${step.state === 'stopped' ? ' border-destructive/60' : ''}`,
+          // Waiting steps recede by surface, not opacity, so text keeps AA contrast.
+          'data-variant': step.state === 'waiting' ? 'muted' : 'outline',
+          'data-state': step.state,
+          'data-testid': `step-${step.key}`,
+        },
         el(
-          'div',
-          { className: 'create-step-copy' },
+          'figure',
+          { 'aria-hidden': 'true' },
+          el(
+            'span',
+            {
+              className: `flex size-8 items-center justify-center rounded-full text-sm font-semibold ${
+                step.state === 'done' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
+              }`,
+            },
+            String(index + 1),
+          ),
+        ),
+        el(
+          'section',
+          { className: 'min-w-0' },
           el(
             'h3',
             {},
@@ -175,37 +203,38 @@ export function renderCreate(state: Bootstrap, channelId: string, actions: Creat
           step.key === 'generate' && step.state === 'current' && job ? working(job) : null,
           step.key === 'publish' && job ? actions.youtubeStatus(job) : null,
         ),
-        action ? el('div', { className: 'create-step-action' }, action) : null,
+        // On narrow screens the actions take their own row under the text, aligned with it.
+        action
+          ? el('aside', { className: 'flex-wrap max-sm:basis-full max-sm:ps-[2.875rem]' }, action)
+          : null,
       ),
     );
   }
+  // The page heading keeps its own bottom margin; the body below has one rhythm (gap-4).
   return el(
-    'section',
-    { className: 'create-flow' },
-    el(
-      'header',
-      { className: 'create-header' },
-      el('h1', {}, 'Criar vídeo'),
-      el('p', {}, `Canal ${channel.name}: pauta, vídeo, revisão e envio, nesta ordem.`),
+    'div',
+    { className: 'mx-auto max-w-3xl' },
+    heading(
+      'Criar vídeo',
+      `Canal ${channel.name}: pauta, vídeo, revisão e envio, nesta ordem.`,
+      button('Ver todos os vídeos', actions.allVideos, 'secondary', 'film'),
     ),
-    meter,
-    list,
-    el(
-      'p',
-      { className: 'create-footer' },
-      button('Ver todos os vídeos', actions.allVideos, 'ghost', 'film'),
-    ),
+    el('div', { className: 'grid gap-4' }, meter, list),
   );
 }
 
-/** Visible work while the engine runs (Doherty): an indeterminate bar and elapsed minutes. */
+/** Visible work while the engine runs (Doherty): a pulsing bar and elapsed minutes. */
 function working(job: WebJob): HTMLElement {
   const started = Date.parse(job.startedAt ?? job.createdAt);
   const minutes = Math.max(0, Math.floor((Date.now() - started) / 60000));
   return el(
     'div',
-    { className: 'create-working' },
-    el('progress', { 'aria-label': 'Gerando vídeo' }),
+    { className: 'mt-1 flex items-center gap-3 text-sm text-muted-foreground' },
+    el(
+      'div',
+      { className: 'progress w-40', role: 'progressbar', 'aria-label': 'Gerando vídeo' },
+      el('span', { className: 'w-1/3 animate-pulse' }),
+    ),
     el('span', {}, minutes < 1 ? 'começou agora' : `há ${minutes} min`),
   );
 }
@@ -225,7 +254,7 @@ function stepAction(step: Step, progress: VideoProgress, actions: CreateActions)
       return step.state === 'stopped'
         ? el(
             'div',
-            { className: 'create-step-buttons' },
+            { className: 'flex flex-wrap gap-2' },
             script ? button('Tentar de novo', () => actions.retry(script), 'primary', 'refresh') : null,
             button('Ver diagnóstico', actions.allVideos, 'secondary'),
           )
@@ -234,7 +263,7 @@ function stepAction(step: Step, progress: VideoProgress, actions: CreateActions)
       if (step.state === 'waiting' || !job) return null;
       return el(
         'div',
-        { className: 'create-step-buttons' },
+        { className: 'flex flex-wrap gap-2' },
         button('Assistir', () => actions.watch(job), job.previewOnly ? 'secondary' : 'primary', 'film'),
         job.previewOnly && script
           ? button('Gerar versão final', () => actions.finalVersion(script), 'primary', 'check')

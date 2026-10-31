@@ -83,8 +83,12 @@ export function productionPage(): HTMLElement {
   // Own files are an occasional need: one place, collapsed (progressive disclosure, Hick).
   const library = el(
     'details',
-    { className: 'library-disclosure' },
-    el('summary', {}, `Arquivos próprios do canal (${assets.length})`),
+    { className: 'grid gap-3 border-t pt-4' },
+    el(
+      'summary',
+      { className: 'w-fit cursor-pointer font-semibold' },
+      `Arquivos próprios do canal (${assets.length})`,
+    ),
     el(
       'p',
       { className: 'field-hint' },
@@ -116,9 +120,13 @@ export function jobCard(job: WebJob): HTMLElement {
   const stages = active
     ? el(
         'div',
-        { className: 'job-stages' },
-        el('progress', { className: 'job-progress', 'aria-label': 'Produzindo' }),
-        el('span', { className: 'job-stage reached' }, job.startedAt ? 'Motor trabalhando' : 'Na fila'),
+        { className: 'mt-4 flex items-center gap-3 text-sm text-muted-foreground' },
+        el(
+          'div',
+          { className: 'progress w-40', role: 'progressbar', 'aria-label': 'Produzindo' },
+          el('span', { className: 'w-1/3 animate-pulse' }),
+        ),
+        el('span', {}, job.startedAt ? 'Motor trabalhando' : 'Na fila'),
       )
     : null;
   // QA labels only when something still needs a look; "aprovado" is already in the message.
@@ -156,44 +164,42 @@ export function jobCard(job: WebJob): HTMLElement {
           'refresh',
         )
       : null;
+  // Thumbnail in one column, everything about the video in the title's column, so messages
+  // and actions line up with the title instead of the thumbnail's edge.
   return el(
     'article',
-    { className: 'job-card', 'data-testid': `job-${job.id}` },
+    { className: 'job-card flex gap-4 max-sm:flex-col', 'data-testid': `job-${job.id}` },
+    mediaThumbnail(job),
     el(
       'div',
-      { className: 'job-card-heading' },
-      mediaThumbnail(job),
+      { className: 'min-w-0 flex-1' },
+      // The state sits with the title it describes (law of proximity).
       el(
         'div',
-        {},
-        // The state sits with the title it describes (law of proximity).
-        el(
-          'div',
-          { className: 'job-title-row' },
-          el('h3', { title: script?.title || 'Vídeo do canal' }, script?.title || 'Vídeo do canal'),
-          badge(job.status),
-        ),
-        el(
-          'p',
-          {},
-          `${job.previewOnly ? 'Prévia' : 'Versão final'} · ${date(job.createdAt)}${job.engine ? ` · ${job.engine === 'motion' ? 'Motor motion' : 'Imagens por cena'}` : ''}`,
-        ),
+        { className: 'flex min-w-0 items-center gap-3 [&>h3]:min-w-0 [&>h3]:truncate [&>.badge]:shrink-0' },
+        el('h3', { title: script?.title || 'Vídeo do canal' }, script?.title || 'Vídeo do canal'),
+        badge(job.status),
       ),
+      el(
+        'p',
+        {},
+        `${job.previewOnly ? 'Prévia' : 'Versão final'} · ${date(job.createdAt)}${job.engine ? ` · ${job.engine === 'motion' ? 'Motor motion' : 'Imagens por cena'}` : ''}`,
+      ),
+      stages,
+      diagnostic,
+      qa,
+      youtubeStatus(job),
+      job.videoAvailable || retry
+        ? el(
+            'div',
+            { className: 'job-artifacts' },
+            retry,
+            job.videoAvailable ? button('Assistir', () => viewJob(job), 'secondary', 'film') : null,
+            finalVersionButton(job, script),
+            youtubeButton(job),
+          )
+        : null,
     ),
-    stages,
-    diagnostic,
-    qa,
-    youtubeStatus(job),
-    job.videoAvailable || retry
-      ? el(
-          'div',
-          { className: 'job-artifacts' },
-          retry,
-          job.videoAvailable ? button('Assistir', () => viewJob(job), 'secondary', 'film') : null,
-          finalVersionButton(job, script),
-          youtubeButton(job),
-        )
-      : null,
   );
 }
 
@@ -217,7 +223,13 @@ export function youtubeStatus(job: WebJob): HTMLElement | null {
     `Enviado ao YouTube como privado em ${date(youtube.uploadedAt)}. ${thumbnail}`,
     el(
       'a',
-      { href: studioUrl, target: '_blank', rel: 'noopener noreferrer' },
+      {
+        href: studioUrl,
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        // Links in running text are underlined, not told apart by colour alone (WCAG 1.4.1).
+        className: 'underline underline-offset-4',
+      },
       'Revisar e publicar no YouTube Studio',
     ),
   );

@@ -44,7 +44,7 @@ export function channelsPage(): HTMLElement {
                 // Same badges in the same place on every card (law of similarity).
                 el(
                   'div',
-                  { className: 'entity-card-badges' },
+                  { className: 'flex gap-2' },
                   channel.id === studio.channelId
                     ? el('span', { className: 'badge', 'data-variant': 'secondary' }, 'Selecionado')
                     : null,
@@ -56,7 +56,10 @@ export function channelsPage(): HTMLElement {
               // Labelled facts: read, don't decode (recognition over recall).
               el(
                 'dl',
-                { className: 'channel-facts' },
+                {
+                  className:
+                    'mt-3 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm [&>dt]:text-muted-foreground [&>dd]:break-words',
+                },
                 el('dt', {}, 'Nicho'),
                 el('dd', {}, channel.niche || 'a definir'),
                 el('dt', {}, 'Envio ao YouTube'),
@@ -76,9 +79,10 @@ export function channelsPage(): HTMLElement {
                   'ghost',
                   'arrow',
                 ),
+                // Space between frequent and destructive actions (Fitts).
                 el(
                   'div',
-                  { className: 'card-actions' },
+                  { className: 'card-actions gap-4' },
                   iconButton(`Editar ${channel.name}`, 'edit', () => editChannel(channel)),
                   iconButton(`Excluir ${channel.name}`, 'trash', () =>
                     deleteRecord('channels', channel.id, channel.name),

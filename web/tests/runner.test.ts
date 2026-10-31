@@ -1224,7 +1224,10 @@ test('a Short is cut from an approved motion video, inherits its review and goes
       /só vídeo vertical/,
       'A horizontal video does not go to a Reels-only network',
     );
-    await assert.rejects(runner.publish('tech', short.id, 'instagram'), /não recebe envio/);
+    await assert.rejects(
+      runner.publish('tech', 'source-final', 'instagram'),
+      /Instagram recebe só vídeo vertical/,
+    );
   } finally {
     await runner.close();
     await rm(home, { recursive: true, force: true });
@@ -1235,7 +1238,7 @@ test('each opted-in network gets the approved video once, with the others cited,
   const home = await mkdtemp(join(tmpdir(), 'framechester-web-networks-'));
   const input = state();
   input.scripts[0].format = 'long';
-  input.channels[0].autoUpload = ['youtube', 'tiktok', 'facebook'];
+  input.channels[0].autoUpload = ['youtube', 'tiktok', 'instagram', 'facebook'];
   await mkdir(join(home, 'production'), { recursive: true });
   await writeFile(
     join(home, 'production', 'jobs.json'),
@@ -1307,7 +1310,7 @@ test('each opted-in network gets the approved video once, with the others cited,
         ['youtube', false],
         ['tiktok', false],
       ],
-      'A horizontal video skips the Reels-only Facebook',
+      'A horizontal video skips the Reels-only Instagram and Facebook',
     );
     assert.equal(
       uploads[0].description,

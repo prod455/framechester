@@ -4,7 +4,7 @@ import { button, el, field, input, textarea } from '../dom.ts';
 import { currentChannel, go, refresh, render, save, state, studio } from '../studio/state.ts';
 import { toast } from '../studio/toast.ts';
 import type { Channel, Platform } from '../../shared/types.ts';
-import { platformLabels, publishingPlatforms } from '../../shared/publishing.ts';
+import { platformLabels, publicPlatforms, publishingPlatforms } from '../../shared/publishing.ts';
 import { t } from '../../shared/i18n.ts';
 
 export function requiredChannel(): HTMLElement | undefined {
@@ -64,7 +64,13 @@ export function channelsPage(): HTMLElement {
                   'dd',
                   {},
                   channel.autoUpload?.length
-                    ? `${channel.autoUpload.map((network) => platformLabels[network]).join(', ')} · ${t('nunca público')}`
+                    ? channel.autoUpload
+                        .map((network) =>
+                          publicPlatforms.includes(network)
+                            ? `${platformLabels[network]} (${t('público')})`
+                            : platformLabels[network],
+                        )
+                        .join(', ')
                     : t('manual'),
                 ),
                 el('dt', {}, t('Identificador')),
@@ -187,7 +193,9 @@ export function editChannel(record?: Channel): void {
     facebook: t(
       'Enviar cada vídeo vertical aprovado ao Facebook como rascunho de Reel (exige a Página conectada com permissão de envio)',
     ),
-    instagram: '',
+    instagram: t(
+      'Publicar cada vídeo vertical aprovado no Instagram como Reel público, sem revisão na rede (exige a conta conectada com permissão de publicação)',
+    ),
   };
   fields.append(
     ...autoUpload.map(({ network, box }) =>

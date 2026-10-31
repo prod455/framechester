@@ -29,7 +29,7 @@ import { toast } from '../studio/toast.ts';
 import { requiredChannel } from './channels.ts';
 import { t, translateMessage } from '../../shared/i18n.ts';
 import type { Platform, Script, WebJob } from '../../shared/types.ts';
-import { canPublish, platformLabels, publishingPlatforms } from '../../shared/publishing.ts';
+import { canPublish, platformLabels, publicPlatforms, publishingPlatforms } from '../../shared/publishing.ts';
 
 export function productionPage(): HTMLElement {
   const missing = requiredChannel();
@@ -243,16 +243,21 @@ export function shortButton(job: WebJob): HTMLElement | null {
 }
 
 /** Where the operator reviews and publishes what was sent; TikTok has no web page for it. */
-function reviewLink(platform: Platform, postId: string): HTMLElement | null {
+function reviewLink(platform: Platform, postId: string, url?: string): HTMLElement | null {
+  const permalink = url && URL.canParse(url) ? new URL(url) : undefined;
   const target =
-    platform === 'youtube'
-      ? {
-          href: `https://studio.youtube.com/video/${encodeURIComponent(postId)}/edit`,
-          label: t('Revisar e publicar no YouTube Studio'),
-        }
-      : platform === 'facebook'
-        ? { href: 'https://business.facebook.com/', label: t('Revisar e publicar no Meta Business Suite') }
-        : null;
+    platform === 'instagram'
+      ? permalink?.protocol === 'https:' && permalink.hostname === 'www.instagram.com'
+        ? { href: permalink.href, label: t('Ver no Instagram') }
+        : null
+      : platform === 'youtube'
+        ? {
+            href: `https://studio.youtube.com/video/${encodeURIComponent(postId)}/edit`,
+            label: t('Revisar e publicar no YouTube Studio'),
+          }
+        : platform === 'facebook'
+          ? { href: 'https://business.facebook.com/', label: t('Revisar e publicar no Meta Business Suite') }
+          : null;
   if (!target) return null;
   return el(
     'a',
@@ -273,10 +278,12 @@ function uploadedText(platform: Platform, when: string): string {
     return t('Enviado ao TikTok como "Somente eu" em {date}. Revise e publique pelo app do TikTok.', {
       date: when,
     });
+  if (platform === 'instagram')
+    return t('Publicado no Instagram como Reel público em {date}.', { date: when });
   return t('Enviado ao Facebook como rascunho de Reel em {date}.', { date: when });
 }
 
-/** One line per network the video went to; nothing is public until the operator publishes there. */
+/** One line per network the video went to; only Instagram is public, the rest wait for the operator. */
 export function publicationStatus(job: WebJob, only?: Platform): HTMLElement | null {
   const lines = publishingPlatforms
     .filter((platform) => !only || platform === only)
@@ -285,7 +292,13 @@ export function publicationStatus(job: WebJob, only?: Platform): HTMLElement | n
       if (!publication) return null;
       const network = platformLabels[platform];
       if (publication.status === 'uploading')
-        return el('p', { role: 'status' }, t('Enviando ao {network} sem publicar…', { network }));
+        return el(
+          'p',
+          { role: 'status' },
+          publicPlatforms.includes(platform)
+            ? t('Publicando no {network}…', { network })
+            : t('Enviando ao {network} sem publicar…', { network }),
+        );
       if (publication.status === 'failed')
         return el(
           'p',
@@ -305,7 +318,7 @@ export function publicationStatus(job: WebJob, only?: Platform): HTMLElement | n
         'p',
         {},
         `${uploadedText(platform, date(publication.uploadedAt))} ${thumbnail}`,
-        reviewLink(platform, publication.postId),
+        reviewLink(platform, publication.postId, publication.url),
       );
     })
     .filter((line) => line !== null);
@@ -333,32 +346,63 @@ export function publishButton(job: WebJob, platform: Platform): HTMLElement | nu
     youtube: t('Enviar ao YouTube (privado)'),
     tiktok: t('Enviar ao TikTok (Somente eu)'),
     facebook: t('Enviar ao Facebook (rascunho)'),
-    instagram: '',
+    instagram: t('Publicar no Instagram (público)'),
+  };
+  const send = async () => {
+    action.disabled = true;
+    try {
+      await request(
+        channelPath(`/jobs/${encodeURIComponent(job.id)}/publish/${encodeURIComponent(platform)}`),
+        'POST',
+        {},
+      );
+      await refresh();
+      toast(
+        publicPlatforms.includes(platform)
+          ? t('Publicação iniciada. O Reel fica público assim que o {network} terminar de processar.', {
+              network,
+            })
+          : t('Envio iniciado. Nada fica público: publique pelo próprio {network}.', { network }),
+      );
+    } catch (error) {
+      action.disabled = false;
+      toast(
+        error instanceof Error ? translateMessage(error.message) : t('Não foi possível iniciar o envio.'),
+      );
+    }
   };
   const action = button(
     status === 'failed' ? t('Tentar enviar ao {network} de novo', { network }) : labels[platform],
-    async () => {
-      action.disabled = true;
-      try {
-        await request(
-          channelPath(`/jobs/${encodeURIComponent(job.id)}/publish/${encodeURIComponent(platform)}`),
-          'POST',
-          {},
-        );
-        await refresh();
-        toast(t('Envio iniciado. Nada fica público: publique pelo próprio {network}.', { network }));
-      } catch (error) {
-        action.disabled = false;
-        toast(
-          error instanceof Error ? translateMessage(error.message) : t('Não foi possível iniciar o envio.'),
-        );
-      }
-    },
+    () => (publicPlatforms.includes(platform) ? confirmPublic(network, send) : void send()),
     'secondary',
     'external',
   );
   action.dataset.testid = `publish-${platform}-${job.id}`;
   return action;
+}
+
+/** A public post cannot be taken back quietly: the click is confirmed before anything is sent. */
+function confirmPublic(network: string, send: () => Promise<void>): void {
+  const { dialog, body } = createDialog(t('Publicar agora no {network}?', { network }));
+  body.append(
+    el(
+      'p',
+      { className: 'muted' },
+      t(
+        'O {network} não tem rascunho nem modo privado na API: o Reel fica público para todos assim que terminar de processar.',
+        { network },
+      ),
+    ),
+  );
+  const { form } = formWithSave(
+    t('Publicar no {network}', { network }),
+    async () => {
+      dialog.close();
+      await send();
+    },
+    () => dialog.close(),
+  );
+  body.append(form);
 }
 
 /** YouTube always, since it is the channel's home; the other networks once they are connected. */

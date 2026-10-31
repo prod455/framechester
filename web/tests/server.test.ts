@@ -843,20 +843,28 @@ test('the per-network opt-in is validated, the legacy YouTube flag migrates, and
     assert.deepEqual(channels.channels.find((item: { id: string }) => item.id === 'tech').autoUpload, [
       'youtube',
     ]);
-    for (const autoUpload of [['instagram'], ['myspace'], 'youtube'])
+    for (const autoUpload of [
+      ['youtube', 'tiktok', 'instagram', 'facebook', 'youtube'],
+      ['myspace'],
+      'youtube',
+    ])
       assert.equal(
         (await context.call('/api/channels/tech', 'PUT', { name: 'tech', autoUpload })).status,
         400,
         JSON.stringify(autoUpload),
       );
     assert.equal(
-      (await context.call('/api/channels/tech', 'PUT', { name: 'tech', autoUpload: ['facebook', 'tiktok'] }))
-        .status,
+      (
+        await context.call('/api/channels/tech', 'PUT', {
+          name: 'tech',
+          autoUpload: ['facebook', 'instagram', 'tiktok'],
+        })
+      ).status,
       200,
     );
     channels = await (await context.call('/api/bootstrap')).json();
     const saved = channels.channels.find((item: { id: string }) => item.id === 'tech');
-    assert.deepEqual(saved.autoUpload, ['tiktok', 'facebook'], 'Fixed order, no duplicates');
+    assert.deepEqual(saved.autoUpload, ['tiktok', 'instagram', 'facebook'], 'Fixed order');
     assert.equal(saved.youtubeAutoUpload, undefined);
     assert.equal(
       (await fetch(context.origin + '/api/channels/tech/jobs/job-1/publish/tiktok', { method: 'POST' }))

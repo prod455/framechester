@@ -1,11 +1,13 @@
-// Which networks accept a non-public upload, and the cross-reference block every description carries.
+// Which networks the Studio sends to, and the cross-reference block every description carries.
 import type { Platform, ProfileLink } from './types.ts';
 
-/** Networks whose API takes the video without making it public: YouTube private, TikTok
- * SELF_ONLY, Facebook Reel draft. Instagram's API only publishes publicly, so it stays out. */
-export const publishingPlatforms: readonly Platform[] = ['youtube', 'tiktok', 'facebook'];
-/** Facebook receives the video as a Reel, which is vertical only. */
-export const verticalOnly: readonly Platform[] = ['facebook'];
+/** Networks the Studio sends to: YouTube private, TikTok SELF_ONLY, Facebook Reel draft, and
+ * Instagram, whose API has no draft or private mode and publishes publicly. */
+export const publishingPlatforms: readonly Platform[] = ['youtube', 'tiktok', 'instagram', 'facebook'];
+/** Sending there makes the post public at once; the operator authorizes it explicitly. */
+export const publicPlatforms: readonly Platform[] = ['instagram'];
+/** Facebook and Instagram receive the video as a Reel, which the Studio keeps vertical. */
+export const verticalOnly: readonly Platform[] = ['instagram', 'facebook'];
 
 export const platformLabels: Record<Platform, string> = {
   youtube: 'YouTube',

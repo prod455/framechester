@@ -94,7 +94,7 @@ export interface NetworkCapability {
   connectionMethod: 'oauth' | 'token';
   metricsAvailable: boolean;
   revenueAvailable: boolean;
-  /** The API takes the video without making it public (private, SELF_ONLY or draft). */
+  /** The Studio sends the video: non-public, or public where `publicPublishing` says so. */
   publishingAvailable: boolean;
   /** What the operator types to say which account is expected, checked after authorization. */
   accountLabel: string;
@@ -195,10 +195,17 @@ export interface WebJob {
   kind?: 'short';
   sourceJobId?: string;
 }
-/** Uploads never go public: publishing stays a decision the operator makes on each network. */
+/** YouTube, TikTok and Facebook uploads are non-public; Instagram publishes publicly. */
 export type Publication =
   | { status: 'uploading'; startedAt: string }
-  | { status: 'uploaded'; postId: string; uploadedAt: string; thumbnail?: YoutubeThumbnail }
+  | {
+      status: 'uploaded';
+      postId: string;
+      uploadedAt: string;
+      thumbnail?: YoutubeThumbnail;
+      /** Public permalink, Instagram only: the post is already public. */
+      url?: string;
+    }
   | { status: 'failed'; message: string; failedAt: string };
 export interface AppState {
   schemaVersion: 1;
@@ -250,6 +257,8 @@ export interface TokenConnectionInput {
 export interface OAuthInput {
   channelId: string;
   platform: Platform;
+  /** Facebook Login for Business configuration; Instagram's file upload requires it. */
+  configId?: string;
   accountId: string;
   clientId: string;
   clientSecret: string;
@@ -296,6 +305,7 @@ export interface VideoUpload {
 export interface PublishResult {
   postId: string;
   thumbnail?: YoutubeThumbnail;
+  url?: string;
 }
 /** `set` when YouTube accepted the thumbnail; an error keeps the video uploaded. */
 export type YoutubeThumbnail = 'set' | { error: string };

@@ -1092,7 +1092,7 @@ export class LocalRunner implements RunnerApi {
     const short = job.kind === 'short';
     const vertical = short || script?.format === 'short';
     if (!canPublish(platform, vertical))
-      throw new RunnerError('O Facebook recebe só vídeo vertical, como Reel; envie o Short deste vídeo.');
+      throw new RunnerError(`O ${label} recebe só vídeo vertical, como Reel; envie o Short deste vídeo.`);
     const video = await this.file(channelId, jobId, 'video');
     // A Short reuses the source's description; YouTube picks a Short's frame, not a thumbnail.
     const description = await this.file(channelId, short ? job.sourceJobId! : jobId, 'description');
@@ -1139,6 +1139,7 @@ export class LocalRunner implements RunnerApi {
           postId: sent.postId,
           uploadedAt: new Date().toISOString(),
           ...(sent.thumbnail ? { thumbnail: sent.thumbnail } : {}),
+          ...(sent.url ? { url: sent.url } : {}),
         };
       } catch (error) {
         result = {

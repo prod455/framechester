@@ -294,6 +294,7 @@ mod tests {
                 duration_secs: text.split_whitespace().count() as f32 * 0.35,
                 leading_silence_secs: 0.05,
                 trailing_silence_secs: 0.1,
+                pauses: Vec::new(),
             })
             .collect();
         let (segments, duration) = assemble_scene(&texts, &audio, &[false, false]);

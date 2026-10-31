@@ -22,8 +22,8 @@ const usd = (value: number) =>
 
 export function openAutomaticProduction(options: AutomaticProductionOptions): HTMLDialogElement {
   const { dialog, body } = createDialog(
-    'Produzir com IA',
-    `Canal: ${options.channel.name}. Você orienta a criação e revisa o vídeo pronto.`,
+    'Novo vídeo',
+    `Canal: ${options.channel.name}. Você manda a pauta e revisa o vídeo pronto.`,
   );
   const owner = options.channel.id,
     api = options.api ?? request,
@@ -162,31 +162,34 @@ export function openAutomaticProduction(options: AutomaticProductionOptions): HT
         status.textContent = 'Pedido alterado. Calcule novamente antes de autorizar.';
       }
     });
-  fields.append(
-    field(
-      'O que você quer produzir?',
-      brief,
-      'Descreva o assunto e o resultado esperado. A IA cuida do roteiro e da narrativa.',
-    ),
-    el('div', { className: 'form-grid' }, field('Duração', format), field('Referência do canal', reference)),
-    styleField,
-    el('p', {}, 'Roteiro → visuais explicativos → narração → montagem com legendas → QA → sua revisão.'),
-    transfer,
-    cost,
-    status,
-    el(
-      'p',
-      { className: 'field-hint' },
-      'O roteiro original é preservado. A criação continua no servidor depois de iniciada. O vídeo recebe identificação de revisão pendente; a publicação permanece desativada.',
-    ),
+  // Without an assistant key the way out is one click away, not a path to remember (Tesler).
+  const setup = button(
+    'Configurar assistente',
+    () =>
+      protectEdits(() => {
+        dialog.close();
+        options.onSettings();
+      }, form),
+    'secondary',
+    'settings',
   );
-  const advanced = el(
+  setup.hidden = true;
+  // Only what every video needs stays in view; references, format and manual paths wait in
+  // one disclosure (Hick's law, progressive disclosure). Cost and status never hide.
+  const more = el(
     'details',
-    {},
-    el('summary', {}, 'Controles avançados'),
+    { className: 'more-options' },
+    el('summary', {}, 'Mais opções'),
     el(
       'div',
       { className: 'form-stack' },
+      field('Referência do canal', reference),
+      styleField,
+      el(
+        'p',
+        { className: 'field-hint' },
+        'Roteiro → visuais → narração → montagem com legendas → QA → sua revisão.',
+      ),
       button(
         'Abrir preparação manual',
         () =>
@@ -209,7 +212,21 @@ export function openAutomaticProduction(options: AutomaticProductionOptions): HT
       ),
     ),
   );
-  body.append(form, advanced);
+  fields.append(
+    field(
+      'Sobre o que é o vídeo?',
+      brief,
+      'Uma ou duas frases. A IA escreve o roteiro; o motor monta cenas, voz e legendas.',
+    ),
+    field('Duração', format),
+    more,
+    transfer,
+    cost,
+    status,
+    setup,
+    el('p', { className: 'field-hint' }, 'Sai como prévia para sua revisão; nada é publicado sem você.'),
+  );
+  body.append(form);
   void api<CreativeCapabilities>(`/api/creative/capabilities?channel_id=${encodeURIComponent(owner)}`)
     .then((capabilities) => {
       if (!active()) return;
@@ -217,6 +234,7 @@ export function openAutomaticProduction(options: AutomaticProductionOptions): HT
       ready = capabilities.available;
       transfer.hidden = !cloud();
       submit.disabled = !ready;
+      setup.hidden = ready;
       setButtonLabel(submit, label(), 'check');
       status.textContent = ready
         ? `Assistente: ${capabilities.selectedModel}. ${cloud() ? 'Calcule o custo antes de autorizar.' : 'A produção usa o modelo local configurado.'}`

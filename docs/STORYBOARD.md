@@ -31,7 +31,7 @@ Storyboard
    └─ transition (cut | fade | push | zoom)
 ```
 
-### Composições (11)
+### Composições (12)
 
 | `kind` | Uso | Campos |
 |---|---|---|
@@ -46,6 +46,7 @@ Storyboard
 | `annotation` | árvore (pastas, arquivos) com notas | `objects` com `parent`, `notes` |
 | `infographic` | cartões de dados | `title`, `objects` |
 | `cause_effect` | causa → consequência, passos | `objects` |
+| `character` | personagem que fala ao lado de um balão | `character` (`presenter`, `developer`, `scientist`, `robot`), `pose` (`explain`, `point`, `think`, `celebrate`), `text` (≤ 140) |
 
 Cada objeto tem `id`, `label` (≤ 60 caracteres), `detail` (≤ 120), `role`
 (`neutral`, `primary`, `secondary`, `accent`, `success`, `warning`, `danger`), `icon`
@@ -96,9 +97,21 @@ O autor do roteiro (pessoa ou modelo) escreve uma diretiva na primeira linha de
 | `#anotacao pasta/arquivo: nota; …` | `annotation` |
 | `#infografico TÍTULO \| rótulo=valor: detalhe; …` | `infographic` |
 | `#causa A => B => C` · `#lista A; B; C` | `cause_effect` |
+| `#personagem PERSONAGEM \| POSE \| FALA` (fala opcional; padrão: título da cena) | `character` |
 
 Qualquer rótulo aceita um ícone `[agent]` e um papel `{primary}`. A linha seguinte do
 `visual_brief` vira o `learning_goal` da cena.
+
+**Personagens.** `#personagem` aceita `apresentador`, `dev`, `cientista` ou `robo` e as
+poses `explicar`, `apontar`, `pensar` ou `comemorar`. Uma cena **sem diretiva** no motor
+motion, ou com `#pergunta` (que vira o personagem pensando na pergunta), ganha o personagem da pauta: o planner procura radicais no título, no gancho e na
+série (IA, agente, LLM → robô; código, software, skill, API → dev; pesquisa, estudo,
+ciência → cientista; senão, apresentador). A pose segue a cena: título com `?` pensa, a
+última cena comemora, as demais alternam explicar e apontar. `#destaque` mantém o título
+tipográfico. Os personagens são figuras vetoriais genéricas desenhadas pelo motor, sem
+arquivo externo nem semelhança com pessoas reais; enquanto a narração toca, a boca mexe,
+os olhos piscam e o braço do gesto balança. Cada pose tem a sua expressão (sobrancelhas e
+boca), e o dev, a cientista e o apresentador seguram um objeto do ofício.
 
 ### Como o planner escolhe os tempos
 

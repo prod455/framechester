@@ -1008,7 +1008,13 @@ test('an opted-in channel sends each approved final version once, privately, and
   const home = await mkdtemp(join(tmpdir(), 'framechester-web-youtube-'));
   const input = state();
   input.channels[0].youtubeAutoUpload = true;
-  const uploads: Array<{ channelId: string; title: string; description: string; video: string }> = [];
+  const uploads: Array<{
+    channelId: string;
+    title: string;
+    description: string;
+    video: string;
+    thumbnail: string;
+  }> = [];
   let fail = false;
   let gate: Promise<void> | undefined;
   const runner = await createRunner({
@@ -1021,6 +1027,7 @@ test('an opted-in channel sends each approved final version once, privately, and
       await mkdir(join(out, 'publish'), { recursive: true });
       await writeFile(join(out, 'render', 'final.mp4'), 'synthetic fixture');
       await writeFile(join(out, 'publish', 'description.txt'), 'Descrição com fontes');
+      await writeFile(join(out, 'render', 'thumbnail.png'), 'synthetic thumbnail');
       const preview = args.includes('--preview-only');
       await writeFile(
         join(out, 'pipeline_report.json'),
@@ -1040,8 +1047,9 @@ test('an opted-in channel sends each approved final version once, privately, and
         title: video.title,
         description: video.description,
         video: await readFile(video.path, 'utf8'),
+        thumbnail: await readFile(video.thumbnail!, 'utf8'),
       });
-      return { videoId: 'abcdefghijk' };
+      return { videoId: 'abcdefghijk', thumbnail: 'set' };
     },
   });
   try {
@@ -1073,8 +1081,10 @@ test('an opted-in channel sends each approved final version once, privately, and
         title: input.scripts[0].title,
         description: 'Descrição com fontes',
         video: 'synthetic fixture',
+        thumbnail: 'synthetic thumbnail',
       },
     ]);
+    assert.equal(done.youtube?.status === 'uploaded' && done.youtube.thumbnail, 'set');
     await assert.rejects(runner.publish('tech', job.id), /já foi enviado/);
 
     fail = true;

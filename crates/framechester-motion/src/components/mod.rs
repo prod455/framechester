@@ -4,6 +4,7 @@
 pub mod annotation;
 pub mod architecture;
 pub mod cause_effect;
+pub mod character;
 pub mod chart;
 pub mod code;
 pub mod comparison;

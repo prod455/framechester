@@ -84,6 +84,55 @@ Transições entre cenas (0,42 s): `push` (padrão a partir da segunda cena), `f
 Justificativa: movimento só quando a narração traz algo novo (um objeto, uma relação,
 um valor) ou para manter o quadro vivo; nunca zoom decorativo, nunca animação aleatória.
 
+## Câmera e variedade
+
+Cada cena tem um movimento lento de câmera que cobre a duração inteira, em ciclo para que
+duas cenas seguidas nunca repitam: aproximar 2,5%, deslizar para a esquerda, afastar
+2,5%, deslizar para a direita (14 px de cada lado, com 1,25% de zoom). As legendas ficam
+fora do movimento. A escala vai para o SVG com 4 casas decimais: com 2, um zoom lento
+andaria em degraus de ~10 px. A primeira cena entra em corte; as seguintes alternam
+empurrar, zoom e fade. O personagem troca de lado nas cenas ímpares (no horizontal e no
+X ele fica à direita do balão, virado para a esquerda).
+
+## Gancho (primeira cena)
+
+O quadro 0 é a capa do Short e a primeira impressão: tudo o que entraria nos primeiros
+0,6 s da cena de abertura já está na tela nele (inclusive o personagem), e um punch-in de
+câmera de 5% assenta em 0,5 s para o quadro inicial já ter movimento. As cenas seguintes
+mantêm suas entradas. O QA bloqueia (`hook_first_frame`) se o quadro 0 não tiver texto
+legível e (`hook_voice`) se a primeira palavra começar depois de 0,5 s.
+
+## Personagens
+
+Quatro figuras vetoriais em estilo flat, desenhadas pelo motor numa caixa de 110 × 160
+unidades: **apresentador** (camisa `PRIMARY`), **dev** (moletom `SECONDARY` e óculos),
+**cientista** (jaleco `INK` e gravata `ACCENT`) e **robô** (corpo `SURFACE_STRONG`, rosto
+de tela e antena `ACCENT`). Mesma pele neutra para os humanos; nenhuma é retrato de pessoa
+real. No vertical o balão ocupa o terço de cima e o personagem fica abaixo; no horizontal
+e no X o personagem ocupa a coluna esquerda e o balão aponta para a cabeça.
+
+**Expressões.** A pose define o rosto: explicar tem sobrancelhas em arco e sorriso;
+apontar, sobrancelhas niveladas e boca reta; pensar, uma sobrancelha erguida e a boca de
+lado; comemorar, as duas no alto e sorriso aberto. **Objetos na mão livre:** notebook (dev),
+frasco com líquido `SECONDARY` (cientista), microfone (apresentador); o robô não segura
+nada e comemorar levanta as duas mãos, então não há objeto.
+
+| Vida | Ritmo |
+|---|---|
+| entrada | sobe 40 px com fade em 0,5 s |
+| boca | abre e fecha a cada 0,14 s, só enquanto um segmento da narração toca |
+| olhos | piscam a cada 3,1 s |
+| braço do gesto | balança 6 px a cada 0,7 s |
+| sobrancelhas | sobem 4 px no começo de cada frase |
+
+## Thumbnail
+
+`render/thumbnail.png`, 1280 × 720: o personagem do vídeo (ou o da pauta) ocupa a coluna
+esquerda apontando para o título, em Inter Bold de 104 a 56 px com barra `ACCENT` ao lado;
+título com `?` usa a pose pensar. Título que não cabe no tamanho mínimo vira aviso no
+relatório, nunca texto cortado. Revisão visual: `cargo run --release -p
+framechester-motion --example preview_components -- <pasta>`.
+
 ## Proibições (impostas por QA quando mensuráveis)
 
 - parágrafos longos ocupando a tela — rótulos ≤ 60 caracteres, detalhes ≤ 120;

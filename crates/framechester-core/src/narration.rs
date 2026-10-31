@@ -1,6 +1,7 @@
 //! Narration segmentation and timing. A scene is narrated as one segment per sentence or
 //! beat, each synthesized separately, so segment boundaries are real audio boundaries.
-//! Word boundaries inside a segment are estimated by interpolation unless an aligner
+//! Word boundaries inside a segment are anchored on the pauses measured in its audio
+//! (commas and breaths) and spread by syllables in between, unless a forced aligner
 //! supplies them; the storyboard records which one it was.
 use crate::storyboard::{NarrationSegment, TimedWord};
 
@@ -94,64 +95,171 @@ fn merge_tiny_segments(segments: Vec<String>) -> Vec<String> {
 }
 
 /// Measured audio of one synthesized segment.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SegmentAudio {
     pub duration_secs: f32,
     /// Silence before the first voiced sample.
     pub leading_silence_secs: f32,
     /// Silence after the last voiced sample.
     pub trailing_silence_secs: f32,
+    /// Silent spans inside the voiced part, relative to the segment start, in order.
+    pub pauses: Vec<(f32, f32)>,
 }
 
-/// Relative weight of a word in time: letters count, digits count double (they are read
-/// as full numbers) and punctuation adds a pause.
-fn word_weight(word: &str) -> f32 {
-    let mut weight = 0.0f32;
-    for character in word.chars() {
+/// Syllables of a word, the unit Portuguese speech advances by: groups of vowels, with
+/// digits read as full numbers (about one and a half syllables each).
+pub fn syllables(word: &str) -> usize {
+    let mut count = 0usize;
+    let mut digits = 0usize;
+    let mut in_vowel = false;
+    for character in word.chars().flat_map(char::to_lowercase) {
         if character.is_ascii_digit() {
-            weight += 2.2;
-        } else if character.is_alphabetic() {
-            weight += 1.0;
-        } else if matches!(character, ',' | ';' | ':') {
-            weight += 1.8;
-        } else if matches!(character, '.' | '!' | '?' | '…') {
-            weight += 2.5;
-        } else if matches!(character, '-' | '—' | '–') {
-            weight += 0.6;
+            digits += 1;
+            in_vowel = false;
+        } else if "aeiouyáàâãéêíóôõúü".contains(character) {
+            if !in_vowel {
+                count += 1;
+            }
+            in_vowel = true;
+        } else {
+            in_vowel = false;
         }
     }
-    weight.max(0.8)
+    (count + (digits * 3).div_ceil(2)).max(1)
 }
 
-/// Estimates word intervals by weight inside the voiced part of a segment. `offset_secs`
-/// is where the segment starts in the scene.
-pub fn estimate_words(text: &str, audio: SegmentAudio, offset_secs: f32) -> Vec<TimedWord> {
+/// A word that closes a phrase: the voice usually pauses after it.
+fn ends_phrase(word: &str) -> bool {
+    word.ends_with([',', ';', ':', '—', '–']) || word.ends_with("...")
+}
+
+/// Estimates word intervals inside the voiced part of a segment. Phrase ends (commas and
+/// the like) are anchored on the measured pauses nearest to where the syllable count
+/// expects them; inside each phrase words are spread by syllables over voiced time only,
+/// so no word is placed in a silence. `offset_secs` is where the segment starts in the
+/// scene.
+pub fn estimate_words(text: &str, audio: &SegmentAudio, offset_secs: f32) -> Vec<TimedWord> {
     let words: Vec<&str> = text.split_whitespace().collect();
     if words.is_empty() {
         return Vec::new();
     }
-    let voiced_start = offset_secs + audio.leading_silence_secs.max(0.0);
-    let voiced_end = (offset_secs + audio.duration_secs - audio.trailing_silence_secs.max(0.0))
-        .max(voiced_start + 0.05);
-    let span = voiced_end - voiced_start;
-    let weights: Vec<f32> = words.iter().map(|word| word_weight(word)).collect();
-    let total: f32 = weights.iter().sum::<f32>().max(0.1);
-    let mut cursor = voiced_start;
-    let mut timed = Vec::with_capacity(words.len());
+    let voiced_start = audio.leading_silence_secs.max(0.0);
+    let voiced_end =
+        (audio.duration_secs - audio.trailing_silence_secs.max(0.0)).max(voiced_start + 0.05);
+    let pauses: Vec<(f32, f32)> = audio
+        .pauses
+        .iter()
+        .copied()
+        .filter(|(start, end)| *start > voiced_start && *end < voiced_end && start < end)
+        .collect();
+    let weights: Vec<f32> = words.iter().map(|word| syllables(word) as f32).collect();
+    let total: f32 = weights.iter().sum();
+    // Phrases: runs of words up to a phrase end; each phrase end may claim one pause.
+    let mut phrases: Vec<std::ops::Range<usize>> = Vec::new();
+    let mut first = 0;
     for (index, word) in words.iter().enumerate() {
-        let end = if index + 1 == words.len() {
-            voiced_end
-        } else {
-            cursor + span * weights[index] / total
-        };
-        timed.push(TimedWord {
-            text: (*word).to_string(),
-            start_secs: cursor,
-            end_secs: end.max(cursor),
+        if ends_phrase(word) && index + 1 < words.len() {
+            phrases.push(first..index + 1);
+            first = index + 1;
+        }
+    }
+    phrases.push(first..words.len());
+    let span = voiced_end - voiced_start;
+    let mut boundaries = vec![voiced_start];
+    let mut used = 0usize;
+    let mut before = 0.0f32;
+    for phrase in &phrases[..phrases.len() - 1] {
+        before += weights[phrase.clone()].iter().sum::<f32>();
+        let expected = voiced_start + span * before / total;
+        let nearest = pauses.iter().enumerate().skip(used).min_by(|a, b| {
+            let distance = |pause: &(f32, f32)| ((pause.0 + pause.1) / 2.0 - expected).abs();
+            distance(a.1).total_cmp(&distance(b.1))
         });
-        cursor = end.max(cursor);
+        match nearest {
+            Some((index, pause)) if ((pause.0 + pause.1) / 2.0 - expected).abs() < span * 0.25 => {
+                boundaries.push(pause.0);
+                boundaries.push(pause.1);
+                used = index + 1;
+            }
+            _ => {
+                boundaries.push(expected);
+                boundaries.push(expected);
+            }
+        }
+    }
+    boundaries.push(voiced_end);
+    let mut timed = Vec::with_capacity(words.len());
+    for (phrase_index, phrase) in phrases.iter().enumerate() {
+        let (start, end) = (
+            boundaries[phrase_index * 2],
+            boundaries[phrase_index * 2 + 1],
+        );
+        let gaps: Vec<(f32, f32)> = pauses
+            .iter()
+            .copied()
+            .filter(|(a, b)| *a > start && *b < end)
+            .collect();
+        let spans = voiced_spans(start, end.max(start), &gaps);
+        let voiced: f32 = spans.iter().map(|(a, b)| b - a).sum::<f32>().max(1e-3);
+        let phrase_total: f32 = weights[phrase.clone()].iter().sum();
+        let mut cumulative = 0.0f32;
+        for index in phrase.clone() {
+            let from = at_voiced(&spans, voiced * cumulative / phrase_total);
+            cumulative += weights[index];
+            let to = if index + 1 == phrase.end {
+                end.max(from)
+            } else {
+                at_voiced(&spans, voiced * cumulative / phrase_total).max(from)
+            };
+            // A word never straddles a silence: it keeps the side with more voice.
+            let (mut from, mut to) = (from, to);
+            for (gap_start, gap_end) in &gaps {
+                if *gap_start >= from && *gap_end <= to {
+                    if gap_start - from >= to - gap_end {
+                        to = *gap_start;
+                    } else {
+                        from = *gap_end;
+                    }
+                }
+            }
+            timed.push(TimedWord {
+                text: words[index].to_string(),
+                start_secs: offset_secs + from,
+                end_secs: offset_secs + to.max(from),
+            });
+        }
     }
     timed
+}
+
+/// `[start, end]` minus the silent gaps, in order.
+fn voiced_spans(start: f32, end: f32, gaps: &[(f32, f32)]) -> Vec<(f32, f32)> {
+    let mut spans = Vec::new();
+    let mut cursor = start;
+    for (gap_start, gap_end) in gaps {
+        if *gap_start > cursor {
+            spans.push((cursor, *gap_start));
+        }
+        cursor = cursor.max(*gap_end);
+    }
+    if end > cursor {
+        spans.push((cursor, end));
+    }
+    if spans.is_empty() {
+        spans.push((start, end.max(start)));
+    }
+    spans
+}
+
+/// Absolute time after `offset` seconds of voiced time.
+fn at_voiced(spans: &[(f32, f32)], mut offset: f32) -> f32 {
+    for (start, end) in spans {
+        if offset <= end - start {
+            return start + offset;
+        }
+        offset -= end - start;
+    }
+    spans.last().map_or(0.0, |span| span.1)
 }
 
 /// Builds the scene's segment list from measured audio, inserting semantic pauses.
@@ -166,7 +274,7 @@ pub fn assemble_scene(
     for (index, (text, measured)) in texts.iter().zip(audio).enumerate() {
         let start = cursor;
         let end = start + measured.duration_secs.max(0.05);
-        let words = estimate_words(text, *measured, start);
+        let words = estimate_words(text, measured, start);
         segments.push(NarrationSegment {
             text: text.clone(),
             start_secs: start,
@@ -239,8 +347,9 @@ mod tests {
             duration_secs: 3.0,
             leading_silence_secs: 0.2,
             trailing_silence_secs: 0.3,
+            pauses: Vec::new(),
         };
-        let words = estimate_words("Um agente decide, age e observa.", audio, 10.0);
+        let words = estimate_words("Um agente decide, age e observa.", &audio, 10.0);
         assert_eq!(words.len(), 6);
         assert!((words[0].start_secs - 10.2).abs() < 1e-4);
         assert!((words.last().unwrap().end_secs - 12.7).abs() < 1e-4);
@@ -251,6 +360,49 @@ mod tests {
     }
 
     #[test]
+    fn syllables_count_vowel_groups_and_digits() {
+        assert_eq!(syllables("agente"), 3);
+        assert_eq!(syllables("ação"), 2);
+        assert_eq!(syllables("IA"), 1);
+        assert_eq!(syllables("2025"), 6);
+        assert_eq!(syllables("—"), 1);
+    }
+
+    #[test]
+    fn a_comma_is_anchored_on_the_measured_pause_and_no_word_sits_in_silence() {
+        // Voice from 0.1 to 2.9 s with a breath at 0.6-0.8 s and the comma pause at 1.6-1.9 s.
+        let audio = SegmentAudio {
+            duration_secs: 3.0,
+            leading_silence_secs: 0.1,
+            trailing_silence_secs: 0.1,
+            pauses: vec![(0.6, 0.8), (1.6, 1.9)],
+        };
+        let words = estimate_words(
+            "Primeiro o agente decide, depois ele age sozinho.",
+            &audio,
+            0.0,
+        );
+        let decide = words
+            .iter()
+            .position(|word| word.text == "decide,")
+            .unwrap();
+        assert!(
+            (words[decide].end_secs - 1.6).abs() < 1e-4,
+            "{:?}",
+            words[decide]
+        );
+        assert!((words[decide + 1].start_secs - 1.9).abs() < 1e-4);
+        for word in &words {
+            let middle = (word.start_secs + word.end_secs) / 2.0;
+            assert!(
+                !(0.6..0.8).contains(&middle) && !(1.6..1.9).contains(&middle),
+                "{word:?}"
+            );
+        }
+        assert!((words.last().unwrap().end_secs - 2.9).abs() < 1e-4);
+    }
+
+    #[test]
     fn assembled_scene_adds_pauses_and_total_duration() {
         let texts = vec!["Uma.".to_string(), "Duas.".to_string()];
         let audio = vec![
@@ -258,6 +410,7 @@ mod tests {
                 duration_secs: 1.0,
                 leading_silence_secs: 0.0,
                 trailing_silence_secs: 0.0,
+                pauses: Vec::new(),
             };
             2
         ];

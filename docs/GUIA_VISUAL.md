@@ -31,8 +31,10 @@ roteiro (visualBrief) ──► diretiva #layout ──► parser Rust ──►
 As diretivas abaixo continuam valendo para o renderizador de imagens estáticas. O
 motor motion (`framechester produce`) usa um storyboard semântico com cenas
 animadas e aceita, além delas, `#fluxo`, `#grafico`, `#arquitetura`, `#codigo`,
-`#transformacao`, `#anotacao`, `#infografico` e `#causa`. No caminho antigo essas
-diretivas viram o layout padrão, sem erro. Gramática completa em
+`#transformacao`, `#anotacao`, `#infografico`, `#causa` e `#personagem`. No caminho
+antigo essas diretivas viram o layout padrão, sem erro. No motor motion, uma cena sem
+diretiva ou com `#pergunta` é contada por um personagem animado que combina com a pauta (robô, dev,
+cientista ou apresentador); `#destaque` mantém o título tipográfico. Gramática completa em
 [STORYBOARD.md](STORYBOARD.md); direção de arte em
 [DESIGN_SYSTEM_VIDEO.md](DESIGN_SYSTEM_VIDEO.md).
 

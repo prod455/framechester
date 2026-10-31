@@ -4,17 +4,19 @@ import { toast } from './toast.ts';
 import type { Bootstrap, Channel, Platform, WebConfig, YoutubeDiscovery } from '../../shared/types.ts';
 import type { IconName } from '../dom.ts';
 
+/** Three pages cover making a video; the rest sits under "Avançado", collapsed. */
 export const pages = {
-  overview: { title: 'Visão geral', icon: 'grid', group: 'Estúdio' },
-  channels: { title: 'Canais', icon: 'channels', group: '' },
-  research: { title: 'Pesquisa de nichos', icon: 'search', group: 'Conteúdo' },
-  scripts: { title: 'Roteiros', icon: 'script', group: '' },
-  stories: { title: 'Narrativas', icon: 'story', group: '' },
-  production: { title: 'Produção', icon: 'film', group: '' },
-  analytics: { title: 'Resultados', icon: 'chart', group: 'Operação' },
-  connections: { title: 'Contas conectadas', icon: 'plug', group: '' },
-  settings: { title: 'Configurações', icon: 'settings', group: '' },
-} satisfies Record<string, { title: string; icon: IconName; group: string }>;
+  create: { title: 'Criar vídeo', icon: 'spark', advanced: false },
+  production: { title: 'Vídeos', icon: 'film', advanced: false },
+  channels: { title: 'Canais', icon: 'channels', advanced: false },
+  overview: { title: 'Visão geral', icon: 'grid', advanced: true },
+  research: { title: 'Pesquisa de nichos', icon: 'search', advanced: true },
+  scripts: { title: 'Roteiros', icon: 'script', advanced: true },
+  stories: { title: 'Narrativas', icon: 'story', advanced: true },
+  analytics: { title: 'Resultados', icon: 'chart', advanced: true },
+  connections: { title: 'Contas conectadas', icon: 'plug', advanced: true },
+  settings: { title: 'Configurações', icon: 'settings', advanced: true },
+} satisfies Record<string, { title: string; icon: IconName; advanced: boolean }>;
 export type Page = keyof typeof pages;
 
 /**
@@ -52,7 +54,7 @@ export function render(): void {
 
 export function currentPage(): Page {
   const hash = location.hash.slice(1).split('?')[0];
-  return Object.hasOwn(pages, hash) ? (hash as Page) : 'overview';
+  return Object.hasOwn(pages, hash) ? (hash as Page) : 'create';
 }
 
 export function go(page: Page): void {
@@ -112,7 +114,7 @@ export function schedulePoll(): void {
           studio.data = incoming;
           setCsrfToken(incoming.csrfToken);
           if (
-            ['overview', 'production', 'analytics'].includes(currentPage()) &&
+            ['create', 'overview', 'production', 'analytics'].includes(currentPage()) &&
             !document.querySelector('dialog[open]') &&
             !hasUnsavedEdits()
           )

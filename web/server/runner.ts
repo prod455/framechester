@@ -7,6 +7,7 @@ import { mkdir, readFile, writeFile, rename, copyFile, realpath, stat } from 'no
 import { basename, extname, join, relative, resolve, sep, delimiter, isAbsolute } from 'node:path';
 import type {
   AppState,
+  YoutubeThumbnail,
   YoutubeUpload,
   RunnerApi,
   Script,
@@ -45,7 +46,10 @@ export interface RunnerOptions {
   binary?: string;
   timeoutMs?: number;
   execute?: (args: string[], cwd: string, signal: AbortSignal) => Promise<EngineResult>;
-  publish?: (channelId: string, video: YoutubeUpload) => Promise<{ videoId: string }>;
+  publish?: (
+    channelId: string,
+    video: YoutubeUpload,
+  ) => Promise<{ videoId: string; thumbnail?: YoutubeThumbnail }>;
 }
 export function localEngineEnvironment(environment: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return Object.fromEntries(
@@ -905,7 +909,7 @@ export class LocalRunner implements RunnerApi {
       if (input.previewOnly && job.videoAvailable && ['pass', 'needs_human'].includes(job.qa.technical)) {
         job.status = 'needs_review';
         job.message =
-          'Prévia gerada com marca de revisão. Assista em Revisar vídeo e use Gerar versão final neste card quando estiver bom.';
+          'Prévia gerada com marca de revisão. Assista e, se estiver bom, use Gerar versão final.';
       } else if (
         result.exitCode !== 0 ||
         report.stage === 'blocked' ||
@@ -952,6 +956,7 @@ export class LocalRunner implements RunnerApi {
     const script = state.scripts.find((item) => item.id === job.scriptId && item.channelId === channelId);
     const video = await this.file(channelId, jobId, 'video');
     const description = await this.file(channelId, jobId, 'description');
+    const thumbnail = await this.file(channelId, jobId, 'thumbnail');
     // No await between these checks and the state change: two clicks cannot start two uploads.
     if (job.status !== 'completed' || job.previewOnly || !job.videoAvailable)
       throw new RunnerError('Só a versão final aprovada no QA pode ser enviada ao YouTube.');
@@ -965,12 +970,18 @@ export class LocalRunner implements RunnerApi {
     const upload = this.options.publish;
     const task = (async () => {
       try {
-        const { videoId } = await upload(channelId, {
+        const result = await upload(channelId, {
           path: video.path,
           title: script.title,
           description: await readFile(description.path, 'utf8'),
+          ...(thumbnail ? { thumbnail: thumbnail.path } : {}),
         });
-        job.youtube = { status: 'uploaded', videoId, uploadedAt: new Date().toISOString() };
+        job.youtube = {
+          status: 'uploaded',
+          videoId: result.videoId,
+          uploadedAt: new Date().toISOString(),
+          ...(result.thumbnail ? { thumbnail: result.thumbnail } : {}),
+        };
       } catch (error) {
         job.youtube = {
           status: 'failed',

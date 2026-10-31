@@ -187,7 +187,7 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
     if (!key)
       throw new HttpError(
         503,
-        `Adicione a chave da API ${providerName(provider)} deste canal em Configurações → Assistente de criação.`,
+        `Adicione a chave da API ${providerName(provider)} deste canal em Avançado → Configurações → Assistente de criação.`,
       );
     return key;
   }
@@ -426,7 +426,7 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
             keyConfigured = !!(await options.vault?.get(owner, api.provider));
             reason = keyConfigured
               ? `${label} configurada. Cada geração exige estimativa e autorização de custo.`
-              : `Adicione a chave da API ${label} deste canal em Configurações → Assistente de criação.`;
+              : `Adicione a chave da API ${label} deste canal em Avançado → Configurações → Assistente de criação.`;
           }
         } catch {
           reason = 'O cofre local não está disponível. A chave não foi acessada.';

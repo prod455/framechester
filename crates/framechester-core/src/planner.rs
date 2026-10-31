@@ -28,9 +28,9 @@ use crate::domain::{Scene, Script};
 use crate::error::{FramechesterError, Result};
 use crate::narration::segment_narration;
 use crate::storyboard::{
-    narration_words, Animation, CaptionPlan, Composition, Cue, Easing, Icon, Motion, Relation,
-    RelationKind, Role, Storyboard, StoryboardScene, Transition, ValidationCriteria, VideoFormat,
-    VisualObject, SCHEMA_VERSION,
+    narration_words, Animation, CaptionPlan, Character, Composition, Cue, Easing, Icon, Motion,
+    Pose, Relation, RelationKind, Role, Storyboard, StoryboardScene, Transition,
+    ValidationCriteria, VideoFormat, VisualObject, SCHEMA_VERSION,
 };
 
 const MAX_FIELD: usize = 160;
@@ -111,6 +111,116 @@ fn parse_icon(name: &str) -> Option<Icon> {
         "book" | "livro" => Icon::Book,
         _ => return None,
     })
+}
+
+fn parse_character(name: &str) -> Option<Character> {
+    Some(match name {
+        "presenter" | "apresentador" | "apresentadora" => Character::Presenter,
+        "developer" | "dev" | "programador" | "programadora" => Character::Developer,
+        "scientist" | "cientista" => Character::Scientist,
+        "robot" | "robo" | "robô" => Character::Robot,
+        _ => return None,
+    })
+}
+
+fn parse_pose(name: &str) -> Option<Pose> {
+    Some(match name {
+        "explain" | "explicar" => Pose::Explain,
+        "point" | "apontar" => Pose::Point,
+        "think" | "pensar" => Pose::Think,
+        "celebrate" | "comemorar" => Pose::Celebrate,
+        _ => return None,
+    })
+}
+
+/// The cast that fits the topic: the first match in priority order, else the presenter.
+pub fn cast_for(script: &Script) -> Character {
+    let words = narration_words(&format!(
+        "{} {} {}",
+        script.title, script.hook, script.series
+    ));
+    let has = |stems: &[&str]| {
+        words.iter().any(|word| {
+            let word = fold(word);
+            stems.iter().any(|stem| {
+                if stem.len() <= 3 {
+                    word == *stem
+                } else {
+                    word.starts_with(stem)
+                }
+            })
+        })
+    };
+    if has(&[
+        "ia", "ai", "llm", "gpt", "agente", "robo", "automac", "chatbot", "claude",
+    ]) {
+        Character::Robot
+    } else if has(&[
+        "codigo", "program", "software", "dev", "api", "skill", "deploy", "bug", "git",
+    ]) {
+        Character::Developer
+    } else if has(&[
+        "pesquis",
+        "estudo",
+        "cienc",
+        "cientist",
+        "experiment",
+        "laborat",
+        "fisic",
+        "quimic",
+        "biolog",
+        "astronom",
+    ]) {
+        Character::Scientist
+    } else {
+        Character::Presenter
+    }
+}
+
+fn fold(word: &str) -> String {
+    word.chars()
+        .map(|c| match c {
+            'á' | 'à' | 'â' | 'ã' => 'a',
+            'é' | 'ê' => 'e',
+            'í' => 'i',
+            'ó' | 'ô' | 'õ' => 'o',
+            'ú' | 'ü' => 'u',
+            'ç' => 'c',
+            other => other,
+        })
+        .collect()
+}
+
+/// Body language for a scene without a directive: questions think, the closing scene
+/// celebrates, the rest alternate explaining and pointing.
+fn pose_for(heading: &str, index: usize, total: usize) -> Pose {
+    if heading.trim_end().ends_with('?') {
+        Pose::Think
+    } else if total > 1 && index + 1 == total {
+        Pose::Celebrate
+    } else if index % 2 == 0 {
+        Pose::Explain
+    } else {
+        Pose::Point
+    }
+}
+
+fn character_name(character: Character) -> &'static str {
+    match character {
+        Character::Presenter => "apresentador",
+        Character::Developer => "dev",
+        Character::Scientist => "cientista",
+        Character::Robot => "robo",
+    }
+}
+
+fn pose_name(pose: Pose) -> &'static str {
+    match pose {
+        Pose::Explain => "explicar",
+        Pose::Point => "apontar",
+        Pose::Think => "pensar",
+        Pose::Celebrate => "comemorar",
+    }
 }
 
 fn parse_role(name: &str) -> Option<Role> {
@@ -539,6 +649,27 @@ pub fn parse_composition(scene: &Scene) -> Result<Composition> {
                 objects,
             }
         }
+        "personagem" => {
+            let parts: Vec<&str> = args.split('|').map(str::trim).collect();
+            if parts.len() < 2 || parts.len() > 3 {
+                return Err(invalid(id, "use #personagem PERSONAGEM | POSE | FALA (fala opcional)"));
+            }
+            let character = parse_character(&parts[0].to_lowercase()).ok_or_else(|| {
+                invalid(id, format!("personagem '{}' nao existe; use apresentador, dev, cientista ou robo", parts[0]))
+            })?;
+            let pose = parse_pose(&parts[1].to_lowercase()).ok_or_else(|| {
+                invalid(id, format!("pose '{}' nao existe; use explicar, apontar, pensar ou comemorar", parts[1]))
+            })?;
+            let text = parts.get(2).filter(|text| !text.is_empty()).map_or(scene.heading.as_str(), |text| text);
+            if text.chars().count() > 140 {
+                return Err(invalid(id, "a fala do personagem passa de 140 caracteres"));
+            }
+            Composition::Character {
+                character,
+                pose,
+                text: text.to_string(),
+            }
+        }
         "causa" | "lista" => {
             let separator = if name == "causa" { "=>" } else { ";" };
             let items: Vec<&str> = args.split(separator).map(str::trim).filter(|s| !s.is_empty()).collect();
@@ -556,7 +687,7 @@ pub fn parse_composition(scene: &Scene) -> Result<Composition> {
         other => {
             return Err(invalid(
                 id,
-                format!("'#{other}' nao existe; use pergunta, destaque, citacao, numero, fluxo, comparacao, linha-do-tempo, grafico, arquitetura, codigo, transformacao, anotacao, infografico, causa ou lista"),
+                format!("'#{other}' nao existe; use pergunta, destaque, citacao, numero, fluxo, comparacao, linha-do-tempo, grafico, arquitetura, codigo, transformacao, anotacao, infografico, causa, lista ou personagem"),
             ))
         }
     };
@@ -668,6 +799,7 @@ pub fn plan_animations(composition: &Composition, narration: &str) -> Vec<Animat
     let mut used = Vec::new();
     let labels: Vec<(String, String)> = match composition {
         Composition::Title { .. } => vec![("title".into(), String::new())],
+        Composition::Character { .. } => vec![("speech".into(), String::new())],
         Composition::Code { lines, .. } => (0..lines.len())
             .map(|index| (format!("line:{index}"), String::new()))
             .collect(),
@@ -816,7 +948,9 @@ fn plan_emphasis(composition: &Composition, narration: &str) -> Vec<String> {
     let mut used = Vec::new();
     let mut emphasis = Vec::new();
     let labels: Vec<String> = match composition {
-        Composition::Title { .. } | Composition::Code { .. } => Vec::new(),
+        Composition::Title { .. } | Composition::Code { .. } | Composition::Character { .. } => {
+            Vec::new()
+        }
         Composition::FlowDiagram { objects, .. }
         | Composition::Comparison { objects, .. }
         | Composition::Timeline { objects }
@@ -880,10 +1014,12 @@ pub fn plan_scene(scene: &Scene, index: usize) -> Result<StoryboardScene> {
             max_still_secs: 5.0,
             readable_without_audio: true,
         },
+        // The opening cuts in; later scenes rotate push, zoom and fade so no two
+        // consecutive changes look the same.
         transition: if index == 0 {
             Transition::Cut
         } else {
-            Transition::Push
+            [Transition::Fade, Transition::Push, Transition::Zoom][index % 3]
         },
     };
     planned.validate()?;
@@ -901,7 +1037,32 @@ pub fn plan_script(
 ) -> Result<(Storyboard, Vec<String>)> {
     let mut fallbacks = Vec::new();
     let mut scenes = Vec::with_capacity(script.scenes.len());
+    let cast = cast_for(script);
+    let total = script.scenes.len();
     for (index, scene) in script.scenes.iter().enumerate() {
+        // A scene without a directive, or a question, is told by the character that fits
+        // the topic; every other directive keeps its own composition.
+        let (directive, note) = split_brief(&scene.visual_brief);
+        let spoken = match directive {
+            None => Some((
+                pose_for(&scene.heading, index, total),
+                scene.heading.as_str(),
+            )),
+            Some(("pergunta", question)) if !question.is_empty() => Some((Pose::Think, question)),
+            _ => None,
+        };
+        let scene = &match spoken {
+            Some((pose, line)) => Scene {
+                visual_brief: format!(
+                    "#personagem {} | {} | {}\n{note}",
+                    character_name(cast),
+                    pose_name(pose),
+                    line.replace('|', "/"),
+                ),
+                ..scene.clone()
+            },
+            None => scene.clone(),
+        };
         match plan_scene(scene, index) {
             Ok(planned) => scenes.push(planned),
             Err(error) => {
@@ -942,6 +1103,119 @@ mod tests {
         }
     }
 
+    fn script(title: &str, scenes: Vec<Scene>) -> Script {
+        Script {
+            title: title.into(),
+            hook: String::new(),
+            series: String::new(),
+            format: crate::domain::ScriptFormat::Short,
+            scenes,
+            sources: Vec::new(),
+            claims: Vec::new(),
+            cross_checked: false,
+        }
+    }
+
+    #[test]
+    fn character_directive_takes_a_cast_member_a_pose_and_an_optional_line() {
+        let parsed = parse_composition(&scene(
+            "#personagem Robô | apontar | Metade dos tokens",
+            "n",
+        ))
+        .unwrap();
+        assert_eq!(
+            parsed,
+            Composition::Character {
+                character: Character::Robot,
+                pose: Pose::Point,
+                text: "Metade dos tokens".into(),
+            }
+        );
+        let default_line = parse_composition(&scene("#personagem dev | pensar", "n")).unwrap();
+        assert!(matches!(default_line, Composition::Character { ref text, .. } if text == "Cena"));
+        for (brief, error) in [
+            ("#personagem robo", "PERSONAGEM | POSE"),
+            (
+                "#personagem pirata | apontar",
+                "apresentador, dev, cientista ou robo",
+            ),
+            (
+                "#personagem robo | dancar",
+                "explicar, apontar, pensar ou comemorar",
+            ),
+        ] {
+            let message = parse_composition(&scene(brief, "n"))
+                .unwrap_err()
+                .to_string();
+            assert!(message.contains(error), "{brief}: {message}");
+        }
+    }
+
+    #[test]
+    fn the_cast_follows_the_topic() {
+        for (title, cast) in [
+            (
+                "Skills vs. Agentes de IA: a diferença na prática",
+                Character::Robot,
+            ),
+            ("Como o Git guarda o seu código", Character::Developer),
+            ("O que a ciência diz sobre o sono", Character::Scientist),
+            ("Cinco receitas rápidas para a semana", Character::Presenter),
+        ] {
+            assert_eq!(cast_for(&script(title, Vec::new())), cast, "{title}");
+        }
+    }
+
+    #[test]
+    fn scenes_without_a_directive_are_told_by_the_cast_and_explicit_ones_are_kept() {
+        let mut question = scene("", "Por que isso importa?");
+        question.heading = "Por que isso importa?".into();
+        question.id = 1;
+        let mut middle = scene(
+            "#pergunta Vale a pena?\nNota livre do briefing",
+            "Vale a pena? Explicando o meio.",
+        );
+        middle.id = 2;
+        let mut kept = scene("#destaque", "Uma frase de destaque.");
+        kept.id = 3;
+        let mut closing = scene("", "Fechando o video.");
+        closing.id = 4;
+        let (storyboard, fallbacks) = plan_script(
+            &script(
+                "Agentes de IA no dia a dia",
+                vec![question, middle, kept, closing],
+            ),
+            "Canal",
+            VideoFormat::Vertical,
+        )
+        .unwrap();
+        assert!(fallbacks.is_empty(), "{fallbacks:?}");
+        let poses: Vec<Option<(Character, Pose)>> = storyboard
+            .scenes
+            .iter()
+            .map(|scene| match &scene.composition {
+                Composition::Character {
+                    character, pose, ..
+                } => Some((*character, *pose)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            poses,
+            vec![
+                Some((Character::Robot, Pose::Think)),
+                Some((Character::Robot, Pose::Think)),
+                None,
+                Some((Character::Robot, Pose::Celebrate)),
+            ]
+        );
+        assert_eq!(storyboard.scenes[1].learning_goal, "Nota livre do briefing");
+        assert!(matches!(
+            &storyboard.scenes[1].composition,
+            Composition::Character { text, .. } if text == "Vale a pena?"
+        ));
+    }
+
     #[test]
     fn flow_directive_builds_a_loop_with_mention_cues() {
         let planned = plan_scene(
@@ -971,6 +1245,27 @@ mod tests {
         )));
         assert!(planned.captions.emphasis.contains(&"decide".to_string()));
         assert_eq!(planned.transition, Transition::Push);
+    }
+
+    #[test]
+    fn transitions_rotate_after_the_opening_cut() {
+        let transitions: Vec<Transition> = (0..5)
+            .map(|index| {
+                plan_scene(&scene("#destaque", "Uma frase."), index)
+                    .unwrap()
+                    .transition
+            })
+            .collect();
+        assert_eq!(
+            transitions,
+            vec![
+                Transition::Cut,
+                Transition::Push,
+                Transition::Zoom,
+                Transition::Fade,
+                Transition::Push
+            ]
+        );
     }
 
     #[test]

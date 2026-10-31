@@ -5,7 +5,7 @@ use crate::anim::Track;
 use crate::captions;
 use crate::components::{self, edge_id, Ctx, LayoutIssue, Severity};
 use crate::format::{Canvas, Rect};
-use crate::scene::{Anchor, Graph, Node, Shape, Z_CAPTIONS};
+use crate::scene::{Anchor, Camera, Graph, Node, Shape, Z_CAPTIONS};
 use crate::text::Typesetter;
 use crate::tokens;
 use framechester_core::error::Result;
@@ -124,7 +124,12 @@ fn heading(
     (nodes, area)
 }
 
-fn build_component(ctx: &mut Ctx<'_>, scene: &StoryboardScene, area: Rect) -> Vec<Node> {
+fn build_component(
+    ctx: &mut Ctx<'_>,
+    scene: &StoryboardScene,
+    area: Rect,
+    index: usize,
+) -> Vec<Node> {
     match &scene.composition {
         Composition::Title { text, kicker } => {
             components::title::build(ctx, area, text, kicker.as_deref())
@@ -165,11 +170,33 @@ fn build_component(ctx: &mut Ctx<'_>, scene: &StoryboardScene, area: Rect) -> Ve
             components::infographic::build(ctx, area, title, objects)
         }
         Composition::CauseEffect { objects } => components::cause_effect::build(ctx, area, objects),
+        Composition::Character {
+            character,
+            pose,
+            text,
+        } => components::character::build(ctx, area, *character, *pose, text, index % 2 == 1),
     }
 }
 
 /// Resolves every animation to a time, staggering those that land together.
-fn resolve_times(scene: &StoryboardScene) -> Vec<(f32, &Animation)> {
+/// The opening scene is the hook: whatever would enter in its first moments is already on
+/// screen at frame 0 (the cover of a Short and the viewer's first impression), and a short
+/// camera punch-in gives that frame motion.
+pub const HOOK_SECS: f32 = 0.6;
+const HOOK_PUNCH: f32 = 0.05;
+const HOOK_PUNCH_SECS: f32 = 0.5;
+
+/// When an entering motion that starts at `time` must have finished: before frame 0 in the
+/// hook, else unchanged.
+fn hooked(time: f32, duration: f32, hook: bool) -> f32 {
+    if hook && time <= HOOK_SECS {
+        -duration - 0.05
+    } else {
+        time
+    }
+}
+
+fn resolve_times(scene: &StoryboardScene, hook: bool) -> Vec<(f32, &Animation)> {
     let mut resolved: Vec<(f32, &Animation)> = scene
         .animations
         .iter()
@@ -195,9 +222,16 @@ fn resolve_times(scene: &StoryboardScene) -> Vec<(f32, &Animation)> {
             }
         }
     }
-    // Entering objects never appear before the scene has started.
-    for (time, _) in resolved.iter_mut() {
+    // Entering objects never appear before the scene has started, except in the hook,
+    // where early entries have already happened.
+    for (time, animation) in resolved.iter_mut() {
         *time = time.max(0.0);
+        if matches!(
+            animation.motion,
+            Motion::Reveal | Motion::Pop | Motion::Grow | Motion::Type
+        ) {
+            *time = hooked(*time, animation.duration_secs, hook);
+        }
     }
     resolved
 }
@@ -383,7 +417,12 @@ fn apply_animation(
 
 /// Edges draw once both endpoints are on screen; nodes without an entering animation
 /// are visible from the start.
-fn auto_animate_edges(graph: &mut Graph, scene: &StoryboardScene, entries: &HashMap<String, f32>) {
+fn auto_animate_edges(
+    graph: &mut Graph,
+    scene: &StoryboardScene,
+    entries: &HashMap<String, f32>,
+    hook: bool,
+) {
     let relations: Vec<(String, String)> = match &scene.composition {
         Composition::FlowDiagram { relations, .. }
         | Composition::Architecture { relations, .. } => relations
@@ -456,9 +495,11 @@ fn auto_animate_edges(graph: &mut Graph, scene: &StoryboardScene, entries: &Hash
     ] {
         for node in nodes_of(graph, object) {
             if matches!(node.shape, Shape::Path { .. }) {
-                node.props.draw(0.05, 0.5, Easing::EaseOut);
+                node.props
+                    .draw(hooked(0.05, 0.5, hook), 0.5, Easing::EaseOut);
             } else {
-                node.props.reveal(0.0, 0.4, (0.0, 0.0), Easing::EaseOut);
+                node.props
+                    .reveal(hooked(0.0, 0.4, hook), 0.4, (0.0, 0.0), Easing::EaseOut);
             }
         }
     }
@@ -595,7 +636,11 @@ pub fn compose_scene(
 ) -> ComposedScene {
     let mut ctx = Ctx::new(canvas, typesetter, scene.id);
     let mut graph = Graph::default();
-    let is_title = matches!(scene.composition, Composition::Title { .. });
+    // A title or a character speaks for itself: no heading bar above it.
+    let is_title = matches!(
+        scene.composition,
+        Composition::Title { .. } | Composition::Character { .. }
+    );
     let area = if is_title {
         canvas.content
     } else {
@@ -603,18 +648,28 @@ pub fn compose_scene(
         graph.extend(nodes);
         area
     };
-    let component = build_component(&mut ctx, scene, area);
+    let component = build_component(&mut ctx, scene, area, index);
     graph.extend(centre_vertically(component, area));
     graph.extend(captions::build(&mut ctx, scene));
     let mut entries: HashMap<String, f32> = HashMap::new();
     let mut animated_objects = Vec::new();
-    for (time, animation) in resolve_times(scene) {
+    let hook = index == 0;
+    for (time, animation) in resolve_times(scene, hook) {
         if !animated_objects.contains(&animation.target) {
             animated_objects.push(animation.target.clone());
         }
         apply_animation(&mut graph, scene, time, animation, canvas, &mut entries);
     }
-    auto_animate_edges(&mut graph, scene, &entries);
+    auto_animate_edges(&mut graph, scene, &entries, hook);
+    if matches!(scene.composition, Composition::Character { .. }) {
+        components::character::animate(&mut graph.nodes, scene, canvas.motion_scale(), hook);
+    }
+    // Every scene gets a slow camera move, cycling so consecutive scenes differ.
+    graph.camera = Some((
+        Camera::for_scene(index),
+        scene.duration_secs.max(1.0),
+        (canvas.width as f32, canvas.height as f32),
+    ));
     check_layout(&mut ctx, &graph);
     let change_times = graph.change_times();
     ComposedScene {
@@ -737,6 +792,12 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
                 }
                 Transition::Cut => scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, 1.0),
             }
+        } else if index == 0 && local < HOOK_PUNCH_SECS {
+            let scale = 1.0
+                + HOOK_PUNCH * (1.0 - crate::anim::ease(Easing::EaseOut, local / HOOK_PUNCH_SECS));
+            let dx = (width as f32) * (1.0 - scale) / 2.0;
+            let dy = (height as f32) * (1.0 - scale) / 2.0;
+            scene.graph.svg_inner(&mut svg, local, dx, dy, scale, 1.0);
         } else {
             scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, 1.0);
         }
@@ -772,6 +833,7 @@ mod tests {
                 duration_secs: text.split_whitespace().count() as f32 * 0.33,
                 leading_silence_secs: 0.05,
                 trailing_silence_secs: 0.1,
+                pauses: Vec::new(),
             })
             .collect();
         let (segments, duration) = assemble_scene(&texts, &audio, &vec![false; texts.len()]);
@@ -793,6 +855,10 @@ mod tests {
             ("#anotacao revisar-pr/SKILL.md: instrucoes e metadados; revisar-pr/scripts/check.py: codigo opcional; revisar-pr/exemplos: casos reais", "A pasta tem o SKILL.md com instrucoes, scripts opcionais e exemplos."),
             ("#infografico O que muda | Tokens=40%: do contexto [chart]; Passos=3: etapas fixas [check]; Erros [shield]: menos retrabalho", "Caem para 40% os tokens, sao 3 passos fixos e menos erros."),
             ("#causa Sem skill => O agente improvisa => Resultados variam => Mais retrabalho", "Sem skill, o agente improvisa, os resultados variam e ha mais retrabalho."),
+            ("#personagem apresentador | explicar | Uma skill é uma receita que o agente segue", "Uma skill e uma receita. O agente segue os passos dela."),
+            ("#personagem dev | apontar", "O arquivo fica na pasta do projeto, versionado com o codigo."),
+            ("#personagem cientista | pensar | Dá para medir a diferença?", "Da para medir a diferenca? Vamos testar duas vezes."),
+            ("#personagem robo | comemorar | Mesma tarefa, metade dos tokens", "Mesma tarefa, com menos tokens no contexto."),
         ]
     }
 
@@ -803,6 +869,174 @@ mod tests {
         assert!(svg.ends_with("</text></g></svg>"));
         assert_eq!(svg.matches("</svg>").count(), 1);
         assert!(svg.contains(PREVIEW_MARK));
+    }
+
+    #[test]
+    fn the_hook_shows_the_opening_at_frame_zero_with_a_punch_in_and_later_scenes_still_enter() {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Vertical);
+        let mut first = narrated(
+            "#personagem robo | pensar | Agente ou skill?",
+            "Agente ou skill? Vamos ver.",
+        );
+        let mut second = narrated(
+            "#fluxo Objetivo -> Decidir -> Agir",
+            "O agente recebe o objetivo, decide e age.",
+        );
+        second.start_secs = first.duration_secs;
+        first.transition = Transition::Cut;
+        let speech_at_zero = |scene: &ComposedScene, object: &str| {
+            scene
+                .graph
+                .nodes
+                .iter()
+                .filter(|node| node.object == object && node.is_text())
+                .map(|node| node.props.opacity.eval(0.0))
+                .fold(0.0f32, f32::max)
+        };
+        let opening = compose_scene(&typesetter, &canvas, &first, 0, 2);
+        assert!(
+            speech_at_zero(&opening, "speech") > 0.99,
+            "the hook line is on frame 0"
+        );
+        let robot = opening
+            .graph
+            .nodes
+            .iter()
+            .find(|node| node.object == "character")
+            .unwrap();
+        assert!(
+            robot.props.opacity.eval(0.0) > 0.99,
+            "the character is already standing"
+        );
+        let later = compose_scene(&typesetter, &canvas, &second, 1, 2);
+        let first_step = &second.composition.object_ids()[0].to_string();
+        assert!(
+            speech_at_zero(&later, first_step) < 0.1,
+            "later scenes keep their entrance"
+        );
+        let composed = Composed {
+            canvas,
+            scenes: vec![opening, later],
+        };
+        assert!(
+            frame_svg(&composed, 0.0, tokens::FONT_SANS).contains("scale(1.05"),
+            "punch-in at frame 0"
+        );
+        let max_scale = |svg: &str| {
+            svg.split("scale(")
+                .skip(1)
+                .filter_map(|rest| rest.split([' ', ')']).next()?.parse::<f32>().ok())
+                .fold(1.0f32, f32::max)
+        };
+        let settled = frame_svg(&composed, 0.6, tokens::FONT_SANS);
+        assert!(
+            max_scale(&settled) < 1.02,
+            "the punch-in has settled after 0.5 s; only the slow camera remains"
+        );
+        let storyboard = Storyboard {
+            version: SCHEMA_VERSION,
+            title: "Gancho".into(),
+            channel: "Canal".into(),
+            format: VideoFormat::Vertical,
+            language: "pt-BR".into(),
+            scenes: vec![first, second],
+            source_hash: None,
+        };
+        let checks = crate::qa::hook_checks(&storyboard, &composed);
+        assert!(
+            checks
+                .iter()
+                .all(|check| check.status == framechester_core::domain::QaStatus::Pass),
+            "{checks:?}"
+        );
+    }
+
+    #[test]
+    fn consecutive_scenes_get_different_slow_camera_moves_that_spare_the_captions() {
+        let moves: Vec<Camera> = (0..4).map(Camera::for_scene).collect();
+        for pair in moves.windows(2) {
+            assert_ne!(pair[0], pair[1]);
+        }
+        let (dx, dy, scale) = Camera::PushIn.at(1.0, 1080.0, 1920.0);
+        assert!((scale - 1.025).abs() < 1e-4);
+        assert!(
+            (dx + 1080.0 * 0.0125).abs() < 0.1 && (dy + 1920.0 * 0.0125).abs() < 0.1,
+            "zoom keeps the centre"
+        );
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Vertical);
+        let scene = narrated(
+            "#fluxo Objetivo -> Decidir -> Agir",
+            "O agente recebe o objetivo, decide e age.",
+        );
+        let composed = compose_scene(&typesetter, &canvas, &scene, 1, 3);
+        assert_eq!(
+            composed.graph.camera.map(|camera| camera.0),
+            Some(Camera::DriftLeft)
+        );
+    }
+
+    #[test]
+    fn a_character_talks_only_while_the_narration_plays_and_blinks() {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Vertical);
+        let scene = narrated(
+            "#personagem robo | apontar | Mesma tarefa, metade dos tokens",
+            "Mesma tarefa. Com menos tokens no contexto.",
+        );
+        let composed = compose_scene(&typesetter, &canvas, &scene, 0, 3);
+        let mouth = composed
+            .graph
+            .nodes
+            .iter()
+            .find(|node| node.object == components::character::MOUTH)
+            .unwrap();
+        let segment = &scene.segments[0];
+        let speaking: Vec<f32> = (0..8)
+            .map(|step| {
+                mouth
+                    .props
+                    .sy
+                    .eval(segment.start_secs + 0.07 + step as f32 * 0.07)
+            })
+            .collect();
+        assert!(
+            speaking.iter().cloned().fold(f32::MIN, f32::max) > 1.1
+                && speaking.iter().cloned().fold(f32::MAX, f32::min) < 0.9,
+            "the mouth opens and closes while speaking: {speaking:?}"
+        );
+        let last = scene.segments.last().unwrap();
+        assert_eq!(
+            mouth.props.sy.eval(last.end_secs + 0.2),
+            1.0,
+            "silent after the narration"
+        );
+        let eye = composed
+            .graph
+            .nodes
+            .iter()
+            .find(|node| node.object == components::character::EYES)
+            .unwrap();
+        assert!(
+            eye.props.sy.eval(1.4 + 0.08) < 0.2,
+            "the eyes close in a blink"
+        );
+        let brow = composed
+            .graph
+            .nodes
+            .iter()
+            .find(|node| node.object == components::character::BROWS)
+            .unwrap();
+        assert!(
+            brow.props.dy.eval(segment.start_secs + 0.15) < -1.0,
+            "the brows lift as a sentence starts"
+        );
+        assert!(
+            composed.issues.is_empty(),
+            "speech card text fits and stays in the safe area: {:?}",
+            composed.issues
+        );
     }
 
     #[test]

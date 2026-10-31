@@ -41,17 +41,28 @@ export function channelsPage(): HTMLElement {
                 'div',
                 { className: 'entity-card-top' },
                 el('div', { className: 'entity-card-icon' }, icon('channels')),
-                channel.id === studio.channelId
-                  ? el('span', { className: 'badge', 'data-variant': 'secondary' }, 'Selecionado')
-                  : el('span', { className: 'badge', 'data-variant': 'outline' }, channel.language),
+                // Same badges in the same place on every card (law of similarity).
+                el(
+                  'div',
+                  { className: 'entity-card-badges' },
+                  channel.id === studio.channelId
+                    ? el('span', { className: 'badge', 'data-variant': 'secondary' }, 'Selecionado')
+                    : null,
+                  el('span', { className: 'badge', 'data-variant': 'outline' }, channel.language),
+                ),
               ),
               el('h3', { title: channel.name }, channel.name),
               el('p', {}, channel.description || 'Descrição editorial ainda não definida.'),
+              // Labelled facts: read, don't decode (recognition over recall).
               el(
-                'div',
-                { className: 'entity-meta' },
-                el('span', { className: 'tag' }, channel.niche || 'Nicho a desenvolver'),
-                el('span', { className: 'tag mono' }, channel.id),
+                'dl',
+                { className: 'channel-facts' },
+                el('dt', {}, 'Nicho'),
+                el('dd', {}, channel.niche || 'a definir'),
+                el('dt', {}, 'Envio ao YouTube'),
+                el('dd', {}, channel.youtubeAutoUpload ? 'automático, como privado' : 'manual'),
+                el('dt', {}, 'Identificador'),
+                el('dd', { className: 'mono' }, channel.id),
               ),
               el(
                 'div',
@@ -60,7 +71,7 @@ export function channelsPage(): HTMLElement {
                   'Abrir canal',
                   () => {
                     studio.channelId = channel.id;
-                    go('overview');
+                    go('create');
                   },
                   'ghost',
                   'arrow',
@@ -134,7 +145,7 @@ export function editChannel(record?: Channel): void {
       studio.channelId = id;
       dialog.close();
       render();
-      toast(record ? 'Canal atualizado.' : 'Canal criado. Seu próximo passo é desenvolver uma pauta.');
+      toast(record ? 'Canal atualizado.' : 'Canal criado. Agora mande a pauta do primeiro vídeo.');
     },
     () => dialog.close(),
   );

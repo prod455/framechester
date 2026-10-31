@@ -213,6 +213,51 @@ fn motion_checks(storyboard: &Storyboard, composed: &Composed) -> (Vec<QaCheck>,
     (checks, scenes)
 }
 
+/// The hook: frame 0 already shows readable content (it is the cover of a Short and the
+/// first impression) and the voice starts within half a second.
+pub(crate) fn hook_checks(storyboard: &Storyboard, composed: &Composed) -> Vec<QaCheck> {
+    let Some(scene) = composed.scenes.first() else {
+        return Vec::new();
+    };
+    let visible = scene
+        .graph
+        .nodes
+        .iter()
+        .filter(|node| {
+            node.readable
+                && node.is_text()
+                && node.z < crate::scene::Z_CAPTIONS
+                && node.props.opacity.eval(0.0) >= 0.9
+        })
+        .count();
+    let first_word = storyboard
+        .scenes
+        .first()
+        .and_then(|scene| scene.segments.first())
+        .and_then(|segment| {
+            segment
+                .words
+                .first()
+                .map(|word| word.start_secs)
+                .or(Some(segment.start_secs))
+        })
+        .unwrap_or(f32::MAX);
+    vec![
+        check(
+            "hook_first_frame",
+            "primeiro quadro com conteudo legivel",
+            pass_or_fail(visible > 0),
+            format!("{visible} texto(s) visivel(is) no quadro 0"),
+        ),
+        check(
+            "hook_voice",
+            "voz comeca em ate 0,5 s",
+            pass_or_fail(first_word <= 0.5),
+            format!("primeira palavra em {first_word:.2}s"),
+        ),
+    ]
+}
+
 fn consistency_checks(storyboard: &Storyboard) -> Vec<QaCheck> {
     let mut checks = Vec::new();
     let mut mismatches = Vec::new();
@@ -630,6 +675,7 @@ pub fn audit(
     let (mut checks, layout_issues) = layout_checks(composed);
     let (motion, scenes) = motion_checks(storyboard, composed);
     checks.extend(motion);
+    checks.extend(hook_checks(storyboard, composed));
     checks.extend(consistency_checks(storyboard));
     checks.extend(caption_checks(storyboard, input.srt));
     checks.extend(media_checks(input, storyboard, composed)?);

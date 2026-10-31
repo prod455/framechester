@@ -176,6 +176,31 @@ pub enum Role {
     Danger,
 }
 
+/// Flat vector character drawn by the renderer; never an external file or a likeness of a
+/// real person.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Character {
+    Presenter,
+    Developer,
+    Scientist,
+    Robot,
+}
+
+/// Body language of a character scene.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Pose {
+    /// Open hand towards the speech card.
+    Explain,
+    /// Arm extended at the speech card.
+    Point,
+    /// Hand on the chin.
+    Think,
+    /// Both arms raised.
+    Celebrate,
+}
+
 /// Small vector icon from the closed catalog; never an external file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -319,6 +344,12 @@ pub enum Composition {
     },
     /// Cause and consequence chain.
     CauseEffect { objects: Vec<VisualObject> },
+    /// A character who talks while the narration plays, next to a speech card.
+    Character {
+        character: Character,
+        pose: Pose,
+        text: String,
+    },
 }
 
 impl Composition {
@@ -335,10 +366,11 @@ impl Composition {
             Composition::Annotation { .. } => "annotation",
             Composition::Infographic { .. } => "infographic",
             Composition::CauseEffect { .. } => "cause_effect",
+            Composition::Character { .. } => "character",
         }
     }
 
-    pub const KINDS: [&'static str; 11] = [
+    pub const KINDS: [&'static str; 12] = [
         "title",
         "flow_diagram",
         "comparison",
@@ -350,12 +382,14 @@ impl Composition {
         "annotation",
         "infographic",
         "cause_effect",
+        "character",
     ];
 
     /// Every object id the composition defines, in order.
     pub fn object_ids(&self) -> Vec<&str> {
         match self {
             Composition::Title { .. } => vec!["title"],
+            Composition::Character { .. } => vec!["character", "speech"],
             Composition::FlowDiagram { objects, .. }
             | Composition::Comparison { objects, .. }
             | Composition::Timeline { objects }
@@ -377,7 +411,9 @@ impl Composition {
 
     fn objects(&self) -> Vec<&VisualObject> {
         match self {
-            Composition::Title { .. } | Composition::Code { .. } => Vec::new(),
+            Composition::Title { .. }
+            | Composition::Code { .. }
+            | Composition::Character { .. } => Vec::new(),
             Composition::FlowDiagram { objects, .. }
             | Composition::Comparison { objects, .. }
             | Composition::Timeline { objects }
@@ -802,6 +838,14 @@ impl StoryboardScene {
                     return Err(invalid(id, "titulo vazio ou acima de 140 caracteres"));
                 }
             }
+            Composition::Character { text, .. } => {
+                if text.trim().is_empty() || text.chars().count() > 140 {
+                    return Err(invalid(
+                        id,
+                        "fala do personagem vazia ou acima de 140 caracteres",
+                    ));
+                }
+            }
             Composition::FlowDiagram {
                 objects, relations, ..
             } => {
@@ -1138,6 +1182,9 @@ mod tests {
         for kind in Composition::KINDS {
             let json = match kind {
                 "title" => serde_json::json!({"kind": kind, "text": "x"}),
+                "character" => {
+                    serde_json::json!({"kind": kind, "character": "robot", "pose": "point", "text": "x"})
+                }
                 "code" => serde_json::json!({"kind": kind, "language": "md", "lines": ["a"]}),
                 "comparison" => {
                     serde_json::json!({"kind": kind, "left_title": "a", "right_title": "b", "objects": []})

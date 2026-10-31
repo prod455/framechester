@@ -4,6 +4,7 @@ import { mkdtemp, readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { AppState, Script } from '../shared/types.ts';
+import { postText } from '../shared/publishing.ts';
 import { createRunner, localEngineEnvironment, RunnerError } from '../server/runner.ts';
 
 const date = '2026-10-27T00:00:00.000Z';
@@ -1175,7 +1176,12 @@ test('a Short is cut from an approved motion video, inherits its review and goes
       uploads.push({
         network,
         title: video.title,
-        description: video.description,
+        description: postText(network, {
+          title: video.title,
+          body: video.description,
+          references: video.references ?? '',
+          tag: video.tag,
+        }).text,
         thumbnail: video.thumbnail,
         vertical: video.vertical,
       });
@@ -1297,7 +1303,15 @@ test('each opted-in network gets the approved video once, its Short follows by i
       return { exitCode: 0, stdout: '', stderr: '' };
     },
     publish: async (_channel, network, video) => {
-      uploads.push({ network, description: video.description, vertical: video.vertical });
+      uploads.push({
+        network,
+        description: postText(network, {
+          title: video.title,
+          body: video.description,
+          references: video.references ?? '',
+        }).text,
+        vertical: video.vertical,
+      });
       return { postId: `${network}-post` };
     },
     profiles: async () => [
@@ -1345,7 +1359,8 @@ test('each opted-in network gets the approved video once, its Short follows by i
     );
     assert.equal(
       uploads[1].description,
-      'Descrição com fontes\n\nAcompanhe também:\nYouTube: https://www.youtube.com/@fixture',
+      `${input.scripts[0].title}\n\nDescrição com fontes\n\nAcompanhe também:\nYouTube: https://www.youtube.com/@fixture`,
+      'TikTok has one caption, opened by the title',
     );
   } finally {
     await runner.close();

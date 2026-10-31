@@ -501,10 +501,25 @@ export class SocialService implements SocialApi {
         signal: AbortSignal.timeout(this.timeoutMs),
       });
       if (!response.ok) {
-        await response.body?.cancel();
+        // Name the call and the provider's numeric error code, never its message or body: the
+        // operator can tell which step failed without anything private reaching the screen.
+        const endpoint = `${url.hostname}${url.pathname.replace(/\d{3,}/g, '{id}')}`;
+        let code = '';
+        try {
+          const text = (await response.text()).slice(0, 4096);
+          const failure = record(record(JSON.parse(text)).error);
+          const parts = [failure.code, failure.error_subcode].filter(
+            (part) => typeof part === 'number' && Number.isSafeInteger(part),
+          );
+          code = parts.join('/');
+        } catch {
+          code = '';
+        }
         throw new SocialError(
           'api_denied',
-          `Consulta recusada ou indisponível na API (HTTP ${response.status}).`,
+          code
+            ? `Consulta recusada ou indisponível na API (HTTP ${response.status} em ${endpoint}, código ${code}).`
+            : `Consulta recusada ou indisponível na API (HTTP ${response.status} em ${endpoint}).`,
         );
       }
       if (Number(response.headers.get('content-length') ?? 0) > MAX_RESPONSE) {
@@ -1131,9 +1146,14 @@ export class SocialService implements SocialApi {
       return token;
     };
     const short = await exchange({ code, redirect_uri: pending.redirectUri });
+    // A system-user token (Unified login configurations) never expires and refuses the
+    // long-lived exchange; keep it as it came.
     const long = await exchange({
       grant_type: 'fb_exchange_token',
       fb_exchange_token: short.access_token as string,
+    }).catch((error: unknown) => {
+      if (error instanceof SocialError && error.code === 'api_denied') return short;
+      throw error;
     });
     const userToken = long.access_token as string;
     const permissions = await this.request(`${GRAPH}/me/permissions`, userToken);

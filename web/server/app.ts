@@ -21,6 +21,8 @@ export interface ServerOptions {
   distDir?: string;
   dev?: boolean;
   publicPort?: number;
+  /** Tailscale name allowed besides loopback (see runtime.ts). */
+  tailnetHost?: string;
   store?: LocalStore;
   social?: SocialApi;
   runner?: RunnerApi;
@@ -94,7 +96,7 @@ export async function createApp(
 
   async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
     securityHeaders(response, dev);
-    checkOrigin(request, response, dev, options.publicPort);
+    checkOrigin(request, response, dev, options.publicPort, options.tailnetHost);
     const { decoded, path } = requestPath(request);
     const url = new URL(request.url ?? '/', 'http://127.0.0.1');
     const method = (request.method ?? 'GET') as Method;

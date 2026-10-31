@@ -26,6 +26,10 @@ export interface SocialServiceOptions {
   timeoutMs?: number;
   /** Pause between Instagram processing checks; tests skip the wait. */
   wait?: (ms: number) => Promise<void>;
+  /** Public HTTPS page registered as TikTok's redirect URI (Login Kit for Web). TikTok refuses
+   * loopback redirects in its portal, so the page only forwards `code` and `state` back to this
+   * Studio on 127.0.0.1. See docs/oauth/tiktok/index.html. */
+  tiktokRelay?: string;
 }
 export class SocialError extends Error {
   constructor(
@@ -245,6 +249,8 @@ interface PendingOAuth {
   clientId: string;
   redirectUri: string;
   verifier: string;
+  /** Login Kit for Web, used through the relay, has no PKCE. */
+  pkce: boolean;
   expiresAt: number;
 }
 interface Identity {
@@ -422,6 +428,7 @@ export class SocialService implements SocialApi {
   private readonly now: () => number;
   private readonly timeoutMs: number;
   private readonly wait: (ms: number) => Promise<void>;
+  private readonly tiktokRelay?: string;
   private readonly pending = new Map<string, PendingOAuth>();
   private readonly locks = new Map<string, Promise<void>>();
 
@@ -431,10 +438,23 @@ export class SocialService implements SocialApi {
     this.now = options.now ?? Date.now;
     this.timeoutMs = Math.min(30000, Math.max(1000, options.timeoutMs ?? 15000));
     this.wait = options.wait ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+    this.tiktokRelay = options.tiktokRelay;
   }
 
   capabilities(): NetworkCapability[] {
-    return structuredClone(CAPABILITIES);
+    return structuredClone(CAPABILITIES).map((capability) =>
+      capability.platform === 'tiktok' && this.tiktokRelay
+        ? {
+            ...capability,
+            redirectUri: this.tiktokRelay,
+            requirements: capability.requirements.map((item) =>
+              item.startsWith('Aplicativo próprio no TikTok')
+                ? 'Aplicativo próprio no TikTok for Developers, plataforma Web, com o endereço de retorno abaixo registrado exatamente.'
+                : item,
+            ),
+          }
+        : capability,
+    );
   }
 
   private async locked<T>(key: string, action: () => Promise<T>): Promise<T> {
@@ -782,6 +802,11 @@ export class SocialService implements SocialApi {
       );
     }
     const provider = OAUTH[input.platform];
+    // The relay forwards to the port carried in front of the state, so a Studio on another
+    // port still gets its callback.
+    const relay = input.platform === 'tiktok' ? this.tiktokRelay : undefined;
+    const redirectUri = relay ?? input.redirectUri;
+    const pkce = Boolean(provider.pkce) && !relay;
     return this.locked(`${input.channelId}/${input.platform}`, async () => {
       for (const [key, value] of this.pending)
         if (
@@ -796,7 +821,7 @@ export class SocialService implements SocialApi {
         `${input.platform}-client`,
         JSON.stringify({ clientId: input.clientId, clientSecret: input.clientSecret }),
       );
-      const state = randomBytes(24).toString('hex');
+      const state = `${relay ? `${redirect.port || (redirect.protocol === 'https:' ? '443' : '80')}.` : ''}${randomBytes(24).toString('hex')}`;
       const verifier = randomBytes(32).toString('base64url');
       const expiresAt = this.now() + 10 * 60 * 1000;
       this.pending.set(state, {
@@ -804,21 +829,22 @@ export class SocialService implements SocialApi {
         platform: input.platform,
         expected,
         clientId: input.clientId,
-        redirectUri: input.redirectUri,
+        redirectUri,
         verifier,
+        pkce,
         expiresAt,
       });
       const url = new URL(provider.authorize);
       for (const [key, value] of Object.entries({
         [provider.clientParam]: input.clientId,
-        redirect_uri: input.redirectUri,
+        redirect_uri: redirectUri,
         response_type: 'code',
         ...provider.extra,
         ...(input.configId
           ? { config_id: input.configId, override_default_response_type: 'true' }
           : { scope: provider.scopes.join(provider.separator) }),
         state,
-        ...(provider.pkce
+        ...(provider.pkce && pkce
           ? {
               code_challenge: createHash('sha256')
                 .update(verifier)
@@ -967,7 +993,7 @@ export class SocialService implements SocialApi {
           code,
           grant_type: 'authorization_code',
           redirect_uri: pending.redirectUri,
-          code_verifier: pending.verifier,
+          ...(pending.pkce ? { code_verifier: pending.verifier } : {}),
         }),
       ),
     );

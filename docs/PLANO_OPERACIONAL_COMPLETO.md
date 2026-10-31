@@ -1,6 +1,6 @@
 # Framechester — plano operacional completo (Open Source)
 
-> Atualizacao do operador em 27/10/2026: o produto deve operar **multiplos canais**, com contexto, artefatos, credenciais e metricas separados. Referencias abaixo a um unico canal descrevem o piloto historico e nao limitam a arquitetura atual. Ver [equipes e execucao](EQUIPES_E_SKILLS.md), [auditoria](AUDITORIA_ENGENHARIA.md) e [marketing multicanais](MARKETING_YOUTUBE_OPERACIONAL.md).
+> Atualização do operador em 27/10/2026: o produto deve operar **múltiplos canais**, com contexto, artefatos, credenciais e métricas separados. Referências abaixo a um único canal descrevem o piloto histórico e não limitam a arquitetura atual. Ver [equipes e execução](EQUIPES_E_SKILLS.md), [auditoria](AUDITORIA_ENGENHARIA.md) e [marketing multicanais](MARKETING_YOUTUBE_OPERACIONAL.md).
 **Versão:** 4.0 • **Data-base:** 27/10/2026 • **Proprietário e beneficiário:** uma única pessoa física no Brasil • **Status:** especificação pública open-source; NÃO é um software implementado nem uma plataforma hospedada.
 
 > **Contrato de negócio:** receita apenas da monetização oficial das plataformas (anúncios e programas de remuneração por audiência, incluindo YouTube Premium). Proibidos no escopo: prestação de serviços, clientes, afiliados, links de vendas, produtos, patrocínios negociados e licenciamento de vídeos para terceiros. Sem aparecer em câmera. Conteúdo original, verificável e permitido pelas regras de cada plataforma.

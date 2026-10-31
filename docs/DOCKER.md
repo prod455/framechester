@@ -1,5 +1,7 @@
 # Subir, parar e operar o Framechester
 
+Primeira vez? Siga o [manual de instalação](DEPLOY.md) passo a passo.
+
 O Studio pode rodar nativamente no Windows ou em Docker Desktop/Engine com
 Compose. Use uma modalidade por vez na porta 4317. A publicação nas redes
 continua desativada e nenhuma chamada paga é feita ao iniciar.
@@ -102,12 +104,19 @@ ela não apaga, monta, migra ou converte o perfil Windows existente.
 | `/data/private/.framechester` | Preferências de IA e prompt pessoal |
 | `/run/secrets/vault_key` | Chave externa montada para leitura, fora da imagem/volume de dados |
 | `/models` | Modelos escolhidos pelo operador, montados para leitura |
+| `/data/studio/production/engine` | Área de trabalho do motor, incluindo o cache de narração |
 
 Por padrão, o launcher cria a chave em
 `%USERPROFILE%\.framechester\docker-secrets\framechester.key` no Windows ou
 `~/.framechester/docker-secrets/framechester.key` no Linux. Ela é persistente:
 subir novamente não gera outra chave por cima. Chaves customizadas ausentes,
 malformadas ou com vínculos inseguros são recusadas.
+
+A raiz do contêiner é somente leitura. Por isso o Studio entrega ao motor uma
+área de trabalho dentro do volume (`[app] workdir` no `config.toml` de cada
+produção): é lá que ficam o cache de narração e os arquivos temporários.
+Versões anteriores usavam `artifacts/` relativo a `/app` e falhavam com
+`Read-only file system` ao narrar.
 
 O cofre Docker usa AES-256-GCM, nonce novo e autenticação de canal/slot/versão.
 O cofre nativo Windows continua usando DPAPI. Sem a chave correta, não há

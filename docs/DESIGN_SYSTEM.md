@@ -106,7 +106,7 @@ canal e viewport de 390 × 844. Artefatos locais em
 
 ## Verificação
 
-O passe de precisão posterior aplica o contrato de [DESIGN.md](../DESIGN.md#precision-of-neighboring-elements):
+O passe de precisão posterior aplica o contrato de [DESIGN.md](../DESIGN.md#precisão-entre-elementos-vizinhos):
 controles de 44 px, ícones de 18 px, recuo de 12 px e entrelinha de UI de
 20 px. Cabeçalhos irmãos reservam a mesma faixa de 44 px; abas não herdam
 padding de 3 px nem track de 36 px para botões de 44 px. Formulários usam

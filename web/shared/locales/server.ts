@@ -305,6 +305,10 @@ export default {
     'A API retornou métrica inválida.': 'The API returned an invalid metric.',
     'Métrica fora do limite numérico seguro.': 'Metric outside the safe numeric range.',
     'Endpoint não permitido.': 'Endpoint not allowed.',
+    'Consulta recusada ou indisponível na API (HTTP {status} em {endpoint}, código {code}).':
+      'Request refused or unavailable in the API (HTTP {status} at {endpoint}, code {code}).',
+    'Consulta recusada ou indisponível na API (HTTP {status} em {endpoint}).':
+      'Request refused or unavailable in the API (HTTP {status} at {endpoint}).',
     'Consulta recusada ou indisponível na API (HTTP {status}).':
       'Query rejected or unavailable in the API (HTTP {status}).',
     'Resposta da API excedeu o limite.': 'The API response exceeded the limit.',
@@ -787,6 +791,10 @@ export default {
     'A API retornou métrica inválida.': 'La API devolvió una métrica no válida.',
     'Métrica fora do limite numérico seguro.': 'Métrica fuera del límite numérico seguro.',
     'Endpoint não permitido.': 'Endpoint no permitido.',
+    'Consulta recusada ou indisponível na API (HTTP {status} em {endpoint}, código {code}).':
+      'Consulta rechazada o no disponible en la API (HTTP {status} en {endpoint}, código {code}).',
+    'Consulta recusada ou indisponível na API (HTTP {status} em {endpoint}).':
+      'Consulta rechazada o no disponible en la API (HTTP {status} en {endpoint}).',
     'Consulta recusada ou indisponível na API (HTTP {status}).':
       'Consulta rechazada o no disponible en la API (HTTP {status}).',
     'Resposta da API excedeu o limite.': 'La respuesta de la API superó el límite.',

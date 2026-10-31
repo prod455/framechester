@@ -137,6 +137,7 @@ test('each step offers only the next action', () => {
     connectYoutube: () => calls.push('connect'),
     retry: (record: Script) => calls.push(`retry:${record.id}`),
     sendButton: () => browser.document.createElement('button') as unknown as HTMLElement,
+    shortButton: () => null,
     youtubeStatus: () => null,
     allVideos: () => calls.push('videos'),
   };

@@ -106,6 +106,7 @@ export interface CreateActions {
   connectYoutube: () => void;
   retry: (script: Script) => void;
   sendButton: (job: WebJob) => HTMLElement | null;
+  shortButton: (job: WebJob) => HTMLElement | null;
   youtubeStatus: (job: WebJob) => HTMLElement | null;
   allVideos: () => void;
 }
@@ -270,7 +271,9 @@ function stepAction(step: Step, progress: VideoProgress, actions: CreateActions)
           : null,
       );
     case 'publish':
-      if (step.state === 'waiting' || step.state === 'done' || !job) return null;
+      // Once sent, the next useful thing is a Short of the same video.
+      if (step.state === 'done' && job) return actions.shortButton(job);
+      if (step.state === 'waiting' || !job) return null;
       if (!progress.youtubeConnected)
         return button('Conectar YouTube', actions.connectYoutube, 'primary', 'plug');
       return actions.sendButton(job);

@@ -181,6 +181,9 @@ export interface WebJob {
   automated?: boolean;
   engine?: VideoEngine;
   youtube?: YoutubePublication;
+  /** A Short cut from another job's approved final version. */
+  kind?: 'short';
+  sourceJobId?: string;
 }
 /** Uploads are always private; publishing stays a decision made in YouTube Studio. */
 export type YoutubePublication =
@@ -295,4 +298,5 @@ export interface RunnerApi {
   ): Promise<{ path: string; contentType: string } | undefined>;
   engineStatus(): { available: boolean; message: string };
   publish?(channelId: string, jobId: string): Promise<WebJob>;
+  startShort?(channelId: string, sourceJobId: string): Promise<WebJob>;
 }

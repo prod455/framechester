@@ -183,7 +183,7 @@ export function jobCard(job: WebJob): HTMLElement {
       el(
         'p',
         {},
-        `${job.previewOnly ? 'Prévia' : 'Versão final'} · ${date(job.createdAt)}${job.engine ? ` · ${job.engine === 'motion' ? 'Motor motion' : 'Imagens por cena'}` : ''}`,
+        `${job.kind === 'short' ? 'Short vertical' : job.previewOnly ? 'Prévia' : 'Versão final'} · ${date(job.createdAt)}${job.engine ? ` · ${job.engine === 'motion' ? 'Motor motion' : 'Imagens por cena'}` : ''}`,
       ),
       stages,
       diagnostic,
@@ -197,6 +197,7 @@ export function jobCard(job: WebJob): HTMLElement {
             job.videoAvailable ? button('Assistir', () => viewJob(job), 'secondary', 'film') : null,
             finalVersionButton(job, script),
             youtubeButton(job),
+            shortButton(job),
           )
         : null,
     ),
@@ -233,6 +234,30 @@ export function youtubeStatus(job: WebJob): HTMLElement | null {
       'Revisar e publicar no YouTube Studio',
     ),
   );
+}
+
+/** A Short is cut from an approved final version made by the motion engine. */
+export function shortButton(job: WebJob): HTMLElement | null {
+  if (job.kind === 'short' || job.status !== 'completed' || job.previewOnly || job.engine !== 'motion')
+    return null;
+  const action = button(
+    'Gerar Short',
+    async () => {
+      action.disabled = true;
+      try {
+        await request(channelPath(`/jobs/${encodeURIComponent(job.id)}/short`), 'POST', {});
+        await refresh();
+        toast('Short na fila: abertura, fechamento e as cenas que mais prendem, em vertical.');
+      } catch (error) {
+        action.disabled = false;
+        toast(error instanceof Error ? error.message : 'Não foi possível gerar o Short.');
+      }
+    },
+    'secondary',
+    'film',
+  );
+  action.dataset.testid = `short-${job.id}`;
+  return action;
 }
 
 /** Only an approved final version goes out, once; a failed upload can be retried. */

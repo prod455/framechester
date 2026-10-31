@@ -84,6 +84,14 @@ Transições entre cenas (0,42 s): `push` (padrão a partir da segunda cena), `f
 Justificativa: movimento só quando a narração traz algo novo (um objeto, uma relação,
 um valor) ou para manter o quadro vivo; nunca zoom decorativo, nunca animação aleatória.
 
+## Gancho (primeira cena)
+
+O quadro 0 é a capa do Short e a primeira impressão: tudo o que entraria nos primeiros
+0,6 s da cena de abertura já está na tela nele (inclusive o personagem), e um punch-in de
+câmera de 5% assenta em 0,5 s para o quadro inicial já ter movimento. As cenas seguintes
+mantêm suas entradas. O QA bloqueia (`hook_first_frame`) se o quadro 0 não tiver texto
+legível e (`hook_voice`) se a primeira palavra começar depois de 0,5 s.
+
 ## Personagens
 
 Quatro figuras vetoriais em estilo flat, desenhadas pelo motor numa caixa de 110 × 160

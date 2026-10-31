@@ -1,6 +1,6 @@
 import { request } from '../api.ts';
 import { createDialog, empty, formWithSave, heading, iconButton } from '../components.ts';
-import { button, el, field, icon, input, textarea } from '../dom.ts';
+import { button, el, field, input, textarea } from '../dom.ts';
 import { currentChannel, go, refresh, render, save, state, studio } from '../studio/state.ts';
 import { toast } from '../studio/toast.ts';
 import type { Channel } from '../../shared/types.ts';
@@ -37,21 +37,16 @@ export function channelsPage(): HTMLElement {
             el(
               'article',
               { className: 'panel entity-card', 'data-testid': `channel-${channel.id}` },
+              // Name and its badges on one line (proximity), same badges on every card.
               el(
                 'div',
-                { className: 'entity-card-top' },
-                el('div', { className: 'entity-card-icon' }, icon('channels')),
-                // Same badges in the same place on every card (law of similarity).
-                el(
-                  'div',
-                  { className: 'flex gap-2' },
-                  channel.id === studio.channelId
-                    ? el('span', { className: 'badge', 'data-variant': 'secondary' }, 'Selecionado')
-                    : null,
-                  el('span', { className: 'badge', 'data-variant': 'outline' }, channel.language),
-                ),
+                { className: 'flex min-w-0 flex-wrap items-center gap-2 [&>h3]:mb-0 [&>h3]:min-w-0' },
+                el('h3', { title: channel.name }, channel.name),
+                channel.id === studio.channelId
+                  ? el('span', { className: 'badge', 'data-variant': 'secondary' }, 'Selecionado')
+                  : null,
+                el('span', { className: 'badge', 'data-variant': 'outline' }, channel.language),
               ),
-              el('h3', { title: channel.name }, channel.name),
               el('p', {}, channel.description || 'Descrição editorial ainda não definida.'),
               // Labelled facts: read, don't decode (recognition over recall).
               el(
@@ -76,7 +71,8 @@ export function channelsPage(): HTMLElement {
                     studio.channelId = channel.id;
                     go('create');
                   },
-                  'ghost',
+                  // Outlined, so its edge lines up with the text above.
+                  'secondary',
                   'arrow',
                 ),
                 // Space between frequent and destructive actions (Fitts).

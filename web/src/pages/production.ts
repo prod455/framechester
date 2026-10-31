@@ -176,7 +176,7 @@ export function jobCard(job: WebJob): HTMLElement {
       // The state sits with the title it describes (law of proximity).
       el(
         'div',
-        { className: 'flex min-w-0 items-center gap-3 [&>h3]:min-w-0 [&>h3]:truncate [&>.badge]:shrink-0' },
+        { className: 'flex min-w-0 items-center gap-3 [&>h3]:min-w-0 [&>h3]:truncate' },
         el('h3', { title: script?.title || 'Vídeo do canal' }, script?.title || 'Vídeo do canal'),
         badge(job.status),
       ),

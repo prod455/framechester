@@ -5,11 +5,6 @@
 .button[data-variant="primary"]:hover { background: var(--primary-hover); }
 .button .icon { width: var(--icon-size); height: var(--icon-size); }
 .icon-button, .dialog-close { width: var(--control-height); height: var(--control-height); padding: 0; flex: 0 0 var(--control-height); color: var(--muted-foreground); }
-.status { max-width: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--muted-foreground); font-size: var(--font-xs); line-height: var(--line-ui); font-weight: 400; white-space: normal; overflow-wrap: anywhere; }
-.status::before { content: ""; width: var(--space-1); height: var(--space-1); border-radius: 50%; background: currentColor; flex-shrink: 0; }
-.badge-green { color: var(--success); }
-.badge-amber, .badge-violet { color: var(--warning); }
-.badge-red { color: var(--danger); }
 .tag { display: inline-flex; color: var(--muted-foreground); font-size: var(--font-xs); line-height: var(--line-ui); overflow-wrap: anywhere; }
 .panel { min-width: 0; }
 .panel-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-4); margin-bottom: var(--space-4); }

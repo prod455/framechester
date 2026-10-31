@@ -78,19 +78,23 @@ export function researchPage(): HTMLElement {
         return el(
           'article',
           { className: 'panel entity-card' },
+          // The state sits with the title it describes (law of proximity).
           el(
             'div',
-            { className: 'entity-card-top' },
-            el('div', { className: 'entity-card-icon' }, icon('search')),
+            { className: 'flex min-w-0 items-center gap-3 [&>h3]:mb-0 [&>h3]:min-w-0' },
+            el('h3', { title: record.title }, record.title),
             badge(record.status),
           ),
-          el('h3', { title: record.title }, record.title),
           el('p', {}, record.hypothesis || 'Hipótese ainda não descrita.'),
           el(
             'div',
             { className: 'entity-meta' },
             el('span', { className: 'tag' }, record.niche || 'Nicho em desenvolvimento'),
-            el('span', { className: 'tag' }, `${record.sources.length} fonte(s)`),
+            el(
+              'span',
+              { className: 'tag' },
+              `${record.sources.length} ${record.sources.length === 1 ? 'fonte' : 'fontes'}`,
+            ),
             order.value === 'recent'
               ? null
               : el(
@@ -102,7 +106,8 @@ export function researchPage(): HTMLElement {
           el(
             'div',
             { className: 'entity-card-bottom' },
-            button('Desenvolver roteiro', () => startScript(record.id), 'ghost', 'arrow'),
+            // Outlined, so its edge lines up with the text above (a ghost button's padding does not).
+            button('Desenvolver roteiro', () => startScript(record.id), 'secondary', 'arrow'),
             actions,
           ),
         );
@@ -145,10 +150,15 @@ export function researchPage(): HTMLElement {
     ),
     el(
       'div',
-      { className: 'toolbar' },
+      // Search, order and count share one row; the select keeps its content width.
+      { className: 'toolbar justify-start [&>select]:w-auto' },
       query,
       order,
-      el('span', { className: 'toolbar-caption' }, `${records.length} registro(s) neste canal`),
+      el(
+        'span',
+        { className: 'toolbar-caption sm:ms-auto' },
+        `${records.length} ${records.length === 1 ? 'registro' : 'registros'} neste canal`,
+      ),
     ),
     cards,
   );

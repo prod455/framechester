@@ -197,18 +197,18 @@ export function connectionsPage(): HTMLElement {
       { className: 'capability-row' },
       el(
         'span',
-        { className: `badge ${capability?.metricsAvailable ? 'badge-green' : ''}` },
+        { className: 'badge', 'data-variant': capability?.metricsAvailable ? 'secondary' : 'outline' },
         capability?.metricsAvailable ? 'Métricas disponíveis' : 'Métricas indisponíveis',
       ),
       el(
         'span',
-        { className: `badge ${capability?.revenueAvailable ? 'badge-violet' : ''}` },
+        { className: 'badge', 'data-variant': capability?.revenueAvailable ? 'secondary' : 'outline' },
         capability?.revenueAvailable ? 'Receita sujeita a escopo' : 'Sem receita nesta API',
       ),
       el(
         'span',
-        { className: 'badge' },
-        capability?.publishingAvailable ? 'Publicação exige autorização' : 'Publicação não implementada',
+        { className: 'badge', 'data-variant': capability?.publishingAvailable ? 'secondary' : 'outline' },
+        capability?.publishingAvailable ? 'Envio privado disponível' : 'Sem envio nesta API',
       ),
     ),
     el('div', { className: 'divider' }),

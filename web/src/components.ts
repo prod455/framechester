@@ -59,18 +59,21 @@ export const statusLabels: Record<string, string> = {
   contradicted: 'Contradição identificada',
 };
 export function badge(status: string): HTMLElement {
-  const color = ['connected', 'completed', 'pass', 'reviewed'].includes(status)
-    ? 'green'
+  // A dot and the state in words, coloured by meaning. Not a Basecoat badge: those carry a
+  // filled or outlined pill, and restyling them would fight the design system.
+  const colour = ['connected', 'completed', 'pass', 'reviewed'].includes(status)
+    ? 'text-[var(--success)]'
     : ['failed', 'fail', 'error', 'contradicted'].includes(status)
-      ? 'red'
-      : ['needs_review', 'needs_human', 'blocked', 'expired'].includes(status)
-        ? 'amber'
-        : status === 'running'
-          ? 'violet'
-          : '';
+      ? 'text-[var(--danger)]'
+      : ['needs_review', 'needs_human', 'blocked', 'expired', 'running'].includes(status)
+        ? 'text-[var(--warning)]'
+        : 'text-muted-foreground';
   return el(
     'span',
-    { className: `badge status ${color ? `badge-${color}` : ''}`, 'data-variant': 'outline' },
+    {
+      className: `status inline-flex shrink-0 items-center gap-1.5 text-xs before:size-1 before:shrink-0 before:rounded-full before:bg-current ${colour}`,
+      'data-status': status,
+    },
     statusLabels[status] || status,
   );
 }

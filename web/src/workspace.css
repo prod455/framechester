@@ -102,23 +102,12 @@
 /* Production queue and assets */
 .job-card { padding: 24px 0; border-bottom: 1px solid var(--border); }
 .job-card:last-child { border-bottom: 0; }
-.job-card-heading { display: flex; align-items: flex-start; flex-wrap: wrap; gap: var(--space-4); }
-.job-card-heading > div:not(.media-thumbnail) { flex: 1 1 180px; min-width: 0; }
-.job-card-heading h3 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .job-card h3 { font-size: 15px; overflow-wrap: anywhere; }
 .job-card p { margin-top: var(--space-2); color: var(--muted-foreground); font-size: var(--font-sm); overflow-wrap: anywhere; }
 .job-card details { margin-top: 12px; }
 .job-card summary { width: fit-content; color: var(--link); font-size: var(--font-sm); cursor: pointer; }
 .job-diagnostic { max-width: 100%; margin: 12px 0 0; padding: 16px; background: var(--surface-raised); color: var(--ink-soft); border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: var(--font-xs); line-height: var(--line-ui); white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 2; }
 .job-stages { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0 8px; }
-.job-progress { width: 160px; height: 6px; accent-color: var(--primary); }
-.job-title-row { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
-.job-title-row h3 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.job-title-row .badge { flex: none; }
-.library-disclosure { padding: var(--space-4) 0; border-top: 1px solid var(--border); }
-.library-disclosure > summary { cursor: pointer; font-weight: 600; font-size: 15px; width: fit-content; }
-.library-disclosure[open] > summary { margin-bottom: var(--space-3); }
-.library-disclosure > .button { margin-top: var(--space-3); }
 .job-stage { padding: 0; border: 0; color: var(--muted-foreground); font-size: var(--font-xs); background: transparent; }
 .job-stage.reached { color: var(--ink-soft); }
 .job-artifacts { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px; margin-top: 20px; font-size: var(--font-sm); }
@@ -173,9 +162,6 @@
   .network-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
   .network-tab { justify-content: flex-start; padding-inline: var(--control-inset); }
   .job-card { padding: 24px 0; }
-  .job-card-heading { flex-wrap: wrap; }
-  .job-card-heading > .spacer { display: none; }
-  .job-card-heading > .badge { margin-top: 2px; }
   .asset-row { align-items: flex-start; gap: var(--space-3); flex-wrap: wrap; }
   .asset-row > .spacer { display: none; }
   .asset-row > .badge { margin-left: calc(var(--icon-size) + var(--space-3)); }
@@ -247,9 +233,3 @@
   .production-scene-source > .button { justify-self: stretch; }
 }
 
-.entity-card-badges { display: flex; gap: var(--space-2); }
-.channel-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-1) var(--space-3); margin: var(--space-3) 0 0; font-size: var(--font-sm); }
-.channel-facts dt { color: var(--muted-foreground); }
-.channel-facts dd { margin: 0; overflow-wrap: anywhere; }
-/* Destructive next to frequent: keep a clear gap between edit and delete (Fitts). */
-.entity-card .card-actions { gap: var(--space-4); }

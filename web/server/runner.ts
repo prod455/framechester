@@ -909,7 +909,7 @@ export class LocalRunner implements RunnerApi {
       if (input.previewOnly && job.videoAvailable && ['pass', 'needs_human'].includes(job.qa.technical)) {
         job.status = 'needs_review';
         job.message =
-          'Prévia gerada com marca de revisão. Assista em Revisar vídeo e use Gerar versão final neste card quando estiver bom.';
+          'Prévia gerada com marca de revisão. Assista e, se estiver bom, use Gerar versão final.';
       } else if (
         result.exitCode !== 0 ||
         report.stage === 'blocked' ||

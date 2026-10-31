@@ -11,6 +11,10 @@ export function createPage(): HTMLElement {
     watch: viewJob,
     finalVersion: generateFinal,
     connectYoutube: () => go('connections'),
+    retry: (script) => {
+      studio.activeScriptId = script.id;
+      startProduction();
+    },
     sendButton: youtubeButton,
     youtubeStatus,
     allVideos: () => go('production'),

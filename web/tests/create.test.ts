@@ -135,6 +135,7 @@ test('each step offers only the next action', () => {
     watch: () => calls.push('watch'),
     finalVersion: (record: Script) => calls.push(`final:${record.id}`),
     connectYoutube: () => calls.push('connect'),
+    retry: (record: Script) => calls.push(`retry:${record.id}`),
     sendButton: () => browser.document.createElement('button') as unknown as HTMLElement,
     youtubeStatus: () => null,
     allVideos: () => calls.push('videos'),
@@ -146,6 +147,26 @@ test('each step offers only the next action', () => {
   click(preview, 'Gerar versão final');
   click(preview, 'Começar outro vídeo');
   assert.deepEqual(calls, ['final:script-one', 'new']);
+
+  const stopped = renderCreate(state([job({ status: 'failed', videoAvailable: false })]), 'tech', actions);
+  click(stopped, 'Tentar de novo');
+  assert.equal(calls.at(-1), 'retry:script-one');
+  assert.match(stopped.textContent!, /1 de 4 passos/);
+  const sent = renderCreate(
+    state([job({ youtube: { status: 'uploaded', videoId: 'abcdefghijk', uploadedAt: date } })], true),
+    'tech',
+    actions,
+  );
+  assert.match(sent.textContent!, /Falta só publicar no YouTube Studio/);
+  const generating = renderCreate(
+    state([job({ status: 'running', videoAvailable: false })]),
+    'tech',
+    actions,
+  );
+  assert.ok(
+    generating.querySelector('[data-testid="step-generate"] progress'),
+    'visible work while generating',
+  );
 
   const unconnected = renderCreate(state([job()]), 'tech', actions);
   click(unconnected, 'Conectar YouTube');

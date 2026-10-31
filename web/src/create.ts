@@ -104,6 +104,7 @@ export interface CreateActions {
   watch: (job: WebJob) => void;
   finalVersion: (script: Script) => void;
   connectYoutube: () => void;
+  retry: (script: Script) => void;
   sendButton: (job: WebJob) => HTMLElement | null;
   youtubeStatus: (job: WebJob) => HTMLElement | null;
   allVideos: () => void;
@@ -137,6 +138,18 @@ export function renderCreate(state: Bootstrap, channelId: string, actions: Creat
     );
   const progress = videoProgress(state, channelId);
   const { job } = progress;
+  const done = progress.steps.filter((step) => step.state === 'done').length;
+  // How far this video is (goal-gradient): the bar fills as steps finish.
+  const meter = el(
+    'div',
+    { className: 'create-meter' },
+    el('progress', { max: '4', value: String(done), 'aria-label': 'Passos concluídos' }),
+    el(
+      'span',
+      { role: 'status' },
+      done === 4 ? 'Vídeo enviado. Falta só publicar no YouTube Studio.' : `${done} de 4 passos`,
+    ),
+  );
   const list = el('ol', { className: 'create-steps' });
   for (const [index, step] of progress.steps.entries()) {
     const action = stepAction(step, progress, actions);
@@ -159,6 +172,7 @@ export function renderCreate(state: Bootstrap, channelId: string, actions: Creat
             ),
           ),
           el('p', {}, step.detail),
+          step.key === 'generate' && step.state === 'current' && job ? working(job) : null,
           step.key === 'publish' && job ? actions.youtubeStatus(job) : null,
         ),
         action ? el('div', { className: 'create-step-action' }, action) : null,
@@ -174,12 +188,25 @@ export function renderCreate(state: Bootstrap, channelId: string, actions: Creat
       el('h1', {}, 'Criar vídeo'),
       el('p', {}, `Canal ${channel.name}: pauta, vídeo, revisão e envio, nesta ordem.`),
     ),
+    meter,
     list,
     el(
       'p',
       { className: 'create-footer' },
       button('Ver todos os vídeos', actions.allVideos, 'ghost', 'film'),
     ),
+  );
+}
+
+/** Visible work while the engine runs (Doherty): an indeterminate bar and elapsed minutes. */
+function working(job: WebJob): HTMLElement {
+  const started = Date.parse(job.startedAt ?? job.createdAt);
+  const minutes = Math.max(0, Math.floor((Date.now() - started) / 60000));
+  return el(
+    'div',
+    { className: 'create-working' },
+    el('progress', { 'aria-label': 'Gerando vídeo' }),
+    el('span', {}, minutes < 1 ? 'começou agora' : `há ${minutes} min`),
   );
 }
 
@@ -194,7 +221,15 @@ function stepAction(step: Step, progress: VideoProgress, actions: CreateActions)
         'spark',
       );
     case 'generate':
-      return step.state === 'stopped' ? button('Ver diagnóstico', actions.allVideos, 'secondary') : null;
+      // A stop ends with a way forward, not only a log (peak-end rule).
+      return step.state === 'stopped'
+        ? el(
+            'div',
+            { className: 'create-step-buttons' },
+            script ? button('Tentar de novo', () => actions.retry(script), 'primary', 'refresh') : null,
+            button('Ver diagnóstico', actions.allVideos, 'secondary'),
+          )
+        : null;
     case 'review':
       if (step.state === 'waiting' || !job) return null;
       return el(

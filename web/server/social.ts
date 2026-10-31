@@ -27,10 +27,10 @@ export interface SocialServiceOptions {
   timeoutMs?: number;
   /** Pause between Instagram processing checks; tests skip the wait. */
   wait?: (ms: number) => Promise<void>;
-  /** Public HTTPS page registered as TikTok's redirect URI (Login Kit for Web). TikTok refuses
-   * loopback redirects in its portal, so the page only forwards `code` and `state` back to this
-   * Studio on 127.0.0.1. See docs/oauth/tiktok/index.html. */
-  tiktokRelay?: string;
+  /** Public HTTPS pages registered as redirect URIs where the provider refuses a loopback one:
+   * TikTok's portal rejects loopback, and Meta enforces HTTPS. Each page only forwards `code`
+   * and `state` back to this Studio on 127.0.0.1. See docs/oauth/<network>/index.html. */
+  relays?: Partial<Record<Platform, string>>;
 }
 export class SocialError extends Error {
   constructor(
@@ -247,7 +247,7 @@ interface PendingOAuth {
   clientId: string;
   redirectUri: string;
   verifier: string;
-  /** Login Kit for Web, used through the relay, has no PKCE. */
+  /** TikTok's Login Kit for Web, used through the relay, has no PKCE. */
   pkce: boolean;
   expiresAt: number;
 }
@@ -420,7 +420,7 @@ export class SocialService implements SocialApi {
   private readonly now: () => number;
   private readonly timeoutMs: number;
   private readonly wait: (ms: number) => Promise<void>;
-  private readonly tiktokRelay?: string;
+  private readonly relays: Partial<Record<Platform, string>>;
   private readonly pending = new Map<string, PendingOAuth>();
   private readonly locks = new Map<string, Promise<void>>();
 
@@ -430,23 +430,23 @@ export class SocialService implements SocialApi {
     this.now = options.now ?? Date.now;
     this.timeoutMs = Math.min(30000, Math.max(1000, options.timeoutMs ?? 15000));
     this.wait = options.wait ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
-    this.tiktokRelay = options.tiktokRelay;
+    this.relays = { ...options.relays };
   }
 
   capabilities(): NetworkCapability[] {
-    return structuredClone(CAPABILITIES).map((capability) =>
-      capability.platform === 'tiktok' && this.tiktokRelay
-        ? {
-            ...capability,
-            redirectUri: this.tiktokRelay,
-            requirements: capability.requirements.map((item) =>
-              item.startsWith('Aplicativo próprio no TikTok')
-                ? 'Aplicativo próprio no TikTok for Developers, plataforma Web, com o endereço de retorno abaixo registrado exatamente.'
-                : item,
-            ),
-          }
-        : capability,
-    );
+    return structuredClone(CAPABILITIES).map((capability) => {
+      const relay = this.relays[capability.platform];
+      if (!relay) return capability;
+      return {
+        ...capability,
+        redirectUri: relay,
+        requirements: capability.requirements.map((item) =>
+          item.startsWith('Aplicativo próprio no TikTok')
+            ? 'Aplicativo próprio no TikTok for Developers, plataforma Web, com o endereço de retorno abaixo registrado exatamente.'
+            : item.replace('e o callback local registrado', 'e o endereço de retorno abaixo registrado'),
+        ),
+      };
+    });
   }
 
   private async locked<T>(key: string, action: () => Promise<T>): Promise<T> {
@@ -828,7 +828,7 @@ export class SocialService implements SocialApi {
     const provider = OAUTH[input.platform];
     // The relay forwards to the port carried in front of the state, so a Studio on another
     // port still gets its callback.
-    const relay = input.platform === 'tiktok' ? this.tiktokRelay : undefined;
+    const relay = this.relays[input.platform];
     const redirectUri = relay ?? input.redirectUri;
     const pkce = Boolean(provider.pkce) && !relay;
     return this.locked(`${input.channelId}/${input.platform}`, async () => {

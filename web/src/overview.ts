@@ -36,7 +36,8 @@ export function renderOverview(
       () => (job.videoAvailable ? actions.review(job) : actions.go('production')),
       'ghost',
     );
-    title.classList.add('production-title');
+    // The title gives way to the status beside it (buttons do not shrink by default).
+    title.classList.add('production-title', 'shrink');
     const meta = el(
       'div',
       { className: 'production-meta' },
@@ -58,8 +59,14 @@ export function renderOverview(
         'article',
         { className: 'production-row', role: 'listitem' },
         thumbnail,
-        el('div', { className: 'production-copy' }, title, meta),
-        el('div', { className: 'production-status' }, badge(job.status)),
+        // The state sits with the title it describes; a separate column drifted with the
+        // width of each row's button.
+        el(
+          'div',
+          { className: 'production-copy' },
+          el('div', { className: 'flex min-w-0 items-center gap-3' }, title, badge(job.status)),
+          meta,
+        ),
         action,
       ),
     );

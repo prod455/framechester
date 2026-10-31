@@ -130,7 +130,8 @@ export function creativeSettingsPanel(channelId?: string, channelName?: string):
     ),
     el(
       'div',
-      { className: 'panel-body section-stack' },
+      // Buttons keep their content width instead of stretching across the column.
+      { className: 'panel-body section-stack [&>.button]:w-fit [&>.button]:justify-self-start' },
       el(
         'p',
         {},

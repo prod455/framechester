@@ -143,7 +143,8 @@ export function analyticsPage(): HTMLElement {
               {},
               el(
                 'span',
-                { className: 'badge' },
+                // Payments stand out a little; costs and estimates stay outlined.
+                { className: 'badge', 'data-variant': entry.kind === 'payment' ? 'secondary' : 'outline' },
                 entry.kind === 'cost'
                   ? 'Custo manual'
                   : entry.kind === 'payment'

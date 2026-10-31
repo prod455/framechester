@@ -1,7 +1,13 @@
+/* Tokens stay unlayered: they redefine Basecoat's theme variables and must win.
+   Studio rules live in the "studio" layer, declared in basecoat.css between Basecoat's
+   components and Tailwind's utilities: they still beat Basecoat, and a utility class on an
+   element beats them. */
 @import url("./design-tokens.css");
-@import url("./components.css");
-@import url("./workspace.css");
-@import url("./overview.css");
+@import url("./components.css") layer(studio);
+@import url("./workspace.css") layer(studio);
+@import url("./overview.css") layer(studio);
+
+@layer studio {
 
 * { box-sizing: border-box; }
 html { scroll-padding-top: 24px; }
@@ -59,16 +65,12 @@ p { line-height: var(--line-copy); }
 .page-actions { display: flex; min-width: 0; max-width: 100%; align-items: center; flex-wrap: wrap; gap: 8px; }
 .page-actions:empty { display: none; }
 
-@media (max-width: 1100px) {
-  :root { --sidebar-width: 196px; --page-inset: 28px; }
-}
 @media (max-width: 820px) {
   .shell { display: block; }
   .workspace { grid-column: auto; }
   .studio-sidebar { width: 248px; transform: translateX(-100%); visibility: hidden; transition: transform 150ms ease-out, visibility 150ms; box-shadow: none; }
   .studio-sidebar.open { transform: translateX(0); visibility: visible; box-shadow: 14px 0 35px #17212c20; }
   .mobile-menu { display: inline-grid; }
-  :root { --page-inset: 24px; }
   .topbar { min-height: 60px; gap: var(--space-3); }
   .channel-picker { flex: 1; }
   .channel-picker select { width: 100%; min-width: 0; max-width: none; }
@@ -78,7 +80,6 @@ p { line-height: var(--line-copy); }
   .nav-item { min-height: 44px; }
 }
 @media (max-width: 560px) {
-  :root { --page-inset: 20px; }
   .page-heading { display: grid; grid-template-columns: minmax(0,1fr); gap: var(--space-4); }
   .page-actions { width: 100%; }
   .page-actions > .button { flex: 1; }
@@ -87,5 +88,4 @@ p { line-height: var(--line-copy); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
 }
-
-
+}

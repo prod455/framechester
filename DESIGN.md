@@ -141,6 +141,10 @@ Changes to the Studio are checked against the 20 laws listed in
   record rows, `progress` for bars, badge variants `primary`, `secondary`, `outline`,
   `destructive` only. Spacing and alignment tweaks are Tailwind utilities on the
   element (Tailwind scans `src/**/*.ts`), not new rules layered over Basecoat.
+- Cascade layers: `theme, base, components, studio, utilities`. Studio CSS lives in
+  `studio` (it still beats Basecoat; a utility beats it). Tokens and responsive token
+  overrides stay unlayered in `design-tokens.css`. Status is a dot and words, not a
+  restyled Basecoat badge.
 - Receding states use colour and border, never opacity on text; links in
   running text are underlined. axe-core (WCAG 2 A/AA) runs on Criar vídeo,
   Vídeos, Canais and the Novo vídeo dialog before merging UI changes.

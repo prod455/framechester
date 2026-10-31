@@ -997,6 +997,12 @@ function metaFetch(
     }
     if (url.pathname === '/v26.0/debug_token') {
       assert.equal(url.searchParams.get('input_token'), 'fixture-long-user');
+      // A system-user token cannot inspect itself (Meta answers code 100).
+      if (options.systemUser && auth !== 'Bearer 1122334455|fixture-app-secret')
+        return new Response(JSON.stringify({ error: { code: 100 } }), {
+          status: 400,
+          headers: { 'content-type': 'application/json' },
+        });
       return json({ data: { granular_scopes: options.granted ?? [] } });
     }
     if (url.pathname === `/v26.0/${PAGE}` && url.searchParams.get('fields')?.startsWith('name,'))
@@ -1341,6 +1347,32 @@ test('a system-user token keeps working when Meta refuses the long-lived exchang
   const connection = await connectMeta(service, 'instagram');
   assert.equal(connection.accountId, IG);
   assert.equal(connection.expiresAt, null, 'a system-user token does not expire');
+});
+
+test('a Unified login system-user token finds the Instagram account through the app token', async () => {
+  const service = createSocialService({
+    vault: new MemoryVault(),
+    fetch: metaFetch([], {
+      systemUser: true,
+      noPages: true,
+      granted: [{ scope: 'instagram_basic', target_ids: [IG] }],
+    }),
+    now: () => NOW,
+  });
+  const started = await service.startOAuth({
+    platform: 'instagram',
+    channelId: 'tech',
+    accountId: '@fixture.ig',
+    clientId: '1122334455',
+    clientSecret: 'fixture-app-secret',
+    redirectUri: 'http://127.0.0.1:4317/api/oauth/instagram/callback',
+  });
+  const connection = await service.callbackOAuth('instagram', {
+    state: new URL(started.authorizationUrl).searchParams.get('state')!,
+    code: 'fixture-code',
+  });
+  assert.equal(connection.accountId, IG, 'no Page lists it; the token reads the account itself');
+  assert.equal(connection.expiresAt, null);
 });
 
 test('a refused API call names the endpoint and Meta error code, never the provider message', async () => {

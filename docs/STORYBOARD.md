@@ -110,7 +110,8 @@ ciência → cientista; senão, apresentador). A pose segue a cena: título com 
 última cena comemora, as demais alternam explicar e apontar. `#destaque` mantém o título
 tipográfico. Os personagens são figuras vetoriais genéricas desenhadas pelo motor, sem
 arquivo externo nem semelhança com pessoas reais; enquanto a narração toca, a boca mexe,
-os olhos piscam e o braço do gesto balança.
+os olhos piscam e o braço do gesto balança. Cada pose tem a sua expressão (sobrancelhas e
+boca), e o dev, a cientista e o apresentador seguram um objeto do ofício.
 
 ### Como o planner escolhe os tempos
 

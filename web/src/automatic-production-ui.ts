@@ -115,7 +115,9 @@ export function openAutomaticProduction(options: AutomaticProductionOptions): HT
           el(
             'p',
             {},
-            `Uma geração de roteiro com ${result.model}: até ${usd(result.estimatedMaxCostUsd)}. Limite configurado: ${usd(result.costLimitUsd)}.`,
+            (result.attempts ?? 1) > 1
+              ? `Roteiro com ${result.model}: até ${usd(result.estimatedMaxCostUsd)}, cobrindo até ${result.attempts} gerações para cumprir a duração do formato. Limite configurado: ${usd(result.costLimitUsd)}.`
+              : `Uma geração de roteiro com ${result.model}: até ${usd(result.estimatedMaxCostUsd)}. Limite configurado: ${usd(result.costLimitUsd)}.`,
           ),
           el(
             'p',

@@ -29,7 +29,7 @@ export async function start(): Promise<void> {
           error instanceof Error ? error.message : 'Verifique o servidor local.',
           'plug',
           button(
-            'Tentar novamente',
+            'Tentar de novo',
             () => {
               void start();
             },

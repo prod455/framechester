@@ -16,9 +16,19 @@ import { OPENAI_MODELS, OPENAI_PRICING_CHECKED_AT, createOpenAIClient } from './
 import { ProviderResponseError } from './ai-provider.ts';
 import type { ProviderUsage } from './ai-provider.ts';
 import type { AIUsageStore } from './ai-usage.ts';
-import type { AIUsageRecord, AIUsageSnapshot } from '../shared/ai-usage-types.ts';
+import type { AIUsageSnapshot } from '../shared/ai-usage-types.ts';
 import { sceneLayoutGrammar } from '../shared/scene-layouts.ts';
 import { videoStyle, videoStyleGuide } from '../shared/video-styles.ts';
+import {
+  DURATION_ATTEMPTS,
+  DURATION_RULES,
+  checkDuration,
+  durationInstruction,
+  formatDuration,
+  revisionInstruction,
+  type DurationCheck,
+  type ScriptFormat,
+} from '../shared/duration.ts';
 
 export type { CreativeTask } from '../shared/creative-types.ts';
 export interface CreativeDraft extends SharedCreativeDraft {
@@ -71,7 +81,7 @@ const guides: Record<CreativeTask, { names: string[]; instruction: string }> = {
   script: {
     names: ['marketing-scriptwriting', 'editorial-fact-check'],
     instruction:
-      'Escreva gancho com promessa honesta, falas naturais, progressão útil, cenas e demonstrações próprias. Separe narração, indicação visual e evidências. O formato short orienta um vídeo de 65 a 90 segundos; long, de 7 a 12 minutos. Use as durações das cenas como estimativas de planejamento, sem afirmar que a duração final foi medida. Associe fatos somente às fontes fornecidas e marque o que falta apurar. Evite introduções genéricas, repetição, sensacionalismo e conclusões sem suporte.',
+      'Escreva gancho com promessa honesta, falas naturais, progressão útil, cenas e demonstrações próprias. Separe narração, indicação visual e evidências. Cumpra a regra de duração do formato com a contagem de palavras indicada; não afirme que a duração final foi medida. Associe fatos somente às fontes fornecidas e marque o que falta apurar. Evite introduções genéricas, repetição, sensacionalismo e conclusões sem suporte.',
   },
   story: {
     names: ['marketing-storytelling', 'audiovisual-direction'],
@@ -215,6 +225,7 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
       guides[task].instruction,
       ...(style ? [videoStyleGuide(style, format)] : []),
       ...(task === 'script' ? [`Layouts visuais (visualBrief):\n${sceneLayoutGrammar}`] : []),
+      ...(format ? [durationInstruction(format)] : []),
     ].join('\n\n');
     const settings = await options.settings.read();
     const references = input.includeReferences === true ? referenceData(state, owner) : [];
@@ -253,7 +264,27 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
           },
         }
       : schema;
-    return { task, prepared, settings, references, system, prompt, outputSchema };
+    const duration: ScriptFormat | undefined = format;
+    // The format's length decides the output budget; a script cut short by a small token
+    // setting would break the duration rule.
+    const maxTokens = Math.max(
+      settings.maxOutputTokens,
+      duration ? DURATION_RULES[duration].outputTokens : 0,
+    );
+    const attempts = duration ? DURATION_ATTEMPTS : 1;
+    return {
+      task,
+      prepared,
+      settings,
+      references,
+      system,
+      prompt,
+      payload,
+      outputSchema,
+      duration,
+      maxTokens,
+      attempts,
+    };
   }
   type Prepared = Awaited<ReturnType<typeof prepare>>;
   function remote(p: Pick<Prepared, 'settings'>) {
@@ -276,13 +307,13 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
           endpoint: 'https://api.anthropic.com',
         };
   }
-  function providerRequest(p: Prepared) {
+  function providerRequest(p: Prepared, system = p.system, prompt = p.prompt) {
     return {
       model: remote(p).model,
-      system: p.system,
-      prompt: p.prompt,
+      system,
+      prompt,
       schema: p.outputSchema,
-      maxTokens: p.settings.maxOutputTokens,
+      maxTokens: p.maxTokens,
     };
   }
   function fingerprint(p: Prepared, key: string) {
@@ -321,7 +352,7 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         redirect: 'error',
-        signal: AbortSignal.timeout(path === '/api/generate' ? 120_000 : 3000),
+        signal: AbortSignal.timeout(path === '/api/generate' ? 900_000 : 3000),
       });
     } catch {
       throw new HttpError(
@@ -501,15 +532,21 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
         }
         await ledger.finish(event.id, { status: 'succeeded', inputTokens });
         // Count Tokens is an estimate. Add headroom; the provider's billing limits remain authoritative.
-        const estimatedMaxCostUsd =
-          Math.ceil(
-            cost(api.provider, api.model, Math.ceil(inputTokens * 1.2) + 1024, p.settings.maxOutputTokens) *
-              1_000_000,
-          ) / 1_000_000;
+        // A rewrite also sends the previous draft, so it is priced with a full output as input.
+        const first = cost(api.provider, api.model, Math.ceil(inputTokens * 1.2) + 1024, p.maxTokens);
+        const rewrite = cost(
+          api.provider,
+          api.model,
+          Math.ceil(inputTokens * 1.2) + 2048 + p.maxTokens,
+          p.maxTokens,
+        );
+        const estimatedMaxCostUsd = Math.ceil((first + rewrite * (p.attempts - 1)) * 1_000_000) / 1_000_000;
         if (estimatedMaxCostUsd > p.settings.maxCostUsd)
           throw new HttpError(
             409,
-            'A estimativa excede o limite de custo por geração. Reduza o pedido ou a saída, ou revise o limite em Configurações.',
+            p.attempts > 1
+              ? `Para garantir a duração do vídeo, a estimativa cobre até ${p.attempts} gerações e chega a US$ ${estimatedMaxCostUsd.toFixed(2)}, acima do limite de US$ ${p.settings.maxCostUsd.toFixed(2)}. Aumente o limite em Avançado → Configurações → Assistente de criação.`
+              : 'A estimativa excede o limite de custo por geração. Reduza o pedido ou a saída, ou revise o limite em Configurações.',
           );
         for (const [id, value] of quotes) if (value.expires <= now().getTime()) quotes.delete(id);
         while (quotes.size >= 20) quotes.delete(quotes.keys().next().value!);
@@ -520,9 +557,10 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
           provider: api.provider,
           model: api.model,
           inputTokens,
-          maxOutputTokens: p.settings.maxOutputTokens,
+          maxOutputTokens: p.maxTokens,
           estimatedMaxCostUsd,
           costLimitUsd: p.settings.maxCostUsd,
+          attempts: p.attempts,
           expiresAt: new Date(expires).toISOString(),
           pricingCheckedAt: api.pricingCheckedAt,
         };
@@ -539,14 +577,56 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
           'Já existe um rascunho em criação. Aguarde a conclusão antes de pedir outro.',
         );
       generating = true;
-      let usageEvent: AIUsageRecord | undefined,
-        measured: ProviderUsage | undefined,
-        measuredCost: number | undefined;
-      let usageStatus: 'succeeded' | 'rejected' | 'unknown' = 'unknown';
       try {
         const p = await prepare(owner, input);
-        const { task, prepared, settings, references, system, prompt, outputSchema } = p;
-        let text: string, selectedModel: string, usage: SharedCreativeDraft['usage'];
+        const { task, prepared, settings, references } = p;
+        type Accepted = { parsed: Record<string, unknown>; fields: SharedCreativeDraft['fields'] };
+        // Throws on any malformed or unsafe answer; the duration rule is checked separately.
+        const accept = (text: string): Accepted => {
+          let parsed: Record<string, unknown>;
+          try {
+            parsed = record(JSON.parse(text));
+          } catch {
+            throw invalidResponse();
+          }
+          const allowed = prepared ? ['title', 'body', 'fields'] : ['title', 'body'];
+          if (
+            Object.keys(parsed).length !== allowed.length ||
+            Object.keys(parsed).some((key) => !allowed.includes(key)) ||
+            typeof parsed.title !== 'string' ||
+            parsed.title.trim().length < 3 ||
+            parsed.title.length > 200 ||
+            typeof parsed.body !== 'string' ||
+            parsed.body.trim().length < 20 ||
+            parsed.body.length > (prepared ? 2000 : 20_000) ||
+            /\0/.test(parsed.title + parsed.body)
+          )
+            throw invalidResponse();
+          if (
+            settings.prompt.content.trim().length > 20 &&
+            JSON.stringify(parsed).includes(JSON.stringify(settings.prompt.content.trim()).slice(1, -1))
+          )
+            throw new HttpError(503, 'A resposta tentou reproduzir o prompt pessoal e foi descartada.');
+          let fields: SharedCreativeDraft['fields'];
+          if (prepared) {
+            try {
+              fields = validateEditorFields(
+                parsed.fields,
+                prepared,
+                references.flatMap((item) => item.sources),
+              );
+            } catch {
+              throw invalidResponse();
+            }
+          }
+          return { parsed, fields };
+        };
+        const durationOf = (fields: SharedCreativeDraft['fields']): DurationCheck | undefined =>
+          p.duration && fields && 'scenes' in fields ? checkDuration(p.duration, fields.scenes) : undefined;
+
+        let generate: (system: string, prompt: string) => Promise<Accepted & { check?: DurationCheck }>;
+        let selectedModel: string;
+        const totals: ProviderUsage & { costUsd: number } = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
         if (settings.provider !== 'ollama') {
           if (input.authorizePaid !== true || typeof input.quoteId !== 'string')
             throw new HttpError(
@@ -566,33 +646,69 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
             key = await apiKey(owner, api.provider);
           if (grant.expires <= now().getTime() || grant.fingerprint !== fingerprint(p, key))
             throw new HttpError(409, 'A estimativa expirou ou o pedido mudou. Calcule e autorize novamente.');
-          usageEvent = await ledger.begin({
-            channelId: owner,
-            provider: api.provider,
-            key,
-            task,
-            model: api.model,
-            operation: 'generation',
-            pricingCheckedAt: api.pricingCheckedAt,
-          });
-          const result = await api.client.generate(key, providerRequest(p));
-          text = result.text;
           selectedModel = api.model;
-          measured = {
-            inputTokens: result.inputTokens,
-            outputTokens: result.outputTokens,
-            ...('cachedInputTokens' in result ? { cachedInputTokens: result.cachedInputTokens } : {}),
-            ...('reasoningTokens' in result ? { reasoningTokens: result.reasoningTokens } : {}),
+          // One ledger entry per paid call, so every attempt the operator authorized is accounted.
+          generate = async (system, prompt) => {
+            const event = await ledger.begin({
+              channelId: owner,
+              provider: api.provider,
+              key,
+              task,
+              model: api.model,
+              operation: 'generation',
+              pricingCheckedAt: api.pricingCheckedAt,
+            });
+            let measured: ProviderUsage | undefined, measuredCost: number | undefined;
+            let status: 'succeeded' | 'rejected' | 'unknown' = 'unknown';
+            try {
+              const result = await api.client.generate(key, providerRequest(p, system, prompt));
+              measured = {
+                inputTokens: result.inputTokens,
+                outputTokens: result.outputTokens,
+                ...('cachedInputTokens' in result ? { cachedInputTokens: result.cachedInputTokens } : {}),
+                ...('reasoningTokens' in result ? { reasoningTokens: result.reasoningTokens } : {}),
+              };
+              measuredCost = cost(
+                api.provider,
+                api.model,
+                measured.inputTokens,
+                measured.outputTokens,
+                measured.cachedInputTokens,
+              );
+              totals.inputTokens += measured.inputTokens;
+              totals.outputTokens += measured.outputTokens;
+              if (measured.cachedInputTokens !== undefined)
+                totals.cachedInputTokens = (totals.cachedInputTokens ?? 0) + measured.cachedInputTokens;
+              if (measured.reasoningTokens !== undefined)
+                totals.reasoningTokens = (totals.reasoningTokens ?? 0) + measured.reasoningTokens;
+              totals.costUsd += measuredCost;
+              status = 'rejected';
+              const accepted = accept(result.text);
+              const check = durationOf(accepted.fields);
+              if (!check || check.ok) status = 'succeeded';
+              return { ...accepted, check };
+            } catch (error) {
+              if (!measured && error instanceof ProviderResponseError && error.usage) {
+                measured = error.usage;
+                status = 'rejected';
+                if (!error.costUnknown)
+                  measuredCost = cost(
+                    api.provider,
+                    api.model,
+                    measured.inputTokens,
+                    measured.outputTokens,
+                    measured.cachedInputTokens,
+                  );
+              }
+              throw error;
+            } finally {
+              await ledger.finish(event.id, {
+                status,
+                ...measured,
+                estimatedCostUsd: measuredCost ?? null,
+              });
+            }
           };
-          measuredCost = cost(
-            api.provider,
-            selectedModel,
-            measured.inputTokens,
-            measured.outputTokens,
-            measured.cachedInputTokens,
-          );
-          usageStatus = 'rejected';
-          usage = { ...measured, estimatedCostUsd: measuredCost, currency: 'USD' };
         } else {
           if (input.quoteId !== undefined || input.authorizePaid !== undefined)
             throw new HttpError(409, 'O provedor mudou. Abra o assistente novamente antes de gerar.');
@@ -613,104 +729,90 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
               503,
               'O modelo selecionado não comprovou execução local. Escolha um modelo GGUF sem encaminhamento remoto.',
             );
-          const result = await request('/api/generate', {
-            model: settings.model,
-            system,
-            prompt,
-            format: outputSchema,
-            stream: false,
-            keep_alive: '2m',
-            options: { temperature: 0.7, num_predict: 4096, num_ctx: 16_384 },
-          });
-          if (
-            result.remote_host ||
-            result.remote_model ||
-            result.model !== settings.model ||
-            result.done !== true ||
-            result.done_reason === 'length' ||
-            result.tool_calls ||
-            typeof result.response !== 'string'
-          )
-            throw invalidResponse();
-          text = result.response;
           selectedModel = settings.model;
-        }
-        let parsed: Record<string, unknown>;
-        try {
-          parsed = record(JSON.parse(text));
-        } catch {
-          throw invalidResponse();
-        }
-        const allowed = prepared ? ['title', 'body', 'fields'] : ['title', 'body'];
-        if (
-          Object.keys(parsed).length !== allowed.length ||
-          Object.keys(parsed).some((key) => !allowed.includes(key)) ||
-          typeof parsed.title !== 'string' ||
-          parsed.title.trim().length < 3 ||
-          parsed.title.length > 200 ||
-          typeof parsed.body !== 'string' ||
-          parsed.body.trim().length < 20 ||
-          parsed.body.length > (prepared ? 2000 : 20_000) ||
-          /\0/.test(parsed.title + parsed.body)
-        )
-          throw invalidResponse();
-        if (
-          settings.prompt.content.trim().length > 20 &&
-          JSON.stringify(parsed).includes(JSON.stringify(settings.prompt.content.trim()).slice(1, -1))
-        )
-          throw new HttpError(503, 'A resposta tentou reproduzir o prompt pessoal e foi descartada.');
-        let fields: SharedCreativeDraft['fields'];
-        if (prepared) {
-          try {
-            fields = validateEditorFields(
-              parsed.fields,
-              prepared,
-              references.flatMap((item) => item.sources),
-            );
-          } catch {
-            throw invalidResponse();
-          }
-        }
-        usageStatus = 'succeeded';
-        return {
-          channelId: owner,
-          task,
-          title: parsed.title.trim(),
-          body: parsed.body.trim(),
-          model: selectedModel,
-          createdAt: now().toISOString(),
-          status: 'draft',
-          crossChecked: false,
-          reviewRequired: true,
-          guides: [...guides[task].names],
-          ...(fields ? { fields } : {}),
-          ...(usage ? { usage } : {}),
-        };
-      } catch (error) {
-        if (usageEvent && error instanceof ProviderResponseError && error.usage) {
-          measured = error.usage;
-          usageStatus = 'rejected';
-          if (!error.costUnknown)
-            measuredCost = cost(
-              usageEvent.provider,
-              usageEvent.model,
-              measured.inputTokens,
-              measured.outputTokens,
-              measured.cachedInputTokens,
-            );
-        }
-        throw error;
-      } finally {
-        try {
-          if (usageEvent)
-            await usageStore().finish(usageEvent.id, {
-              status: usageStatus,
-              ...measured,
-              estimatedCostUsd: measuredCost ?? null,
+          generate = async (system, prompt) => {
+            const result = await request('/api/generate', {
+              model: settings.model,
+              system,
+              prompt,
+              format: p.outputSchema,
+              stream: false,
+              keep_alive: '2m',
+              options: {
+                temperature: 0.7,
+                num_predict: p.maxTokens,
+                // Room for the request, a previous draft on a rewrite, and the full answer.
+                num_ctx: p.duration ? 32_768 : 16_384,
+              },
             });
-        } finally {
-          generating = false;
+            if (
+              result.remote_host ||
+              result.remote_model ||
+              result.model !== settings.model ||
+              result.done !== true ||
+              result.done_reason === 'length' ||
+              result.tool_calls ||
+              typeof result.response !== 'string'
+            )
+              throw invalidResponse();
+            const accepted = accept(result.response);
+            return { ...accepted, check: durationOf(accepted.fields) };
+          };
         }
+
+        let system = p.system,
+          prompt = p.prompt,
+          last: DurationCheck | undefined;
+        for (let attempt = 1; attempt <= p.attempts; attempt++) {
+          const { parsed, fields, check } = await generate(system, prompt);
+          if (check && !check.ok) {
+            // Business rule: never deliver a script that cannot fill its format. Rewrite it with
+            // the exact word gap, sending the rejected draft back as data.
+            last = check;
+            system = `${p.system}\n\n${revisionInstruction(check)}`;
+            prompt = JSON.stringify({ ...p.payload, previousDraft: fields });
+            continue;
+          }
+          return {
+            channelId: owner,
+            task,
+            title: String(parsed.title).trim(),
+            body: String(parsed.body).trim(),
+            model: selectedModel,
+            createdAt: now().toISOString(),
+            status: 'draft',
+            crossChecked: false,
+            reviewRequired: true,
+            guides: [...guides[task].names],
+            ...(fields ? { fields } : {}),
+            ...(check
+              ? { duration: { words: check.words, estimatedSecs: check.estimatedSecs, attempts: attempt } }
+              : {}),
+            ...(settings.provider !== 'ollama'
+              ? {
+                  usage: {
+                    inputTokens: totals.inputTokens,
+                    outputTokens: totals.outputTokens,
+                    ...(totals.cachedInputTokens !== undefined
+                      ? { cachedInputTokens: totals.cachedInputTokens }
+                      : {}),
+                    ...(totals.reasoningTokens !== undefined
+                      ? { reasoningTokens: totals.reasoningTokens }
+                      : {}),
+                    estimatedCostUsd: totals.costUsd,
+                    currency: 'USD' as const,
+                  },
+                }
+              : {}),
+          };
+        }
+        const target = last!.rule;
+        throw new HttpError(
+          422,
+          `A IA entregou ${last!.words} palavras de narração (cerca de ${formatDuration(last!.estimatedSecs)}) depois de ${p.attempts} tentativas, e o formato ${target.format} exige de ${formatDuration(target.minSecs)} a ${formatDuration(target.maxSecs)} (${target.minWords} a ${target.maxWords} palavras). Nenhum roteiro foi salvo. Gere de novo ou escolha um modelo maior.`,
+        );
+      } finally {
+        generating = false;
       }
     },
   };

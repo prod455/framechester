@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canPublish, crossReferences, postDescription } from '../shared/publishing.ts';
+import { canPublish, crossReferences, postDescription, publicPlatforms } from '../shared/publishing.ts';
 
 const links = [
   { platform: 'facebook' as const, url: 'https://www.facebook.com/1' },
@@ -26,9 +26,11 @@ test('the references sit between the text and the trailing tag', () => {
   assert.equal(postDescription('Fontes', ''), 'Fontes');
 });
 
-test('Facebook takes only vertical video and Instagram takes no upload', () => {
+test('Facebook and Instagram take only vertical video, and only Instagram is public', () => {
   assert.equal(canPublish('facebook', false), false);
   assert.equal(canPublish('facebook', true), true);
   assert.equal(canPublish('tiktok', false), true);
-  assert.equal(canPublish('instagram', true), false);
+  assert.equal(canPublish('instagram', true), true);
+  assert.equal(canPublish('instagram', false), false);
+  assert.deepEqual(publicPlatforms, ['instagram']);
 });

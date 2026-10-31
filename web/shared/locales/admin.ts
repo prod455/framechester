@@ -300,6 +300,19 @@ export default {
       'pages_show_list, pages_read_engagement and pages_manage_posts, with the approval Meta requires.',
     'Envio sempre como rascunho de Reel (vídeo vertical); a publicação é decisão do operador no Meta Business Suite.':
       "Always uploaded as a Reel draft (vertical video); publishing is the operator's decision in Meta Business Suite.",
+    'Publicar cada vídeo vertical aprovado no Instagram como Reel público, sem revisão na rede (exige a conta conectada com permissão de publicação)':
+      'Publish each approved vertical video on Instagram as a public Reel, with no review on the network (needs the account connected with publishing permission)',
+    público: 'public',
+    'ID da configuração do Facebook Login for Business': 'Facebook Login for Business configuration ID',
+    'Obrigatório no Instagram: o envio do arquivo só funciona com Facebook Login for Business.':
+      'Required for Instagram: the file upload only works with Facebook Login for Business.',
+    'Opcional no Facebook; use a mesma configuração do Instagram se tiver uma.':
+      'Optional for Facebook; use the same configuration as Instagram if you have one.',
+    'Publicação pública direta': 'Direct public posting',
+    'Aplicativo Meta próprio com Facebook Login for Business e o callback local registrado; a configuração pede pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish.':
+      'Your own Meta app with Facebook Login for Business and the local callback registered; the configuration asks for pages_show_list, pages_read_engagement, instagram_basic and instagram_content_publish.',
+    'Publicação pública direta como Reel (vídeo vertical): a API do Instagram não tem rascunho nem modo privado. Só sai a versão final aprovada no QA, por clique confirmado ou com o opt-in do canal.':
+      'Direct public posting as a Reel (vertical video): the Instagram API has no draft or private mode. Only the final version approved in QA goes out, by a confirmed click or with the channel opt-in.',
   },
   es: {
     'Comece pelo seu canal': 'Empieza por tu canal',
@@ -600,5 +613,18 @@ export default {
       'pages_show_list, pages_read_engagement y pages_manage_posts, con la aprobación que exige Meta.',
     'Envio sempre como rascunho de Reel (vídeo vertical); a publicação é decisão do operador no Meta Business Suite.':
       'Siempre se sube como borrador de Reel (video vertical); publicar es decisión del operador en Meta Business Suite.',
+    'Publicar cada vídeo vertical aprovado no Instagram como Reel público, sem revisão na rede (exige a conta conectada com permissão de publicação)':
+      'Publicar cada video vertical aprobado en Instagram como Reel público, sin revisión en la red (requiere la cuenta conectada con permiso de publicación)',
+    público: 'público',
+    'ID da configuração do Facebook Login for Business': 'ID de configuración de Facebook Login for Business',
+    'Obrigatório no Instagram: o envio do arquivo só funciona com Facebook Login for Business.':
+      'Obligatorio en Instagram: la subida del archivo solo funciona con Facebook Login for Business.',
+    'Opcional no Facebook; use a mesma configuração do Instagram se tiver uma.':
+      'Opcional en Facebook; usa la misma configuración de Instagram si tienes una.',
+    'Publicação pública direta': 'Publicación pública directa',
+    'Aplicativo Meta próprio com Facebook Login for Business e o callback local registrado; a configuração pede pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish.':
+      'App propia de Meta con Facebook Login for Business y el callback local registrado; la configuración pide pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish.',
+    'Publicação pública direta como Reel (vídeo vertical): a API do Instagram não tem rascunho nem modo privado. Só sai a versão final aprovada no QA, por clique confirmado ou com o opt-in do canal.':
+      'Publicación pública directa como Reel (video vertical): la API de Instagram no tiene borrador ni modo privado. Solo sale la versión final aprobada en el QA, con un clic confirmado o con el opt-in del canal.',
   },
 } satisfies AreaCatalog;

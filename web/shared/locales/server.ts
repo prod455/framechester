@@ -437,6 +437,19 @@ export default {
       'The expected Facebook Page is not among the authorized Pages.',
     'OAuth exige callback de loopback local registrado exatamente no aplicativo do provedor.':
       "OAuth needs a local loopback callback registered exactly in the provider's app.",
+    'O {network} recebe só vídeo vertical, como Reel; envie o Short deste vídeo.':
+      "{network} only takes vertical video, as a Reel; send this video's Short.",
+    'ID de configuração do Facebook Login for Business inválido.':
+      'Invalid Facebook Login for Business configuration ID.',
+    'O Instagram aceita Reels de até 300 MB.': 'Instagram takes Reels up to 300 MB.',
+    'O Instagram não retornou o contêiner do Reel.': 'Instagram did not return the Reel container.',
+    'O Instagram recusou o arquivo (HTTP {status}).': 'Instagram rejected the file (HTTP {status}).',
+    'O Instagram não confirmou o recebimento do arquivo.': 'Instagram did not confirm it received the file.',
+    'O Instagram recusou o vídeo ao processar; nada foi publicado.':
+      'Instagram rejected the video while processing; nothing was published.',
+    'O Instagram não terminou de processar o vídeo em 5 minutos; nada foi publicado. Tente de novo.':
+      'Instagram did not finish processing the video within 5 minutes; nothing was published. Try again.',
+    'O Instagram não retornou o ID da publicação.': 'Instagram did not return the post ID.',
   },
   es: {
     'O armazenamento privado de consumo está indisponível ou é inválido. Preserve o histórico e verifique as permissões antes de tentar novamente.':
@@ -876,5 +889,18 @@ export default {
       'La Página de Facebook esperada no está entre las Páginas autorizadas.',
     'OAuth exige callback de loopback local registrado exatamente no aplicativo do provedor.':
       'OAuth exige un callback de loopback local registrado exactamente en la app del proveedor.',
+    'O {network} recebe só vídeo vertical, como Reel; envie o Short deste vídeo.':
+      '{network} solo recibe video vertical, como Reel; envía el Short de este video.',
+    'ID de configuração do Facebook Login for Business inválido.':
+      'ID de configuración de Facebook Login for Business no válido.',
+    'O Instagram aceita Reels de até 300 MB.': 'Instagram acepta Reels de hasta 300 MB.',
+    'O Instagram não retornou o contêiner do Reel.': 'Instagram no devolvió el contenedor del Reel.',
+    'O Instagram recusou o arquivo (HTTP {status}).': 'Instagram rechazó el archivo (HTTP {status}).',
+    'O Instagram não confirmou o recebimento do arquivo.': 'Instagram no confirmó la recepción del archivo.',
+    'O Instagram recusou o vídeo ao processar; nada foi publicado.':
+      'Instagram rechazó el video al procesarlo; no se publicó nada.',
+    'O Instagram não terminou de processar o vídeo em 5 minutos; nada foi publicado. Tente de novo.':
+      'Instagram no terminó de procesar el video en 5 minutos; no se publicó nada. Inténtalo de nuevo.',
+    'O Instagram não retornou o ID da publicação.': 'Instagram no devolvió el ID de la publicación.',
   },
 } satisfies AreaCatalog;

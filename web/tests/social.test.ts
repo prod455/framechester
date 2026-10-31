@@ -75,13 +75,13 @@ function youtubeFetch(
   };
 }
 
-test('capabilities cover four networks honestly; Instagram, without a non-public mode, takes no upload', () => {
+test('capabilities cover four networks honestly and every one of them receives the approved video', () => {
   const service = createSocialService({ vault: new MemoryVault(), fetch: youtubeFetch(), now: () => NOW });
   const capabilities = service.capabilities();
   assert.equal(capabilities.length, 4);
   assert.deepEqual(
     capabilities.filter((item) => item.publishingAvailable).map((item) => item.platform),
-    ['youtube', 'tiktok', 'facebook'],
+    ['youtube', 'tiktok', 'instagram', 'facebook'],
   );
   assert.ok(capabilities.every((item) => item.connectionMethod === 'oauth'));
   assert.deepEqual(
@@ -987,7 +987,7 @@ test('Facebook OAuth keeps the Page token of the expected Page with the permissi
   await assert.rejects(connectMeta(refused, 'facebook'), /Páginas autorizadas/);
 });
 
-test('a Facebook Reel goes up as a DRAFT through rupload; horizontal video and Instagram send nothing', async () => {
+test('a Facebook Reel goes up as a DRAFT through rupload; horizontal video sends nothing', async () => {
   const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
   const directory = await mkdtemp(join(tmpdir(), 'fc-reel-upload-'));
   try {
@@ -1006,8 +1006,8 @@ test('a Facebook Reel goes up as a DRAFT through rupload; horizontal video and I
       /só vídeo vertical/,
     );
     await assert.rejects(
-      service.publish('tech', 'instagram', { path: video, title: 'Vídeo', description: '', vertical: true }),
-      /sem rascunho ou modo privado/,
+      service.publish('tech', 'instagram', { path: video, title: 'Vídeo', description: '', vertical: false }),
+      /Instagram recebe só vídeo vertical/,
     );
     assert.equal(calls.length, 0);
     const result = await service.publish('tech', 'facebook', {
@@ -1095,6 +1095,153 @@ test('a TikTok file above 5 MB goes in 10 MiB chunks and the last one absorbs th
       puts.map((call) => call.body!.length),
       [chunk, size - chunk],
     );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+function instagramFetch(
+  calls: Array<{ url: string; init?: RequestInit; body?: string }>,
+  statuses: string[],
+): SocialFetch {
+  const meta = metaFetch(calls, {
+    permissions: ['pages_show_list', 'pages_read_engagement', 'instagram_basic', 'instagram_content_publish'],
+  });
+  return async (raw, init) => {
+    const url = new URL(raw);
+    const auth = new Headers(init?.headers).get('authorization');
+    if (url.pathname === `/v26.0/${IG}/media`) {
+      assert.equal(auth, 'Bearer fixture-long-user');
+      calls.push({ url: raw, init, body: String(init!.body) });
+      return json({ id: '777', uri: 'https://rupload.facebook.com/ig-api-upload/v26.0/777' });
+    }
+    if (raw === 'https://rupload.facebook.com/ig-api-upload/v26.0/777') {
+      calls.push({ url: raw, init, body: await new Response(init!.body as ReadableStream).text() });
+      return json({ success: true, message: 'Upload successful.' });
+    }
+    if (url.pathname === '/v26.0/777') {
+      calls.push({ url: raw, init });
+      return json({ status_code: statuses.shift() ?? 'IN_PROGRESS', id: '777' });
+    }
+    if (url.pathname === `/v26.0/${IG}/media_publish`) {
+      calls.push({ url: raw, init, body: String(init!.body) });
+      return json({ id: '888' });
+    }
+    if (url.pathname === '/v26.0/888') return json({ permalink: 'https://www.instagram.com/reel/AbC_12-x/' });
+    return meta(raw, init);
+  };
+}
+
+test('Instagram OAuth can use a Facebook Login for Business configuration instead of scopes', async () => {
+  const service = createSocialService({ vault: new MemoryVault(), fetch: metaFetch([]), now: () => NOW });
+  const input = {
+    platform: 'instagram' as const,
+    channelId: 'tech',
+    accountId: IG,
+    clientId: '1122334455',
+    clientSecret: 'fixture-app-secret',
+    redirectUri: 'http://127.0.0.1:4317/api/oauth/instagram/callback',
+  };
+  const url = new URL((await service.startOAuth({ ...input, configId: '998877' })).authorizationUrl);
+  assert.equal(url.searchParams.get('config_id'), '998877');
+  assert.equal(url.searchParams.has('scope'), false);
+  await assert.rejects(service.startOAuth({ ...input, configId: 'abc' }), /configuração/);
+  await assert.rejects(service.startOAuth({ ...input, platform: 'youtube', configId: '1' } as never));
+});
+
+test('an Instagram Reel is published only after processing finishes, with caption and permalink', async () => {
+  const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+  const waits: number[] = [];
+  const directory = await mkdtemp(join(tmpdir(), 'fc-instagram-publish-'));
+  try {
+    const video = join(directory, 'final.mp4');
+    await writeFile(video, 'synthetic mp4 fixture');
+    const service = createSocialService({
+      vault: new MemoryVault(),
+      fetch: instagramFetch(calls, ['IN_PROGRESS', 'FINISHED']),
+      now: () => NOW,
+      wait: async (ms) => {
+        waits.push(ms);
+      },
+    });
+    await connectMeta(service, 'instagram');
+    calls.length = 0;
+    const result = await service.publish('tech', 'instagram', {
+      path: video,
+      title: 'Skills vs agentes',
+      description: 'Fontes\n\nAcompanhe também:\nYouTube: https://www.youtube.com/@fixture',
+      vertical: true,
+    });
+    assert.deepEqual(result, { postId: '888', url: 'https://www.instagram.com/reel/AbC_12-x/' });
+    const container = new URLSearchParams(calls[0].body);
+    assert.equal(container.get('media_type'), 'REELS');
+    assert.equal(container.get('upload_type'), 'resumable');
+    assert.match(container.get('caption')!, /^Skills vs agentes\n\nFontes[\s\S]*youtube\.com\/@fixture$/);
+    const upload = new Headers(calls[1].init!.headers);
+    assert.equal(upload.get('authorization'), 'OAuth fixture-long-user');
+    assert.equal(upload.get('file_size'), String('synthetic mp4 fixture'.length));
+    assert.equal(calls[1].body, 'synthetic mp4 fixture');
+    assert.deepEqual(waits, [30_000, 30_000], 'Two checks at the documented pace');
+    assert.equal(new URLSearchParams(calls.at(-1)!.body).get('creation_id'), '777');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('a container that fails or never finishes processing is never published', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'fc-instagram-refuse-'));
+  try {
+    const video = join(directory, 'final.mp4');
+    await writeFile(video, 'synthetic mp4 fixture');
+    for (const [statuses, pattern] of [
+      [['IN_PROGRESS', 'ERROR'], /nada foi publicado/],
+      [[], /5 minutos/],
+    ] as const) {
+      const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+      const service = createSocialService({
+        vault: new MemoryVault(),
+        fetch: instagramFetch(calls, [...statuses]),
+        now: () => NOW,
+        wait: async () => {},
+      });
+      await connectMeta(service, 'instagram');
+      await assert.rejects(
+        service.publish('tech', 'instagram', {
+          path: video,
+          title: 'Vídeo',
+          description: '',
+          vertical: true,
+        }),
+        pattern,
+      );
+      assert.equal(
+        calls.some((call) => call.url.endsWith('/media_publish')),
+        false,
+      );
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('an Instagram connection without instagram_content_publish asks to reconnect and sends nothing', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'fc-instagram-scope-'));
+  try {
+    const video = join(directory, 'final.mp4');
+    await writeFile(video, 'synthetic mp4 fixture');
+    const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+    const service = createSocialService({
+      vault: new MemoryVault(),
+      fetch: metaFetch(calls),
+      now: () => NOW,
+    });
+    await connectMeta(service, 'instagram');
+    calls.length = 0;
+    await assert.rejects(
+      service.publish('tech', 'instagram', { path: video, title: 'Vídeo', description: '', vertical: true }),
+      /Reconecte o Instagram/,
+    );
+    assert.equal(calls.length, 0);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

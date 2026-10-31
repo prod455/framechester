@@ -94,7 +94,7 @@ export const socialRoutes: Route[] = [
       const { request, response, publicPort } = context;
       const body = await readJson(request);
       ownerBody(body, id);
-      allowedKeys(body, ['channelId', 'accountId', 'clientId', 'clientSecret', 'redirectUri']);
+      allowedKeys(body, ['channelId', 'accountId', 'clientId', 'clientSecret', 'redirectUri', 'configId']);
       const redirectUri = `http://127.0.0.1:${publicPort ?? request.socket.localPort ?? 4317}/api/oauth/${provider}/callback`;
       json(
         response,
@@ -105,6 +105,9 @@ export const socialRoutes: Route[] = [
           accountId: string(body.accountId, 'accountId', 300),
           clientId: string(body.clientId, 'clientId', 3000),
           clientSecret: string(body.clientSecret, 'clientSecret', 10000),
+          ...(body.configId === undefined || body.configId === ''
+            ? {}
+            : { configId: string(body.configId, 'configId', 40) }),
           redirectUri,
         }),
       );

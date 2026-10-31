@@ -15,7 +15,7 @@ import type {
   VideoUpload,
   YoutubeThumbnail,
 } from '../shared/types.ts';
-import { canPublish, platformLabels, publishingPlatforms } from '../shared/publishing.ts';
+import { canPublish, platformLabels } from '../shared/publishing.ts';
 import type { SecretVault } from './vault.ts';
 
 export type SocialFetch = (url: string, init?: RequestInit) => Promise<Response>;
@@ -24,6 +24,8 @@ export interface SocialServiceOptions {
   fetch?: SocialFetch;
   now?: () => number;
   timeoutMs?: number;
+  /** Pause between Instagram processing checks; tests skip the wait. */
+  wait?: (ms: number) => Promise<void>;
 }
 export class SocialError extends Error {
   constructor(
@@ -53,12 +55,20 @@ const TIKTOK_PUBLISH = 'video.publish';
 const TIKTOK_SCOPES = ['user.info.basic', 'user.info.profile', 'user.info.stats', TIKTOK_PUBLISH];
 const PAGE_PUBLISH = 'pages_manage_posts';
 const FACEBOOK_SCOPES = ['pages_show_list', 'pages_read_engagement', PAGE_PUBLISH];
-const INSTAGRAM_SCOPES = ['pages_show_list', 'pages_read_engagement', 'instagram_basic'];
+const INSTAGRAM_PUBLISH = 'instagram_content_publish';
+const INSTAGRAM_SCOPES = ['pages_show_list', 'pages_read_engagement', 'instagram_basic', INSTAGRAM_PUBLISH];
+const INSTAGRAM_UPLOAD = 'https://rupload.facebook.com/ig-api-upload/v26.0';
+// Content Publishing: Reels up to 300 MB; query the container once per minute for at most
+// 5 minutes is the documented pace, and an unpublished container expires in 24 h.
+const INSTAGRAM_MAX_VIDEO = 300 * 1024 * 1024;
+const INSTAGRAM_POLL_MS = 30_000;
+const INSTAGRAM_POLLS = 10;
 /** Scope that lets the stored token send videos; without it the operator reconnects. */
 const PUBLISH_SCOPE: Partial<Record<Platform, string>> = {
   youtube: VIDEO_UPLOAD,
   tiktok: TIKTOK_PUBLISH,
   facebook: PAGE_PUBLISH,
+  instagram: INSTAGRAM_PUBLISH,
 };
 const REELS_UPLOAD = 'https://rupload.facebook.com/video-upload/v26.0';
 // TikTok Media Transfer Guide: chunks of 5-64 MB, the last one absorbs the remainder (up to 128 MB),
@@ -66,6 +76,7 @@ const REELS_UPLOAD = 'https://rupload.facebook.com/video-upload/v26.0';
 const TIKTOK_MIN_CHUNK = 5 * 1024 * 1024;
 const TIKTOK_CHUNK = 10 * 1024 * 1024;
 const TIKTOK_CAPTION = 2200;
+const INSTAGRAM_CAPTION = 2200;
 const MAX_RESPONSE = 512 * 1024;
 interface OAuthProvider {
   authorize: string;
@@ -122,7 +133,7 @@ const ENDPOINTS: Array<{ host: string; path: RegExp; body: Array<'none' | 'form'
   },
   {
     host: 'graph.facebook.com',
-    path: /^\/v26\.0\/(oauth\/access_token|\d{1,32}\/video_reels)$/,
+    path: /^\/v26\.0\/(oauth\/access_token|\d{1,32}\/(video_reels|media|media_publish))$/,
     body: ['form'],
   },
   { host: 'open.tiktokapis.com', path: /^\/v2\/user\/info\/$/, body: ['none'] },
@@ -179,17 +190,17 @@ const CAPABILITIES: NetworkCapability[] = [
     connectionMethod: 'oauth',
     metricsAvailable: true,
     revenueAvailable: false,
-    publishingAvailable: false,
+    publishingAvailable: true,
     accountLabel: 'ID da conta profissional do Instagram',
     accountPattern: '^\\d{1,32}$',
     requirements: [
       'Conta profissional ligada a uma Página.',
-      'Aplicativo Meta próprio com Facebook Login e o callback local registrado; pages_show_list, pages_read_engagement e instagram_basic.',
-      'Sem envio: a API de publicação do Instagram não tem rascunho nem modo privado, e publicar direto é decisão do operador no app.',
+      'Aplicativo Meta próprio com Facebook Login for Business e o callback local registrado; a configuração pede pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish.',
+      'Publicação pública direta como Reel (vídeo vertical): a API do Instagram não tem rascunho nem modo privado. Só sai a versão final aprovada no QA, por clique confirmado ou com o opt-in do canal.',
     ],
     revenueNote:
       'Esta integração lê contadores da conta profissional; não implementa API de recebimentos do Instagram. Importe comprovantes manualmente.',
-    docsUrl: 'https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/',
+    docsUrl: 'https://developers.facebook.com/docs/instagram-platform/content-publishing',
   },
   {
     platform: 'facebook',
@@ -410,6 +421,7 @@ export class SocialService implements SocialApi {
   private readonly fetcher: SocialFetch;
   private readonly now: () => number;
   private readonly timeoutMs: number;
+  private readonly wait: (ms: number) => Promise<void>;
   private readonly pending = new Map<string, PendingOAuth>();
   private readonly locks = new Map<string, Promise<void>>();
 
@@ -418,6 +430,7 @@ export class SocialService implements SocialApi {
     this.fetcher = options.fetch ?? globalThis.fetch.bind(globalThis);
     this.now = options.now ?? Date.now;
     this.timeoutMs = Math.min(30000, Math.max(1000, options.timeoutMs ?? 15000));
+    this.wait = options.wait ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   }
 
   capabilities(): NetworkCapability[] {
@@ -741,6 +754,12 @@ export class SocialService implements SocialApi {
         : (identityInput(input.platform, input.accountId), input.accountId);
     secret(input.clientId);
     secret(input.clientSecret);
+    // Facebook Login for Business names its permissions in a configuration, not in `scope`.
+    if (
+      input.configId !== undefined &&
+      (!['facebook', 'instagram'].includes(input.platform) || !/^\d{1,32}$/.test(input.configId))
+    )
+      throw new SocialError('invalid_config', 'ID de configuração do Facebook Login for Business inválido.');
     let redirect: URL;
     try {
       redirect = new URL(input.redirectUri);
@@ -795,7 +814,9 @@ export class SocialService implements SocialApi {
         redirect_uri: input.redirectUri,
         response_type: 'code',
         ...provider.extra,
-        scope: provider.scopes.join(provider.separator),
+        ...(input.configId
+          ? { config_id: input.configId, override_default_response_type: 'true' }
+          : { scope: provider.scopes.join(provider.separator) }),
         state,
         ...(provider.pkce
           ? {
@@ -1289,25 +1310,23 @@ export class SocialService implements SocialApi {
     });
   }
 
-  /** Sends an approved video without making it public; the operator publishes on the network. */
+  /** Sends an approved video: non-public on YouTube, TikTok and Facebook; public on Instagram,
+   * whose API has no draft or private mode. */
   async publish(channelId: string, platform: Platform, video: VideoUpload): Promise<PublishResult> {
     channel(channelId);
     if (!PLATFORMS.includes(platform)) throw new SocialError('invalid_platform', 'Rede inválida.');
-    if (!publishingPlatforms.includes(platform))
-      throw new SocialError(
-        'publishing_unavailable',
-        'A API do Instagram só publica direto, sem rascunho ou modo privado; envie pelo app do Instagram.',
-      );
     if (!canPublish(platform, video.vertical))
       throw new SocialError(
         'invalid_video',
-        'O Facebook recebe só vídeo vertical, como Reel; envie o Short deste vídeo.',
+        `O ${platformLabels[platform]} recebe só vídeo vertical, como Reel; envie o Short deste vídeo.`,
       );
     const title = youtubeText(video.title, 100);
     if (!title) throw new SocialError('invalid_video', 'O vídeo precisa de título para ser enviado.');
     const info = await stat(video.path).catch(() => undefined);
     if (!info?.isFile() || info.size === 0)
       throw new SocialError('invalid_video', 'Arquivo de vídeo ausente; gere a versão final novamente.');
+    if (platform === 'instagram' && info.size > INSTAGRAM_MAX_VIDEO)
+      throw new SocialError('invalid_video', 'O Instagram aceita Reels de até 300 MB.');
     return this.locked(`${channelId}/${platform}`, async () => {
       const { credential } = await this.ready(channelId, platform);
       if (!credential.scopes.includes(PUBLISH_SCOPE[platform]!))
@@ -1319,6 +1338,8 @@ export class SocialService implements SocialApi {
         if (platform === 'youtube')
           return await this.uploadYoutube(credential, { ...video, title }, info.size);
         if (platform === 'tiktok') return await this.uploadTiktok(credential, { ...video, title }, info.size);
+        if (platform === 'instagram')
+          return await this.publishInstagram(credential, { ...video, title }, info.size);
         return await this.uploadReel(credential, { ...video, title }, info.size);
       } catch (error) {
         if (error instanceof SocialError) throw error;
@@ -1443,6 +1464,87 @@ export class SocialService implements SocialApi {
       if (!sent.ok) throw new SocialError('api_denied', `O TikTok recusou o arquivo (HTTP ${sent.status}).`);
     }
     return { postId: publishId };
+  }
+
+  /** Instagram Reel, published publicly: container, rupload, processing check, media_publish. */
+  private async publishInstagram(
+    credential: Credential,
+    video: VideoUpload,
+    size: number,
+  ): Promise<PublishResult> {
+    const account = credential.accountId;
+    const container = await this.request(
+      `${GRAPH}/${account}/media`,
+      credential.accessToken,
+      new URLSearchParams({
+        media_type: 'REELS',
+        upload_type: 'resumable',
+        caption: utf16(postCaption(video.title, video.description), INSTAGRAM_CAPTION),
+        share_to_feed: 'true',
+      }),
+    );
+    const containerId = container.id;
+    if (typeof containerId !== 'string' || !/^\d{1,32}$/.test(containerId))
+      throw new SocialError('invalid_response', 'O Instagram não retornou o contêiner do Reel.');
+    const target = providerUrl(
+      container.uri ?? `${INSTAGRAM_UPLOAD}/${containerId}`,
+      'rupload.facebook.com',
+      (pathname) => pathname === `/ig-api-upload/v26.0/${containerId}`,
+    );
+    const sent = await this.fetcher(target, {
+      method: 'POST',
+      headers: {
+        authorization: `OAuth ${credential.accessToken}`,
+        offset: '0',
+        file_size: String(size),
+        'content-type': 'application/octet-stream',
+        'content-length': String(size),
+      },
+      body: Readable.toWeb(createReadStream(video.path)) as ReadableStream,
+      duplex: 'half',
+      redirect: 'error',
+      signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
+    } as RequestInit);
+    if (!sent.ok) {
+      await sent.body?.cancel();
+      throw new SocialError('api_denied', `O Instagram recusou o arquivo (HTTP ${sent.status}).`);
+    }
+    if ((await this.readJson(sent)).success !== true)
+      throw new SocialError('invalid_response', 'O Instagram não confirmou o recebimento do arquivo.');
+    // Publishing an unfinished container fails; nothing goes public until processing finished.
+    let status: unknown;
+    for (let poll = 0; poll < INSTAGRAM_POLLS && status !== 'FINISHED'; poll++) {
+      await this.wait(INSTAGRAM_POLL_MS);
+      status = (await this.request(`${GRAPH}/${containerId}?fields=status_code`, credential.accessToken))
+        .status_code;
+      if (status === 'ERROR' || status === 'EXPIRED')
+        throw new SocialError('api_denied', 'O Instagram recusou o vídeo ao processar; nada foi publicado.');
+    }
+    if (status !== 'FINISHED')
+      throw new SocialError(
+        'api_unavailable',
+        'O Instagram não terminou de processar o vídeo em 5 minutos; nada foi publicado. Tente de novo.',
+      );
+    const media = (
+      await this.request(
+        `${GRAPH}/${account}/media_publish`,
+        credential.accessToken,
+        new URLSearchParams({ creation_id: containerId }),
+      )
+    ).id;
+    if (typeof media !== 'string' || !/^\d{1,32}$/.test(media))
+      throw new SocialError('invalid_response', 'O Instagram não retornou o ID da publicação.');
+    // The post is public already: a missing permalink is reported as absent, never as a failure.
+    try {
+      const link = (await this.request(`${GRAPH}/${media}?fields=permalink`, credential.accessToken))
+        .permalink;
+      const url = providerUrl(link, 'www.instagram.com', (pathname) =>
+        /^\/(reel|p)\/[A-Za-z0-9_-]{1,64}\/?$/.test(pathname),
+      );
+      return { postId: media, url };
+    } catch {
+      return { postId: media };
+    }
   }
 
   /** Facebook Reel saved as DRAFT: the operator publishes it in Meta Business Suite. */

@@ -228,6 +228,17 @@ export default {
     'Tentar enviar ao {network} de novo': 'Try sending to {network} again',
     'Envio iniciado. Nada fica público: publique pelo próprio {network}.':
       'Upload started. Nothing goes public: publish on {network} itself.',
+    'Ver no Instagram': 'View on Instagram',
+    'Publicado no Instagram como Reel público em {date}.':
+      'Published on Instagram as a public Reel on {date}.',
+    'Publicando no {network}…': 'Publishing on {network}…',
+    'Publicar no Instagram (público)': 'Publish on Instagram (public)',
+    'Publicação iniciada. O Reel fica público assim que o {network} terminar de processar.':
+      'Publishing started. The Reel goes public as soon as {network} finishes processing.',
+    'Publicar agora no {network}?': 'Publish on {network} now?',
+    'O {network} não tem rascunho nem modo privado na API: o Reel fica público para todos assim que terminar de processar.':
+      '{network} has no draft or private mode in its API: the Reel is public to everyone as soon as it finishes processing.',
+    'Publicar no {network}': 'Publish on {network}',
   },
   es: {
     // Videos page and job cards
@@ -457,5 +468,16 @@ export default {
     'Tentar enviar ao {network} de novo': 'Intentar enviar a {network} de nuevo',
     'Envio iniciado. Nada fica público: publique pelo próprio {network}.':
       'Subida iniciada. Nada queda público: publica en el propio {network}.',
+    'Ver no Instagram': 'Ver en Instagram',
+    'Publicado no Instagram como Reel público em {date}.':
+      'Publicado en Instagram como Reel público el {date}.',
+    'Publicando no {network}…': 'Publicando en {network}…',
+    'Publicar no Instagram (público)': 'Publicar en Instagram (público)',
+    'Publicação iniciada. O Reel fica público assim que o {network} terminar de processar.':
+      'Publicación iniciada. El Reel queda público en cuanto {network} termine de procesarlo.',
+    'Publicar agora no {network}?': '¿Publicar ahora en {network}?',
+    'O {network} não tem rascunho nem modo privado na API: o Reel fica público para todos assim que terminar de processar.':
+      '{network} no tiene borrador ni modo privado en su API: el Reel queda público para todos en cuanto termine de procesarse.',
+    'Publicar no {network}': 'Publicar en {network}',
   },
 } satisfies AreaCatalog;

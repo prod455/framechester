@@ -252,8 +252,10 @@ O canal pode enviar a versão final aprovada sem publicar: ao YouTube como
 privado, ao TikTok como "Somente eu" e ao Facebook como rascunho de Reel (só
 vídeo vertical), automaticamente (opt-in por rede no cadastro do canal) ou pelos
 botões do card (ver [redes sociais](REDES_SOCIAIS_WEB.md#envio-sem-publicar)).
-Cada descrição cita os perfis das outras redes conectadas. Publicar continua
-decisão do operador, em cada rede. A preparação manual
+Nessas três, publicar continua decisão do operador. O Instagram não tem modo
+não público na API: com o opt-in dele ou o botão confirmado, o Reel vertical
+aprovado é **publicado** direto. Cada descrição cita os perfis das outras redes
+conectadas. A preparação manual
 (**Produzir com IA → Controles avançados → Abrir preparação manual**)
 continua disponível para trocar visuais ou usar gravações próprias.
 

@@ -17,6 +17,7 @@ import {
 import { toast } from '../studio/toast.ts';
 import { requiredChannel } from './channels.ts';
 import type { Platform } from '../../shared/types.ts';
+import { publicPlatforms } from '../../shared/publishing.ts';
 import { t, translateMessage } from '../../shared/i18n.ts';
 
 /** Field names as each provider's developer console shows them. */
@@ -151,6 +152,11 @@ export function connectionsPage(): HTMLElement {
     const clientId = input('clientId');
     clientId.required = true;
     clientId.autocomplete = 'off';
+    const meta = platform === 'facebook' || platform === 'instagram';
+    const configId = input('configId');
+    configId.autocomplete = 'off';
+    configId.pattern = '^\\d{1,32}$';
+    configId.required = platform === 'instagram';
     const result = el('div');
     const { form, fields } = formWithSave(t('Preparar autorização OAuth'), async () => {
       const secretValue = secret.value;
@@ -161,7 +167,12 @@ export function connectionsPage(): HTMLElement {
         const response = await request<{ authorizationUrl: string; expiresAt: string }>(
           channelPath(`/connections/${platform}/oauth`),
           'POST',
-          { accountId: account.value.trim(), clientId: clientValue.trim(), clientSecret: secretValue },
+          {
+            accountId: account.value.trim(),
+            clientId: clientValue.trim(),
+            clientSecret: secretValue,
+            ...(meta && configId.value.trim() ? { configId: configId.value.trim() } : {}),
+          },
         );
         const url = new URL(response.authorizationUrl);
         if (url.protocol !== 'https:' || url.hostname !== client.host)
@@ -194,6 +205,19 @@ export function connectionsPage(): HTMLElement {
       field(translateMessage(capability.accountLabel), account),
       field(client.id, clientId),
       field(client.secret, secret),
+      ...(meta
+        ? [
+            field(
+              t('ID da configuração do Facebook Login for Business'),
+              configId,
+              platform === 'instagram'
+                ? t(
+                    'Obrigatório no Instagram: o envio do arquivo só funciona com Facebook Login for Business.',
+                  )
+                : t('Opcional no Facebook; use a mesma configuração do Instagram se tiver uma.'),
+            ),
+          ]
+        : []),
       el(
         'p',
         { className: 'field-hint' },
@@ -236,7 +260,11 @@ export function connectionsPage(): HTMLElement {
       el(
         'span',
         { className: 'badge', 'data-variant': capability?.publishingAvailable ? 'secondary' : 'outline' },
-        capability?.publishingAvailable ? t('Envio não público disponível') : t('Sem envio nesta API'),
+        !capability?.publishingAvailable
+          ? t('Sem envio nesta API')
+          : publicPlatforms.includes(platform)
+            ? t('Publicação pública direta')
+            : t('Envio não público disponível'),
       ),
     ),
     el('div', { className: 'divider' }),

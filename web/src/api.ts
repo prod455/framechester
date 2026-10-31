@@ -1,3 +1,5 @@
+import { t, translateMessage } from '../shared/i18n.ts';
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -15,7 +17,7 @@ export function setCsrfToken(value: string): void {
 }
 
 export async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
-  if (!path.startsWith('/api/')) throw new Error('Destino de API local inválido.');
+  if (!path.startsWith('/api/')) throw new Error(t('Destino de API local inválido.'));
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (method !== 'GET' && csrfToken) headers['X-CSRF-Token'] = csrfToken;
@@ -30,7 +32,7 @@ export async function request<T>(path: string, method = 'GET', body?: unknown): 
     });
   } catch {
     throw new ApiError(
-      'Não foi possível acessar o servidor local. Confira se o estúdio está em execução.',
+      t('Não foi possível acessar o servidor local. Confira se o estúdio está em execução.'),
       0,
     );
   }
@@ -40,8 +42,8 @@ export async function request<T>(path: string, method = 'GET', body?: unknown): 
     if (response.status === 401) window.dispatchEvent(new Event('session-expired'));
     const message =
       typeof data === 'object' && data !== null && 'error' in data && typeof data.error === 'string'
-        ? data.error.slice(0, 500)
-        : `A operação não foi concluída (HTTP ${response.status}).`;
+        ? translateMessage(data.error.slice(0, 500))
+        : t('A operação não foi concluída (HTTP {status}).', { status: response.status });
     throw new ApiError(message, response.status);
   }
   return data as T;

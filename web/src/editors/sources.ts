@@ -1,5 +1,6 @@
 import { iconButton } from '../components.ts';
 import { button, el, field, icon, input } from '../dom.ts';
+import { t } from '../../shared/i18n.ts';
 import type { Source } from '../../shared/types.ts';
 
 export function sourceEditor(initial: Source[]): {
@@ -27,24 +28,24 @@ export function sourceEditor(initial: Source[]): {
         'div',
         { className: 'source-card-head' },
         icon('folder'),
-        'Fonte documental',
+        t('Fonte documental'),
         el('span', { className: 'spacer' }),
-        iconButton('Remover esta fonte', 'trash', () => node.remove()),
+        iconButton(t('Remover esta fonte'), 'trash', () => node.remove()),
       ),
       el(
         'div',
         { className: 'form-grid' },
-        field('Título da fonte', title),
+        field(t('Título da fonte'), title),
         field('URL', url),
-        field('Publicador', publisher),
-        field('Consultada em', retrievedAt),
+        field(t('Publicador'), publisher),
+        field(t('Consultada em'), retrievedAt),
         el(
           'div',
           { className: 'full' },
           field(
-            'Condição de uso / referência',
+            t('Condição de uso / referência'),
             license,
-            'Consultar um documento não autoriza reproduzir sua mídia. Registre a condição real de uso.',
+            t('Consultar um documento não autoriza reproduzir sua mídia. Registre a condição real de uso.'),
           ),
         ),
       ),
@@ -69,8 +70,8 @@ export function sourceEditor(initial: Source[]): {
       el(
         'div',
         { className: 'editor-section-heading' },
-        el('h3', {}, 'Fontes e referências'),
-        button('Adicionar fonte', () => add(), 'ghost', 'plus'),
+        el('h3', {}, t('Fontes e referências')),
+        button(t('Adicionar fonte'), () => add(), 'ghost', 'plus'),
       ),
       container,
     ),

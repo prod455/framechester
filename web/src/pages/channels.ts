@@ -4,6 +4,7 @@ import { button, el, field, input, textarea } from '../dom.ts';
 import { currentChannel, go, refresh, render, save, state, studio } from '../studio/state.ts';
 import { toast } from '../studio/toast.ts';
 import type { Channel } from '../../shared/types.ts';
+import { t } from '../../shared/i18n.ts';
 
 export function requiredChannel(): HTMLElement | undefined {
   if (currentChannel()) return;
@@ -11,10 +12,10 @@ export function requiredChannel(): HTMLElement | undefined {
     'section',
     { className: 'panel' },
     empty(
-      'Comece pelo seu canal',
-      'Crie uma identidade local para organizar suas pautas, conteúdos, conexões e resultados.',
+      t('Comece pelo seu canal'),
+      t('Crie uma identidade local para organizar suas pautas, conteúdos, conexões e resultados.'),
       'channels',
-      button('Adicionar canal', () => editChannel(), 'primary', 'plus'),
+      button(t('Adicionar canal'), () => editChannel(), 'primary', 'plus'),
     ),
   );
 }
@@ -25,9 +26,9 @@ export function channelsPage(): HTMLElement {
     'div',
     {},
     heading(
-      'Canais',
-      'Organize público, proposta editorial e contas de cada canal.',
-      button('Adicionar canal', () => editChannel(), 'primary', 'plus'),
+      t('Canais'),
+      t('Organize público, proposta editorial e contas de cada canal.'),
+      button(t('Adicionar canal'), () => editChannel(), 'primary', 'plus'),
     ),
     channels.length
       ? el(
@@ -43,11 +44,11 @@ export function channelsPage(): HTMLElement {
                 { className: 'flex min-w-0 flex-wrap items-center gap-2 [&>h3]:mb-0 [&>h3]:min-w-0' },
                 el('h3', { title: channel.name }, channel.name),
                 channel.id === studio.channelId
-                  ? el('span', { className: 'badge', 'data-variant': 'secondary' }, 'Selecionado')
+                  ? el('span', { className: 'badge', 'data-variant': 'secondary' }, t('Selecionado'))
                   : null,
                 el('span', { className: 'badge', 'data-variant': 'outline' }, channel.language),
               ),
-              el('p', {}, channel.description || 'Descrição editorial ainda não definida.'),
+              el('p', {}, channel.description || t('Descrição editorial ainda não definida.')),
               // Labelled facts: read, don't decode (recognition over recall).
               el(
                 'dl',
@@ -55,18 +56,18 @@ export function channelsPage(): HTMLElement {
                   className:
                     'mt-3 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm [&>dt]:text-muted-foreground [&>dd]:break-words',
                 },
-                el('dt', {}, 'Nicho'),
-                el('dd', {}, channel.niche || 'a definir'),
-                el('dt', {}, 'Envio ao YouTube'),
-                el('dd', {}, channel.youtubeAutoUpload ? 'automático, como privado' : 'manual'),
-                el('dt', {}, 'Identificador'),
+                el('dt', {}, t('Nicho')),
+                el('dd', {}, channel.niche || t('a definir')),
+                el('dt', {}, t('Envio ao YouTube')),
+                el('dd', {}, channel.youtubeAutoUpload ? t('automático, como privado') : t('manual')),
+                el('dt', {}, t('Identificador')),
                 el('dd', { className: 'mono' }, channel.id),
               ),
               el(
                 'div',
                 { className: 'entity-card-bottom' },
                 button(
-                  'Abrir canal',
+                  t('Abrir canal'),
                   () => {
                     studio.channelId = channel.id;
                     go('create');
@@ -79,8 +80,8 @@ export function channelsPage(): HTMLElement {
                 el(
                   'div',
                   { className: 'card-actions gap-4' },
-                  iconButton(`Editar ${channel.name}`, 'edit', () => editChannel(channel)),
-                  iconButton(`Excluir ${channel.name}`, 'trash', () =>
+                  iconButton(t('Editar {name}', { name: channel.name }), 'edit', () => editChannel(channel)),
+                  iconButton(t('Excluir {name}', { name: channel.name }), 'trash', () =>
                     deleteRecord('channels', channel.id, channel.name),
                   ),
                 ),
@@ -92,10 +93,10 @@ export function channelsPage(): HTMLElement {
           'div',
           { className: 'panel' },
           empty(
-            'Crie seu primeiro canal',
-            'Defina nome, público e proposta editorial. O conteúdo e as contas ficam separados por canal.',
+            t('Crie seu primeiro canal'),
+            t('Defina nome, público e proposta editorial. O conteúdo e as contas ficam separados por canal.'),
             'channels',
-            button('Criar canal', () => editChannel(), 'primary', 'plus'),
+            button(t('Criar canal'), () => editChannel(), 'primary', 'plus'),
           ),
         ),
   );
@@ -103,8 +104,8 @@ export function channelsPage(): HTMLElement {
 
 export function editChannel(record?: Channel): void {
   const { dialog, body } = createDialog(
-    record ? 'Editar canal' : 'Criar canal',
-    'A identidade e os arquivos deste canal ficam separados dos demais.',
+    record ? t('Editar canal') : t('Criar canal'),
+    t('A identidade e os arquivos deste canal ficam separados dos demais.'),
   );
   const name = input('name', record?.name || '');
   name.required = true;
@@ -125,7 +126,7 @@ export function editChannel(record?: Channel): void {
   const youtubeAutoUpload = input('youtubeAutoUpload', '', 'checkbox');
   youtubeAutoUpload.checked = record?.youtubeAutoUpload === true;
   const { form, fields } = formWithSave(
-    record ? 'Salvar canal' : 'Criar canal',
+    record ? t('Salvar canal') : t('Criar canal'),
     async () => {
       const id = record?.id || identifier.value.trim();
       await save(
@@ -145,7 +146,7 @@ export function editChannel(record?: Channel): void {
       studio.channelId = id;
       dialog.close();
       render();
-      toast(record ? 'Canal atualizado.' : 'Canal criado. Agora mande a pauta do primeiro vídeo.');
+      toast(record ? t('Canal atualizado.') : t('Canal criado. Agora mande a pauta do primeiro vídeo.'));
     },
     () => dialog.close(),
   );
@@ -153,25 +154,27 @@ export function editChannel(record?: Channel): void {
     el(
       'div',
       { className: 'form-grid' },
-      field('Nome do canal', name),
+      field(t('Nome do canal'), name),
       field(
-        'Identificador local',
+        t('Identificador local'),
         identifier,
-        'Letras minúsculas, números e hífen no meio. Exemplo: ciencia.',
+        t('Letras minúsculas, números e hífen no meio. Exemplo: ciencia.'),
       ),
-      field('Nicho editorial', niche),
-      field('Público que você quer alcançar', audience),
-      field('Idioma', language),
-      field('ID do canal no YouTube (opcional)', youtubeChannelId),
+      field(t('Nicho editorial'), niche),
+      field(t('Público que você quer alcançar'), audience),
+      field(t('Idioma'), language),
+      field(t('ID do canal no YouTube (opcional)'), youtubeChannelId),
     ),
   );
-  fields.append(field('Descrição e proposta editorial', description));
+  fields.append(field(t('Descrição e proposta editorial'), description));
   fields.append(
     el(
       'label',
       { className: 'checkbox-field' },
       youtubeAutoUpload,
-      'Enviar cada versão final aprovada ao YouTube como vídeo privado (exige o YouTube conectado com permissão de envio)',
+      t(
+        'Enviar cada versão final aprovada ao YouTube como vídeo privado (exige o YouTube conectado com permissão de envio)',
+      ),
     ),
   );
   body.append(form);
@@ -182,18 +185,22 @@ export function deleteRecord(
   id: string,
   title: string,
 ): void {
-  const { dialog, body } = createDialog('Excluir este registro?', title);
+  const { dialog, body } = createDialog(t('Excluir este registro?'), title);
   body.append(
     el(
       'p',
       { className: 'muted' },
       kind === 'channels'
-        ? 'A exclusão pode ser bloqueada se o canal tiver conteúdo ou conexões vinculadas. Confira o registro antes de continuar.'
-        : 'Este registro será removido do estado local. Arquivos de produção seguem a política do servidor.',
+        ? t(
+            'A exclusão pode ser bloqueada se o canal tiver conteúdo ou conexões vinculadas. Confira o registro antes de continuar.',
+          )
+        : t(
+            'Este registro será removido do estado local. Arquivos de produção seguem a política do servidor.',
+          ),
     ),
   );
   const { form } = formWithSave(
-    'Excluir registro',
+    t('Excluir registro'),
     async () => {
       await request(
         `/api/${kind}/${encodeURIComponent(id)}${kind === 'channels' ? '' : `?channel_id=${encodeURIComponent(studio.channelId)}`}`,
@@ -201,7 +208,7 @@ export function deleteRecord(
       );
       dialog.close();
       await refresh();
-      toast('Registro excluído.');
+      toast(t('Registro excluído.'));
     },
     () => dialog.close(),
   );

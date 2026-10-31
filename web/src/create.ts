@@ -1,4 +1,5 @@
 import type { Bootstrap, Script, WebJob } from '../shared/types.ts';
+import { t, translateMessage } from '../shared/i18n.ts';
 import { button, el } from './dom.ts';
 import { empty, heading } from './components.ts';
 
@@ -32,68 +33,88 @@ export function videoProgress(state: Bootstrap, channelId: string): VideoProgres
   const final = job && !job.previewOnly && job.status === 'completed' && job.videoAvailable;
   const topic: Step = {
     key: 'topic',
-    title: 'Pauta',
+    title: t('Pauta'),
     state: job ? 'done' : 'current',
     detail: job
-      ? script?.title || 'Pauta registrada'
-      : 'Diga sobre o que é o vídeo. A IA escreve o roteiro e o motor monta as cenas.',
+      ? script?.title || t('Pauta registrada')
+      : t('Diga sobre o que é o vídeo. A IA escreve o roteiro e o motor monta as cenas.'),
   };
   const generate: Step = !job
     ? {
         key: 'generate',
-        title: 'Gerar vídeo',
+        title: t('Gerar vídeo'),
         state: 'waiting',
-        detail: 'Começa quando a pauta for enviada.',
+        detail: t('Começa quando a pauta for enviada.'),
       }
     : job.status === 'queued' || job.status === 'running'
-      ? { key: 'generate', title: 'Gerar vídeo', state: 'current', detail: job.message }
+      ? { key: 'generate', title: t('Gerar vídeo'), state: 'current', detail: translateMessage(job.message) }
       : job.status === 'failed' || (job.status === 'blocked' && !job.videoAvailable)
-        ? { key: 'generate', title: 'Gerar vídeo', state: 'stopped', detail: job.message }
+        ? {
+            key: 'generate',
+            title: t('Gerar vídeo'),
+            state: 'stopped',
+            detail: translateMessage(job.message),
+          }
         : {
             key: 'generate',
-            title: 'Gerar vídeo',
+            title: t('Gerar vídeo'),
             state: 'done',
-            detail: 'Vídeo montado e conferido pelo QA.',
+            detail: t('Vídeo montado e conferido pelo QA.'),
           };
   const review: Step =
     !job?.videoAvailable || generate.state !== 'done'
-      ? { key: 'review', title: 'Revisar', state: 'waiting', detail: 'Assista quando o vídeo ficar pronto.' }
+      ? {
+          key: 'review',
+          title: t('Revisar'),
+          state: 'waiting',
+          detail: t('Assista quando o vídeo ficar pronto.'),
+        }
       : job.previewOnly
         ? {
             key: 'review',
-            title: 'Revisar',
+            title: t('Revisar'),
             state: 'current',
-            detail: 'Assista à prévia. Se estiver bom, gere a versão final.',
+            detail: t('Assista à prévia. Se estiver bom, gere a versão final.'),
           }
         : final
-          ? { key: 'review', title: 'Revisar', state: 'done', detail: 'Versão final aprovada no QA.' }
-          : { key: 'review', title: 'Revisar', state: 'current', detail: job.message };
+          ? { key: 'review', title: t('Revisar'), state: 'done', detail: t('Versão final aprovada no QA.') }
+          : { key: 'review', title: t('Revisar'), state: 'current', detail: translateMessage(job.message) };
   const youtube = job?.youtube;
   const publish: Step = !final
     ? {
         key: 'publish',
-        title: 'Enviar ao YouTube',
+        title: t('Enviar ao YouTube'),
         state: 'waiting',
-        detail: 'Disponível para a versão final aprovada.',
+        detail: t('Disponível para a versão final aprovada.'),
       }
     : youtube?.status === 'uploaded'
       ? {
           key: 'publish',
-          title: 'Enviar ao YouTube',
+          title: t('Enviar ao YouTube'),
           state: 'done',
-          detail: 'Enviado como privado. Publique pelo YouTube Studio.',
+          detail: t('Enviado como privado. Publique pelo YouTube Studio.'),
         }
       : youtube?.status === 'uploading'
-        ? { key: 'publish', title: 'Enviar ao YouTube', state: 'current', detail: 'Enviando como privado…' }
+        ? {
+            key: 'publish',
+            title: t('Enviar ao YouTube'),
+            state: 'current',
+            detail: t('Enviando como privado…'),
+          }
         : youtube?.status === 'failed'
-          ? { key: 'publish', title: 'Enviar ao YouTube', state: 'stopped', detail: youtube.message }
+          ? {
+              key: 'publish',
+              title: t('Enviar ao YouTube'),
+              state: 'stopped',
+              detail: translateMessage(youtube.message),
+            }
           : {
               key: 'publish',
-              title: 'Enviar ao YouTube',
+              title: t('Enviar ao YouTube'),
               state: 'current',
               detail: youtubeConnected
-                ? 'Envie como vídeo privado e publique quando quiser.'
-                : 'Conecte o YouTube deste canal para enviar.',
+                ? t('Envie como vídeo privado e publique quando quiser.')
+                : t('Conecte o YouTube deste canal para enviar.'),
             };
   return { job, script, youtubeConnected, steps: [topic, generate, review, publish] };
 }
@@ -119,10 +140,10 @@ const stateVariants: Record<StepState, string> = {
   stopped: 'destructive',
 };
 const stateLabels: Record<StepState, string> = {
-  done: 'Feito',
-  current: 'Agora',
-  waiting: 'Depois',
-  stopped: 'Parou',
+  done: t('Feito'),
+  current: t('Agora'),
+  waiting: t('Depois'),
+  stopped: t('Parou'),
 };
 // Static class names so Tailwind generates them (no inline styles under the CSP).
 const meterWidths = ['w-0', 'w-1/4', 'w-1/2', 'w-3/4', 'w-full'];
@@ -131,10 +152,10 @@ export function renderCreate(state: Bootstrap, channelId: string, actions: Creat
   const channel = state.channels.find((item) => item.id === channelId);
   if (!channel)
     return empty(
-      'Crie seu canal para começar',
-      'Um canal guarda o nome, o público e as contas conectadas. Depois disso, é só mandar a pauta.',
+      t('Crie seu canal para começar'),
+      t('Um canal guarda o nome, o público e as contas conectadas. Depois disso, é só mandar a pauta.'),
       'channels',
-      button('Criar canal', actions.createChannel, 'primary', 'plus'),
+      button(t('Criar canal'), actions.createChannel, 'primary', 'plus'),
     );
   const progress = videoProgress(state, channelId);
   const { job } = progress;
@@ -148,7 +169,7 @@ export function renderCreate(state: Bootstrap, channelId: string, actions: Creat
       {
         className: 'progress max-w-xs flex-1',
         role: 'progressbar',
-        'aria-label': 'Passos concluídos',
+        'aria-label': t('Passos concluídos'),
         'aria-valuemin': '0',
         'aria-valuemax': '4',
         'aria-valuenow': String(done),
@@ -158,7 +179,9 @@ export function renderCreate(state: Bootstrap, channelId: string, actions: Creat
     el(
       'span',
       { className: 'shrink-0 text-sm whitespace-nowrap text-muted-foreground', role: 'status' },
-      done === 4 ? 'Vídeo enviado. Falta só publicar no YouTube Studio.' : `${done} de 4 passos`,
+      done === 4
+        ? t('Vídeo enviado. Falta só publicar no YouTube Studio.')
+        : t('{done} de 4 passos', { done }),
     ),
   );
   const list = el('ol', { className: 'item-group' });
@@ -181,7 +204,7 @@ export function renderCreate(state: Bootstrap, channelId: string, actions: Creat
             'span',
             {
               className: `flex size-8 items-center justify-center rounded-full text-sm font-semibold ${
-                step.state === 'done' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
+                step.state === 'done' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground' // i18n-ignore: class names
               }`,
             },
             String(index + 1),
@@ -216,9 +239,9 @@ export function renderCreate(state: Bootstrap, channelId: string, actions: Creat
     'div',
     { className: 'mx-auto max-w-3xl' },
     heading(
-      'Criar vídeo',
-      `Canal ${channel.name}: pauta, vídeo, revisão e envio, nesta ordem.`,
-      button('Ver todos os vídeos', actions.allVideos, 'secondary', 'film'),
+      t('Criar vídeo'),
+      t('Canal {channel}: pauta, vídeo, revisão e envio, nesta ordem.', { channel: channel.name }),
+      button(t('Ver todos os vídeos'), actions.allVideos, 'secondary', 'film'),
     ),
     el('div', { className: 'grid gap-4' }, meter, list),
   );
@@ -233,10 +256,10 @@ function working(job: WebJob): HTMLElement {
     { className: 'mt-1 flex items-center gap-3 text-sm text-muted-foreground' },
     el(
       'div',
-      { className: 'progress w-40', role: 'progressbar', 'aria-label': 'Gerando vídeo' },
+      { className: 'progress w-40', role: 'progressbar', 'aria-label': t('Gerando vídeo') },
       el('span', { className: 'w-1/3 animate-pulse' }),
     ),
-    el('span', {}, minutes < 1 ? 'começou agora' : `há ${minutes} min`),
+    el('span', {}, minutes < 1 ? t('começou agora') : t('há {minutes} min', { minutes })),
   );
 }
 
@@ -245,7 +268,7 @@ function stepAction(step: Step, progress: VideoProgress, actions: CreateActions)
   switch (step.key) {
     case 'topic':
       return button(
-        step.state === 'done' ? 'Começar outro vídeo' : 'Novo vídeo',
+        step.state === 'done' ? t('Começar outro vídeo') : t('Novo vídeo'),
         actions.newVideo,
         step.state === 'done' ? 'secondary' : 'primary',
         'spark',
@@ -256,8 +279,8 @@ function stepAction(step: Step, progress: VideoProgress, actions: CreateActions)
         ? el(
             'div',
             { className: 'flex flex-wrap gap-2' },
-            script ? button('Tentar de novo', () => actions.retry(script), 'primary', 'refresh') : null,
-            button('Ver diagnóstico', actions.allVideos, 'secondary'),
+            script ? button(t('Tentar de novo'), () => actions.retry(script), 'primary', 'refresh') : null,
+            button(t('Ver diagnóstico'), actions.allVideos, 'secondary'),
           )
         : null;
     case 'review':
@@ -265,9 +288,9 @@ function stepAction(step: Step, progress: VideoProgress, actions: CreateActions)
       return el(
         'div',
         { className: 'flex flex-wrap gap-2' },
-        button('Assistir', () => actions.watch(job), job.previewOnly ? 'secondary' : 'primary', 'film'),
+        button(t('Assistir'), () => actions.watch(job), job.previewOnly ? 'secondary' : 'primary', 'film'),
         job.previewOnly && script
-          ? button('Gerar versão final', () => actions.finalVersion(script), 'primary', 'check')
+          ? button(t('Gerar versão final'), () => actions.finalVersion(script), 'primary', 'check')
           : null,
       );
     case 'publish':
@@ -275,7 +298,7 @@ function stepAction(step: Step, progress: VideoProgress, actions: CreateActions)
       if (step.state === 'done' && job) return actions.shortButton(job);
       if (step.state === 'waiting' || !job) return null;
       if (!progress.youtubeConnected)
-        return button('Conectar YouTube', actions.connectYoutube, 'primary', 'plug');
+        return button(t('Conectar YouTube'), actions.connectYoutube, 'primary', 'plug');
       return actions.sendButton(job);
   }
 }

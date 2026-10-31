@@ -1,21 +1,23 @@
 import { request } from './api.ts';
 import { button, el, externalLink, field, replace, select, setButtonLabel } from './dom.ts';
+import { languageTag, t, translateMessage } from '../shared/i18n.ts';
 import type { AIUsageSnapshot, AIUsageRecord } from '../shared/ai-usage-types.ts';
 
 const providers = { anthropic: 'Anthropic', openai: 'OpenAI' };
 const statuses: Record<AIUsageRecord['status'], string> = {
-  pending: 'Em andamento',
-  succeeded: 'Concluída',
-  rejected: 'Resposta descartada',
-  failed: 'Falhou',
-  unknown: 'Sem confirmação',
+  pending: t('Em andamento'),
+  succeeded: t('Concluída'),
+  rejected: t('Resposta descartada'),
+  failed: t('Falhou'),
+  unknown: t('Sem confirmação'),
 };
-const tasks = { research: 'Pesquisa', script: 'Roteiro', story: 'Narrativa' };
-const count = (value: number | null) => (value === null ? 'Não informado' : value.toLocaleString('pt-BR'));
+const tasks = { research: t('Pesquisa'), script: t('Roteiro'), story: t('Narrativa') };
+const count = (value: number | null) =>
+  value === null ? t('Não informado') : value.toLocaleString(languageTag());
 const money = (value: number | null) =>
   value === null
-    ? 'Não informado'
-    : new Intl.NumberFormat('pt-BR', {
+    ? t('Não informado')
+    : new Intl.NumberFormat(languageTag(), {
         style: 'currency',
         currency: 'USD',
         minimumFractionDigits: 3,
@@ -24,10 +26,12 @@ const money = (value: number | null) =>
 function date(value: string): string {
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp)
-    ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'UTC' }).format(
-        timestamp,
-      )
-    : 'Data indisponível';
+    ? new Intl.DateTimeFormat(languageTag(), {
+        dateStyle: 'short',
+        timeStyle: 'short',
+        timeZone: 'UTC',
+      }).format(timestamp)
+    : t('Data indisponível');
 }
 function table(label: string, columns: string[], rows: HTMLElement[][]): HTMLElement {
   return el(
@@ -52,17 +56,17 @@ export function createAIUsagePanel(
 ): { node: HTMLElement; refresh: () => Promise<void> } {
   const node = el(
     'section',
-    { className: 'section-stack', 'aria-label': 'Consumo no Studio' },
+    { className: 'section-stack', 'aria-label': t('Consumo no Studio') },
     el(
       'div',
       {},
-      el('h3', {}, 'Consumo no Studio'),
+      el('h3', {}, t('Consumo no Studio')),
       el(
         'p',
         { className: 'field-hint' },
         channelId
-          ? `${channelName || channelId} · chamadas feitas pelo Framechester.`
-          : 'Selecione um canal para consultar o consumo.',
+          ? t('{channel} · chamadas feitas pelo Framechester.', { channel: channelName || channelId })
+          : t('Selecione um canal para consultar o consumo.'),
       ),
     ),
   );
@@ -70,26 +74,26 @@ export function createAIUsagePanel(
   const days = select(
     'ai-usage-days',
     [
-      ['7', 'Últimos 7 dias'],
-      ['30', 'Últimos 30 dias'],
-      ['90', 'Últimos 90 dias'],
+      ['7', t('Últimos 7 dias')],
+      ['30', t('Últimos 30 dias')],
+      ['90', t('Últimos 90 dias')],
     ],
     '30',
   );
   const provider = select('ai-usage-provider', [
-    ['', 'Todos os provedores'],
+    ['', t('Todos os provedores')],
     ['anthropic', 'Anthropic'],
     ['openai', 'OpenAI'],
   ]);
   const status = el(
     'p',
     { className: 'field-hint', role: 'status' },
-    'Consulte o registro local deste canal.',
+    t('Consulte o registro local deste canal.'),
   );
   const content = el('div', { className: 'section-stack', 'aria-live': 'polite' });
   let revision = 0;
   const refreshButton = button(
-    'Atualizar consumo',
+    t('Atualizar consumo'),
     () => {
       void refresh();
     },
@@ -101,9 +105,9 @@ export function createAIUsagePanel(
     const requestRevision = ++revision;
     if (!node.isConnected) return;
     refreshButton.disabled = true;
-    setButtonLabel(refreshButton, 'Consultando…');
+    setButtonLabel(refreshButton, t('Consultando…'));
     node.setAttribute('aria-busy', 'true');
-    status.textContent = 'Consultando o registro local…';
+    status.textContent = t('Consultando o registro local…');
     replace(content);
     try {
       const snapshot = await request<AIUsageSnapshot>(
@@ -117,25 +121,28 @@ export function createAIUsagePanel(
         !Array.isArray(snapshot.byCredential) ||
         snapshot.events.some((event) => event.channelId !== channelId)
       )
-        throw new Error('O registro não corresponde a este canal. Atualize o consumo novamente.');
+        throw new Error(t('O registro não corresponde a este canal. Atualize o consumo novamente.'));
       render(snapshot);
-      status.textContent = `Período: ${date(snapshot.from)} a ${date(snapshot.to)} (UTC).`;
+      status.textContent = t('Período: {from} a {to} (UTC).', {
+        from: date(snapshot.from),
+        to: date(snapshot.to),
+      });
     } catch (error) {
       if (node.isConnected && requestRevision === revision) {
-        status.textContent = 'Não foi possível consultar o consumo.';
+        status.textContent = t('Não foi possível consultar o consumo.');
         replace(
           content,
           el(
             'p',
             { className: 'alert form-error', role: 'alert' },
-            error instanceof Error ? error.message : 'Tente atualizar o registro local.',
+            error instanceof Error ? translateMessage(error.message) : t('Tente atualizar o registro local.'),
           ),
         );
       }
     } finally {
       if (node.isConnected && requestRevision === revision) {
         refreshButton.disabled = false;
-        setButtonLabel(refreshButton, 'Atualizar consumo', 'refresh');
+        setButtonLabel(refreshButton, t('Atualizar consumo'), 'refresh');
         node.removeAttribute('aria-busy');
       }
     }
@@ -148,7 +155,9 @@ export function createAIUsagePanel(
         el(
           'p',
           {},
-          'Nenhuma chamada registrada neste período. O histórico começa com as chamadas feitas pelo Studio após a ativação do monitoramento.',
+          t(
+            'Nenhuma chamada registrada neste período. O histórico começa com as chamadas feitas pelo Studio após a ativação do monitoramento.',
+          ),
         ),
       );
       return;
@@ -157,10 +166,10 @@ export function createAIUsagePanel(
       'dl',
       { className: 'operation-properties' },
       ...[
-        ['Gerações', count(totals.generationRequests)],
-        ['Tokens de entrada reportados', count(totals.inputTokens)],
-        ['Tokens de resposta reportados', count(totals.outputTokens)],
-        ['Custo calculado (USD)', money(totals.estimatedCostUsd)],
+        [t('Gerações'), count(totals.generationRequests)],
+        [t('Tokens de entrada reportados'), count(totals.inputTokens)],
+        [t('Tokens de resposta reportados'), count(totals.outputTokens)],
+        [t('Custo calculado (USD)'), money(totals.estimatedCostUsd)],
       ].map(([label, value]) => el('div', {}, el('dt', {}, label), el('dd', {}, value))),
     );
     replace(
@@ -169,14 +178,25 @@ export function createAIUsagePanel(
       el(
         'p',
         { className: 'field-hint' },
-        `Concluídas: ${count(totals.successfulGenerations)} · Com falha ou resposta descartada: ${count(totals.failedGenerations)} · Sem confirmação: ${count(totals.unknownGenerations)}. Estimativas: ${count(totals.estimateRequests)}; os tokens dessas contagens não são somados às gerações.`,
+        t(
+          'Concluídas: {succeeded} · Com falha ou resposta descartada: {failed} · Sem confirmação: {unknown}. Estimativas: {estimates}; os tokens dessas contagens não são somados às gerações.',
+          {
+            succeeded: count(totals.successfulGenerations),
+            failed: count(totals.failedGenerations),
+            unknown: count(totals.unknownGenerations),
+            estimates: count(totals.estimateRequests),
+          },
+        ),
       ),
     );
     content.append(
       el(
         'p',
         { className: 'field-hint' },
-        `Cache de entrada informado: ${count(totals.cachedInputTokens)} tokens, já incluídos na entrada. Raciocínio informado: ${count(totals.reasoningTokens)} tokens, já incluídos na resposta.`,
+        t(
+          'Cache de entrada informado: {cached} tokens, já incluídos na entrada. Raciocínio informado: {reasoning} tokens, já incluídos na resposta.',
+          { cached: count(totals.cachedInputTokens), reasoning: count(totals.reasoningTokens) },
+        ),
       ),
     );
     if (totals.unknownCostRequests)
@@ -184,7 +204,15 @@ export function createAIUsagePanel(
         el(
           'p',
           { className: 'field-hint' },
-          `${count(totals.unknownCostRequests)} ${totals.unknownCostRequests === 1 ? 'geração sem custo confirmado' : 'gerações sem custo confirmado'}. O total considera somente o uso informado; uma falha ou interrupção pode ter cobrança no provedor.`,
+          totals.unknownCostRequests === 1
+            ? t(
+                '{count} geração sem custo confirmado. O total considera somente o uso informado; uma falha ou interrupção pode ter cobrança no provedor.',
+                { count: count(totals.unknownCostRequests) },
+              )
+            : t(
+                '{count} gerações sem custo confirmado. O total considera somente o uso informado; uma falha ou interrupção pode ter cobrança no provedor.',
+                { count: count(totals.unknownCostRequests) },
+              ),
         ),
       );
     if (totals.unknownUsageRequests)
@@ -192,17 +220,23 @@ export function createAIUsagePanel(
         el(
           'p',
           { className: 'field-hint' },
-          `${count(totals.unknownUsageRequests)} ${totals.unknownUsageRequests === 1 ? 'geração sem contagem de tokens' : 'gerações sem contagem de tokens'}. Campos não informados permanecem desconhecidos.`,
+          totals.unknownUsageRequests === 1
+            ? t('{count} geração sem contagem de tokens. Campos não informados permanecem desconhecidos.', {
+                count: count(totals.unknownUsageRequests),
+              })
+            : t('{count} gerações sem contagem de tokens. Campos não informados permanecem desconhecidos.', {
+                count: count(totals.unknownUsageRequests),
+              }),
         ),
       );
     content.append(
       el(
         'section',
         { className: 'section-stack' },
-        el('h3', {}, 'Por chave'),
+        el('h3', {}, t('Por chave')),
         table(
-          'Consumo por chave',
-          ['Provedor e identificação local', 'Gerações', 'Entrada / resposta', 'Custo calculado'],
+          t('Consumo por chave'),
+          [t('Provedor e identificação local'), t('Gerações'), t('Entrada / resposta'), t('Custo calculado')],
           snapshot.byCredential.map((item) => [
             el(
               'td',
@@ -211,7 +245,7 @@ export function createAIUsagePanel(
               el(
                 'div',
                 { className: 'field-hint', title: item.credentialId },
-                `Chave ${item.credentialId.slice(0, 12)}`,
+                t('Chave {id}', { id: item.credentialId.slice(0, 12) }),
               ),
             ),
             valueCell(count(item.generationRequests), true),
@@ -222,7 +256,9 @@ export function createAIUsagePanel(
         el(
           'p',
           { className: 'field-hint' },
-          'A identificação é criada pelo Studio e não é um trecho da chave. A troca ou remoção de uma chave conserva seu histórico.',
+          t(
+            'A identificação é criada pelo Studio e não é um trecho da chave. A troca ou remoção de uma chave conserva seu histórico.',
+          ),
         ),
       ),
     );
@@ -230,10 +266,16 @@ export function createAIUsagePanel(
       el(
         'section',
         { className: 'section-stack' },
-        el('h3', {}, 'Chamadas recentes'),
+        el('h3', {}, t('Chamadas recentes')),
         table(
-          'Chamadas recentes',
-          ['Início (UTC)', 'Provedor e tarefa', 'Estado', 'Entrada / resposta', 'Custo calculado'],
+          t('Chamadas recentes'),
+          [
+            t('Início (UTC)'),
+            t('Provedor e tarefa'),
+            t('Estado'),
+            t('Entrada / resposta'),
+            t('Custo calculado'),
+          ],
           snapshot.events.map((event) => [
             valueCell(date(event.startedAt), true),
             el(
@@ -242,7 +284,7 @@ export function createAIUsagePanel(
               el(
                 'div',
                 {},
-                `${providers[event.provider]} · ${event.operation === 'estimate' ? 'Estimativa' : tasks[event.task]}`,
+                `${providers[event.provider]} · ${event.operation === 'estimate' ? t('Estimativa') : tasks[event.task]}`,
               ),
               el('div', { className: 'field-hint' }, event.model),
             ),
@@ -254,7 +296,9 @@ export function createAIUsagePanel(
         el(
           'p',
           { className: 'field-hint' },
-          'Até 100 chamadas recentes. Os totais usam todas as chamadas do período e os preços registrados na geração.',
+          t(
+            'Até 100 chamadas recentes. Os totais usam todas as chamadas do período e os preços registrados na geração.',
+          ),
         ),
       ),
     );
@@ -269,8 +313,8 @@ export function createAIUsagePanel(
     el(
       'div',
       { className: 'form-grid' },
-      field('Período do consumo', days),
-      field('Provedor do consumo', provider),
+      field(t('Período do consumo'), days),
+      field(t('Provedor do consumo'), provider),
     ),
     el('div', { className: 'form-actions' }, refreshButton),
     status,
@@ -278,13 +322,15 @@ export function createAIUsagePanel(
     el(
       'p',
       { className: 'field-hint' },
-      'Este registro cobre somente o uso feito pelo Studio. Ele não representa o saldo da conta, a fatura oficial ou chamadas feitas por outros aplicativos. Assinatura do aplicativo e acesso/consumo da API seguem cobranças próprias. Consulte créditos no provedor.',
+      t(
+        'Este registro cobre somente o uso feito pelo Studio. Ele não representa o saldo da conta, a fatura oficial ou chamadas feitas por outros aplicativos. Assinatura do aplicativo e acesso/consumo da API seguem cobranças próprias. Consulte créditos no provedor.',
+      ),
     ),
     el(
       'div',
       { className: 'form-actions' },
-      externalLink('Consumo oficial OpenAI', 'https://platform.openai.com/usage'),
-      externalLink('Consumo oficial Anthropic', 'https://platform.claude.com/usage'),
+      externalLink(t('Consumo oficial OpenAI'), 'https://platform.openai.com/usage'),
+      externalLink(t('Consumo oficial Anthropic'), 'https://platform.claude.com/usage'),
     ),
   );
   return { node, refresh };

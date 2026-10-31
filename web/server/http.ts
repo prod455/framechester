@@ -83,14 +83,20 @@ export function checkOrigin(
   response: ServerResponse,
   dev: boolean,
   publicPort?: number,
+  tailnetHost?: string,
 ): void {
   const port = request.socket.localPort ?? 4317;
   const ports = [port, ...(publicPort === undefined ? [] : [publicPort]), ...(dev ? [5173] : [])];
   const hosts = ports.flatMap((value) => [`127.0.0.1:${value}`, `localhost:${value}`]);
-  if (!request.headers.host || !hosts.includes(request.headers.host.toLowerCase()))
+  // `tailscale serve` answers on HTTPS 443 inside the tailnet and forwards to loopback.
+  const tailnet = tailnetHost ? [tailnetHost, `${tailnetHost}:443`] : [];
+  if (!request.headers.host || ![...hosts, ...tailnet].includes(request.headers.host.toLowerCase()))
     throw new HttpError(403, 'Host local não permitido.');
   const origin = request.headers.origin;
-  const origins = hosts.map((host) => `http://${host}`);
+  const origins = [
+    ...hosts.map((host) => `http://${host}`),
+    ...(tailnetHost ? [`https://${tailnetHost}`] : []),
+  ];
   if (origin && !origins.includes(origin)) throw new HttpError(403, 'Origem não permitida.');
   if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method ?? 'GET') && !origin)
     throw new HttpError(403, 'Origem local obrigatória nesta operação.');

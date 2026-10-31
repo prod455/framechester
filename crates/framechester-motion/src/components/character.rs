@@ -349,15 +349,17 @@ pub fn build(
 }
 
 /// Idle life of the character: it rises in, blinks every few seconds, moves the mouth
-/// while a narration segment plays and bobs the gesturing arm.
-pub fn animate(nodes: &mut [Node], scene: &StoryboardScene, motion_scale: f32) {
+/// while a narration segment plays and bobs the gesturing arm. In the hook it is already
+/// standing at frame 0.
+pub fn animate(nodes: &mut [Node], scene: &StoryboardScene, motion_scale: f32, hook: bool) {
     let end = scene.duration_secs.max(1.0);
+    let enter = if hook { -0.6 } else { 0.0 };
     for node in nodes
         .iter_mut()
         .filter(|node| node.object.starts_with(BODY))
     {
         node.props
-            .reveal(0.0, 0.5, (0.0, 40.0 * motion_scale), Easing::EaseOut);
+            .reveal(enter, 0.5, (0.0, 40.0 * motion_scale), Easing::EaseOut);
     }
     // Rectangles scale around their own centre: eyes close and the mouth opens in place.
     for node in nodes.iter_mut().filter(|node| node.object == EYES) {

@@ -560,27 +560,29 @@ impl Node {
     }
 }
 
-/// Helpers to build common motions on a node's props.
+/// Helpers to build common motions on a node's props. Each entering motion starts from its
+/// hidden state at frame 0, or at its own start when that is earlier (the hook enters
+/// before frame 0 so the opening is already on screen).
 impl Props {
     /// Fade and slide in from `offset` pixels below (or beside) the final place.
     pub fn reveal(&mut self, at: f32, duration: f32, offset: (f32, f32), easing: Easing) {
-        self.opacity.key(0.0, 0.0, Easing::Linear);
+        self.opacity.key(at.min(0.0), 0.0, Easing::Linear);
         self.opacity.to(at, duration * 0.8, 1.0, Easing::EaseOut);
-        self.dx.key(0.0, offset.0, Easing::Linear);
+        self.dx.key(at.min(0.0), offset.0, Easing::Linear);
         self.dx.to(at, duration, 0.0, easing);
-        self.dy.key(0.0, offset.1, Easing::Linear);
+        self.dy.key(at.min(0.0), offset.1, Easing::Linear);
         self.dy.to(at, duration, 0.0, easing);
     }
 
     pub fn pop(&mut self, at: f32, duration: f32, easing: Easing) {
-        self.opacity.key(0.0, 0.0, Easing::Linear);
+        self.opacity.key(at.min(0.0), 0.0, Easing::Linear);
         self.opacity.to(at, duration * 0.5, 1.0, Easing::EaseOut);
-        self.scale.key(0.0, 0.6, Easing::Linear);
+        self.scale.key(at.min(0.0), 0.6, Easing::Linear);
         self.scale.to(at, duration, 1.0, easing);
     }
 
     pub fn hidden_until(&mut self, at: f32) {
-        self.opacity.key(0.0, 0.0, Easing::Linear);
+        self.opacity.key(at.min(0.0), 0.0, Easing::Linear);
         self.opacity.to(at, 0.2, 1.0, Easing::EaseOut);
     }
 
@@ -603,7 +605,7 @@ impl Props {
     }
 
     pub fn draw(&mut self, at: f32, duration: f32, easing: Easing) {
-        self.draw.key(0.0, 0.0, Easing::Linear);
+        self.draw.key(at.min(0.0), 0.0, Easing::Linear);
         self.draw.to(at, duration, 1.0, easing);
     }
 
@@ -613,18 +615,18 @@ impl Props {
 
     /// Grow along x (bars) from zero to full width.
     pub fn grow_x(&mut self, at: f32, duration: f32, easing: Easing) {
-        self.sx.key(0.0, 0.0, Easing::Linear);
+        self.sx.key(at.min(0.0), 0.0, Easing::Linear);
         self.sx.to(at, duration, 1.0, easing);
     }
 
     /// Grow along y (columns) from zero to full height.
     pub fn grow_y(&mut self, at: f32, duration: f32, easing: Easing) {
-        self.sy.key(0.0, 0.0, Easing::Linear);
+        self.sy.key(at.min(0.0), 0.0, Easing::Linear);
         self.sy.to(at, duration, 1.0, easing);
     }
 
     pub fn type_in(&mut self, at: f32, duration: f32, characters: usize) {
-        self.typed.key(0.0, 0.0, Easing::Linear);
+        self.typed.key(at.min(0.0), 0.0, Easing::Linear);
         self.typed
             .to(at, duration, characters as f32 + 0.5, Easing::Linear);
     }

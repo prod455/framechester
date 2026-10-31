@@ -4,14 +4,16 @@ import type { AreaCatalog } from './index.ts';
 
 export default {
   en: {
+    'A Meta não liberou nenhuma Página para o Studio e não concedeu business_management, sem a qual Páginas de um portfólio de empresa não aparecem (concedidas: {granted}). Conecte de novo aceitando todas as permissões; se usar o ID da configuração, inclua business_management nela.':
+      'Meta granted no Page to the Studio and did not grant business_management, without which Pages of a business portfolio do not appear (granted: {granted}). Connect again accepting every permission; if you use the configuration ID, add business_management to it.',
     'O Instagram @{username} não está ligado a nenhuma Página autorizada. Contas encontradas: {found}.':
       'Instagram @{username} is not linked to any authorized Page. Accounts found: {found}.',
     'A Meta liberou a Página {pages}, mas ela não tem uma conta profissional do Instagram ligada. Ligue o Instagram a essa Página (perfil da Página → Configurações → Contas vinculadas → Instagram) e conecte de novo.':
       'Meta granted the Page {pages}, but it has no linked Instagram professional account. Link Instagram to that Page (Page profile → Settings → Linked accounts → Instagram) and connect again.',
     'A Meta não liberou nenhuma Página para o Studio, embora tenha concedido {granted}. Este perfil do Facebook não marcou nenhuma Página no login ou não administra uma. Remova o app em facebook.com/settings/?tab=business_tools, conecte de novo e, na tela da Meta, use Editar acesso para marcar a Página.':
       'Meta granted no Page to the Studio, although it granted {granted}. This Facebook profile selected no Page at login or manages none. Remove the app at facebook.com/settings/?tab=business_tools, connect again and, on the Meta screen, use Edit access to select the Page.',
-    'A Meta não concedeu pages_show_list, sem a qual o Studio não vê nenhuma Página (concedidas: {granted}). Inclua pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish na configuração do Facebook Login for Business e conecte de novo sem desmarcar nenhuma.':
-      'Meta did not grant pages_show_list, without which the Studio sees no Page (granted: {granted}). Add pages_show_list, pages_read_engagement, instagram_basic and instagram_content_publish to the Facebook Login for Business configuration and connect again without unchecking any.',
+    'A Meta não concedeu pages_show_list, sem a qual o Studio não vê nenhuma Página (concedidas: {granted}). Inclua pages_show_list, pages_read_engagement, business_management, instagram_basic e instagram_content_publish na configuração do Facebook Login for Business e conecte de novo sem desmarcar nenhuma.':
+      'Meta did not grant pages_show_list, without which the Studio sees no Page (granted: {granted}). Add pages_show_list, pages_read_engagement, business_management, instagram_basic and instagram_content_publish to the Facebook Login for Business configuration and connect again without unchecking any.',
     'O armazenamento privado de consumo está indisponível ou é inválido. Preserve o histórico e verifique as permissões antes de tentar novamente.':
       'Private usage storage is unavailable or invalid. Keep the history and check the permissions before trying again.',
     'O registro de consumo contém campos, tokens, custo, canal, provedor ou modelo inválidos.':
@@ -482,14 +484,16 @@ export default {
       'Voice without commercial approval in this installation. Choose a Kokoro voice from the catalog (PT-BR, EN-US or ES) in Settings. Legacy Piper voices are blocked.',
   },
   es: {
+    'A Meta não liberou nenhuma Página para o Studio e não concedeu business_management, sem a qual Páginas de um portfólio de empresa não aparecem (concedidas: {granted}). Conecte de novo aceitando todas as permissões; se usar o ID da configuração, inclua business_management nela.':
+      'Meta no autorizó ninguna Página para el Studio y no concedió business_management, sin la cual no aparecen las Páginas de un portafolio comercial (concedidos: {granted}). Conecta de nuevo aceptando todos los permisos; si usas el ID de configuración, incluye business_management en ella.',
     'O Instagram @{username} não está ligado a nenhuma Página autorizada. Contas encontradas: {found}.':
       'El Instagram @{username} no está vinculado a ninguna Página autorizada. Cuentas encontradas: {found}.',
     'A Meta liberou a Página {pages}, mas ela não tem uma conta profissional do Instagram ligada. Ligue o Instagram a essa Página (perfil da Página → Configurações → Contas vinculadas → Instagram) e conecte de novo.':
       'Meta autorizó la Página {pages}, pero no tiene una cuenta profesional de Instagram vinculada. Vincula Instagram a esa Página (perfil de la Página → Configuración → Cuentas vinculadas → Instagram) y conecta de nuevo.',
     'A Meta não liberou nenhuma Página para o Studio, embora tenha concedido {granted}. Este perfil do Facebook não marcou nenhuma Página no login ou não administra uma. Remova o app em facebook.com/settings/?tab=business_tools, conecte de novo e, na tela da Meta, use Editar acesso para marcar a Página.':
       'Meta no autorizó ninguna Página para el Studio, aunque concedió {granted}. Este perfil de Facebook no marcó ninguna Página al iniciar sesión o no administra ninguna. Elimina la app en facebook.com/settings/?tab=business_tools, conecta de nuevo y, en la pantalla de Meta, usa Editar acceso para marcar la Página.',
-    'A Meta não concedeu pages_show_list, sem a qual o Studio não vê nenhuma Página (concedidas: {granted}). Inclua pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish na configuração do Facebook Login for Business e conecte de novo sem desmarcar nenhuma.':
-      'Meta no concedió pages_show_list, sin la cual el Studio no ve ninguna Página (concedidos: {granted}). Incluye pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish en la configuración de Facebook Login for Business y conecta de nuevo sin desmarcar ninguno.',
+    'A Meta não concedeu pages_show_list, sem a qual o Studio não vê nenhuma Página (concedidas: {granted}). Inclua pages_show_list, pages_read_engagement, business_management, instagram_basic e instagram_content_publish na configuração do Facebook Login for Business e conecte de novo sem desmarcar nenhuma.':
+      'Meta no concedió pages_show_list, sin la cual el Studio no ve ninguna Página (concedidos: {granted}). Incluye pages_show_list, pages_read_engagement, business_management, instagram_basic e instagram_content_publish en la configuración de Facebook Login for Business y conecta de nuevo sin desmarcar ninguno.',
     'O armazenamento privado de consumo está indisponível ou é inválido. Preserve o histórico e verifique as permissões antes de tentar novamente.':
       'El almacenamiento privado de consumo no está disponible o no es válido. Conserva el historial y revisa los permisos antes de volver a intentarlo.',
     'O registro de consumo contém campos, tokens, custo, canal, provedor ou modelo inválidos.':

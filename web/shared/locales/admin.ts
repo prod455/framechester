@@ -303,8 +303,8 @@ export default {
       "Your own Meta app with Facebook Login and the local callback registered; the saved token is the Page's, not a personal profile's.",
     'Aplicativo Meta próprio com Facebook Login e o endereço de retorno abaixo registrado; o token salvo é o da Página, não de um perfil pessoal.':
       "Your own Meta app with Facebook Login and the redirect URI below registered; the saved token is the Page's, not a personal profile's.",
-    'pages_show_list, pages_read_engagement e pages_manage_posts, com a aprovação exigida pela Meta.':
-      'pages_show_list, pages_read_engagement and pages_manage_posts, with the approval Meta requires.',
+    'pages_show_list, pages_read_engagement, business_management e pages_manage_posts, com a aprovação exigida pela Meta.':
+      'pages_show_list, pages_read_engagement, business_management and pages_manage_posts, with the approval Meta requires.',
     'Envio sempre como rascunho de Reel (vídeo vertical); a publicação é decisão do operador no Meta Business Suite.':
       "Always uploaded as a Reel draft (vertical video); publishing is the operator's decision in Meta Business Suite.",
     'Publicar cada vídeo vertical aprovado no Instagram como Reel público, sem revisão na rede (exige a conta conectada com permissão de publicação)':
@@ -316,10 +316,10 @@ export default {
     'Opcional no Facebook; use a mesma configuração do Instagram se tiver uma.':
       'Optional for Facebook; use the same configuration as Instagram if you have one.',
     'Publicação pública direta': 'Direct public posting',
-    'Aplicativo Meta próprio com Facebook Login for Business e o callback local registrado; a configuração pede pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish.':
-      'Your own Meta app with Facebook Login for Business and the local callback registered; the configuration asks for pages_show_list, pages_read_engagement, instagram_basic and instagram_content_publish.',
-    'Aplicativo Meta próprio com Facebook Login for Business e o endereço de retorno abaixo registrado; a configuração pede pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish.':
-      'Your own Meta app with Facebook Login for Business and the redirect URI below registered; the configuration asks for pages_show_list, pages_read_engagement, instagram_basic and instagram_content_publish.',
+    'Aplicativo Meta próprio com Facebook Login for Business e o callback local registrado; a configuração pede pages_show_list, pages_read_engagement, business_management, instagram_basic e instagram_content_publish.':
+      'Your own Meta app with Facebook Login for Business and the local callback registered; the configuration asks for pages_show_list, pages_read_engagement, business_management, instagram_basic and instagram_content_publish.',
+    'Aplicativo Meta próprio com Facebook Login for Business e o endereço de retorno abaixo registrado; a configuração pede pages_show_list, pages_read_engagement, business_management, instagram_basic e instagram_content_publish.':
+      'Your own Meta app with Facebook Login for Business and the redirect URI below registered; the configuration asks for pages_show_list, pages_read_engagement, business_management, instagram_basic and instagram_content_publish.',
     'Publicação pública direta como Reel (vídeo vertical): a API do Instagram não tem rascunho nem modo privado. Só sai a versão final aprovada no QA, por clique confirmado ou com o opt-in do canal.':
       'Direct public posting as a Reel (vertical video): the Instagram API has no draft or private mode. Only the final version approved in QA goes out, by a confirmed click or with the channel opt-in.',
     '{language} · sem voz comercial': '{language} · no commercial voice',
@@ -634,8 +634,8 @@ export default {
       'App propia de Meta con Facebook Login y el callback local registrado; el token guardado es el de la Página, no el de un perfil personal.',
     'Aplicativo Meta próprio com Facebook Login e o endereço de retorno abaixo registrado; o token salvo é o da Página, não de um perfil pessoal.':
       'App propia de Meta con Facebook Login y la URI de redirección de abajo registrada; el token guardado es el de la Página, no el de un perfil personal.',
-    'pages_show_list, pages_read_engagement e pages_manage_posts, com a aprovação exigida pela Meta.':
-      'pages_show_list, pages_read_engagement y pages_manage_posts, con la aprobación que exige Meta.',
+    'pages_show_list, pages_read_engagement, business_management e pages_manage_posts, com a aprovação exigida pela Meta.':
+      'pages_show_list, pages_read_engagement, business_management y pages_manage_posts, con la aprobación que exige Meta.',
     'Envio sempre como rascunho de Reel (vídeo vertical); a publicação é decisão do operador no Meta Business Suite.':
       'Siempre se sube como borrador de Reel (video vertical); publicar es decisión del operador en Meta Business Suite.',
     'Publicar cada vídeo vertical aprovado no Instagram como Reel público, sem revisão na rede (exige a conta conectada com permissão de publicação)':
@@ -647,10 +647,10 @@ export default {
     'Opcional no Facebook; use a mesma configuração do Instagram se tiver uma.':
       'Opcional en Facebook; usa la misma configuración de Instagram si tienes una.',
     'Publicação pública direta': 'Publicación pública directa',
-    'Aplicativo Meta próprio com Facebook Login for Business e o callback local registrado; a configuração pede pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish.':
-      'App propia de Meta con Facebook Login for Business y el callback local registrado; la configuración pide pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish.',
-    'Aplicativo Meta próprio com Facebook Login for Business e o endereço de retorno abaixo registrado; a configuração pede pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish.':
-      'App propia de Meta con Facebook Login for Business y la URI de redirección de abajo registrada; la configuración pide pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish.',
+    'Aplicativo Meta próprio com Facebook Login for Business e o callback local registrado; a configuração pede pages_show_list, pages_read_engagement, business_management, instagram_basic e instagram_content_publish.':
+      'App propia de Meta con Facebook Login for Business y el callback local registrado; la configuración pide pages_show_list, pages_read_engagement, business_management, instagram_basic e instagram_content_publish.',
+    'Aplicativo Meta próprio com Facebook Login for Business e o endereço de retorno abaixo registrado; a configuração pede pages_show_list, pages_read_engagement, business_management, instagram_basic e instagram_content_publish.':
+      'App propia de Meta con Facebook Login for Business y la URI de redirección de abajo registrada; la configuración pide pages_show_list, pages_read_engagement, business_management, instagram_basic e instagram_content_publish.',
     'Publicação pública direta como Reel (vídeo vertical): a API do Instagram não tem rascunho nem modo privado. Só sai a versão final aprovada no QA, por clique confirmado ou com o opt-in do canal.':
       'Publicación pública directa como Reel (video vertical): la API de Instagram no tiene borrador ni modo privado. Solo sale la versión final aprobada en el QA, con un clic confirmado o con el opt-in del canal.',
     '{language} · sem voz comercial': '{language} · sin voz comercial',

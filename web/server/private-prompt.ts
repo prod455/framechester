@@ -35,7 +35,7 @@ const defaults: CreativeConfiguration = {
   anthropicModel: 'claude-sonnet-5-5',
   openaiModel: 'gpt-6.1-sol',
   maxOutputTokens: 4096,
-  maxCostUsd: 0.25,
+  maxCostUsd: 1,
 };
 const anthropicModels = ['claude-sonnet-5-5', 'claude-haiku-5-5'];
 const promptName = 'system-prompt.personal.md';

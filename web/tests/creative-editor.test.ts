@@ -126,6 +126,14 @@ async function fixture(generated: (payload: Record<string, unknown>) => unknown)
   });
   return { root, service, data, calls: () => calls, close: () => rm(root, { recursive: true, force: true }) };
 }
+/** A scene long enough that a short script meets the duration rule (174 to 220 words). */
+const filler = {
+  id: 99,
+  heading: 'Desenvolvimento',
+  narration: Array.from({ length: 190 }, (_, index) => `palavra${index}`).join(' ') + '.',
+  visualBrief: 'Diagrama original',
+  durationHintSecs: 70,
+};
 const result = (fields: unknown) => ({
   title: 'Rascunho estruturado',
   body: 'Uma prévia sintética que continua sujeita à revisão humana.',
@@ -170,7 +178,11 @@ test('script editor includes the explicitly linked research and only authorizes 
     assert.deepEqual(sent.editorContext.linkedResearch.keywords, research.keywords);
     assert.equal(JSON.stringify(sent).includes('research-science'), false);
     const { researchId: _, sources: __, ...fields } = script;
-    return result({ ...fields, claims: [{ text: 'Uma nova alegação', sourceUrls: [source.url] }] });
+    return result({
+      ...fields,
+      scenes: [...fields.scenes, filler],
+      claims: [{ text: 'Uma nova alegação', sourceUrls: [source.url] }],
+    });
   });
   try {
     const request = {
@@ -281,7 +293,7 @@ test('partial unsaved fields and incomplete source metadata can guide generation
       series: 'Experimentos',
       format: 'short',
       hook: 'Pergunta a explicar',
-      scenes: script.scenes,
+      scenes: [...script.scenes, filler],
       claims: [],
     });
   });
@@ -436,6 +448,7 @@ test('a selected video style and the layout grammar reach the system prompt; unk
           visualBrief: '#pergunta O que este diagrama demonstra?',
           durationHintSecs: 3,
         },
+        filler,
       ],
       claims: [],
     });
@@ -484,6 +497,7 @@ test('a generated scene with an invalid directive is kept verbatim; the engine f
           visualBrief: '#numero 90% | dos casos',
           durationHintSecs: 3,
         },
+        filler,
       ],
       claims: [],
     }),
@@ -496,6 +510,78 @@ test('a generated scene with an invalid directive is kept verbatim; the engine f
     });
     assert.ok(draft.fields && 'scenes' in draft.fields);
     assert.equal(draft.fields.scenes[0]!.visualBrief, '#numero 90% | dos casos');
+  } finally {
+    await ctx.close();
+  }
+});
+
+test('the duration rule rewrites a script that is too short and reports its measured length', async () => {
+  const systems: string[] = [];
+  const prompts: Array<Record<string, unknown>> = [];
+  const budgets: unknown[] = [];
+  const ctx = await fixture((payload) => {
+    systems.push(String(payload.system));
+    prompts.push(JSON.parse(String(payload.prompt)));
+    budgets.push((payload.options as { num_predict: unknown }).num_predict);
+    const scenes = systems.length === 1 ? script.scenes : [...script.scenes, filler];
+    return result({
+      title: 'Um vídeo concreto',
+      series: 'Experimentos',
+      format: 'short',
+      hook: 'Gancho',
+      scenes,
+      claims: [],
+    });
+  });
+  try {
+    const draft = await ctx.service.draft('tech', {
+      task: 'script',
+      brief: 'Desenvolva o roteiro completo.',
+      editorContext: { task: 'script', values: script },
+    });
+    assert.equal(systems.length, 2, 'one rewrite');
+    assert.match(systems[0]!, /de 174 a 220 palavras/);
+    assert.match(
+      systems[1]!,
+      /Revisão obrigatória de duração: o rascunho anterior \(previousDraft\) tem 6 palavras/,
+    );
+    assert.match(systems[1]!, /Faltam pelo menos 168 palavras/);
+    assert.ok(prompts[1]!.previousDraft, 'the rejected draft goes back as data');
+    assert.equal(prompts[0]!.previousDraft, undefined);
+    assert.deepEqual(budgets, [4096, 4096]);
+    assert.deepEqual(draft.duration, { words: 196, estimatedSecs: 76, attempts: 2 });
+  } finally {
+    await ctx.close();
+  }
+});
+
+test('a script that never reaches its length is refused, and a long video gets a long output budget', async () => {
+  const budgets: unknown[] = [];
+  const ctx = await fixture((payload) => {
+    budgets.push((payload.options as { num_predict: unknown }).num_predict);
+    return result({
+      title: 'Um vídeo concreto',
+      series: 'Experimentos',
+      format: 'long',
+      hook: 'Gancho',
+      scenes: [...script.scenes, filler],
+      claims: [],
+    });
+  });
+  try {
+    await assert.rejects(
+      ctx.service.draft('tech', {
+        task: 'script',
+        brief: 'Desenvolva o roteiro completo.',
+        editorContext: { task: 'script', values: { ...script, format: 'long' } },
+      }),
+      (error: Error & { status?: number }) =>
+        error.status === 422 &&
+        /196 palavras .* depois de 3 tentativas, e o formato long exige de 7 min a 12 min \(1120 a 1764 palavras\)\. Nenhum roteiro foi salvo/.test(
+          error.message,
+        ),
+    );
+    assert.deepEqual(budgets, [16_000, 16_000, 16_000]);
   } finally {
     await ctx.close();
   }

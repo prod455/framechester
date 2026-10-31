@@ -214,7 +214,7 @@ export async function editCreativeSettings(channelId?: string, channelName?: str
     maxTokens.max = '8192';
     maxTokens.step = '1';
     maxTokens.required = true;
-    const maxCost = input('creative-max-cost', String(settings.maxCostUsd ?? 0.25), 'number');
+    const maxCost = input('creative-max-cost', String(settings.maxCostUsd ?? 1), 'number');
     maxCost.min = '0.001';
     maxCost.max = '5';
     maxCost.step = 'any';
@@ -608,7 +608,7 @@ export function openCreativeDraft(
             el(
               'p',
               {},
-              `Estimativa máxima com margem: ${usd(estimated.estimatedMaxCostUsd)}. Limite configurado: ${usd(estimated.costLimitUsd)}.`,
+              `Estimativa máxima com margem: ${usd(estimated.estimatedMaxCostUsd)}${(estimated.attempts ?? 1) > 1 ? `, cobrindo até ${estimated.attempts} gerações para cumprir a duração` : ''}. Limite configurado: ${usd(estimated.costLimitUsd)}.`,
             ),
             el(
               'p',

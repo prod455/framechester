@@ -60,6 +60,8 @@ export interface CreativeQuote {
   maxOutputTokens: number;
   estimatedMaxCostUsd: number;
   costLimitUsd: number;
+  /** Generations the estimate covers: the first draft plus rewrites to meet the duration rule. */
+  attempts?: number;
   expiresAt: string;
   pricingCheckedAt: string;
 }
@@ -74,6 +76,8 @@ export interface CreativeDraft {
   crossChecked: false;
   reviewRequired: true;
   fields?: CreativeFields;
+  /** Script length checked against the format's rule before the draft was accepted. */
+  duration?: { words: number; estimatedSecs: number; attempts: number };
   usage?: {
     inputTokens: number;
     outputTokens: number;

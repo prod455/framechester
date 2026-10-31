@@ -265,7 +265,7 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
           error instanceof Error ? error.message : 'Não foi possível preparar os visuais.',
         ),
         button(
-          'Tentar novamente',
+          'Tentar de novo',
           () => {
             void prepare();
           },

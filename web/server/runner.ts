@@ -7,6 +7,7 @@ import { mkdir, readFile, writeFile, rename, copyFile, realpath, stat } from 'no
 import { basename, extname, join, relative, resolve, sep, delimiter, isAbsolute } from 'node:path';
 import type {
   AppState,
+  YoutubeUpload,
   RunnerApi,
   Script,
   StartJobInput,
@@ -44,6 +45,7 @@ export interface RunnerOptions {
   binary?: string;
   timeoutMs?: number;
   execute?: (args: string[], cwd: string, signal: AbortSignal) => Promise<EngineResult>;
+  publish?: (channelId: string, video: YoutubeUpload) => Promise<{ videoId: string }>;
 }
 export function localEngineEnvironment(environment: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return Object.fromEntries(
@@ -254,6 +256,7 @@ export class LocalRunner implements RunnerApi {
   private queue = Promise.resolve();
   private writes = Promise.resolve();
   private preparations = Promise.resolve();
+  private uploads = Promise.resolve();
   private visualControllers = new Set<AbortController>();
   private stopped = false;
   private active: AbortController | undefined;
@@ -279,6 +282,12 @@ export class LocalRunner implements RunnerApi {
         job.status = 'blocked';
         job.message =
           'Execução interrompida pelo encerramento do servidor. Crie um novo trabalho para retomar.';
+      } else if (job.youtube?.status === 'uploading') {
+        job.youtube = {
+          status: 'failed',
+          message: 'Envio interrompido pelo encerramento do servidor. Envie novamente.',
+          failedAt: new Date().toISOString(),
+        };
       }
     await this.persist();
     return this;
@@ -911,8 +920,7 @@ export class LocalRunner implements RunnerApi {
           'Entrega incompleta: confira o arquivo de vídeo e os relatórios de QA antes de criar um novo trabalho.';
       } else if (job.qa.technical === 'pass' && job.qa.editorial === 'pass') {
         job.status = 'completed';
-        job.message =
-          'Vídeo aprovado: QA técnico e editorial sem pendências. Publicar continua manual, pelo YouTube Studio.';
+        job.message = 'Vídeo aprovado: QA técnico e editorial sem pendências.';
       } else {
         const pending = pendingChecks(report);
         job.status = 'needs_review';
@@ -927,6 +935,53 @@ export class LocalRunner implements RunnerApi {
       job.finishedAt = new Date().toISOString();
       await this.persist();
     }
+    if (job.status === 'completed' && !job.previewOnly) {
+      const state = await this.options.readState();
+      // A failed start is recorded on the job; the operator retries from the card.
+      if (state.channels.find((channel) => channel.id === job.channelId)?.youtubeAutoUpload)
+        await this.publish(job.channelId, job.id).catch(() => {});
+    }
+  }
+  /** Starts the private upload of an approved final version; it continues in the background. */
+  async publish(channelId: string, jobId: string): Promise<WebJob> {
+    const state = await this.channel(channelId);
+    id(jobId);
+    const job = this.jobs.find((item) => item.channelId === channelId && item.id === jobId);
+    if (!job) throw new RunnerError('Produção não encontrada neste canal.');
+    if (!this.options.publish) throw new RunnerError('O envio ao YouTube não está disponível.', 503);
+    const script = state.scripts.find((item) => item.id === job.scriptId && item.channelId === channelId);
+    const video = await this.file(channelId, jobId, 'video');
+    const description = await this.file(channelId, jobId, 'description');
+    // No await between these checks and the state change: two clicks cannot start two uploads.
+    if (job.status !== 'completed' || job.previewOnly || !job.videoAvailable)
+      throw new RunnerError('Só a versão final aprovada no QA pode ser enviada ao YouTube.');
+    if (job.youtube?.status === 'uploading')
+      throw new RunnerError('O envio deste vídeo já está em andamento.');
+    if (job.youtube?.status === 'uploaded') throw new RunnerError('Este vídeo já foi enviado ao YouTube.');
+    if (!script || !video || !description)
+      throw new RunnerError('Roteiro ou pacote de publicação ausente; gere a versão final novamente.');
+    job.youtube = { status: 'uploading', startedAt: new Date().toISOString() };
+    await this.persist();
+    const upload = this.options.publish;
+    const task = (async () => {
+      try {
+        const { videoId } = await upload(channelId, {
+          path: video.path,
+          title: script.title,
+          description: await readFile(description.path, 'utf8'),
+        });
+        job.youtube = { status: 'uploaded', videoId, uploadedAt: new Date().toISOString() };
+      } catch (error) {
+        job.youtube = {
+          status: 'failed',
+          message: (error instanceof Error ? error.message : 'Falha no envio ao YouTube.').slice(0, 300),
+          failedAt: new Date().toISOString(),
+        };
+      }
+      await this.persist();
+    })();
+    this.uploads = this.uploads.then(() => task);
+    return structuredClone(job);
   }
   private execute(args: string[], cwd: string, signal: AbortSignal): Promise<EngineResult> {
     return new Promise((accept, reject) => {
@@ -1018,6 +1073,7 @@ export class LocalRunner implements RunnerApi {
   async idle() {
     await this.preparations;
     await this.queue;
+    await this.uploads;
     await this.writes;
   }
   async close() {

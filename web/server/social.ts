@@ -1,4 +1,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createReadStream } from 'node:fs';
+import { stat } from 'node:fs/promises';
+import { Readable } from 'node:stream';
 import type {
   NetworkCapability,
   Platform,
@@ -7,6 +10,7 @@ import type {
   SocialSnapshot,
   TokenConnectionInput,
   YoutubeOAuthInput,
+  YoutubeUpload,
 } from '../shared/types.ts';
 import type { SecretVault } from './vault.ts';
 
@@ -30,7 +34,11 @@ export class SocialError extends Error {
 const CHANNEL_READ = 'https://www.googleapis.com/auth/youtube.readonly';
 const ANALYTICS_READ = 'https://www.googleapis.com/auth/yt-analytics.readonly';
 const MONETARY_READ = 'https://www.googleapis.com/auth/yt-analytics-monetary.readonly';
-const YOUTUBE_SCOPES = [CHANNEL_READ, ANALYTICS_READ, MONETARY_READ];
+const VIDEO_UPLOAD = 'https://www.googleapis.com/auth/youtube.upload';
+const YOUTUBE_SCOPES = [CHANNEL_READ, ANALYTICS_READ, MONETARY_READ, VIDEO_UPLOAD];
+const UPLOAD_ENDPOINT = 'https://www.googleapis.com/upload/youtube/v3/videos';
+// A long video on a home connection; the session itself stays valid for a week.
+const UPLOAD_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 const PLATFORMS: Platform[] = ['youtube', 'tiktok', 'instagram', 'facebook'];
 const GRAPH = 'https://graph.facebook.com/v26.0';
 const MAX_RESPONSE = 512 * 1024;
@@ -41,11 +49,12 @@ const CAPABILITIES: NetworkCapability[] = [
     connectionMethod: 'oauth',
     metricsAvailable: true,
     revenueAvailable: true,
-    publishingAvailable: false,
+    publishingAvailable: true,
     requirements: [
       'Cliente OAuth Web próprio e callback local registrado exatamente.',
       'YouTube Data API e Analytics API habilitadas.',
-      'youtube.readonly, yt-analytics.readonly e yt-analytics-monetary.readonly.',
+      'youtube.readonly, yt-analytics.readonly, yt-analytics-monetary.readonly e youtube.upload.',
+      'Envio sempre como privado; a publicação é decisão do operador no YouTube Studio.',
     ],
     revenueNote:
       'Receita estimada pela YouTube Analytics API; não é pagamento recebido e pode sofrer ajustes.',
@@ -178,6 +187,31 @@ function identityInput(platform: Platform, accountId: string): void {
     throw new SocialError('invalid_account', 'Identidade da conta ou plataforma inválida.');
   }
 }
+/** YouTube rejects angle brackets in titles and descriptions and limits their size. */
+function youtubeText(value: string, maxBytes: number): string {
+  let text = String(value).replace(/[<>]/g, '').trim();
+  while (Buffer.byteLength(text, 'utf8') > maxBytes) text = text.slice(0, -1);
+  return text;
+}
+/** The session URI comes from the provider: it must point back at the same upload endpoint. */
+function uploadSession(raw: string | null): string {
+  let url: URL;
+  try {
+    url = new URL(raw ?? '');
+  } catch {
+    throw new SocialError('invalid_response', 'O YouTube não abriu a sessão de envio.');
+  }
+  if (
+    `${url.origin}${url.pathname}` !== UPLOAD_ENDPOINT ||
+    url.username ||
+    url.password ||
+    url.hash ||
+    url.searchParams.get('uploadType') !== 'resumable' ||
+    !url.searchParams.get('upload_id')
+  )
+    throw new SocialError('blocked_endpoint', 'Sessão de envio fora do endpoint do YouTube.');
+  return url.toString();
+}
 function secret(value: string): void {
   if (typeof value !== 'string' || !value.trim() || value.length > 16384 || /[\r\n\u0000]/.test(value)) {
     throw new SocialError('invalid_secret', 'Credencial ausente ou com formato inválido.');
@@ -277,32 +311,7 @@ export class SocialService implements SocialApi {
         await response.body?.cancel();
         throw new SocialError('invalid_response', 'Resposta da API excedeu o limite.');
       }
-      const reader = response.body?.getReader();
-      const chunks: Uint8Array[] = [];
-      let size = 0;
-      if (reader) {
-        while (true) {
-          const chunk = await reader.read();
-          if (chunk.done) break;
-          size += chunk.value.byteLength;
-          if (size > MAX_RESPONSE) {
-            await reader.cancel();
-            throw new SocialError('invalid_response', 'Resposta da API excedeu o limite.');
-          }
-          chunks.push(chunk.value);
-        }
-      }
-      const result: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-      if (!result || typeof result !== 'object' || Array.isArray(result))
-        throw new SocialError('invalid_response', 'Resposta inválida da API.');
-      const data = record(result);
-      const apiError = record(data.error);
-      if (data.error && !(apiError.code === 'ok' || apiError.code === 0))
-        throw new SocialError(
-          'api_denied',
-          'A plataforma recusou a consulta; confira token, escopos e permissões.',
-        );
-      return data;
+      return await this.readJson(response);
     } catch (error) {
       if (error instanceof SocialError) throw error;
       throw new SocialError(
@@ -310,6 +319,35 @@ export class SocialService implements SocialApi {
         'Não foi possível consultar a API com segurança. Nenhum token ou detalhe privado foi registrado.',
       );
     }
+  }
+
+  private async readJson(response: Response): Promise<Record<string, unknown>> {
+    const reader = response.body?.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    if (reader) {
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        size += chunk.value.byteLength;
+        if (size > MAX_RESPONSE) {
+          await reader.cancel();
+          throw new SocialError('invalid_response', 'Resposta da API excedeu o limite.');
+        }
+        chunks.push(chunk.value);
+      }
+    }
+    const result: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    if (!result || typeof result !== 'object' || Array.isArray(result))
+      throw new SocialError('invalid_response', 'Resposta inválida da API.');
+    const data = record(result);
+    const apiError = record(data.error);
+    if (data.error && !(apiError.code === 'ok' || apiError.code === 0))
+      throw new SocialError(
+        'api_denied',
+        'A plataforma recusou a consulta; confira token, escopos e permissões.',
+      );
+    return data;
   }
 
   private async tokenMetadata(
@@ -860,6 +898,72 @@ export class SocialService implements SocialApi {
         items,
         note: 'Amostra pública da YouTube Data API, limitada a 8 resultados. Não prova receita, demanda de mercado ou causalidade. A pesquisa consome quota da API e só é executada sob solicitação.',
       };
+    });
+  }
+
+  /** Resumable upload, always private: the operator reviews and publishes in YouTube Studio. */
+  async uploadYoutube(channelId: string, video: YoutubeUpload): Promise<{ videoId: string }> {
+    channel(channelId);
+    const title = youtubeText(video.title, 100);
+    const description = youtubeText(video.description, 5000);
+    if (!title) throw new SocialError('invalid_video', 'O vídeo precisa de título para ser enviado.');
+    const info = await stat(video.path).catch(() => undefined);
+    if (!info?.isFile() || info.size === 0)
+      throw new SocialError('invalid_video', 'Arquivo de vídeo ausente; gere a versão final novamente.');
+    return this.locked(`${channelId}/youtube`, async () => {
+      const { credential } = await this.ready(channelId, 'youtube');
+      if (!credential.scopes.includes(VIDEO_UPLOAD))
+        throw new SocialError(
+          'missing_scope',
+          'Reconecte o YouTube em Contas conectadas para autorizar o envio de vídeos.',
+        );
+      const authorization = `Bearer ${credential.accessToken}`;
+      try {
+        const session = await this.fetcher(`${UPLOAD_ENDPOINT}?uploadType=resumable&part=snippet,status`, {
+          method: 'POST',
+          headers: {
+            authorization,
+            'content-type': 'application/json; charset=UTF-8',
+            'x-upload-content-type': 'video/mp4',
+            'x-upload-content-length': String(info.size),
+          },
+          body: JSON.stringify({
+            snippet: { title, description, categoryId: '28' },
+            status: { privacyStatus: 'private', selfDeclaredMadeForKids: false },
+          }),
+          redirect: 'error',
+          signal: AbortSignal.timeout(this.timeoutMs),
+        });
+        await session.body?.cancel();
+        if (!session.ok)
+          throw new SocialError(
+            'api_denied',
+            `O YouTube recusou o envio (HTTP ${session.status}); confira a quota e as permissões do projeto.`,
+          );
+        const location = uploadSession(session.headers.get('location'));
+        const sent = await this.fetcher(location, {
+          method: 'PUT',
+          headers: { authorization, 'content-type': 'video/mp4', 'content-length': String(info.size) },
+          body: Readable.toWeb(createReadStream(video.path)) as ReadableStream,
+          duplex: 'half',
+          redirect: 'error',
+          signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
+        } as RequestInit);
+        if (!sent.ok) {
+          await sent.body?.cancel();
+          throw new SocialError('api_denied', `O YouTube recusou o arquivo (HTTP ${sent.status}).`);
+        }
+        const videoId = (await this.readJson(sent)).id;
+        if (typeof videoId !== 'string' || !/^[A-Za-z0-9_-]{11}$/.test(videoId))
+          throw new SocialError('invalid_response', 'O YouTube não retornou o ID do vídeo enviado.');
+        return { videoId };
+      } catch (error) {
+        if (error instanceof SocialError) throw error;
+        throw new SocialError(
+          'api_unavailable',
+          'Não foi possível concluir o envio ao YouTube. Nenhum token ou detalhe privado foi registrado.',
+        );
+      }
     });
   }
 

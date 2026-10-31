@@ -224,6 +224,7 @@ function normalizeChannel(value: unknown, previous?: Channel): Channel {
     'audience',
     'language',
     'youtubeChannelId',
+    'youtubeAutoUpload',
     'createdAt',
     'updatedAt',
   ]);
@@ -236,6 +237,8 @@ function normalizeChannel(value: unknown, previous?: Channel): Channel {
     item.youtubeChannelId === undefined || item.youtubeChannelId === ''
       ? undefined
       : validId(item.youtubeChannelId);
+  if (item.youtubeAutoUpload !== undefined && typeof item.youtubeAutoUpload !== 'boolean')
+    throw new HttpError(400, 'O envio automático ao YouTube deve ser verdadeiro ou falso.');
   const now = new Date().toISOString();
   return {
     id,
@@ -245,6 +248,7 @@ function normalizeChannel(value: unknown, previous?: Channel): Channel {
     audience: text(item.audience, 'audience', 3000),
     language,
     ...(youtubeChannelId ? { youtubeChannelId } : {}),
+    ...(item.youtubeAutoUpload === true ? { youtubeAutoUpload: true } : {}),
     createdAt: previous?.createdAt ?? now,
     updatedAt: now,
   };

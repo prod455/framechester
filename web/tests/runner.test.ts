@@ -924,7 +924,7 @@ test('a job with no QA pending is completed, and the operator declaration covers
     const done = (await runner.list('tech')).find((item) => item.id === job.id)!;
     assert.equal(done.status, 'completed', done.message);
     assert.match(done.message, /aprovado/);
-    assert.match(done.message, /manual/);
+    assert.equal(done.youtube, undefined, 'Without the channel opt-in nothing leaves the machine');
     input.scripts[0].claims[0].status = 'contradicted';
     await assert.rejects(
       runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } }),
@@ -1001,5 +1001,99 @@ test('a blocked job names what the engine refused instead of a generic message',
       await runner.close();
       await rm(home, { recursive: true, force: true });
     }
+  }
+});
+
+test('an opted-in channel sends each approved final version once, privately, and never a preview', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'framechester-web-youtube-'));
+  const input = state();
+  input.channels[0].youtubeAutoUpload = true;
+  const uploads: Array<{ channelId: string; title: string; description: string; video: string }> = [];
+  let fail = false;
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => structuredClone(input),
+    execute: async (args) => {
+      const out = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
+      await mkdir(join(out, 'render'), { recursive: true });
+      await mkdir(join(out, 'publish'), { recursive: true });
+      await writeFile(join(out, 'render', 'final.mp4'), 'synthetic fixture');
+      await writeFile(join(out, 'publish', 'description.txt'), 'Descrição com fontes');
+      const preview = args.includes('--preview-only');
+      await writeFile(
+        join(out, 'pipeline_report.json'),
+        JSON.stringify({
+          stage: preview ? 'blocked' : 'editorial_qa',
+          technical_qa: { checks: [{ status: 'pass' }] },
+          editorial_qa: { checks: [{ status: 'pass' }] },
+        }),
+      );
+      return { exitCode: preview ? 2 : 0, stdout: '', stderr: '' };
+    },
+    publish: async (channelId, video) => {
+      if (fail) throw new Error('Reconecte o YouTube em Contas conectadas para autorizar o envio de vídeos.');
+      uploads.push({
+        channelId,
+        title: video.title,
+        description: video.description,
+        video: await readFile(video.path, 'utf8'),
+      });
+      return { videoId: 'abcdefghijk' };
+    },
+  });
+  try {
+    const asset = await runner.upload('tech', {
+      filename: 'diagram.png',
+      kind: 'image',
+      contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+      license: 'Original de teste',
+      provenance: 'Fixture local',
+      restrictions: 'Teste',
+    });
+    const preview = await runner.start('tech', {
+      scriptId: 'script-one',
+      assetIds: { 42: asset.id },
+      previewOnly: true,
+    });
+    await runner.idle();
+    assert.equal(uploads.length, 0, 'A preview never leaves the machine');
+    await assert.rejects(runner.publish('tech', preview.id), /versão final aprovada/);
+
+    const job = await runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } });
+    await runner.idle();
+    const done = (await runner.list('tech')).find((item) => item.id === job.id)!;
+    assert.equal(done.status, 'completed', done.message);
+    assert.equal(done.youtube?.status, 'uploaded');
+    assert.deepEqual(uploads, [
+      {
+        channelId: 'tech',
+        title: input.scripts[0].title,
+        description: 'Descrição com fontes',
+        video: 'synthetic fixture',
+      },
+    ]);
+    await assert.rejects(runner.publish('tech', job.id), /já foi enviado/);
+
+    fail = true;
+    const second = await runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } });
+    await runner.idle();
+    const failed = (await runner.list('tech')).find((item) => item.id === second.id)!;
+    assert.equal(failed.status, 'completed', 'A failed upload does not undo an approved video');
+    assert.equal(failed.youtube?.status, 'failed');
+    assert.match(failed.youtube?.status === 'failed' ? failed.youtube.message : '', /Reconecte/);
+    fail = false;
+    const retry = await runner.publish('tech', second.id);
+    assert.equal(retry.youtube?.status, 'uploading');
+    await assert.rejects(runner.publish('tech', second.id), /em andamento/);
+    await runner.idle();
+    assert.equal(
+      (await runner.list('tech')).find((item) => item.id === second.id)!.youtube?.status,
+      'uploaded',
+    );
+    assert.equal(uploads.length, 2);
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
   }
 });

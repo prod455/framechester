@@ -101,7 +101,11 @@ export async function action(operation: () => Promise<unknown>, message: string)
 
 export function schedulePoll(): void {
   if (studio.pollTimer) clearTimeout(studio.pollTimer);
-  if (studio.data?.jobs.some((job) => job.status === 'queued' || job.status === 'running')) {
+  if (
+    studio.data?.jobs.some(
+      (job) => job.status === 'queued' || job.status === 'running' || job.youtube?.status === 'uploading',
+    )
+  ) {
     studio.pollTimer = setTimeout(() => {
       void request<Bootstrap>('/api/bootstrap')
         .then((incoming) => {

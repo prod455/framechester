@@ -792,3 +792,62 @@ test('deleting an empty channel clears pending authorizations first and cleanup 
     await context.close();
   }
 });
+
+test('the YouTube opt-in is a validated channel flag and sending a job needs a session and CSRF', async () => {
+  const published: Array<[string, string]> = [];
+  const unused = async () => {
+    throw new Error('not used');
+  };
+  const runner: RunnerApi = {
+    list: async () => [],
+    assets: async () => [],
+    start: unused,
+    upload: unused,
+    prepareVisuals: unused,
+    assetFile: async () => undefined,
+    file: async () => undefined,
+    engineStatus: () => ({ available: true, message: 'synthetic test engine' }),
+    publish: async (channelId, jobId) => {
+      published.push([channelId, jobId]);
+      return {
+        id: jobId,
+        channelId,
+        scriptId: 'script-1',
+        status: 'completed',
+        createdAt: '2026-10-31T12:00:00Z',
+        message: 'synthetic fixture',
+        videoAvailable: true,
+        youtube: { status: 'uploading', startedAt: '2026-10-31T12:00:00Z' },
+      };
+    },
+  };
+  const context = await fixture({ runner });
+  try {
+    assert.equal(
+      (await context.call('/api/channels', 'POST', { id: 'tech', name: 'tech', youtubeAutoUpload: 'sim' }))
+        .status,
+      400,
+    );
+    assert.equal(
+      (await context.call('/api/channels', 'POST', { id: 'tech', name: 'tech', youtubeAutoUpload: true }))
+        .status,
+      201,
+    );
+    const channels = await (await context.call('/api/bootstrap')).json();
+    assert.equal(
+      channels.channels.find((item: { id: string }) => item.id === 'tech').youtubeAutoUpload,
+      true,
+    );
+    assert.equal(
+      (await fetch(context.origin + '/api/channels/tech/jobs/job-1/youtube', { method: 'POST' })).status,
+      403,
+    );
+    assert.deepEqual(published, [], 'A request without session and CSRF sends nothing');
+    const sent = await context.call('/api/channels/tech/jobs/job-1/youtube', 'POST', {});
+    assert.equal(sent.status, 202);
+    assert.equal((await sent.json()).youtube.status, 'uploading');
+    assert.deepEqual(published, [['tech', 'job-1']]);
+  } finally {
+    await context.close();
+  }
+});

@@ -509,7 +509,9 @@ const UPLOAD = 'https://www.googleapis.com/auth/youtube.upload';
 const SESSION =
   'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&upload_id=fixture-session';
 
-async function uploadFixture(options: { scopes?: string[]; location?: string } = {}): Promise<{
+async function uploadFixture(
+  options: { scopes?: string[]; location?: string; thumbnailStatus?: number } = {},
+): Promise<{
   service: ReturnType<typeof createSocialService>;
   calls: Array<{ url: string; init?: RequestInit; body?: string }>;
   video: string;
@@ -535,6 +537,10 @@ async function uploadFixture(options: { scopes?: string[]; location?: string } =
       if (url.pathname === '/upload/youtube/v3/videos' && init?.method === 'POST') {
         calls.push({ url: raw, init, body: String(init.body) });
         return new Response(null, { status: 200, headers: { location: options.location ?? SESSION } });
+      }
+      if (url.pathname === '/upload/youtube/v3/thumbnails/set') {
+        calls.push({ url: raw, init, body: Buffer.from(init!.body as Uint8Array).toString() });
+        return json({ items: [] }, options.thumbnailStatus ?? 200);
       }
       if (raw === SESSION && init?.method === 'PUT') {
         const body = await new Response(init.body as ReadableStream).text();
@@ -623,6 +629,45 @@ test('a missing video file fails before any network call', async () => {
       /Arquivo de vídeo ausente/,
     );
     assert.equal(calls.length, 0);
+  } finally {
+    await cleanup();
+  }
+});
+
+test('the engine thumbnail is set after the upload and a refusal keeps the video uploaded', async () => {
+  for (const [status, expected] of [
+    [200, 'set'],
+    [403, /verifique o canal por telefone/],
+  ] as const) {
+    const { service, calls, video, cleanup } = await uploadFixture({ thumbnailStatus: status });
+    try {
+      const thumbnail = video.replace('final.mp4', 'thumbnail.png');
+      await writeFile(thumbnail, 'synthetic png');
+      const result = await service.uploadYoutube('tech', {
+        path: video,
+        title: 'Vídeo',
+        description: '',
+        thumbnail,
+      });
+      assert.equal(result.videoId, 'abcdefghijk');
+      const set = calls[2];
+      assert.equal(new URL(set.url).searchParams.get('videoId'), 'abcdefghijk');
+      assert.equal(new Headers(set.init!.headers).get('content-type'), 'image/png');
+      assert.equal(set.body, 'synthetic png');
+      if (expected === 'set') assert.equal(result.thumbnail, 'set');
+      else assert.match((result.thumbnail as { error: string }).error, expected);
+    } finally {
+      await cleanup();
+    }
+  }
+});
+
+test('without a thumbnail file only the video is sent', async () => {
+  const { service, calls, video, cleanup } = await uploadFixture();
+  try {
+    const result = await service.uploadYoutube('tech', { path: video, title: 'Vídeo', description: '' });
+    assert.deepEqual(result, { videoId: 'abcdefghijk' });
+    assert.equal(calls.length, 2);
   } finally {
     await cleanup();
   }

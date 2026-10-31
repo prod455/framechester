@@ -178,10 +178,16 @@ function youtubeStatus(job: WebJob): HTMLElement | null {
   if (youtube.status === 'failed')
     return el('p', { className: 'field-hint', role: 'alert' }, `Envio ao YouTube falhou: ${youtube.message}`);
   const studioUrl = `https://studio.youtube.com/video/${encodeURIComponent(youtube.videoId)}/edit`;
+  const thumbnail =
+    youtube.thumbnail === 'set'
+      ? 'Thumbnail aplicada. '
+      : youtube.thumbnail
+        ? `${youtube.thumbnail.error} `
+        : '';
   return el(
     'p',
     {},
-    `Enviado ao YouTube como privado em ${date(youtube.uploadedAt)}. `,
+    `Enviado ao YouTube como privado em ${date(youtube.uploadedAt)}. ${thumbnail}`,
     el(
       'a',
       { href: studioUrl, target: '_blank', rel: 'noopener noreferrer' },

@@ -256,6 +256,11 @@ fn figure_nodes(figure: &Figure, character: Character, pose: Pose) -> Vec<Node> 
     nodes
 }
 
+/// The figure alone, scaled to fit `area` and standing on its bottom edge.
+pub fn figure(area: Rect, character: Character, pose: Pose) -> Vec<Node> {
+    figure_nodes(&Figure::fit(area), character, pose)
+}
+
 pub fn build(
     ctx: &mut Ctx<'_>,
     area: Rect,

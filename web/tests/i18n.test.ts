@@ -214,6 +214,11 @@ test('t() fills placeholders, and composed server messages translate through the
       translateMessage('Mensagem que não está no catálogo.'),
       'Mensagem que não está no catálogo.',
     );
+    // A generic template ("{start} a {end}") does not swallow a more specific sentence.
+    assert.equal(
+      translateMessage('O Facebook aceita de 3 a 90 s; este vídeo tem 95 s.'),
+      'Facebook takes 3 to 90 s; this video is 95 s.',
+    );
     const template = Object.keys(catalogs.en).find((key) => /\{\w+\}/.test(key));
     if (template) {
       const composed = template.replace(/\{\w+\}/g, 'X1');

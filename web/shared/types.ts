@@ -293,10 +293,15 @@ export interface SocialApi {
   /** Profiles of the connected networks; read from the vault, no network call. */
   profiles?(channelId: string): Promise<ProfileLink[]>;
 }
+/** The parts of the post; the social service fits them to each network's limits. */
 export interface VideoUpload {
   path: string;
   title: string;
   description: string;
+  /** "Acompanhe também:" block; it stays whole while the network's text limit allows. */
+  references?: string;
+  /** Trailing tag, such as YouTube's #Shorts. */
+  tag?: string;
   vertical: boolean;
   /** PNG drawn by the motion engine, YouTube only; absent on the still-image path. */
   thumbnail?: string;

@@ -22,13 +22,7 @@ import type {
   QaStatus,
   PreparedVisuals,
 } from '../shared/types.ts';
-import {
-  canPublish,
-  crossReferences,
-  platformLabels,
-  postDescription,
-  publishingPlatforms,
-} from '../shared/publishing.ts';
+import { canPublish, crossReferences, platformLabels, publishingPlatforms } from '../shared/publishing.ts';
 
 interface StoredAsset extends WebAsset {
   diskName: string;
@@ -1143,11 +1137,9 @@ export class LocalRunner implements RunnerApi {
         const sent = await upload(channelId, platform, {
           path: video.path,
           title: short && platform === 'youtube' ? shortTitle(script.title) : script.title,
-          description: postDescription(
-            text,
-            references,
-            short && platform === 'youtube' ? '#Shorts' : undefined,
-          ),
+          description: text,
+          references,
+          ...(short && platform === 'youtube' ? { tag: '#Shorts' } : {}),
           vertical,
           ...(thumbnail ? { thumbnail: thumbnail.path } : {}),
         });

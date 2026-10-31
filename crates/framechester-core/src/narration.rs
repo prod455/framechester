@@ -168,18 +168,31 @@ pub fn estimate_words(text: &str, audio: &SegmentAudio, offset_secs: f32) -> Vec
     let mut boundaries = vec![voiced_start];
     let mut used = 0usize;
     let mut before = 0.0f32;
+    // Expectations restart from the last anchored pause, so a comma anchored later than the
+    // syllable count predicted never sends the next phrase back in time.
+    let (mut anchor_time, mut anchor_weight) = (voiced_start, 0.0f32);
     for phrase in &phrases[..phrases.len() - 1] {
         before += weights[phrase.clone()].iter().sum::<f32>();
-        let expected = voiced_start + span * before / total;
-        let nearest = pauses.iter().enumerate().skip(used).min_by(|a, b| {
-            let distance = |pause: &(f32, f32)| ((pause.0 + pause.1) / 2.0 - expected).abs();
-            distance(a.1).total_cmp(&distance(b.1))
-        });
+        let last = *boundaries.last().expect("starts with voiced_start");
+        let expected = (anchor_time
+            + (voiced_end - anchor_time) * (before - anchor_weight)
+                / (total - anchor_weight).max(1e-3))
+        .clamp(last, voiced_end);
+        let nearest = pauses
+            .iter()
+            .enumerate()
+            .skip(used)
+            .filter(|(_, pause)| pause.0 >= last)
+            .min_by(|a, b| {
+                let distance = |pause: &(f32, f32)| ((pause.0 + pause.1) / 2.0 - expected).abs();
+                distance(a.1).total_cmp(&distance(b.1))
+            });
         match nearest {
             Some((index, pause)) if ((pause.0 + pause.1) / 2.0 - expected).abs() < span * 0.25 => {
                 boundaries.push(pause.0);
                 boundaries.push(pause.1);
                 used = index + 1;
+                (anchor_time, anchor_weight) = (pause.1, before);
             }
             _ => {
                 boundaries.push(expected);
@@ -228,6 +241,15 @@ pub fn estimate_words(text: &str, audio: &SegmentAudio, offset_secs: f32) -> Vec
                 end_secs: offset_secs + to.max(from),
             });
         }
+    }
+    // Last guard: words move forward and stay inside the voiced span, whatever the pauses.
+    let mut cursor = offset_secs + voiced_start;
+    for word in &mut timed {
+        word.start_secs = word.start_secs.clamp(cursor, offset_secs + voiced_end);
+        word.end_secs = word
+            .end_secs
+            .clamp(word.start_secs, offset_secs + voiced_end);
+        cursor = word.end_secs;
     }
     timed
 }
@@ -400,6 +422,32 @@ mod tests {
             );
         }
         assert!((words.last().unwrap().end_secs - 2.9).abs() < 1e-4);
+    }
+
+    #[test]
+    fn a_comma_anchored_late_never_sends_the_next_phrase_back_in_time() {
+        // The first comma claims a pause later than expected; the second comma finds no
+        // pause left and its expected time falls before the first one. Words must still
+        // move forward and stay inside the voiced span.
+        let audio = SegmentAudio {
+            duration_secs: 3.0,
+            leading_silence_secs: 0.0,
+            trailing_silence_secs: 0.0,
+            pauses: vec![(0.9, 1.0)],
+        };
+        for text in [
+            "Um, dois, tres quatro cinco seis.",
+            "Um, dois, tres, quatro, cinco e seis.",
+        ] {
+            let words = estimate_words(text, &audio, 2.0);
+            let mut cursor = 2.0f32;
+            for word in &words {
+                assert!(word.start_secs >= cursor - 1e-4, "{text}: {words:?}");
+                assert!(word.end_secs >= word.start_secs, "{text}: {words:?}");
+                assert!(word.end_secs <= 5.0 + 1e-4, "{text}: {words:?}");
+                cursor = word.end_secs;
+            }
+        }
     }
 
     #[test]

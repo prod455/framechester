@@ -1205,10 +1205,10 @@ test('Instagram OAuth can use a Facebook Login for Business configuration instea
 });
 
 test('Instagram can be connected by its @: the ID is found among the authorized Pages', async () => {
-  const connect = async (accountId: string, unlinked = false, noPages = false) => {
+  const connect = async (accountId: string, unlinked = false, noPages = false, permissions?: string[]) => {
     const service = createSocialService({
       vault: new MemoryVault(),
-      fetch: metaFetch([], { unlinked, noPages }),
+      fetch: metaFetch([], { unlinked, noPages, ...(permissions ? { permissions } : {}) }),
       now: () => NOW,
     });
     const started = await service.startOAuth({
@@ -1238,7 +1238,11 @@ test('Instagram can be connected by its @: the ID is found among the authorized 
   );
   await assert.rejects(
     connect('@fixture.ig', false, true),
-    /não liberou nenhuma Página.*ativos Páginas e Contas do Instagram/,
+    /não liberou nenhuma Página para o Studio, embora tenha concedido pages_show_list, pages_read_engagement, pages_manage_posts, instagram_basic\. .*Editar acesso/,
+  );
+  await assert.rejects(
+    connect('@fixture.ig', false, true, ['instagram_basic']),
+    /não concedeu pages_show_list.*\(concedidas: instagram_basic\)/,
   );
   await assert.rejects(connect('@nome inválido'), /Identidade da conta/);
 });

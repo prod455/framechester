@@ -115,6 +115,16 @@ export const productionRoutes: Route[] = [
     },
   },
   {
+    method: 'POST',
+    pattern: '/api/channels/:id/jobs/:jobId/youtube',
+    async handle(context) {
+      const id = await requireChannel(context);
+      const runner = context.runner();
+      if (!runner.publish) throw new HttpError(503, 'O envio ao YouTube não está disponível.');
+      json(context.response, 202, await runner.publish(id, validId(context.params.jobId)));
+    },
+  },
+  {
     method: ['GET', 'HEAD'],
     pattern: '/api/channels/:id/jobs/:jobId/files/:name',
     async handle(context) {

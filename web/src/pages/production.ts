@@ -92,7 +92,7 @@ export function productionPage(): HTMLElement {
     snapshot.engine?.available === false ? notice(snapshot.engine.message) : null,
     panel(
       'Fila de produção',
-      `${jobs.length} produções neste canal. A publicação automática está desativada.`,
+      `${jobs.length} produções neste canal. ${currentChannel()?.youtubeAutoUpload ? 'Versões finais aprovadas seguem ao YouTube como privadas.' : 'O envio automático ao YouTube está desligado neste canal.'}`,
       jobsBody,
     ),
     panel(
@@ -157,15 +157,65 @@ export function jobCard(job: WebJob): HTMLElement {
     stages,
     diagnostic,
     qa,
+    youtubeStatus(job),
     job.videoAvailable
       ? el(
           'div',
           { className: 'job-artifacts' },
           button('Revisar vídeo', () => viewJob(job), 'secondary', 'film'),
           finalVersionButton(job, script),
+          youtubeButton(job),
         )
       : null,
   );
+}
+
+function youtubeStatus(job: WebJob): HTMLElement | null {
+  const youtube = job.youtube;
+  if (!youtube) return null;
+  if (youtube.status === 'uploading')
+    return el('p', { role: 'status' }, 'Enviando ao YouTube como vídeo privado…');
+  if (youtube.status === 'failed')
+    return el('p', { className: 'field-hint', role: 'alert' }, `Envio ao YouTube falhou: ${youtube.message}`);
+  const studioUrl = `https://studio.youtube.com/video/${encodeURIComponent(youtube.videoId)}/edit`;
+  return el(
+    'p',
+    {},
+    `Enviado ao YouTube como privado em ${date(youtube.uploadedAt)}. `,
+    el(
+      'a',
+      { href: studioUrl, target: '_blank', rel: 'noopener noreferrer' },
+      'Revisar e publicar no YouTube Studio',
+    ),
+  );
+}
+
+/** Only an approved final version goes out, once; a failed upload can be retried. */
+function youtubeButton(job: WebJob): HTMLElement | null {
+  if (
+    job.status !== 'completed' ||
+    job.previewOnly ||
+    ['uploading', 'uploaded'].includes(job.youtube?.status ?? '')
+  )
+    return null;
+  const action = button(
+    job.youtube?.status === 'failed' ? 'Tentar enviar de novo' : 'Enviar ao YouTube (privado)',
+    async () => {
+      action.disabled = true;
+      try {
+        await request(channelPath(`/jobs/${encodeURIComponent(job.id)}/youtube`), 'POST', {});
+        await refresh();
+        toast('Envio iniciado. O vídeo entra no YouTube como privado; publique pelo YouTube Studio.');
+      } catch (error) {
+        action.disabled = false;
+        toast(error instanceof Error ? error.message : 'Não foi possível iniciar o envio.');
+      }
+    },
+    'secondary',
+    'external',
+  );
+  action.dataset.testid = `youtube-${job.id}`;
+  return action;
 }
 
 /** A watched preview leads straight to its final version; no menus in between. */

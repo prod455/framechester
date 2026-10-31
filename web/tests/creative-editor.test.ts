@@ -546,6 +546,8 @@ test('the duration rule rewrites a script that is too short and reports its meas
       /Revisão obrigatória de duração: o rascunho anterior \(previousDraft\) tem 6 palavras/,
     );
     assert.match(systems[1]!, /Faltam pelo menos 168 palavras/);
+    assert.match(systems[1]!, /cena 7: 6 → 197/, 'a word budget per scene');
+    assert.match(systems[0]!, /A duração vale mais do que preservar as cenas de referência/);
     assert.ok(prompts[1]!.previousDraft, 'the rejected draft goes back as data');
     assert.equal(prompts[0]!.previousDraft, undefined);
     assert.deepEqual(budgets, [4096, 4096]);
@@ -582,6 +584,37 @@ test('a script that never reaches its length is refused, and a long video gets a
         ),
     );
     assert.deepEqual(budgets, [16_000, 16_000, 16_000]);
+  } finally {
+    await ctx.close();
+  }
+});
+
+test('a draft too long for its format gets a smaller budget for every scene', async () => {
+  const systems: string[] = [];
+  const twice = { ...filler, id: 100 };
+  const ctx = await fixture((payload) => {
+    systems.push(String(payload.system));
+    const scenes = systems.length === 1 ? [filler, twice] : [filler];
+    return result({
+      title: 'Um vídeo concreto',
+      series: 'Experimentos',
+      format: 'short',
+      hook: 'Gancho',
+      scenes,
+      claims: [],
+    });
+  });
+  try {
+    const draft = await ctx.service.draft('tech', {
+      task: 'script',
+      brief: 'Faça um short a partir do roteiro longo.',
+      editorContext: { task: 'script', values: script },
+    });
+    assert.equal(systems.length, 2);
+    assert.match(systems[1]!, /tem 380 palavras/);
+    assert.match(systems[1]!, /Sobram pelo menos 160 palavras/);
+    assert.match(systems[1]!, /cena 99: 190 → 99; cena 100: 190 → 99/);
+    assert.equal(draft.duration?.attempts, 2);
   } finally {
     await ctx.close();
   }

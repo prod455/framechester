@@ -133,13 +133,39 @@ test('a Tailscale name lets the phone in through tailscale serve; public names s
 });
 
 test('TikTok logins return through the public relay unless the operator chooses loopback or their own page', () => {
-  assert.equal(runtimeConfiguration({}).tiktokRelay, 'https://prod455.github.io/framechester/oauth/tiktok/');
-  assert.equal(runtimeConfiguration({ FRAMECHESTER_TIKTOK_REDIRECT_URI: 'loopback' }).tiktokRelay, undefined);
   assert.equal(
-    runtimeConfiguration({ FRAMECHESTER_TIKTOK_REDIRECT_URI: 'https://me.github.io/fc/oauth/tiktok/' })
-      .tiktokRelay,
+    runtimeConfiguration({}).relays.tiktok,
+    'https://prod455.github.io/framechester/oauth/tiktok/',
+  );
+  assert.equal(
+    runtimeConfiguration({ FRAMECHESTER_TIKTOK_REDIRECT_URI: 'loopback' }).relays.tiktok,
+    undefined,
+  );
+  assert.equal(
+    runtimeConfiguration({ FRAMECHESTER_TIKTOK_REDIRECT_URI: 'https://me.github.io/fc/oauth/tiktok/' }).relays
+      .tiktok,
     'https://me.github.io/fc/oauth/tiktok/',
   );
   for (const value of ['http://me.github.io/x/', 'https://me.github.io/x/?a=1', 'not a url'])
     assert.throws(() => runtimeConfiguration({ FRAMECHESTER_TIKTOK_REDIRECT_URI: value }), /HTTPS/, value);
+});
+
+test('Instagram and Facebook logins return through HTTPS relay pages, since Meta enforces HTTPS', () => {
+  const { relays } = runtimeConfiguration({});
+  assert.equal(relays.instagram, 'https://prod455.github.io/framechester/oauth/instagram/');
+  assert.equal(relays.facebook, 'https://prod455.github.io/framechester/oauth/facebook/');
+  assert.equal(relays.youtube, undefined, 'Google accepts the loopback callback');
+  const own = runtimeConfiguration({
+    FRAMECHESTER_META_REDIRECT_BASE: 'https://me.github.io/fc/oauth/',
+  }).relays;
+  assert.equal(own.instagram, 'https://me.github.io/fc/oauth/instagram/');
+  const loopback = runtimeConfiguration({ FRAMECHESTER_META_REDIRECT_BASE: 'loopback' }).relays;
+  assert.equal(loopback.instagram, undefined);
+  assert.equal(
+    loopback.tiktok,
+    'https://prod455.github.io/framechester/oauth/tiktok/',
+    'TikTok keeps its own setting',
+  );
+  for (const value of ['http://me.github.io/fc/', 'https://me.github.io/fc', 'https://me.github.io/fc/?a=1'])
+    assert.throws(() => runtimeConfiguration({ FRAMECHESTER_META_REDIRECT_BASE: value }), /HTTPS/, value);
 });

@@ -15,6 +15,7 @@ import { openFinalVersion } from '../final-version-ui.ts';
 import { date, number } from '../format.ts';
 import { openProduction } from '../production-ui.ts';
 import { render } from '../studio/state.ts';
+import { networkMark } from '../studio/platforms.ts';
 import {
   channelPath,
   currentChannel,
@@ -200,7 +201,6 @@ export function jobCard(job: WebJob): HTMLElement {
       stages,
       diagnostic,
       qa,
-      publicationStatus(job),
       job.videoAvailable || retry
         ? el(
             'div',
@@ -208,10 +208,10 @@ export function jobCard(job: WebJob): HTMLElement {
             retry,
             job.videoAvailable ? button(t('Assistir'), () => viewJob(job), 'secondary', 'film') : null,
             finalVersionButton(job, script),
-            ...publishButtons(job),
             shortButton(job),
           )
         : null,
+      publicationCards(job),
     ),
   );
 }
@@ -219,6 +219,19 @@ export function jobCard(job: WebJob): HTMLElement {
 /** A Short is cut from an approved final version made by the motion engine. */
 export function shortButton(job: WebJob): HTMLElement | null {
   if (job.kind === 'short' || job.status !== 'completed' || job.previewOnly || job.engine !== 'motion')
+    return null;
+  // A vertical video already is the Short; a horizontal one gets its Short by itself, and the
+  // button only comes back when that cut stopped.
+  if (vertical(job)) return null;
+  if (
+    state().jobs.some(
+      (item) =>
+        item.kind === 'short' &&
+        item.sourceJobId === job.id &&
+        item.status !== 'failed' &&
+        item.status !== 'blocked',
+    )
+  )
     return null;
   const action = button(
     t('Gerar Short'),
@@ -405,17 +418,101 @@ function confirmPublic(network: string, send: () => Promise<void>): void {
   body.append(form);
 }
 
-/** YouTube always, since it is the channel's home; the other networks once they are connected. */
-export function publishButtons(job: WebJob): HTMLElement[] {
-  const connected = new Set(
-    scoped(state().connections)
-      .filter((connection) => connection.status === 'connected')
-      .map((connection) => connection.platform),
+/** What each network does with the video, said before the operator sends it. */
+function networkPromise(platform: Platform): { mode: string; text: string } {
+  if (platform === 'youtube')
+    return { mode: t('Privado'), text: t('Entra como privado; você publica no YouTube Studio.') };
+  if (platform === 'tiktok')
+    return { mode: t('Somente eu'), text: t('Entra como "Somente eu"; você publica pelo app do TikTok.') };
+  if (platform === 'instagram')
+    return { mode: t('Público'), text: t('Publica direto como Reel público, sem revisão no Instagram.') };
+  return {
+    mode: t('Rascunho'),
+    text: t('Entra como rascunho de Reel; você publica no Meta Business Suite.'),
+  };
+}
+
+/** One card per network: its mark, what happens there, where the video is and the next action. */
+export function publicationCards(job: WebJob): HTMLElement | null {
+  if (job.status !== 'completed' || job.previewOnly || !job.videoAvailable) return null;
+  const connections = scoped(state().connections);
+  const automatic = currentChannel()?.autoUpload ?? [];
+  const isVertical = vertical(job);
+  return el(
+    'div',
+    {
+      className: 'mt-4 grid gap-3 sm:grid-cols-2',
+      role: 'group',
+      'aria-label': t('Redes sociais deste vídeo'),
+    },
+    ...publishingPlatforms.map((platform) => {
+      const network = platformLabels[platform];
+      const promise = networkPromise(platform);
+      const publication = job.publications?.[platform];
+      const connected = connections.some(
+        (connection) => connection.platform === platform && connection.status === 'connected',
+      );
+      let body: HTMLElement | null;
+      let action: HTMLElement | null = null;
+      if (publication) {
+        body = publicationStatus(job, platform);
+        if (publication.status === 'failed') action = publishButton(job, platform);
+      } else if (!canPublish(platform, isVertical)) {
+        body = el(
+          'p',
+          { className: 'field-hint' },
+          job.kind === 'short'
+            ? t('Recebe só vídeo vertical.')
+            : t('Recebe só vídeo vertical: vai o Short deste vídeo.'),
+        );
+      } else if (!connected) {
+        body = el(
+          'p',
+          { className: 'field-hint' },
+          t('Conecte o {network} para enviar este vídeo.', { network }),
+        );
+        action = button(
+          t('Conectar {network}', { network }),
+          () => {
+            studio.activePlatform = platform;
+            go('connections');
+          },
+          'secondary',
+          'plug',
+        );
+      } else {
+        body = el('p', { className: 'field-hint' }, promise.text);
+        action = publishButton(job, platform);
+      }
+      return el(
+        'section',
+        {
+          className: 'flex min-w-0 flex-col gap-2 rounded-lg border border-border p-3',
+          'data-testid': `network-${platform}-${job.id}`,
+        },
+        el(
+          'div',
+          { className: 'flex min-w-0 items-center gap-2' },
+          networkMark(platform),
+          el('h4', { className: 'min-w-0 truncate font-medium' }, network),
+          el('span', { className: 'spacer' }),
+          el(
+            'span',
+            {
+              className: 'badge',
+              'data-variant': publicPlatforms.includes(platform) ? 'destructive' : 'outline',
+            },
+            promise.mode,
+          ),
+        ),
+        automatic.includes(platform) && canPublish(platform, isVertical)
+          ? el('p', { className: 'field-hint' }, t('Automático neste canal.'))
+          : null,
+        body,
+        action,
+      );
+    }),
   );
-  return publishingPlatforms
-    .filter((platform) => platform === 'youtube' || connected.has(platform) || job.publications?.[platform])
-    .map((platform) => publishButton(job, platform))
-    .filter((item): item is HTMLElement => item !== null);
 }
 
 /** A watched preview leads straight to its final version; no menus in between. */

@@ -239,6 +239,23 @@ export default {
     'O {network} não tem rascunho nem modo privado na API: o Reel fica público para todos assim que terminar de processar.':
       '{network} has no draft or private mode in its API: the Reel is public to everyone as soon as it finishes processing.',
     'Publicar no {network}': 'Publish on {network}',
+    'Entra como privado; você publica no YouTube Studio.':
+      'Goes in as private; you publish it in YouTube Studio.',
+    Privado: 'Private',
+    'Entra como "Somente eu"; você publica pelo app do TikTok.':
+      'Goes in as "Only me"; you publish it from the TikTok app.',
+    'Somente eu': 'Only me',
+    'Publica direto como Reel público, sem revisão no Instagram.':
+      'Publishes straight away as a public Reel, with no review on Instagram.',
+    'Entra como rascunho de Reel; você publica no Meta Business Suite.':
+      'Goes in as a Reel draft; you publish it in Meta Business Suite.',
+    'Redes sociais deste vídeo': "This video's social networks",
+    'Recebe só vídeo vertical.': 'Takes vertical video only.',
+    'Recebe só vídeo vertical: vai o Short deste vídeo.':
+      "Takes vertical video only: this video's Short goes there.",
+    'Conecte o {network} para enviar este vídeo.': 'Connect {network} to send this video.',
+    'Conectar {network}': 'Connect {network}',
+    'Automático neste canal.': 'Automatic on this channel.',
   },
   es: {
     // Videos page and job cards
@@ -479,5 +496,22 @@ export default {
     'O {network} não tem rascunho nem modo privado na API: o Reel fica público para todos assim que terminar de processar.':
       '{network} no tiene borrador ni modo privado en su API: el Reel queda público para todos en cuanto termine de procesarse.',
     'Publicar no {network}': 'Publicar en {network}',
+    'Entra como privado; você publica no YouTube Studio.':
+      'Entra como privado; tú lo publicas en YouTube Studio.',
+    Privado: 'Privado',
+    'Entra como "Somente eu"; você publica pelo app do TikTok.':
+      'Entra como "Solo yo"; tú lo publicas desde la app de TikTok.',
+    'Somente eu': 'Solo yo',
+    'Publica direto como Reel público, sem revisão no Instagram.':
+      'Se publica directamente como Reel público, sin revisión en Instagram.',
+    'Entra como rascunho de Reel; você publica no Meta Business Suite.':
+      'Entra como borrador de Reel; tú lo publicas en Meta Business Suite.',
+    'Redes sociais deste vídeo': 'Redes sociales de este video',
+    'Recebe só vídeo vertical.': 'Solo recibe video vertical.',
+    'Recebe só vídeo vertical: vai o Short deste vídeo.':
+      'Solo recibe video vertical: va el Short de este video.',
+    'Conecte o {network} para enviar este vídeo.': 'Conecta {network} para enviar este video.',
+    'Conectar {network}': 'Conectar {network}',
+    'Automático neste canal.': 'Automático en este canal.',
   },
 } satisfies AreaCatalog;

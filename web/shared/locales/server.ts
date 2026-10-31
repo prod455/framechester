@@ -450,6 +450,9 @@ export default {
     'O Instagram não terminou de processar o vídeo em 5 minutos; nada foi publicado. Tente de novo.':
       'Instagram did not finish processing the video within 5 minutes; nothing was published. Try again.',
     'O Instagram não retornou o ID da publicação.': 'Instagram did not return the post ID.',
+    'Este vídeo já é vertical: ele mesmo segue como Short.':
+      'This video is already vertical: it goes out as the Short itself.',
+    'Este vídeo já tem um Short.': 'This video already has a Short.',
   },
   es: {
     'O armazenamento privado de consumo está indisponível ou é inválido. Preserve o histórico e verifique as permissões antes de tentar novamente.':
@@ -902,5 +905,8 @@ export default {
     'O Instagram não terminou de processar o vídeo em 5 minutos; nada foi publicado. Tente de novo.':
       'Instagram no terminó de procesar el video en 5 minutos; no se publicó nada. Inténtalo de nuevo.',
     'O Instagram não retornou o ID da publicação.': 'Instagram no devolvió el ID de la publicación.',
+    'Este vídeo já é vertical: ele mesmo segue como Short.':
+      'Este video ya es vertical: él mismo sale como Short.',
+    'Este vídeo já tem um Short.': 'Este video ya tiene un Short.',
   },
 } satisfies AreaCatalog;

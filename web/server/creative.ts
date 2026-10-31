@@ -23,6 +23,7 @@ import {
   DURATION_ATTEMPTS,
   DURATION_RULES,
   checkDuration,
+  fitByDroppingScenes,
   durationInstruction,
   formatDuration,
   revisionInstruction,
@@ -621,10 +622,25 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
           }
           return { parsed, fields };
         };
-        const durationOf = (fields: SharedCreativeDraft['fields']): DurationCheck | undefined =>
-          p.duration && fields && 'scenes' in fields ? checkDuration(p.duration, fields.scenes) : undefined;
+        type Settled = Accepted & { check?: DurationCheck; dropped?: number[] };
+        // Checks the duration rule. A draft that is only too long loses whole middle scenes,
+        // never words, when that lands it inside the range: no new generation is needed.
+        const settle = (accepted: Accepted): Settled => {
+          const { fields } = accepted;
+          if (!p.duration || !fields || !('scenes' in fields)) return accepted;
+          const check = checkDuration(p.duration, fields.scenes);
+          if (check.ok || check.words < check.rule.minWords) return { ...accepted, check };
+          const fitted = fitByDroppingScenes(fields.scenes, check.rule);
+          if (!fitted) return { ...accepted, check };
+          return {
+            ...accepted,
+            fields: { ...fields, scenes: fitted.scenes },
+            check: checkDuration(p.duration, fitted.scenes),
+            dropped: fitted.dropped,
+          };
+        };
 
-        let generate: (system: string, prompt: string) => Promise<Accepted & { check?: DurationCheck }>;
+        let generate: (system: string, prompt: string) => Promise<Settled>;
         let selectedModel: string;
         const totals: ProviderUsage & { costUsd: number } = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
         if (settings.provider !== 'ollama') {
@@ -683,10 +699,9 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
                 totals.reasoningTokens = (totals.reasoningTokens ?? 0) + measured.reasoningTokens;
               totals.costUsd += measuredCost;
               status = 'rejected';
-              const accepted = accept(result.text);
-              const check = durationOf(accepted.fields);
-              if (!check || check.ok) status = 'succeeded';
-              return { ...accepted, check };
+              const settled = settle(accept(result.text));
+              if (!settled.check || settled.check.ok) status = 'succeeded';
+              return settled;
             } catch (error) {
               if (!measured && error instanceof ProviderResponseError && error.usage) {
                 measured = error.usage;
@@ -755,8 +770,7 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
               typeof result.response !== 'string'
             )
               throw invalidResponse();
-            const accepted = accept(result.response);
-            return { ...accepted, check: durationOf(accepted.fields) };
+            return settle(accept(result.response));
           };
         }
 
@@ -764,7 +778,7 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
           prompt = p.prompt,
           last: DurationCheck | undefined;
         for (let attempt = 1; attempt <= p.attempts; attempt++) {
-          const { parsed, fields, check } = await generate(system, prompt);
+          const { parsed, fields, check, dropped } = await generate(system, prompt);
           if (check && !check.ok) {
             // Business rule: never deliver a script that cannot fill its format. Rewrite it with
             // the exact word gap, sending the rejected draft back as data.
@@ -786,7 +800,14 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
             guides: [...guides[task].names],
             ...(fields ? { fields } : {}),
             ...(check
-              ? { duration: { words: check.words, estimatedSecs: check.estimatedSecs, attempts: attempt } }
+              ? {
+                  duration: {
+                    words: check.words,
+                    estimatedSecs: check.estimatedSecs,
+                    attempts: attempt,
+                    ...(dropped?.length ? { droppedScenes: dropped } : {}),
+                  },
+                }
               : {}),
             ...(settings.provider !== 'ollama'
               ? {

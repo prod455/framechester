@@ -619,3 +619,39 @@ test('a draft too long for its format gets a smaller budget for every scene', as
     await ctx.close();
   }
 });
+
+test('a draft that is only too long is fitted by dropping middle scenes, without another generation', async () => {
+  let calls = 0;
+  const part = (id: number, words: number) => ({
+    ...filler,
+    id,
+    narration: Array.from({ length: words }, (_, index) => `t${id}x${index}`).join(' ') + '.',
+  });
+  const ctx = await fixture(() => {
+    calls++;
+    return result({
+      title: 'Um vídeo concreto',
+      series: 'Experimentos',
+      format: 'short',
+      hook: 'Gancho',
+      scenes: [part(0, 40), part(1, 50), part(2, 50), part(3, 50), part(4, 50), part(5, 60)],
+      claims: [],
+    });
+  });
+  try {
+    const draft = await ctx.service.draft('tech', {
+      task: 'script',
+      brief: 'Faça um short a partir do roteiro longo.',
+      editorContext: { task: 'script', values: script },
+    });
+    assert.equal(calls, 1, 'no paid or local rewrite');
+    assert.ok(draft.fields && 'scenes' in draft.fields);
+    assert.deepEqual(
+      draft.fields.scenes.map((item) => item.id),
+      [0, 3, 4, 5],
+    );
+    assert.deepEqual(draft.duration, { words: 200, estimatedSecs: 77, attempts: 1, droppedScenes: [1, 2] });
+  } finally {
+    await ctx.close();
+  }
+});

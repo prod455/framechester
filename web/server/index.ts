@@ -40,7 +40,7 @@ export async function startLocalServer() {
   const vault = runtime.vaultKeyFile
     ? createFileVault({ directory: join(home, 'vault'), keyFile: runtime.vaultKeyFile })
     : createLocalVault({ directory: join(home, 'vault') });
-  const social = createSocialService({ vault, tiktokRelay: runtime.tiktokRelay });
+  const social = createSocialService({ vault, relays: runtime.relays });
   const runner = await createRunner({
     home,
     repositoryRoot: resolve(webRoot, '..'),

@@ -1,3 +1,4 @@
+import type { Platform } from '../shared/types.ts';
 import { isAbsolute } from 'node:path';
 import { localPort } from '../shared/local-port.ts';
 
@@ -42,6 +43,30 @@ function tiktokRelay(value: string | undefined): string | undefined {
     );
   return url.href;
 }
+/** Meta enforces HTTPS redirect URIs, so Instagram and Facebook logins return through the same
+ * kind of relay page. `loopback` keeps the direct 127.0.0.1 callback (an HTTPS-only app refuses it). */
+export const DEFAULT_META_RELAY_BASE = 'https://prod455.github.io/framechester/oauth/';
+function metaRelays(value: string | undefined): { instagram?: string; facebook?: string } {
+  if (value?.trim() === 'loopback') return {};
+  let base: URL;
+  try {
+    base = new URL(value === undefined || value.trim() === '' ? DEFAULT_META_RELAY_BASE : value.trim());
+  } catch {
+    throw new InvalidRuntimeConfiguration('FRAMECHESTER_META_REDIRECT_BASE precisa ser uma URL HTTPS.');
+  }
+  if (
+    base.protocol !== 'https:' ||
+    base.search ||
+    base.hash ||
+    base.username ||
+    base.password ||
+    !base.pathname.endsWith('/')
+  )
+    throw new InvalidRuntimeConfiguration(
+      'FRAMECHESTER_META_REDIRECT_BASE precisa ser uma URL HTTPS fixa, terminada em /, sem parâmetros.',
+    );
+  return { instagram: new URL('instagram/', base).href, facebook: new URL('facebook/', base).href };
+}
 /** Native operation remains loopback-only. Container ingress must be published on host loopback. */
 export function runtimeConfiguration(environment: NodeJS.ProcessEnv, containerDetected = false) {
   const container = environment.FRAMECHESTER_CONTAINER === '1';
@@ -58,13 +83,17 @@ export function runtimeConfiguration(environment: NodeJS.ProcessEnv, containerDe
   const vaultKeyFile = filePath(environment.FRAMECHESTER_VAULT_KEY_FILE);
   if (container && !vaultKeyFile)
     throw new InvalidRuntimeConfiguration('O contêiner exige um arquivo externo para a chave do cofre.');
+  const tiktok = tiktokRelay(environment.FRAMECHESTER_TIKTOK_REDIRECT_URI);
   return {
     host: container ? ('0.0.0.0' as const) : ('127.0.0.1' as const),
     publicPort,
     vaultKeyFile,
     privateRoot: filePath(environment.FRAMECHESTER_PRIVATE_ROOT),
     tailnetHost: tailnetHost(environment.FRAMECHESTER_TAILNET_HOST),
-    tiktokRelay: tiktokRelay(environment.FRAMECHESTER_TIKTOK_REDIRECT_URI),
+    relays: {
+      ...metaRelays(environment.FRAMECHESTER_META_REDIRECT_BASE),
+      ...(tiktok ? { tiktok } : {}),
+    } as Partial<Record<Platform, string>>,
     engineBinary: filePath(environment.FRAMECHESTER_ENGINE_BINARY),
   };
 }

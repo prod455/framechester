@@ -1,16 +1,23 @@
-"""The public TikTok OAuth relay page (docs/oauth/tiktok/index.html) stays inert and safe."""
+"""The public OAuth relay pages (docs/oauth/<network>/index.html) stay inert, safe and identical."""
 import base64
 import hashlib
 import re
 import unittest
 from pathlib import Path
 
-PAGE = Path(__file__).resolve().parents[1] / "docs" / "oauth" / "tiktok" / "index.html"
+ROOT = Path(__file__).resolve().parents[1] / "docs" / "oauth"
+NETWORKS = ("tiktok", "instagram", "facebook")
+PAGE = ROOT / "tiktok" / "index.html"
 
 
 class OAuthRelayPage(unittest.TestCase):
     def setUp(self):
         self.html = PAGE.read_text(encoding="utf-8")
+
+    def test_every_network_serves_the_same_page(self):
+        for network in NETWORKS:
+            self.assertEqual((ROOT / network / "index.html").read_text(encoding="utf-8"), self.html, network)
+        self.assertIn("(tiktok|instagram|facebook)", self.html, "the network comes from the page path")
 
     def test_the_csp_hash_matches_the_only_inline_script(self):
         scripts = re.findall(r"<script>(.*?)</script>", self.html, re.S)
@@ -23,6 +30,7 @@ class OAuthRelayPage(unittest.TestCase):
         self.assertIn('<meta name="referrer" content="no-referrer">', self.html)
         targets = re.findall(r"'(https?://[^']+)'", self.html)
         self.assertEqual(targets, ["http://127.0.0.1:"], "the only destination is the local Studio")
+        self.assertIn("'/api/oauth/' + network + '/callback?'", self.html)
         self.assertNotRegex(self.html, r"<script[^>]+src=|fetch\(|XMLHttpRequest|sendBeacon")
         self.assertIn("location.replace(target)", self.html)
         self.assertIn(r"/^(\d{2,5})\.[0-9a-f]{48}$/", self.html, "only a state minted by the Studio is accepted")

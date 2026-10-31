@@ -252,7 +252,10 @@ O canal pode enviar a versão final aprovada sem publicar: ao YouTube como
 privado, ao TikTok como "Somente eu" e ao Facebook como rascunho de Reel (só
 vídeo vertical), automaticamente (opt-in por rede no cadastro do canal) ou pelos
 botões do card (ver [redes sociais](REDES_SOCIAIS_WEB.md#envio-sem-publicar)).
-Nessas três, publicar continua decisão do operador. O Instagram não tem modo
+O card do vídeo tem um bloco por rede, com o modo dela (Privado, Somente eu,
+Rascunho, Público), o estado do envio e a ação certa: enviar, tentar de novo,
+conectar a rede ou, numa rede só vertical, o aviso de que vai o Short. Nessas
+três, publicar continua decisão do operador. O Instagram não tem modo
 não público na API: com o opt-in dele ou o botão confirmado, o Reel vertical
 aprovado é **publicado** direto. Cada descrição cita os perfis das outras redes
 conectadas. A preparação manual
@@ -362,9 +365,13 @@ Configurações → Assistente de criação**. Você só paga o que for de fato 
 
 ## Short a partir de um vídeo pronto
 
-Quando a versão final de um vídeo feito pelo motor motion fica pronta, o passo
-**Enviar ao YouTube** de **Criar vídeo** e o card do vídeo em **Vídeos** mostram
-**Gerar Short**. Um clique coloca na fila um corte vertical do mesmo vídeo:
+Quando a versão final **horizontal** de um vídeo feito pelo motor motion fica
+pronta e aprovada, o Studio coloca na fila, sozinho, um corte vertical do mesmo
+vídeo; quando o Short termina, ele segue para as redes com envio automático
+ligado, inclusive Instagram e Facebook, que só recebem vertical. Um vídeo que já
+nasce vertical (roteiro short) é o próprio Short e não ganha outro. Cada vídeo
+tem um Short só; **Gerar Short**, no card e em **Criar vídeo**, só volta a
+aparecer se o corte automático parar. O corte:
 
 - **Gancho no primeiro quadro.** A cena de abertura fica sempre, começando sem
   transição.
@@ -381,8 +388,8 @@ Quando a versão final de um vídeo feito pelo motor motion fica pronta, o passo
 - **No YouTube**, ele vai como vídeo privado com `#Shorts` no título e na
   descrição, sem miniatura personalizada (o YouTube não usa miniatura em Shorts).
 
-O botão só aparece para versões finais do motor motion. Prévias, vídeos do
-caminho antigo e o próprio Short não oferecem o corte. Essas regras seguem as
+O corte só sai de versões finais horizontais do motor motion. Prévias, vídeos
+do caminho antigo, vídeos verticais e o próprio Short não oferecem o corte. Essas regras seguem as
 boas práticas de retenção; elas não garantem uma taxa de cliques específica.
 
 Pela linha de comando, o mesmo corte sai de qualquer storyboard já narrado:

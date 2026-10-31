@@ -1121,6 +1121,7 @@ test('an opted-in channel sends each approved final version once, privately, and
 test('a Short is cut from an approved motion video, inherits its review and goes out tagged #Shorts', async () => {
   const home = await mkdtemp(join(tmpdir(), 'framechester-web-short-'));
   const input = state();
+  input.scripts[0].format = 'long';
   const sourceOutput = join(home, 'production', 'jobs', 'tech', 'source-final', 'output', 'channels', 'tech');
   await mkdir(join(sourceOutput, 'publish'), { recursive: true });
   await writeFile(join(sourceOutput, 'storyboard.json'), '{}');
@@ -1198,6 +1199,10 @@ test('a Short is cut from an approved motion video, inherits its review and goes
     assert.equal(done.status, 'completed', done.message);
     assert.equal(done.qa?.editorial, 'pass', 'the source approval covers the same words');
     await assert.rejects(runner.startShort('tech', short.id), /já é um Short/);
+    await assert.rejects(runner.startShort('tech', 'source-final'), /já tem um Short/);
+    input.scripts[0].format = 'short';
+    await assert.rejects(runner.startShort('tech', 'source-final'), /já é vertical/);
+    input.scripts[0].format = 'long';
     await runner.publish('tech', short.id, 'youtube');
     await runner.publish('tech', short.id, 'facebook');
     await runner.idle();
@@ -1234,7 +1239,7 @@ test('a Short is cut from an approved motion video, inherits its review and goes
   }
 });
 
-test('each opted-in network gets the approved video once, with the others cited, and old records migrate', async () => {
+test('each opted-in network gets the approved video once, its Short follows by itself, and old records migrate', async () => {
   const home = await mkdtemp(join(tmpdir(), 'framechester-web-networks-'));
   const input = state();
   input.scripts[0].format = 'long';
@@ -1262,10 +1267,24 @@ test('each opted-in network gets the approved video once, with the others cited,
     repositoryRoot: resolve('..'),
     readState: async () => structuredClone(input),
     execute: async (args) => {
+      if (args[0] === 'visuals') {
+        const output = args[args.indexOf('--output') + 1];
+        await mkdir(output, { recursive: true });
+        await writeFile(join(output, 'scene-42.png'), visualPng);
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify({
+            renderer: 'framechester-editorial-v3',
+            scenes: [{ scene_id: 42, status: 'generated', file: 'scene-42.png' }],
+          }),
+          stderr: '',
+        };
+      }
       const out = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
       await mkdir(join(out, 'render'), { recursive: true });
       await mkdir(join(out, 'publish'), { recursive: true });
       await writeFile(join(out, 'render', 'final.mp4'), 'synthetic fixture');
+      await writeFile(join(out, 'storyboard.json'), '{}');
       await writeFile(join(out, 'publish', 'description.txt'), 'Descrição com fontes');
       await writeFile(
         join(out, 'pipeline_report.json'),
@@ -1292,25 +1311,33 @@ test('each opted-in network gets the approved video once, with the others cited,
       youtube: { status: 'uploaded', postId: 'abcdefghijk', uploadedAt: '2026-10-30T11:00:00Z' },
     });
     assert.equal('youtube' in legacy, false);
-    const asset = await runner.upload('tech', {
-      filename: 'diagram.png',
-      kind: 'image',
-      contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
-      license: 'Original de teste',
-      provenance: 'Fixture local',
-      restrictions: 'Teste',
-    });
-    const job = await runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } });
+    // No file of the operator's own: the motion engine, which a Short is cut from.
+    const prepared = await runner.prepareVisuals('tech', 'script-one');
+    const job = await runner.start('tech', { scriptId: 'script-one', assetIds: prepared.previews! });
+    // The long video's run queues its Short; wait for both.
     await runner.idle();
-    const done = (await runner.list('tech')).find((item) => item.id === job.id)!;
+    await runner.idle();
+    const jobs = await runner.list('tech');
+    const done = jobs.find((item) => item.id === job.id)!;
     assert.deepEqual(Object.keys(done.publications ?? {}).sort(), ['tiktok', 'youtube']);
+    const short = jobs.find((item) => item.kind === 'short' && item.sourceJobId === job.id)!;
+    assert.equal(short.status, 'completed', short.message);
+    assert.equal(
+      jobs.filter((item) => item.kind === 'short').length,
+      1,
+      'The Short is not cut from the legacy job nor twice',
+    );
     assert.deepEqual(
       uploads.map((item) => [item.network, item.vertical]),
       [
         ['youtube', false],
         ['tiktok', false],
+        ['youtube', true],
+        ['tiktok', true],
+        ['instagram', true],
+        ['facebook', true],
       ],
-      'A horizontal video skips the Reels-only Instagram and Facebook',
+      'The horizontal video skips the Reels networks; its Short reaches all four',
     );
     assert.equal(
       uploads[0].description,

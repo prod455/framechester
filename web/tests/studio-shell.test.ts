@@ -220,3 +220,48 @@ test('after login every page renders from the shared state with its own navigati
     calls.join(', '),
   );
 });
+
+test('a finished video shows one card per network with its own state and action', async () => {
+  const { jobCard } = await import('../src/pages/production.ts');
+  const data = bootstrap();
+  data.scripts[0].format = 'long';
+  data.connections = [
+    {
+      channelId: 'tech',
+      platform: 'tiktok',
+      accountId: 'open-id',
+      displayName: 'Fixture',
+      status: 'connected',
+      connectedAt: now,
+      expiresAt: null,
+      scopes: ['video.publish'],
+    },
+  ];
+  const job = {
+    ...data.jobs[0],
+    engine: 'motion' as const,
+    publications: {
+      youtube: { status: 'uploaded' as const, postId: 'abcdefghijk', uploadedAt: now },
+    },
+  };
+  data.jobs = [job, { ...job, id: 'short-1', kind: 'short', sourceJobId: 'job-1', publications: {} }];
+  studio.data = data;
+  studio.channelId = 'tech';
+  const card = jobCard(job);
+  const network = (platform: string) => card.querySelector(`[data-testid="network-${platform}-job-1"]`)!;
+  assert.match(network('youtube').textContent!, /Enviado ao YouTube como privado/);
+  assert.ok(network('youtube').querySelector('a[href^="https://studio.youtube.com/video/abcdefghijk"]'));
+  assert.ok(network('tiktok').querySelector('[data-testid="publish-tiktok-job-1"]'), 'Connected and ready');
+  assert.match(network('instagram').textContent!, /vai o Short deste vídeo/);
+  assert.equal(network('instagram').querySelector('button'), null);
+  assert.match(network('facebook').textContent!, /vai o Short deste vídeo/);
+  assert.equal(
+    [...card.querySelectorAll('button')].some((item) => item.textContent?.includes('Gerar Short')),
+    false,
+    'The Short already exists',
+  );
+  const shortCard = jobCard(data.jobs[1]);
+  const instagram = shortCard.querySelector('[data-testid="network-instagram-short-1"]')!;
+  assert.match(instagram.textContent!, /Conecte o Instagram/);
+  assert.match(instagram.textContent!, /Público/);
+});

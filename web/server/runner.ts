@@ -1020,6 +1020,10 @@ export class LocalRunner implements RunnerApi {
       // video is not offered to a vertical-only network: its Short goes there instead.
       for (const network of channel?.autoUpload ?? [])
         if (canPublish(network, vertical)) await this.publish(job.channelId, job.id, network).catch(() => {});
+      // A horizontal video gets its Short at once, so the vertical networks receive it too; the
+      // Short publishes itself when it finishes. A refused cut leaves the card's button.
+      if (!vertical && job.kind !== 'short' && job.engine === 'motion')
+        await this.startShort(job.channelId, job.id).catch(() => {});
     }
   }
   /** Narrated storyboard of a finished job, the source a Short is cut from. */
@@ -1055,6 +1059,19 @@ export class LocalRunner implements RunnerApi {
       throw new RunnerError('O storyboard deste vídeo não foi encontrado; gere a versão final novamente.');
     const script = state.scripts.find((item) => item.id === source.scriptId && item.channelId === channelId);
     if (!script) throw new RunnerError('Roteiro do vídeo de origem não encontrado.');
+    if (script.format === 'short')
+      throw new RunnerError('Este vídeo já é vertical: ele mesmo segue como Short.');
+    // One Short per video; only a Short that stopped can be cut again.
+    if (
+      this.jobs.some(
+        (item) =>
+          item.kind === 'short' &&
+          item.sourceJobId === sourceJobId &&
+          item.status !== 'failed' &&
+          item.status !== 'blocked',
+      )
+    )
+      throw new RunnerError('Este vídeo já tem um Short.');
     const config = productionConfig(
       Object.hasOwn(state.channelConfigs, channelId) ? state.channelConfigs[channelId] : state.config,
       this.options.repositoryRoot,

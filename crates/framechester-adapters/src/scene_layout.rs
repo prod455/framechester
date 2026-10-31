@@ -27,7 +27,7 @@ pub enum SceneLayout {
 /// Directives of the motion engine (`framechester_core::planner`). The still-image
 /// renderer does not animate them, so they render as `Destaque` without a warning; the
 /// Studio mirror accepts them the same way.
-pub const MOTION_DIRECTIVES: [&str; 8] = [
+pub const MOTION_DIRECTIVES: [&str; 9] = [
     "fluxo",
     "grafico",
     "arquitetura",
@@ -36,6 +36,7 @@ pub const MOTION_DIRECTIVES: [&str; 8] = [
     "anotacao",
     "infografico",
     "causa",
+    "personagem",
 ];
 
 const MAX_SLOT: usize = 160;
@@ -181,7 +182,7 @@ pub fn parse(scene_id: u32, visual_brief: &str, narration: &str) -> Result<Scene
         other => Err(invalid(
             scene_id,
             &format!(
-                "'#{other}' nao existe; use destaque, pergunta, numero, lista, comparacao, linha-do-tempo, citacao ou uma diretiva do motor motion (fluxo, grafico, arquitetura, codigo, transformacao, anotacao, infografico, causa)"
+                "'#{other}' nao existe; use destaque, pergunta, numero, lista, comparacao, linha-do-tempo, citacao ou uma diretiva do motor motion (fluxo, grafico, arquitetura, codigo, transformacao, anotacao, infografico, causa, personagem)"
             ),
         )),
     }

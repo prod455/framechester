@@ -165,6 +165,11 @@ fn build_component(ctx: &mut Ctx<'_>, scene: &StoryboardScene, area: Rect) -> Ve
             components::infographic::build(ctx, area, title, objects)
         }
         Composition::CauseEffect { objects } => components::cause_effect::build(ctx, area, objects),
+        Composition::Character {
+            character,
+            pose,
+            text,
+        } => components::character::build(ctx, area, *character, *pose, text),
     }
 }
 
@@ -595,7 +600,11 @@ pub fn compose_scene(
 ) -> ComposedScene {
     let mut ctx = Ctx::new(canvas, typesetter, scene.id);
     let mut graph = Graph::default();
-    let is_title = matches!(scene.composition, Composition::Title { .. });
+    // A title or a character speaks for itself: no heading bar above it.
+    let is_title = matches!(
+        scene.composition,
+        Composition::Title { .. } | Composition::Character { .. }
+    );
     let area = if is_title {
         canvas.content
     } else {
@@ -615,6 +624,9 @@ pub fn compose_scene(
         apply_animation(&mut graph, scene, time, animation, canvas, &mut entries);
     }
     auto_animate_edges(&mut graph, scene, &entries);
+    if matches!(scene.composition, Composition::Character { .. }) {
+        components::character::animate(&mut graph.nodes, scene, canvas.motion_scale());
+    }
     check_layout(&mut ctx, &graph);
     let change_times = graph.change_times();
     ComposedScene {
@@ -793,6 +805,10 @@ mod tests {
             ("#anotacao revisar-pr/SKILL.md: instrucoes e metadados; revisar-pr/scripts/check.py: codigo opcional; revisar-pr/exemplos: casos reais", "A pasta tem o SKILL.md com instrucoes, scripts opcionais e exemplos."),
             ("#infografico O que muda | Tokens=40%: do contexto [chart]; Passos=3: etapas fixas [check]; Erros [shield]: menos retrabalho", "Caem para 40% os tokens, sao 3 passos fixos e menos erros."),
             ("#causa Sem skill => O agente improvisa => Resultados variam => Mais retrabalho", "Sem skill, o agente improvisa, os resultados variam e ha mais retrabalho."),
+            ("#personagem apresentador | explicar | Uma skill é uma receita que o agente segue", "Uma skill e uma receita. O agente segue os passos dela."),
+            ("#personagem dev | apontar", "O arquivo fica na pasta do projeto, versionado com o codigo."),
+            ("#personagem cientista | pensar | Dá para medir a diferença?", "Da para medir a diferenca? Vamos testar duas vezes."),
+            ("#personagem robo | comemorar | Mesma tarefa, metade dos tokens", "Mesma tarefa, com menos tokens no contexto."),
         ]
     }
 
@@ -803,6 +819,58 @@ mod tests {
         assert!(svg.ends_with("</text></g></svg>"));
         assert_eq!(svg.matches("</svg>").count(), 1);
         assert!(svg.contains(PREVIEW_MARK));
+    }
+
+    #[test]
+    fn a_character_talks_only_while_the_narration_plays_and_blinks() {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Vertical);
+        let scene = narrated(
+            "#personagem robo | apontar | Mesma tarefa, metade dos tokens",
+            "Mesma tarefa. Com menos tokens no contexto.",
+        );
+        let composed = compose_scene(&typesetter, &canvas, &scene, 0, 3);
+        let mouth = composed
+            .graph
+            .nodes
+            .iter()
+            .find(|node| node.object == components::character::MOUTH)
+            .unwrap();
+        let segment = &scene.segments[0];
+        let speaking: Vec<f32> = (0..8)
+            .map(|step| {
+                mouth
+                    .props
+                    .sy
+                    .eval(segment.start_secs + 0.07 + step as f32 * 0.07)
+            })
+            .collect();
+        assert!(
+            speaking.iter().cloned().fold(f32::MIN, f32::max) > 1.1
+                && speaking.iter().cloned().fold(f32::MAX, f32::min) < 0.9,
+            "the mouth opens and closes while speaking: {speaking:?}"
+        );
+        let last = scene.segments.last().unwrap();
+        assert_eq!(
+            mouth.props.sy.eval(last.end_secs + 0.2),
+            1.0,
+            "silent after the narration"
+        );
+        let eye = composed
+            .graph
+            .nodes
+            .iter()
+            .find(|node| node.object == components::character::EYES)
+            .unwrap();
+        assert!(
+            eye.props.sy.eval(1.4 + 0.08) < 0.2,
+            "the eyes close in a blink"
+        );
+        assert!(
+            composed.issues.is_empty(),
+            "speech card text fits and stays in the safe area: {:?}",
+            composed.issues
+        );
     }
 
     #[test]

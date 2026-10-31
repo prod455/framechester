@@ -8,7 +8,13 @@ pub struct ChannelProfile {
     pub id: String,
     #[serde(default)]
     pub youtube_channel_id: Option<String>,
+    /// Narration and publishing language; absent means pt-BR, the language channels started with.
+    #[serde(default)]
+    pub language: Option<String>,
 }
+
+/// Languages with a reviewed commercial voice; the description template follows the same list.
+pub const LANGUAGES: [&str; 3] = ["pt-BR", "en-US", "es"];
 
 impl ChannelProfile {
     pub fn validate(&self) -> Result<()> {
@@ -41,7 +47,18 @@ impl ChannelProfile {
                 ));
             }
         }
+        if let Some(language) = &self.language {
+            if !LANGUAGES.contains(&language.as_str()) {
+                return Err(FramechesterError::Config(
+                    "language deve ser pt-BR, en-US ou es".into(),
+                ));
+            }
+        }
         Ok(())
+    }
+
+    pub fn language(&self) -> &str {
+        self.language.as_deref().unwrap_or("pt-BR")
     }
 
     pub fn scoped_workdir(&self, root: &Path) -> Result<PathBuf> {
@@ -58,7 +75,30 @@ mod tests {
         ChannelProfile {
             id: id.into(),
             youtube_channel_id: None,
+            language: None,
         }
+    }
+
+    #[test]
+    fn a_channel_speaks_one_of_the_languages_with_a_reviewed_voice() {
+        assert_eq!(profile("tech").language(), "pt-BR");
+        for language in LANGUAGES {
+            let channel = ChannelProfile {
+                language: Some(language.into()),
+                ..profile("tech")
+            };
+            assert!(channel.validate().is_ok());
+            assert_eq!(channel.language(), language);
+        }
+        for language in ["de-DE", "en", "pt-br", ""] {
+            let channel = ChannelProfile {
+                language: Some(language.into()),
+                ..profile("tech")
+            };
+            assert!(channel.validate().is_err(), "{language}");
+        }
+        let parsed: ChannelProfile = toml::from_str("id = 'tech'\nlanguage = 'en-US'").unwrap();
+        assert_eq!(parsed.language(), "en-US");
     }
 
     #[test]

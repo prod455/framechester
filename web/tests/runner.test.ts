@@ -1367,3 +1367,43 @@ test('each opted-in network gets the approved video once, its Short follows by i
     await rm(home, { recursive: true, force: true });
   }
 });
+
+test('an English channel narrates with an English voice, checks speech in English and tells the engine', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-language-'));
+  const input = state();
+  input.channels[0].language = 'en-US';
+  input.config.tts.voiceName = 'pm_alex';
+  let toml = '';
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => structuredClone(input),
+    execute: async (args) => {
+      toml = await readFile(args[args.indexOf('--config') + 1], 'utf8');
+      return { exitCode: 2, stdout: '', stderr: '' };
+    },
+  });
+  try {
+    const asset = await runner.upload('tech', {
+      filename: 'fixture.png',
+      kind: 'image',
+      contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+      license: 'Original',
+      provenance: 'Fixture',
+      restrictions: 'Teste',
+    });
+    await runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } });
+    await runner.idle();
+    assert.match(toml, /\[\[channels\]\]\nid = "tech"\nlanguage = "en-US"\n/);
+    assert.match(toml, /voice_name = "af_heart"/, 'A Portuguese voice gives way to the first English one');
+    assert.match(toml, /\[asr\][^[]*language = "en"/);
+    input.channels[0].language = 'de-DE';
+    await assert.rejects(
+      runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } }),
+      /de-DE deste canal não tem voz comercial/,
+    );
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});

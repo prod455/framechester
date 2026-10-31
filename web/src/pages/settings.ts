@@ -1,4 +1,10 @@
-import { commercialVoiceError, commercialVoices } from '../../shared/voices.ts';
+import {
+  commercialVoiceError,
+  commercialVoices,
+  productionLanguage,
+  voiceFor,
+  voicesFor,
+} from '../../shared/voices.ts';
 import { formWithSave, heading, notice, panel } from '../components.ts';
 import { creativeSettingsPanel } from '../creative-ui.ts';
 import { el, field, input, replace, select } from '../dom.ts';
@@ -60,17 +66,21 @@ export function settingsPage(globalScope = studio.globalConfigScope): HTMLElemen
   voiceStyles.required = true;
   const voiceModel = input('voiceModel', config.tts.voiceModel);
   voiceModel.required = true;
+  // Voices and the speech check follow the channel's language; the engine applies the same rule.
+  const language = productionLanguage(currentChannel()?.language ?? 'pt-BR');
+  const voices = language ? voicesFor(language) : commercialVoices;
   const voiceName = select(
     'voiceName',
-    commercialVoices.map(([id, label]) => [id, translateMessage(label)]),
-    config.tts.voiceName,
+    voices.map(([id, label]) => [id, translateMessage(label)]),
+    language ? voiceFor(config.tts.voiceName, language) : config.tts.voiceName,
   );
   voiceName.required = true;
   const asr = input('asr-enabled', '', 'checkbox');
   asr.checked = config.asr.enabled;
   const asrModel = input('asr-model', config.asr.model);
-  const asrLanguage = input('asr-language', config.asr.language);
+  const asrLanguage = input('asr-language', language?.asr ?? config.asr.language);
   asrLanguage.required = true;
+  asrLanguage.readOnly = Boolean(language);
   const coverage = input('minCoverage', String(config.asr.minCoverage), 'number');
   coverage.min = '0';
   coverage.max = '1';
@@ -138,7 +148,7 @@ export function settingsPage(globalScope = studio.globalConfigScope): HTMLElemen
     el('div', { className: 'divider' }),
     el('h3', {}, t('Voz & narração local')),
     field(
-      t('Voz brasileira'),
+      t('Voz do narrador'),
       voiceName,
       t('Kokoro-82M v1.0 · Apache 2.0 · permite uso comercial, com as condições da licença.'),
     ),
@@ -167,7 +177,11 @@ export function settingsPage(globalScope = studio.globalConfigScope): HTMLElemen
     el(
       'div',
       { className: 'form-grid' },
-      field(t('Idioma da transcrição'), asrLanguage),
+      field(
+        t('Idioma da transcrição'),
+        asrLanguage,
+        language ? t('Segue o idioma do canal ({language}).', { language: language.label }) : undefined,
+      ),
       field(t('Limiar de cobertura'), coverage, t('De 0 a 1. Cobertura não comprova qualidade editorial.')),
     ),
   );

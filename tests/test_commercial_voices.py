@@ -13,7 +13,7 @@ spec.loader.exec_module(tts)
 
 class CommercialVoices(unittest.TestCase):
     def test_rejects_unreviewed_voices_before_loading_any_files(self):
-        for voice in ("pt_BR-faber-medium", "pt_BR-cadu-medium", "pt_BR-edresson-low", "af_heart", "pf_dora+pm_alex"):
+        for voice in ("pt_BR-faber-medium", "pt_BR-cadu-medium", "pt_BR-edresson-low", "bf_emma", "am_adam", "pf_dora+pm_alex"):
             with self.subTest(voice=voice), self.assertRaisesRegex(ValueError, "catálogo comercial"):
                 tts.validate("absent.onnx", "absent.bin", voice)
 
@@ -31,6 +31,11 @@ class CommercialVoices(unittest.TestCase):
                 model.write_bytes(b"changed model!!")
                 with self.assertRaisesRegex(ValueError, "Hash"):
                     tts.validate(model, voices, "pf_dora")
+
+    def test_each_voice_speaks_its_own_language(self):
+        self.assertEqual({tts.LANGUAGES[voice] for voice in ("pf_dora", "pm_alex", "pm_santa")}, {"pt-br"})
+        self.assertEqual({tts.LANGUAGES[voice] for voice in ("af_heart", "af_bella", "am_michael")}, {"en-us"})
+        self.assertEqual({tts.LANGUAGES[voice] for voice in ("ef_dora", "em_alex", "em_santa")}, {"es"})
 
     def test_real_unreviewed_assets_never_pass_by_filename(self):
         with tempfile.TemporaryDirectory() as temporary:

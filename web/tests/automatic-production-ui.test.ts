@@ -175,3 +175,56 @@ test('without an assistant key the dialog offers the settings directly, and hide
     dialog.close();
   }
 });
+
+test('a version in another language is quoted and started in its own channel, from the same reference', async () => {
+  const calls: Array<{ path: string; body: unknown }> = [];
+  const english: Channel = { ...channel, id: 'tech-en', name: 'Tech EN', language: 'en-US' };
+  const sameLanguage: Channel = { ...channel, id: 'tech-2', name: 'Outro BR' };
+  const dialog = openAutomaticProduction({
+    channel,
+    channels: [channel, english, sameLanguage],
+    scripts: [script],
+    research: [],
+    selectedScriptId: script.id,
+    currentChannelId: () => channel.id,
+    onStarted: async () => {},
+    onManual: () => {},
+    onSettings: () => {},
+    api: async <T>(path: string, _method = 'GET', body?: unknown) => {
+      calls.push({ path, body });
+      const owner = decodeURIComponent(path.split('/')[3] ?? '');
+      return (
+        path.includes('capabilities')
+          ? { available: true, provider: 'anthropic', selectedModel: 'fixture' }
+          : path.endsWith('/quote')
+            ? { ...quote, id: `quote-${owner}`, channelId: owner }
+            : { ...job, channelId: owner }
+      ) as T;
+    },
+  });
+  await tick();
+  assert.equal(dialog.querySelector('[data-testid="version-tech-2"]'), null, 'Same language, no version');
+  const box = dialog.querySelector<HTMLInputElement>('[data-testid="version-tech-en"]')!;
+  box.checked = true;
+  box.dispatchEvent(new Event('change'));
+  const submit = dialog.querySelector<HTMLButtonElement>('button[type=submit]')!;
+  submit.click();
+  for (let index = 0; index < 6; index++) await tick();
+  assert.match(dialog.textContent!, /Tech EN: roteiro com fixture/);
+  assert.match(dialog.textContent!, /Total: até/);
+  submit.click();
+  for (let index = 0; index < 6; index++) await tick();
+  const jobs = calls.filter((call) => call.path.endsWith('/automatic/jobs'));
+  assert.deepEqual(
+    jobs.map((call) => call.path),
+    ['/api/channels/tech/automatic/jobs', '/api/channels/tech-en/automatic/jobs'],
+  );
+  assert.deepEqual(jobs[1].body, {
+    brief: script.title,
+    format: 'short',
+    scriptId: script.id,
+    originChannelId: 'tech',
+    quoteId: 'quote-tech-en',
+    authorizePaid: true,
+  });
+});

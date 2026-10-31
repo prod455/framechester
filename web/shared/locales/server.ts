@@ -467,6 +467,11 @@ export default {
       'This TikTok account takes up to {max} s; this video is {seconds} s.',
     'Não foi possível ler duração e resolução do vídeo; gere a versão final novamente.':
       "Couldn't read the video's duration and resolution; generate the final version again.",
+    'Canal de origem não encontrado.': 'Source channel not found.',
+    'O idioma {tag} deste canal não tem voz comercial. Use pt-BR, en-US ou es no cadastro do canal.':
+      "This channel's language {tag} has no commercial voice. Use pt-BR, en-US or es in the channel settings.",
+    'Voz sem aprovação comercial nesta instalação. Escolha uma voz Kokoro do catálogo (PT-BR, EN-US ou ES) em Configurações. Vozes Piper legadas estão bloqueadas.':
+      'Voice without commercial approval in this installation. Choose a Kokoro voice from the catalog (PT-BR, EN-US or ES) in Settings. Legacy Piper voices are blocked.',
   },
   es: {
     'O armazenamento privado de consumo está indisponível ou é inválido. Preserve o histórico e verifique as permissões antes de tentar novamente.':
@@ -936,5 +941,10 @@ export default {
       'Esta cuenta de TikTok acepta hasta {max} s; este video dura {seconds} s.',
     'Não foi possível ler duração e resolução do vídeo; gere a versão final novamente.':
       'No se pudieron leer la duración y la resolución del video; genera la versión final de nuevo.',
+    'Canal de origem não encontrado.': 'Canal de origen no encontrado.',
+    'O idioma {tag} deste canal não tem voz comercial. Use pt-BR, en-US ou es no cadastro do canal.':
+      'El idioma {tag} de este canal no tiene voz comercial. Usa pt-BR, en-US o es en el registro del canal.',
+    'Voz sem aprovação comercial nesta instalação. Escolha uma voz Kokoro do catálogo (PT-BR, EN-US ou ES) em Configurações. Vozes Piper legadas estão bloqueadas.':
+      'Voz sin aprobación comercial en esta instalación. Elige una voz Kokoro del catálogo (PT-BR, EN-US o ES) en Configuración. Las voces Piper heredadas están bloqueadas.',
   },
 } satisfies AreaCatalog;

@@ -5,15 +5,34 @@ repositório, inclusive quando iniciado por `npm --prefix web start`. O job
 recebe caminhos absolutos. Um Python configurado pelo nome do executável é
 localizado no PATH; a configuração salva do operador permanece preservada.
 
-Revisão: 28/10/2026. A produção está restrita às vozes brasileiras do
-**Kokoro-82M v1.0**, publicado pelo autor sob **Apache-2.0**, que permite uso
-comercial conforme as condições da licença.
+Revisão: 28/10/2026 (PT-BR); 31/10/2026 (EN-US e ES). A produção está restrita
+às vozes abaixo do **Kokoro-82M v1.0**, publicado pelo autor sob **Apache-2.0**,
+que permite uso comercial conforme as condições da licença. As vozes em inglês
+e espanhol vêm do mesmo modelo e do mesmo `voices-v1.0.bin` já fixado por hash;
+a licença e a declaração de uso comercial do autor cobrem o modelo inteiro, não
+um idioma. A revisão de 28/10 só listou as brasileiras porque o produto era só
+PT-BR.
 
-| Voz | ID | Idioma |
-|---|---|---|
-| Dora | `pf_dora` | Português brasileiro |
-| Alex | `pm_alex` | Português brasileiro |
-| Santa | `pm_santa` | Português brasileiro |
+| Voz | ID | Idioma (eSpeak) | Nota na lista oficial |
+|---|---|---|---|
+| Dora | `pf_dora` | Português brasileiro (`pt-br`) | sem nota |
+| Alex | `pm_alex` | Português brasileiro (`pt-br`) | sem nota |
+| Santa | `pm_santa` | Português brasileiro (`pt-br`) | sem nota |
+| Heart | `af_heart` | Inglês americano (`en-us`) | A |
+| Bella | `af_bella` | Inglês americano (`en-us`) | A- |
+| Michael | `am_michael` | Inglês americano (`en-us`) | C+ |
+| Dora | `ef_dora` | Espanhol (`es`) | sem nota |
+| Alex | `em_alex` | Espanhol (`es`) | sem nota |
+| Santa | `em_santa` | Espanhol (`es`) | sem nota |
+
+O idioma da fala segue a voz (`LANGUAGES` em `scripts/kokoro_tts.py`), nunca um
+parâmetro do operador. O canal escolhe o idioma (pt-BR, en-US ou es); o Studio
+usa a voz configurada quando ela é desse idioma e, se for uma voz revisada de
+outro idioma, troca pela primeira da lista do idioma do canal. A transcrição do
+QA segue o mesmo idioma. Alemão não tem voz no Kokoro-82M v1.0; outras vozes
+inglesas de nota baixa (D/F) e as britânicas ficam fora até revisão própria. A
+própria lista oficial avisa que idiomas além do inglês têm menos dados de
+treino: ouça uma amostra antes de publicar em espanhol.
 
 ## Instalação
 

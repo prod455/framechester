@@ -1010,6 +1010,7 @@ test('an opted-in channel sends each approved final version once, privately, and
   input.channels[0].youtubeAutoUpload = true;
   const uploads: Array<{ channelId: string; title: string; description: string; video: string }> = [];
   let fail = false;
+  let gate: Promise<void> | undefined;
   const runner = await createRunner({
     home,
     repositoryRoot: resolve('..'),
@@ -1033,6 +1034,7 @@ test('an opted-in channel sends each approved final version once, privately, and
     },
     publish: async (channelId, video) => {
       if (fail) throw new Error('Reconecte o YouTube em Contas conectadas para autorizar o envio de vídeos.');
+      await gate;
       uploads.push({
         channelId,
         title: video.title,
@@ -1083,9 +1085,12 @@ test('an opted-in channel sends each approved final version once, privately, and
     assert.equal(failed.youtube?.status, 'failed');
     assert.match(failed.youtube?.status === 'failed' ? failed.youtube.message : '', /Reconecte/);
     fail = false;
+    let release = () => {};
+    gate = new Promise((resolve) => (release = resolve));
     const retry = await runner.publish('tech', second.id);
     assert.equal(retry.youtube?.status, 'uploading');
     await assert.rejects(runner.publish('tech', second.id), /em andamento/);
+    release();
     await runner.idle();
     assert.equal(
       (await runner.list('tech')).find((item) => item.id === second.id)!.youtube?.status,

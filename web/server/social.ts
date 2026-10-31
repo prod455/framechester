@@ -193,8 +193,8 @@ const CAPABILITIES: NetworkCapability[] = [
     metricsAvailable: true,
     revenueAvailable: false,
     publishingAvailable: true,
-    accountLabel: 'ID da conta profissional do Instagram',
-    accountPattern: '^\\d{1,32}$',
+    accountLabel: '@ do Instagram (ou ID da conta profissional)',
+    accountPattern: '^(@?[A-Za-z0-9._]{1,30}|\\d{1,32})$',
     requirements: [
       'Conta profissional ligada a uma Página.',
       'Aplicativo Meta próprio com Facebook Login for Business e o callback local registrado; a configuração pede pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish.',
@@ -308,6 +308,16 @@ function identityInput(platform: Platform, accountId: string): void {
   ) {
     throw new SocialError('invalid_account', 'Identidade da conta ou plataforma inválida.');
   }
+}
+/** The Instagram account: its numeric ID, or `@username`, resolved after authorizing among the
+ * professional accounts linked to the authorized Pages. Few operators can find the ID. */
+function instagramAccount(value: string): string {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  if (/^\d{1,32}$/.test(raw)) return raw;
+  const name = raw.replace(/^@/, '');
+  if (!/^[A-Za-z0-9._]{1,30}$/.test(name))
+    throw new SocialError('invalid_account', 'Identidade da conta ou plataforma inválida.');
+  return `@${name.toLowerCase()}`;
 }
 /** TikTok's open_id is per app and unknown before authorizing: the operator names the username. */
 function tiktokUsername(value: string): string {
@@ -635,6 +645,36 @@ export class SocialService implements SocialApi {
     return { displayName: label(data.name, 'Facebook'), data };
   }
 
+  /** Finds the professional account named `username` among those linked to the Pages this token
+   * authorizes. The error names what was found, so the operator knows which link is missing. */
+  private async instagramId(username: string, token: string): Promise<string> {
+    const found: string[] = [];
+    let cursor: string | undefined;
+    for (let page = 0; page < 10; page++) {
+      const url = new URL(`${GRAPH}/me/accounts`);
+      url.searchParams.set('fields', 'id,instagram_business_account{id,username}');
+      url.searchParams.set('limit', '100');
+      if (cursor) url.searchParams.set('after', cursor);
+      const pages = await this.request(url.toString(), token);
+      for (const item of array(pages.data)) {
+        const account = record(record(item).instagram_business_account);
+        if (typeof account.id !== 'string' || !/^\d{1,32}$/.test(account.id)) continue;
+        const name = typeof account.username === 'string' ? account.username : '';
+        if (name.toLowerCase() === username) return account.id;
+        if (/^[A-Za-z0-9._]{1,30}$/.test(name) && found.length < 10) found.push(`@${name}`);
+      }
+      const after = record(record(pages.paging).cursors).after;
+      if (!record(pages.paging).next || typeof after !== 'string' || after.length > 2048) break;
+      cursor = after;
+    }
+    throw new SocialError(
+      'account_mismatch',
+      found.length
+        ? `O Instagram @${username} não está ligado a nenhuma Página autorizada. Contas encontradas: ${found.join(', ')}.`
+        : 'Nenhuma Página autorizada tem uma conta profissional do Instagram ligada. Ligue o Instagram à Página (Configurações da Página → Contas vinculadas) e autorize a Página e o Instagram ao conectar.',
+    );
+  }
+
   private publicConnection(credential: Credential): SocialConnection {
     return {
       channelId: credential.channelId,
@@ -753,7 +793,9 @@ export class SocialService implements SocialApi {
     const expected =
       input.platform === 'tiktok'
         ? tiktokUsername(input.accountId)
-        : (identityInput(input.platform, input.accountId), input.accountId);
+        : input.platform === 'instagram'
+          ? instagramAccount(input.accountId)
+          : (identityInput(input.platform, input.accountId), input.accountId);
     secret(input.clientId);
     secret(input.clientSecret);
     // Facebook Login for Business names its permissions in a configuration, not in `scope`.
@@ -1016,11 +1058,14 @@ export class SocialService implements SocialApi {
       .filter((item) => item.status === 'granted' && typeof item.permission === 'string')
       .map((item) => item.permission as string);
     if (pending.platform === 'instagram') {
-      const identity = await this.verifyIdentity('instagram', pending.expected, userToken);
+      const accountId = pending.expected.startsWith('@')
+        ? await this.instagramId(pending.expected.slice(1), userToken)
+        : pending.expected;
+      const identity = await this.verifyIdentity('instagram', accountId, userToken);
       const expires = numeric(long.expires_in);
       return this.credential(
         pending,
-        pending.expected,
+        accountId,
         identity,
         {
           accessToken: userToken,

@@ -14,7 +14,7 @@ export interface AutomaticProductionOptions {
   sources?: SourceFinder;
 }
 const direction =
-  'Produza um roteiro explicativo original e completo, pronto para narração e composições tipográficas automáticas. Preserve o assunto, o formato e as referências fornecidas. Desenvolva uma progressão narrativa com gancho, explicação, exemplo hipotético identificado e conclusão útil. Não peça capturas, gravações ou tarefas manuais. Reescreva promessas de testes ainda não realizados; não invente resultados, fontes ou pesquisa efetuada. O sistema montará as cenas com texto e voz local. Lacunas factuais continuam pendentes e devem ficar explícitas. Não declare aprovação editorial ou monetização garantida.';
+  'Produza um roteiro explicativo original e completo, pronto para narração e composições tipográficas automáticas. Preserve o assunto, o formato escolhido e as referências fornecidas; se a referência tiver outro tamanho, condense ou desenvolva até a duração do formato. Desenvolva uma progressão narrativa com gancho, explicação, exemplo hipotético identificado e conclusão útil. Não peça capturas, gravações ou tarefas manuais. Reescreva promessas de testes ainda não realizados; não invente resultados, fontes ou pesquisa efetuada. O sistema montará as cenas com texto e voz local. Lacunas factuais continuam pendentes e devem ficar explícitas. Não declare aprovação editorial ou monetização garantida.';
 
 export function createAutomaticProduction(options: AutomaticProductionOptions) {
   async function plan(owner: string, raw: unknown) {

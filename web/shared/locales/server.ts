@@ -111,8 +111,8 @@ export default {
       'In Settings, choose a GGUF model installed in local Ollama. Cloud models are not accepted.',
     'O modelo selecionado não comprovou execução local. Escolha um modelo GGUF sem encaminhamento remoto.':
       'The selected model did not prove it runs locally. Choose a GGUF model without remote routing.',
-    'A IA entregou {words} palavras de narração (cerca de {duration}) depois de {attempts} tentativas, e o formato {format} exige de {minDuration} a {maxDuration} ({minWords} a {maxWords} palavras). Nenhum roteiro foi salvo. Gere de novo ou escolha um modelo maior.':
-      'The AI delivered {words} words of narration (about {duration}) after {attempts} attempts, and the {format} format needs {minDuration} to {maxDuration} ({minWords} to {maxWords} words). No script was saved. Generate again or choose a larger model.',
+    'A IA entregou {words} palavras de narração (cerca de {duration}) depois de {attempts} tentativas, e o formato {format} exige de {minDuration} a {maxDuration} ({minWords} a {maxWords} palavras). Nenhum roteiro foi salvo. Gere de novo ou escolha um modelo maior; para um Short de um vídeo longo já pronto, use Gerar Short no vídeo.':
+      'The AI delivered {words} words of narration (about {duration}) after {attempts} attempts, and the {format} format needs {minDuration} to {maxDuration} ({minWords} to {maxWords} words). No script was saved. Generate again or choose a larger model; for a Short from a finished long video, use Generate Short on that video.',
     'Cofre criptografado indisponível ou inválido. Preserve os dados e confira a chave externa e as permissões; nenhum segredo foi salvo em texto puro.':
       'Encrypted vault unavailable or invalid. Keep the data and check the external key and permissions; no secret was saved in plain text.',
     'Campo inválido: {name}.': 'Invalid field: {name}.',
@@ -515,8 +515,8 @@ export default {
       'En Configuración, elige un modelo GGUF instalado en Ollama local. No se aceptan modelos en la nube.',
     'O modelo selecionado não comprovou execução local. Escolha um modelo GGUF sem encaminhamento remoto.':
       'El modelo seleccionado no comprobó que se ejecuta localmente. Elige un modelo GGUF sin enrutamiento remoto.',
-    'A IA entregou {words} palavras de narração (cerca de {duration}) depois de {attempts} tentativas, e o formato {format} exige de {minDuration} a {maxDuration} ({minWords} a {maxWords} palavras). Nenhum roteiro foi salvo. Gere de novo ou escolha um modelo maior.':
-      'La IA entregó {words} palabras de narración (cerca de {duration}) tras {attempts} intentos, y el formato {format} requiere de {minDuration} a {maxDuration} ({minWords} a {maxWords} palabras). No se guardó ningún guion. Genera de nuevo o elige un modelo más grande.',
+    'A IA entregou {words} palavras de narração (cerca de {duration}) depois de {attempts} tentativas, e o formato {format} exige de {minDuration} a {maxDuration} ({minWords} a {maxWords} palavras). Nenhum roteiro foi salvo. Gere de novo ou escolha um modelo maior; para um Short de um vídeo longo já pronto, use Gerar Short no vídeo.':
+      'La IA entregó {words} palabras de narración (cerca de {duration}) tras {attempts} intentos, y el formato {format} requiere de {minDuration} a {maxDuration} ({minWords} a {maxWords} palabras). No se guardó ningún guion. Genera de nuevo o elige un modelo más grande; para un Short de un video largo ya listo, usa Generar Short en ese video.',
     'Cofre criptografado indisponível ou inválido. Preserve os dados e confira a chave externa e as permissões; nenhum segredo foi salvo em texto puro.':
       'Bóveda cifrada no disponible o no válida. Conserva los datos y revisa la clave externa y los permisos; no se guardó ningún secreto en texto plano.',
     'Campo inválido: {name}.': 'Campo no válido: {name}.',

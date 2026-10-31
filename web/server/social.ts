@@ -130,7 +130,7 @@ const ENDPOINTS: Array<{ host: string; path: RegExp; body: Array<'none' | 'form'
   { host: 'oauth2.googleapis.com', path: /^\/(token|tokeninfo)$/, body: ['none', 'form'] },
   {
     host: 'graph.facebook.com',
-    path: /^\/v26\.0\/(me(?:\/accounts|\/permissions)?|\d{1,32})$/,
+    path: /^\/v26\.0\/(me(?:\/accounts|\/permissions)?|debug_token|\d{1,32})$/,
     body: ['none'],
   },
   {
@@ -623,6 +623,20 @@ export class SocialService implements SocialApi {
         if (!record(pages.paging).next || typeof after !== 'string' || after.length > 2048) break;
         cursor = after;
       }
+      // Some profiles get an empty /me/accounts although the person picked the Page and the
+      // Instagram account at login; the token still records what was picked.
+      if (!owned) {
+        const granted = await this.grantedTargets(token);
+        owned = granted.instagram.includes(accountId);
+        for (const pageId of granted.pages.slice(0, 10)) {
+          if (owned) break;
+          const page = await this.request(
+            `${GRAPH}/${pageId}?fields=name,instagram_business_account{id}`,
+            token,
+          );
+          owned = record(page.instagram_business_account).id === accountId;
+        }
+      }
       if (!owned)
         throw new SocialError(
           'account_mismatch',
@@ -643,6 +657,28 @@ export class SocialService implements SocialApi {
         'Use um token da Página Facebook esperada, não de outro perfil ou Página.',
       );
     return { displayName: label(data.name, 'Facebook'), data };
+  }
+
+  /** Page and Instagram account IDs the person picked at login, as recorded in the token's
+   * granular scopes. Read with the token itself (the operator develops the app). */
+  private async grantedTargets(token: string): Promise<{ pages: string[]; instagram: string[] }> {
+    const url = new URL(`${GRAPH}/debug_token`);
+    url.searchParams.set('input_token', token);
+    const debug = record((await this.request(url.toString(), token)).data);
+    const ids = (scopes: string[]) =>
+      [
+        ...new Set(
+          array(debug.granular_scopes)
+            .map(record)
+            .filter((item) => typeof item.scope === 'string' && scopes.includes(item.scope))
+            .flatMap((item) => array(item.target_ids))
+            .filter((id): id is string => typeof id === 'string' && /^\d{1,32}$/.test(id)),
+        ),
+      ].slice(0, 20);
+    return {
+      pages: ids(['pages_show_list', 'pages_read_engagement']),
+      instagram: ids(['instagram_basic', 'instagram_content_publish']),
+    };
   }
 
   /** Finds the professional account named `username` among those linked to the Pages this token
@@ -679,6 +715,27 @@ export class SocialService implements SocialApi {
       const after = record(record(pages.paging).cursors).after;
       if (!record(pages.paging).next || typeof after !== 'string' || after.length > 2048) break;
       cursor = after;
+    }
+    if (!pageNames.length) {
+      // /me/accounts came back empty: look at the Pages and Instagram accounts picked at login.
+      const granted = await this.grantedTargets(token);
+      const candidates = new Set(granted.instagram);
+      for (const pageId of granted.pages) {
+        const page = await this.request(
+          `${GRAPH}/${pageId}?fields=name,instagram_business_account{id}`,
+          token,
+        );
+        const id = record(page.instagram_business_account).id;
+        if (typeof id === 'string' && /^\d{1,32}$/.test(id)) candidates.add(id);
+        const name = typeof page.name === 'string' ? page.name.trim().slice(0, 60) : pageId;
+        if (pageNames.length < 5) pageNames.push(name.replace(/[\u0000-\u001f]/g, ''));
+      }
+      for (const id of [...candidates].slice(0, 10)) {
+        const account = await this.request(`${GRAPH}/${id}?fields=id,username`, token);
+        const name = typeof account.username === 'string' ? account.username : '';
+        if (account.id === id && name.toLowerCase() === username) return id;
+        if (/^[A-Za-z0-9._]{1,30}$/.test(name) && found.length < 10) found.push(`@${name}`);
+      }
     }
     throw new SocialError(
       'account_mismatch',

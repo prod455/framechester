@@ -23,6 +23,25 @@ function tailnetHost(value: string | undefined): string | undefined {
     );
   return host;
 }
+/** The project's public relay page for TikTok's redirect (GitHub Pages of this repository). */
+export const DEFAULT_TIKTOK_RELAY = 'https://prod455.github.io/framechester/oauth/tiktok/';
+/** TikTok's portal refuses loopback redirects, so TikTok logins return through a static HTTPS
+ * page that forwards to 127.0.0.1. `loopback` keeps the direct 127.0.0.1 callback instead. */
+function tiktokRelay(value: string | undefined): string | undefined {
+  if (value === undefined || value.trim() === '') return DEFAULT_TIKTOK_RELAY;
+  if (value.trim() === 'loopback') return undefined;
+  let url: URL;
+  try {
+    url = new URL(value.trim());
+  } catch {
+    throw new InvalidRuntimeConfiguration('FRAMECHESTER_TIKTOK_REDIRECT_URI precisa ser uma URL HTTPS.');
+  }
+  if (url.protocol !== 'https:' || url.search || url.hash || url.username || url.password)
+    throw new InvalidRuntimeConfiguration(
+      'FRAMECHESTER_TIKTOK_REDIRECT_URI precisa ser uma URL HTTPS fixa, sem parâmetros.',
+    );
+  return url.href;
+}
 /** Native operation remains loopback-only. Container ingress must be published on host loopback. */
 export function runtimeConfiguration(environment: NodeJS.ProcessEnv, containerDetected = false) {
   const container = environment.FRAMECHESTER_CONTAINER === '1';
@@ -45,6 +64,7 @@ export function runtimeConfiguration(environment: NodeJS.ProcessEnv, containerDe
     vaultKeyFile,
     privateRoot: filePath(environment.FRAMECHESTER_PRIVATE_ROOT),
     tailnetHost: tailnetHost(environment.FRAMECHESTER_TAILNET_HOST),
+    tiktokRelay: tiktokRelay(environment.FRAMECHESTER_TIKTOK_REDIRECT_URI),
     engineBinary: filePath(environment.FRAMECHESTER_ENGINE_BINARY),
   };
 }

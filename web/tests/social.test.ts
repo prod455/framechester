@@ -803,6 +803,43 @@ test('TikTok OAuth uses the hex PKCE digest, binds the expected username and sav
   assert.equal(vault.values.size, 0);
 });
 
+test('through the HTTPS relay, TikTok returns via the public page with the port in the state and no PKCE', async () => {
+  const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+  const relay = 'https://prod455.github.io/framechester/oauth/tiktok/';
+  const service = createSocialService({
+    vault: new MemoryVault(),
+    fetch: tiktokFetch(calls),
+    now: () => NOW,
+    tiktokRelay: relay,
+  });
+  const { started, state } = await connectTiktok(service);
+  const authorize = new URL(started.authorizationUrl);
+  assert.equal(authorize.searchParams.get('redirect_uri'), relay);
+  const capability = service.capabilities().find((item) => item.platform === 'tiktok')!;
+  assert.equal(capability.redirectUri, relay, 'the Studio shows the address to register');
+  assert.match(capability.requirements[0]!, /plataforma Web/);
+  assert.match(state, /^4317\.[0-9a-f]{48}$/, 'the relay page reads the Studio port from the state');
+  assert.equal(authorize.searchParams.get('code_challenge'), null, 'Login Kit for Web has no PKCE');
+  const connection = await service.callbackOAuth('tiktok', { state, code: 'fixture-code' });
+  assert.equal(connection.accountId, TIKTOK_OPEN_ID);
+  const exchange = new URLSearchParams(calls[0].body);
+  assert.equal(exchange.get('redirect_uri'), relay, 'the token exchange repeats the registered URI');
+  assert.equal(exchange.get('code_verifier'), null);
+  // Other networks keep their loopback callback.
+  const youtube = await service.startOAuth({
+    platform: 'youtube',
+    channelId: 'tech',
+    accountId: `UC${'a'.repeat(22)}`,
+    clientId: 'fixture-client.apps.googleusercontent.com',
+    clientSecret: 'fixture-client-secret',
+    redirectUri: 'http://127.0.0.1:4317/api/oauth/youtube/callback',
+  });
+  assert.equal(
+    new URL(youtube.authorizationUrl).searchParams.get('redirect_uri'),
+    'http://127.0.0.1:4317/api/oauth/youtube/callback',
+  );
+});
+
 test('a TikTok authorization from another account is refused and saves nothing', async () => {
   const vault = new MemoryVault();
   const service = createSocialService({

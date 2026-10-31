@@ -222,7 +222,9 @@ export function connectionsPage(): HTMLElement {
         'p',
         { className: 'field-hint' },
         t('Callback a registrar no aplicativo: {url}', {
-          url: `http://127.0.0.1:${location.port || '4317'}/api/oauth/${platform}/callback`,
+          url:
+            capability.redirectUri ??
+            `http://127.0.0.1:${location.port || '4317'}/api/oauth/${platform}/callback`,
         }),
       ),
       notice(

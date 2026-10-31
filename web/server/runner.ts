@@ -153,9 +153,19 @@ function visualFingerprint(state: AppState, channelId: string, script: Script): 
     ),
   );
 }
-function rustConfig(config: WebConfig, channelId: string): string {
+/** A Short's title carries #Shorts when it fits YouTube's 100 characters. */
+function shortTitle(title: string): string {
+  const tagged = `${title} #Shorts`;
+  return tagged.length <= 100 ? tagged : title;
+}
+/**
+ * `workdir` is the engine's own scratch area (narration cache). It must be writable: the
+ * container runs with a read-only root, so the engine's default (`artifacts/` under its
+ * working directory) fails on the first uncached sentence.
+ */
+function rustConfig(config: WebConfig, channelId: string, workdir: string): string {
   const q = (value: string) => JSON.stringify(value);
-  return `[[channels]]\nid = ${q(channelId)}\n[app]\ndry_run = true\ntelemetry = false\n[render]\nwidth = ${config.render.width}\nheight = ${config.render.height}\nfps = ${config.render.fps}\ncrf = ${config.render.crf}\npreset = ${q(config.render.preset)}\nvideo_codec = "libx264"\n[tts]\nengine = "kokoro"\npython_path = ${q(config.tts.pythonPath!)}\nvoice_styles = ${q(config.tts.voiceStyles!)}\nvoice_model = ${q(config.tts.voiceModel)}\nvoice_name = ${q(config.tts.voiceName)}\n[asr]\nenabled = ${config.asr.enabled}\nmodel = ${q(config.asr.model)}\nlanguage = ${q(config.asr.language)}\nmin_coverage = ${config.asr.minCoverage}\n[publish]\nenabled = false\nprivacy = "private"\n`;
+  return `[[channels]]\nid = ${q(channelId)}\n[app]\nworkdir = ${q(workdir)}\ndry_run = true\ntelemetry = false\n[render]\nwidth = ${config.render.width}\nheight = ${config.render.height}\nfps = ${config.render.fps}\ncrf = ${config.render.crf}\npreset = ${q(config.render.preset)}\nvideo_codec = "libx264"\n[tts]\nengine = "kokoro"\npython_path = ${q(config.tts.pythonPath!)}\nvoice_styles = ${q(config.tts.voiceStyles!)}\nvoice_model = ${q(config.tts.voiceModel)}\nvoice_name = ${q(config.tts.voiceName)}\n[asr]\nenabled = ${config.asr.enabled}\nmodel = ${q(config.asr.model)}\nlanguage = ${q(config.asr.language)}\nmin_coverage = ${config.asr.minCoverage}\n[publish]\nenabled = false\nprivacy = "private"\n`;
 }
 function checkScript(script: Script, previewOnly = false) {
   if (!previewOnly && !script.crossChecked)
@@ -785,107 +795,140 @@ export class LocalRunner implements RunnerApi {
     try {
       job.status = 'running';
       job.startedAt ??= new Date().toISOString();
-      // The motion engine draws every scene from the storyboard; it cannot embed the operator's own files.
-      job.engine = assets.some((asset) => !asset.generated) ? 'legacy' : 'motion';
-      job.message =
-        job.engine === 'motion'
-          ? 'Motor motion: gerando a voz, animando as cenas e executando o QA local.'
-          : 'Gerando a voz, montando as cenas com seus arquivos e executando o QA local.';
-      await this.persist();
-      await mkdir(join(directory, 'assets'), { recursive: true, mode: 0o700 });
-      const manifest = [];
-      for (let index = 0; index < assets.length; index++) {
-        const asset = assets[index];
-        const original = join(this.root, 'media', job.channelId, asset.diskName);
-        const contents = await readFile(original);
-        if (hash(contents) !== asset.checksum)
-          throw new RunnerError('A integridade de uma mídia mudou; produção bloqueada.');
-        await copyFile(original, join(directory, 'assets', asset.diskName));
-        manifest.push({
-          scene_id: script.scenes[index].id,
-          kind: asset.kind,
-          path: asset.diskName,
-          license: asset.license,
-          provenance: asset.provenance,
-          checksum: asset.checksum,
-          restrictions: asset.restrictions,
-        });
-      }
-      const claims = script.claims.map((item) => ({
-        text: item.text,
-        status: item.status,
-        source_urls: item.sourceUrls,
-      }));
-      const sources = script.sources.map(source);
-      const topic = {
-        id: script.topicId,
-        title: script.title,
-        series: script.series,
-        angle: script.hook,
-        sources,
-        claims,
-        metrics: {
-          acceleration: 0,
-          demand: 0,
-          alignment: 0,
-          originality: 0,
-          visual_feasibility: 0,
-          timing: 0,
-          cross_check: script.crossChecked ? 1 : 0,
-        },
-      };
-      const authored = {
-        topic_id: script.topicId,
-        script: {
+      let args: string[];
+      if (job.kind === 'short') {
+        // A Short re-edits the narrated storyboard of an approved video: same words, cut and
+        // reframed vertically. The narration comes back from the engine's cache.
+        job.engine = 'motion';
+        job.message = 'Cortando o Short: abertura, fechamento e as cenas que mais prendem.';
+        await this.persist();
+        await mkdir(directory, { recursive: true, mode: 0o700 });
+        await writeFile(
+          join(directory, 'config.toml'),
+          rustConfig(config, job.channelId, join(this.root, 'engine')),
+          { mode: 0o600 },
+        );
+        args = [
+          '--config',
+          join(directory, 'config.toml'),
+          'short',
+          '--from',
+          this.storyboardOf(job.channelId, job.sourceJobId!),
+          '--channel',
+          job.channelId,
+          '--workdir',
+          join(directory, 'output'),
+          '--json',
+        ];
+      } else {
+        // The motion engine draws every scene from the storyboard; it cannot embed the operator's own files.
+        job.engine = assets.some((asset) => !asset.generated) ? 'legacy' : 'motion';
+        job.message =
+          job.engine === 'motion'
+            ? 'Motor motion: gerando a voz, animando as cenas e executando o QA local.'
+            : 'Gerando a voz, montando as cenas com seus arquivos e executando o QA local.';
+        await this.persist();
+        await mkdir(join(directory, 'assets'), { recursive: true, mode: 0o700 });
+        const manifest = [];
+        for (let index = 0; index < assets.length; index++) {
+          const asset = assets[index];
+          const original = join(this.root, 'media', job.channelId, asset.diskName);
+          const contents = await readFile(original);
+          if (hash(contents) !== asset.checksum)
+            throw new RunnerError('A integridade de uma mídia mudou; produção bloqueada.');
+          await copyFile(original, join(directory, 'assets', asset.diskName));
+          manifest.push({
+            scene_id: script.scenes[index].id,
+            kind: asset.kind,
+            path: asset.diskName,
+            license: asset.license,
+            provenance: asset.provenance,
+            checksum: asset.checksum,
+            restrictions: asset.restrictions,
+          });
+        }
+        const claims = script.claims.map((item) => ({
+          text: item.text,
+          status: item.status,
+          source_urls: item.sourceUrls,
+        }));
+        const sources = script.sources.map(source);
+        const topic = {
+          id: script.topicId,
           title: script.title,
-          hook: script.hook,
           series: script.series,
-          format: script.format,
-          scenes: script.scenes.map((scene) => ({
-            id: scene.id,
-            heading: scene.heading,
-            narration: scene.narration,
-            visual_brief: scene.visualBrief,
-            duration_hint_secs: scene.durationHintSecs,
-          })),
+          angle: script.hook,
           sources,
           claims,
-          cross_checked: script.crossChecked,
-        },
-      };
-      await Promise.all([
-        writeFile(join(directory, 'topic.json'), JSON.stringify(topic), { mode: 0o600 }),
-        writeFile(join(directory, 'script.json'), JSON.stringify(authored), { mode: 0o600 }),
-        writeFile(join(directory, 'assets', 'manifest.json'), JSON.stringify(manifest), { mode: 0o600 }),
-        writeFile(join(directory, 'config.toml'), rustConfig(config, job.channelId), { mode: 0o600 }),
-      ]);
-      const args = [
-        '--config',
-        join(directory, 'config.toml'),
-        'run',
-        '--engine',
-        job.engine,
-        '--channel',
-        job.channelId,
-        '--topic',
-        join(directory, 'topic.json'),
-        '--script',
-        join(directory, 'script.json'),
-        '--workdir',
-        join(directory, 'output'),
-        '--max-scenes',
-        String(script.scenes.length),
-        '--format',
-        script.format,
-        '--privacy',
-        'private',
-        '--json',
-      ];
-      // Motion draws every scene from the storyboard; only the still-image path reads the files.
-      if (job.engine === 'legacy') args.push('--assets', join(directory, 'assets', 'manifest.json'));
-      if (input.burnSubtitles !== false) args.push('--burn-subtitles');
-      if (input.previewOnly) args.push('--preview-only');
-      if (input.asr ?? config.asr.enabled) args.push('--asr');
+          metrics: {
+            acceleration: 0,
+            demand: 0,
+            alignment: 0,
+            originality: 0,
+            visual_feasibility: 0,
+            timing: 0,
+            cross_check: script.crossChecked ? 1 : 0,
+          },
+        };
+        const authored = {
+          topic_id: script.topicId,
+          script: {
+            title: script.title,
+            hook: script.hook,
+            series: script.series,
+            format: script.format,
+            scenes: script.scenes.map((scene) => ({
+              id: scene.id,
+              heading: scene.heading,
+              narration: scene.narration,
+              visual_brief: scene.visualBrief,
+              duration_hint_secs: scene.durationHintSecs,
+            })),
+            sources,
+            claims,
+            cross_checked: script.crossChecked,
+          },
+        };
+        await Promise.all([
+          writeFile(join(directory, 'topic.json'), JSON.stringify(topic), { mode: 0o600 }),
+          writeFile(join(directory, 'script.json'), JSON.stringify(authored), { mode: 0o600 }),
+          writeFile(join(directory, 'assets', 'manifest.json'), JSON.stringify(manifest), { mode: 0o600 }),
+          writeFile(
+            join(directory, 'config.toml'),
+            rustConfig(config, job.channelId, join(this.root, 'engine')),
+            {
+              mode: 0o600,
+            },
+          ),
+        ]);
+        args = [
+          '--config',
+          join(directory, 'config.toml'),
+          'run',
+          '--engine',
+          job.engine,
+          '--channel',
+          job.channelId,
+          '--topic',
+          join(directory, 'topic.json'),
+          '--script',
+          join(directory, 'script.json'),
+          '--workdir',
+          join(directory, 'output'),
+          '--max-scenes',
+          String(script.scenes.length),
+          '--format',
+          script.format,
+          '--privacy',
+          'private',
+          '--json',
+        ];
+        // Motion draws every scene from the storyboard; only the still-image path reads the files.
+        if (job.engine === 'legacy') args.push('--assets', join(directory, 'assets', 'manifest.json'));
+        if (input.burnSubtitles !== false) args.push('--burn-subtitles');
+        if (input.previewOnly) args.push('--preview-only');
+        if (input.asr ?? config.asr.enabled) args.push('--asr');
+      }
       const result = await (this.options.execute ?? this.execute.bind(this))(
         args,
         resolve(this.options.repositoryRoot),
@@ -903,7 +946,11 @@ export class LocalRunner implements RunnerApi {
         );
       }
       const report = JSON.parse(await readFile(join(output, 'pipeline_report.json'), 'utf8'));
-      job.qa = { technical: qa(report.technical_qa?.checks), editorial: qa(report.editorial_qa?.checks) };
+      job.qa = {
+        technical: qa(report.technical_qa?.checks),
+        // A Short keeps the source's words; its editorial review is the source's approval.
+        editorial: job.kind === 'short' ? 'pass' : qa(report.editorial_qa?.checks),
+      };
       const video = await stat(join(output, 'render', 'final.mp4')).catch(() => undefined);
       job.videoAvailable = Boolean(video?.isFile() && video.size > 0);
       if (input.previewOnly && job.videoAvailable && ['pass', 'needs_human'].includes(job.qa.technical)) {
@@ -924,7 +971,10 @@ export class LocalRunner implements RunnerApi {
           'Entrega incompleta: confira o arquivo de vídeo e os relatórios de QA antes de criar um novo trabalho.';
       } else if (job.qa.technical === 'pass' && job.qa.editorial === 'pass') {
         job.status = 'completed';
-        job.message = 'Vídeo aprovado: QA técnico e editorial sem pendências.';
+        job.message =
+          job.kind === 'short'
+            ? 'Short pronto: QA técnico aprovado; a revisão editorial vem do vídeo de origem.'
+            : 'Vídeo aprovado: QA técnico e editorial sem pendências.';
       } else {
         const pending = pendingChecks(report);
         job.status = 'needs_review';
@@ -946,6 +996,61 @@ export class LocalRunner implements RunnerApi {
         await this.publish(job.channelId, job.id).catch(() => {});
     }
   }
+  /** Narrated storyboard of a finished job, the source a Short is cut from. */
+  private storyboardOf(channelId: string, jobId: string): string {
+    return join(
+      this.root,
+      'jobs',
+      id(channelId),
+      id(jobId),
+      'output',
+      'channels',
+      channelId,
+      'storyboard.json',
+    );
+  }
+  /** Queues a vertical Short cut from an approved final version of this channel. */
+  async startShort(channelId: string, sourceJobId: string): Promise<WebJob> {
+    const state = await this.channel(channelId);
+    id(sourceJobId);
+    if (this.stopped) throw new RunnerError('Servidor encerrando.');
+    if (!this.engineStatus().available) throw new RunnerError(this.engineStatus().message, 503);
+    const source = this.jobs.find((item) => item.channelId === channelId && item.id === sourceJobId);
+    if (!source) throw new RunnerError('Produção não encontrada neste canal.');
+    if (source.kind === 'short') throw new RunnerError('Este vídeo já é um Short.');
+    if (
+      source.status !== 'completed' ||
+      source.previewOnly ||
+      !source.videoAvailable ||
+      source.engine !== 'motion'
+    )
+      throw new RunnerError('O Short sai de uma versão final aprovada feita pelo motor motion.');
+    if (!(await stat(this.storyboardOf(channelId, sourceJobId)).catch(() => undefined))?.isFile())
+      throw new RunnerError('O storyboard deste vídeo não foi encontrado; gere a versão final novamente.');
+    const script = state.scripts.find((item) => item.id === source.scriptId && item.channelId === channelId);
+    if (!script) throw new RunnerError('Roteiro do vídeo de origem não encontrado.');
+    const config = productionConfig(
+      Object.hasOwn(state.channelConfigs, channelId) ? state.channelConfigs[channelId] : state.config,
+      this.options.repositoryRoot,
+    );
+    const job: WebJob = {
+      id: randomUUID(),
+      channelId,
+      scriptId: source.scriptId,
+      status: 'queued',
+      createdAt: new Date().toISOString(),
+      message: 'Na fila: corte do Short.',
+      videoAvailable: false,
+      kind: 'short',
+      sourceJobId,
+    };
+    this.jobs.unshift(job);
+    await this.persist();
+    const work = () =>
+      this.run(job, structuredClone(script), config, [], { scriptId: script.id, assetIds: {} });
+    this.queue = this.queue.then(work, work);
+    return structuredClone(job);
+  }
   /** Starts the private upload of an approved final version; it continues in the background. */
   async publish(channelId: string, jobId: string): Promise<WebJob> {
     const state = await this.channel(channelId);
@@ -954,9 +1059,11 @@ export class LocalRunner implements RunnerApi {
     if (!job) throw new RunnerError('Produção não encontrada neste canal.');
     if (!this.options.publish) throw new RunnerError('O envio ao YouTube não está disponível.', 503);
     const script = state.scripts.find((item) => item.id === job.scriptId && item.channelId === channelId);
+    const short = job.kind === 'short';
     const video = await this.file(channelId, jobId, 'video');
-    const description = await this.file(channelId, jobId, 'description');
-    const thumbnail = await this.file(channelId, jobId, 'thumbnail');
+    // A Short reuses the source's description; YouTube picks a Short's frame, not a thumbnail.
+    const description = await this.file(channelId, short ? job.sourceJobId! : jobId, 'description');
+    const thumbnail = short ? undefined : await this.file(channelId, jobId, 'thumbnail');
     // No await between these checks and the state change: two clicks cannot start two uploads.
     if (job.status !== 'completed' || job.previewOnly || !job.videoAvailable)
       throw new RunnerError('Só a versão final aprovada no QA pode ser enviada ao YouTube.');
@@ -970,10 +1077,11 @@ export class LocalRunner implements RunnerApi {
     const upload = this.options.publish;
     const task = (async () => {
       try {
+        const text = await readFile(description.path, 'utf8');
         const result = await upload(channelId, {
           path: video.path,
-          title: script.title,
-          description: await readFile(description.path, 'utf8'),
+          title: short ? shortTitle(script.title) : script.title,
+          description: short ? `${text.trimEnd()}\n\n#Shorts` : text,
           ...(thumbnail ? { thumbnail: thumbnail.path } : {}),
         });
         job.youtube = {

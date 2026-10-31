@@ -10,6 +10,7 @@ import { channelPath, currentChannel, go, refresh, render, scoped, state, studio
 import { toast } from '../studio/toast.ts';
 import { editorTabs } from '../ui-tabs.ts';
 import { deleteRecord, requiredChannel } from './channels.ts';
+import { t, translateMessage } from '../../shared/i18n.ts';
 import type { ScriptCreativeValues } from '../../shared/creative-types.ts';
 import type { Script, Source } from '../../shared/types.ts';
 
@@ -30,7 +31,7 @@ export function scriptsPage(): HTMLElement {
   const record = records.find((entry) => entry.id === studio.activeScriptId);
   const list = el(
     'aside',
-    { className: 'panel editor-list', 'aria-label': 'Roteiros deste canal' },
+    { className: 'panel editor-list', 'aria-label': t('Roteiros deste canal') },
     ...records.map((entry) => {
       const item = el(
         'button',
@@ -42,7 +43,9 @@ export function scriptsPage(): HTMLElement {
         el(
           'span',
           { className: 'editor-list-caption' },
-          `${entry.format === 'short' ? 'Curto' : 'Longo'} · ${entry.scenes.length} cena(s)`,
+          entry.format === 'short'
+            ? t('Curto · {count} cena(s)', { count: entry.scenes.length })
+            : t('Longo · {count} cena(s)', { count: entry.scenes.length }),
         ),
       );
       item.addEventListener('click', () =>
@@ -61,22 +64,22 @@ export function scriptsPage(): HTMLElement {
           'section',
           { className: 'panel' },
           empty(
-            'Nenhum roteiro neste canal',
-            'Escreva uma narrativa autoral, organize as cenas e conecte cada alegação às suas fontes.',
+            t('Nenhum roteiro neste canal'),
+            t('Escreva uma narrativa autoral, organize as cenas e conecte cada alegação às suas fontes.'),
             'script',
-            button('Criar roteiro', () => startScript(), 'primary', 'plus'),
+            button(t('Criar roteiro'), () => startScript(), 'primary', 'plus'),
           ),
         );
   return el(
     'div',
     {},
     heading(
-      'Roteiros',
-      'Transforme a pauta em falas, cenas e fontes que você pode conferir.',
-      button('Novo roteiro', () => startScript(), 'primary', 'plus'),
+      t('Roteiros'),
+      t('Transforme a pauta em falas, cenas e fontes que você pode conferir.'),
+      button(t('Novo roteiro'), () => startScript(), 'primary', 'plus'),
     ),
     records.length
-      ? documentPicker('Roteiro selecionado', records, studio.activeScriptId, (id) => {
+      ? documentPicker(t('Roteiro selecionado'), records, studio.activeScriptId, (id) => {
           studio.activeScriptId = id;
           render();
         })
@@ -97,7 +100,7 @@ export function scriptForm(record?: Script): HTMLElement {
   topicId.required = true;
   const researchId = select(
     'researchId',
-    [['', 'Sem pauta vinculada'], ...research.map((entry): [string, string] => [entry.id, entry.title])],
+    [['', t('Sem pauta vinculada')], ...research.map((entry): [string, string] => [entry.id, entry.title])],
     record?.researchId || studio.draftResearchId,
   );
   const series = input('series', record?.series || currentChannel()?.niche || 'principal');
@@ -105,8 +108,8 @@ export function scriptForm(record?: Script): HTMLElement {
   const format = select(
     'format',
     [
-      ['short', 'Curto · 65 a 90 segundos'],
-      ['long', 'Longo · 7 a 12 minutos'],
+      ['short', t('Curto · 65 a 90 segundos')],
+      ['long', t('Longo · 7 a 12 minutos')],
     ],
     record?.format || 'short',
   );
@@ -114,7 +117,9 @@ export function scriptForm(record?: Script): HTMLElement {
   hook.required = true;
   const status = statusControl(record?.status);
   const scenes = sceneEditor(
-    record?.scenes || [{ id: 0, heading: 'Abertura', narration: '', visualBrief: '', durationHintSecs: 20 }],
+    record?.scenes || [
+      { id: 0, heading: t('Abertura'), narration: '', visualBrief: '', durationHintSecs: 20 },
+    ],
   );
   const sources = sourceEditor(record?.sources || startingResearch?.sources || []);
   const claims = claimsEditor(record?.claims || []);
@@ -136,7 +141,7 @@ export function scriptForm(record?: Script): HTMLElement {
     () => ({ task: 'script', values: readCreative() }),
     (result) => {
       if (!form.isConnected || studio.channelId !== owner || !('scenes' in result))
-        throw new Error('O roteiro mudou. Abra o assistente a partir do editor atual.');
+        throw new Error(t('O roteiro mudou. Abra o assistente a partir do editor atual.'));
       title.value = result.title;
       series.value = result.series;
       format.value = result.format;
@@ -146,14 +151,14 @@ export function scriptForm(record?: Script): HTMLElement {
       claims.write(result.claims.map((claim) => ({ ...claim, status: 'unverified' })));
       status.value = 'draft';
       crossed.checked = false;
-      toast('Rascunho nos campos. Confira novamente as alegações e as fontes antes de produzir.');
+      toast(t('Rascunho nos campos. Confira novamente as alegações e as fontes antes de produzir.'));
     },
     () => form,
   );
   const searchTerms = input('source-search', record?.title || startingResearch?.title || '');
-  searchTerms.placeholder = 'Termos de busca; em inglês encontra mais artigos';
+  searchTerms.placeholder = t('Termos de busca; em inglês encontra mais artigos');
   const findSources = button(
-    'Buscar fontes',
+    t('Buscar fontes'),
     async () => {
       if (findSources.disabled) return;
       findSources.disabled = true;
@@ -170,15 +175,22 @@ export function scriptForm(record?: Script): HTMLElement {
         const added = found.filter((source) => !known.has(source.url));
         if (!added.length) {
           toast(
-            'Nenhum artigo novo encontrado para este título e alegações. Refine o título ou registre a fonte.',
+            t(
+              'Nenhum artigo novo encontrado para este título e alegações. Refine o título ou registre a fonte.',
+            ),
             true,
           );
           return;
         }
         sources.write([...sources.read(), ...added]);
-        toast(`${added.length} fonte(s) sugerida(s). Leia cada artigo antes de publicar.`);
+        toast(
+          t('{count} fonte(s) sugerida(s). Leia cada artigo antes de publicar.', { count: added.length }),
+        );
       } catch (error) {
-        toast(error instanceof Error ? error.message : 'A busca de fontes falhou.', true);
+        toast(
+          error instanceof Error ? translateMessage(error.message) : t('A busca de fontes falhou.'),
+          true,
+        );
       } finally {
         findSources.disabled = false;
       }
@@ -186,10 +198,10 @@ export function scriptForm(record?: Script): HTMLElement {
     'secondary',
     'search',
   );
-  const { form, fields, actions } = formWithSave('Salvar roteiro', async () => {
+  const { form, fields, actions } = formWithSave(t('Salvar roteiro'), async () => {
     const savingChannelId = studio.channelId;
     const sceneValues = scenes.read();
-    if (!sceneValues.length) throw new Error('Adicione pelo menos uma cena ao roteiro.');
+    if (!sceneValues.length) throw new Error(t('Adicione pelo menos uma cena ao roteiro.'));
     const response = await request<Script>(
       record ? `/api/scripts/${encodeURIComponent(record.id)}` : '/api/scripts',
       record ? 'PUT' : 'POST',
@@ -206,31 +218,31 @@ export function scriptForm(record?: Script): HTMLElement {
       studio.draftResearchId = '';
     }
     await refresh();
-    toast('Roteiro salvo. A aprovação editorial continua independente do salvamento.');
+    toast(t('Roteiro salvo. A aprovação editorial continua independente do salvamento.'));
   });
-  const scriptTabs = editorTabs('Partes do roteiro', [
+  const scriptTabs = editorTabs(t('Partes do roteiro'), [
     {
       key: 'brief',
-      label: 'Briefing',
+      label: t('Briefing'),
       content: el(
         'div',
         { className: 'form-stack' },
-        field('Título do vídeo', title),
+        field(t('Título do vídeo'), title),
         el(
           'div',
           { className: 'form-grid' },
-          field('Pauta vinculada', researchId),
-          field('Série', series),
-          field('Formato', format),
-          field('Estado editorial', status),
+          field(t('Pauta vinculada'), researchId),
+          field(t('Série'), series),
+          field(t('Formato'), format),
+          field(t('Estado editorial'), status),
         ),
-        field('Gancho de abertura', hook),
+        field(t('Gancho de abertura'), hook),
       ),
     },
-    { key: 'scenes', label: 'Cenas', content: scenes.node },
+    { key: 'scenes', label: t('Cenas'), content: scenes.node },
     {
       key: 'review',
-      label: 'Fontes e revisão',
+      label: t('Fontes e revisão'),
       content: el(
         'div',
         { className: 'form-stack' },
@@ -238,25 +250,29 @@ export function scriptForm(record?: Script): HTMLElement {
         el(
           'div',
           { className: 'form-grid' },
-          field('Buscar artigos sobre', searchTerms),
+          field(t('Buscar artigos sobre'), searchTerms),
           el('div', { className: 'field' }, findSources),
         ),
         el(
           'p',
           { className: 'field-hint' },
-          'Procura artigos revisados por pares (DOI) no Crossref pelos termos e pelas alegações. Só entram artigos citados e com o tema no título; leia cada um antes de publicar.',
+          t(
+            'Procura artigos revisados por pares (DOI) no Crossref pelos termos e pelas alegações. Só entram artigos citados e com o tema no título; leia cada um antes de publicar.',
+          ),
         ),
         claims.node,
         el(
           'label',
           { className: 'checkbox-field' },
           crossed,
-          'Conferi e cruzei as fontes e as alegações desta pauta',
+          t('Conferi e cruzei as fontes e as alegações desta pauta'),
         ),
         el(
           'p',
           { className: 'field-hint' },
-          'Esta é a revisão editorial: o motor registra a declaração no relatório de QA e libera a versão final. Publicar continua manual.',
+          t(
+            'Esta é a revisão editorial: o motor registra a declaração no relatório de QA e libera a versão final. Publicar continua manual.',
+          ),
         ),
         el(
           'div',
@@ -264,13 +280,13 @@ export function scriptForm(record?: Script): HTMLElement {
           el(
             'details',
             {},
-            el('summary', {}, 'Identificação técnica'),
-            el('section', {}, field('ID do tópico no motor', topicId)),
+            el('summary', {}, t('Identificação técnica')),
+            el('section', {}, field(t('ID do tópico no motor'), topicId)),
           ),
         ),
         record
           ? button(
-              'Excluir roteiro',
+              t('Excluir roteiro'),
               () => deleteRecord('scripts', record.id, record.title),
               'danger',
               'trash',
@@ -283,6 +299,6 @@ export function scriptForm(record?: Script): HTMLElement {
   return el(
     'section',
     { className: 'panel editor-body' },
-    editorWorkspace(form, actions, ai, 'Editor do roteiro'),
+    editorWorkspace(form, actions, ai, t('Editor do roteiro')),
   );
 }

@@ -1,48 +1,44 @@
-# Framechester — open-source architecture contract
+# Framechester — contrato de arquitetura open-source
 
-Operator update (2026-10-27): multiple channels under one local operator replace the earlier single-channel assumption. `ChannelProfile` identifies local channels; explicit selection scopes pipeline outputs/reports/packages. OAuth paths and expected identity are channel-scoped; local analytics validates channel and reporting window. This is not multi-user authentication. See `EQUIPES_E_SKILLS.md` and `AUDITORIA_ENGENHARIA.md` for responsibilities and current limits.
+Atualização do operador (2026-10-27): vários canais sob um único operador local substituem a premissa anterior de canal único. `ChannelProfile` identifica os canais locais; a seleção explícita delimita as saídas, relatórios e pacotes do pipeline. Os caminhos OAuth e a identidade esperada são por canal; o analytics local valida o canal e a janela do relatório. Isso não é autenticação de vários usuários. Veja `EQUIPES_E_SKILLS.md` e `AUDITORIA_ENGENHARIA.md` para responsabilidades e limites atuais.
 
-## Deployment topology
+## Topologia de implantação
 
-1. Local worker (MVP): Rust CLI + FFmpeg external binary + Kokoro TTS (reviewed commercial PT-BR catalogue; see VOZES_COMERCIAIS.md); generates script, narration, render and QA. No VPS required (`NOT_REQUIRED` decision).
-2. Future optional VPS: scheduler, PostgreSQL, dashboard and authenticated worker queue, only if multi-job orchestration is needed.
-3. Object storage: encrypted backup with restic using S3-compatible provider; endpoint/keys belong to operator (opt-in, not enabled by default).
-4. Platform adapters: official APIs when permitted. The current publisher is dry-run only; manual/export workflow until a real adapter is authorized and implemented.
+1. Worker local (MVP): CLI Rust + binário externo do FFmpeg + TTS Kokoro (catálogo comercial PT-BR revisado; veja VOZES_COMERCIAIS.md); gera roteiro, narração, vídeo e QA. Nenhuma VPS é necessária (decisão `NOT_REQUIRED`).
+2. VPS opcional no futuro: agendador, PostgreSQL, painel e fila de workers autenticada, só se for preciso orquestrar várias produções.
+3. Armazenamento de objetos: backup criptografado com restic em um provedor compatível com S3; endpoint e chaves pertencem ao operador (opt-in, desativado por padrão).
+4. Adaptadores de plataforma: APIs oficiais quando permitido. O publisher atual é só dry-run; o fluxo é manual/exportação até que um adaptador real seja autorizado e implementado.
 
-No shared backend, centralized analytics collection or maintainer-controlled remote account is required.
+Nenhum backend compartilhado, coleta centralizada de analytics ou conta remota controlada pelos mantenedores é necessária.
 
-## Rust traits/contracts (implemented in `framechester-core::ports`)
+## Traits/contratos Rust (implementados em `framechester-core::ports`)
 
-- `TrendSource`: `fetch(since, region) -> signals` (include dates and provenance)
-- `FactEvidenceProvider`: `verify(claims) -> evidence` (unknown must remain unknown)
+- `TrendSource`: `fetch(since, region) -> signals` (inclui datas e procedência)
+- `FactEvidenceProvider`: `verify(claims) -> evidence` (o que é desconhecido precisa continuar desconhecido)
 - `LlmProvider`: `generate(prompt, budget) -> structured_script`
 - `TtsEngine`: `synthesize(script, voice) -> audio_with_metadata`
 - `AssetProvider`: `resolve(scene) -> licensed_asset_manifest`
-- `Renderer`: `render(timeline, assets, profile) -> validated_mp4`; optional `thumbnail(title, output) -> png`
-- Publishing package: SRT captions, description, metadata JSON and sources/license markdown are generated from the script, timeline and QA reports before any publish call.
-- Local operator report: `report.html` renders QA, render, package links and warnings with no external assets or network calls.
-- Optional captions burn-in uses a local SRT with libass; the default path stays copy-only for speed.
-- `Publisher`: `publish(media, account, policy) -> provider_result` (explicit account permission)
-- `MetricsProvider`: `fetch(video_ids) -> raw_metrics` (platform-specific qualifiers)
-- `BackupProvider`: `snapshot/restore/check` with encrypted storage and audit log.
+- `Renderer`: `render(timeline, assets, profile) -> validated_mp4`; opcional `thumbnail(title, output) -> png`
+- Pacote de publicação: legendas SRT, descrição, JSON de metadados e markdown de fontes/licenças são gerados a partir do roteiro, da timeline e dos relatórios de QA antes de qualquer chamada de publicação.
+- Relatório local do operador: `report.html` mostra QA, geração do vídeo, links do pacote e avisos, sem assets externos nem chamadas de rede.
+- As legendas queimadas opcionais usam um SRT local com libass; o caminho padrão continua só copiando o stream, pela velocidade.
+- `Publisher`: `publish(media, account, policy) -> provider_result` (permissão explícita da conta)
+- `MetricsProvider`: `fetch(video_ids) -> raw_metrics` (qualificadores específicos de cada plataforma)
+- `BackupProvider`: `snapshot/restore/check` com armazenamento criptografado e log de auditoria.
 
-Every adapter advertises declared capabilities, API terms, license, external network requirement, unit cost, secret requirements, supported content and failure modes. Plugins are **registered and compiled** by default; do not execute untrusted plugin binaries/scripts without a real sandbox.
+Todo adaptador declara suas capacidades, termos de API, licença, necessidade de rede externa, custo unitário, segredos exigidos, conteúdo suportado e modos de falha. Por padrão, os plugins são **registrados e compilados**; não execute binários ou scripts de plugins não confiáveis sem um sandbox de verdade.
 
-## Contracts and boundaries
+## Contratos e limites
 
-- `configs/` and `.env` local/private; `.env.example` sanitized.
-- Each local installation has its own OAuth clients/accounts; release archives never include maintainer OAuth tokens.
-- No telemetry or phone-home behavior by default. No scraping that violates ToS or requests for non-consenting data.
-- No fictitious engagement, manufactured tests, ads, followers or purchases.
-- Every asset records checksum, provenance, license, URL when applicable, time of retrieval, and use restrictions.
-- Financial reporting separates revenue actually received, pending, model projections and extra cash spend.
+- `configs/` e `.env` são locais/privados; `.env.example` é sanitizado.
+- Cada instalação local tem seus próprios clientes e contas OAuth; os arquivos de release nunca incluem tokens OAuth dos mantenedores.
+- Nenhuma telemetria ou comunicação com servidor por padrão. Nenhum scraping que viole os termos de uso nem pedido de dados sem consentimento.
+- Nada de engajamento fictício, testes fabricados, anúncios, seguidores ou compras.
+- Todo asset registra checksum, procedência, licença, URL quando houver, momento da obtenção e restrições de uso.
+- Os relatórios financeiros separam a receita efetivamente recebida, a pendente, as projeções de modelo e os gastos extras em dinheiro.
 
-## Release and compliance gates
+## Travas de release e conformidade
 
 `license-scan -> secret-scan -> fmt/lint -> unit/integration -> render QA -> safe install smoke -> vulnerability review -> maintainer approval -> publish`.
 
-FFmpeg may be LGPL or GPL depending on configuration. Subprocess invocation limits coupling but **does not excuse redistribution duties** when shipping FFmpeg binaries. Never bundle uncertain pretrained model weights or footage.
-
-
-
-
+O FFmpeg pode ser LGPL ou GPL, conforme a configuração. Chamar como subprocesso limita o acoplamento, mas **não dispensa as obrigações de redistribuição** quando se distribuem binários do FFmpeg. Nunca inclua pesos de modelos pré-treinados ou imagens de vídeo com licença incerta.

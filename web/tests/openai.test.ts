@@ -151,7 +151,7 @@ test('OpenAI rejects unsafe inputs before network effects', async () => {
   });
   for (const input of [
     { ...request, model: 'https://attacker.example/' },
-    { ...request, maxTokens: 8193 },
+    { ...request, maxTokens: 32_001 },
     { ...request, maxTokens: 1.5 },
     { ...request, system: '' },
     { ...request, prompt: 'x'.repeat(110000) },

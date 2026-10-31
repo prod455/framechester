@@ -7,6 +7,7 @@ import { refresh, render, scoped, state, studio } from '../studio/state.ts';
 import { toast } from '../studio/toast.ts';
 import { editorTabs } from '../ui-tabs.ts';
 import { deleteRecord, requiredChannel } from './channels.ts';
+import { t } from '../../shared/i18n.ts';
 import type { StoryCreativeValues } from '../../shared/creative-types.ts';
 import type { Story } from '../../shared/types.ts';
 
@@ -24,7 +25,7 @@ export function storiesPage(): HTMLElement {
     });
   const list = el(
     'aside',
-    { className: 'panel editor-list', 'aria-label': 'Histórias deste canal' },
+    { className: 'panel editor-list', 'aria-label': t('Histórias deste canal') },
     ...records.map((entry) => {
       const node = el(
         'button',
@@ -36,7 +37,7 @@ export function storiesPage(): HTMLElement {
         el(
           'span',
           { className: 'editor-list-caption' },
-          entry.scriptId ? 'Vinculado a um roteiro' : 'Arco em desenvolvimento',
+          entry.scriptId ? t('Vinculado a um roteiro') : t('Arco em desenvolvimento'),
         ),
       );
       node.addEventListener('click', () =>
@@ -55,22 +56,22 @@ export function storiesPage(): HTMLElement {
           'section',
           { className: 'panel' },
           empty(
-            'Nenhuma narrativa neste canal',
-            'Desenvolva a progressão da informação antes de preencher o vídeo de cenas.',
+            t('Nenhuma narrativa neste canal'),
+            t('Desenvolva a progressão da informação antes de preencher o vídeo de cenas.'),
             'story',
-            button('Desenvolver arco', newStory, 'primary', 'plus'),
+            button(t('Desenvolver arco'), newStory, 'primary', 'plus'),
           ),
         );
   return el(
     'div',
     {},
     heading(
-      'Narrativas',
-      'Dê à história uma pergunta clara e uma resolução que cumpre a promessa.',
-      button('Novo arco narrativo', newStory, 'primary', 'plus'),
+      t('Narrativas'),
+      t('Dê à história uma pergunta clara e uma resolução que cumpre a promessa.'),
+      button(t('Novo arco narrativo'), newStory, 'primary', 'plus'),
     ),
     records.length
-      ? documentPicker('Narrativa selecionada', records, studio.activeStoryId, (id) => {
+      ? documentPicker(t('Narrativa selecionada'), records, studio.activeStoryId, (id) => {
           studio.activeStoryId = id;
           render();
         })
@@ -85,7 +86,7 @@ export function storyForm(record?: Story): HTMLElement {
   const script = select(
     'scriptId',
     [
-      ['', 'Sem roteiro vinculado'],
+      ['', t('Sem roteiro vinculado')],
       ...scoped(state().scripts).map((entry): [string, string] => [entry.id, entry.title]),
     ],
     record?.scriptId || '',
@@ -111,7 +112,7 @@ export function storyForm(record?: Story): HTMLElement {
     () => ({ task: 'story', values: readCreative() }),
     (result) => {
       if (!form.isConnected || studio.channelId !== owner || !('resolution' in result))
-        throw new Error('A narrativa mudou. Abra o assistente a partir do editor atual.');
+        throw new Error(t('A narrativa mudou. Abra o assistente a partir do editor atual.'));
       title.value = result.title;
       hook.value = result.hook;
       setup.value = result.setup;
@@ -119,11 +120,11 @@ export function storyForm(record?: Story): HTMLElement {
       turningPoint.value = result.turningPoint;
       resolution.value = result.resolution;
       cta.value = result.cta;
-      toast('Narrativa nos campos. Revise e salve; as cenas do roteiro não foram alteradas.');
+      toast(t('Narrativa nos campos. Revise e salve; as cenas do roteiro não foram alteradas.'));
     },
     () => form,
   );
-  const { form, fields, actions } = formWithSave('Salvar arco narrativo', async () => {
+  const { form, fields, actions } = formWithSave(t('Salvar arco narrativo'), async () => {
     const savingChannelId = studio.channelId;
     const response = await request<Story>(
       record ? `/api/stories/${encodeURIComponent(record.id)}` : '/api/stories',
@@ -132,47 +133,47 @@ export function storyForm(record?: Story): HTMLElement {
     );
     if (studio.channelId === savingChannelId) studio.activeStoryId = response.id || record?.id || '';
     await refresh();
-    toast('Arco narrativo salvo.');
+    toast(t('Arco narrativo salvo.'));
   });
-  const storyTabs = editorTabs('Partes da narrativa', [
+  const storyTabs = editorTabs(t('Partes da narrativa'), [
     {
       key: 'opening',
-      label: 'Abertura',
+      label: t('Abertura'),
       content: el(
         'div',
         { className: 'form-stack' },
-        field('Nome desta história', title),
-        field('Roteiro vinculado', script),
-        field('Gancho', hook),
-        field('Contexto', setup),
+        field(t('Nome desta história'), title),
+        field(t('Roteiro vinculado'), script),
+        field(t('Gancho'), hook),
+        field(t('Contexto'), setup),
       ),
     },
     {
       key: 'arc',
-      label: 'Desenvolvimento',
+      label: t('Desenvolvimento'),
       content: el(
         'div',
         { className: 'form-stack' },
-        field('Tensão', conflict),
-        field('Descoberta', turningPoint),
+        field(t('Tensão'), conflict),
+        field(t('Descoberta'), turningPoint),
       ),
     },
     {
       key: 'ending',
-      label: 'Desfecho',
+      label: t('Desfecho'),
       content: el(
         'div',
         { className: 'form-stack' },
-        field('Resolução', resolution),
-        field('Próximo passo para o espectador', cta),
+        field(t('Resolução'), resolution),
+        field(t('Próximo passo para o espectador'), cta),
         el(
           'p',
           { className: 'field-hint' },
-          'O arco organiza a história. Para mudar a fala final, edite as cenas do roteiro.',
+          t('O arco organiza a história. Para mudar a fala final, edite as cenas do roteiro.'),
         ),
         record
           ? button(
-              'Excluir narrativa',
+              t('Excluir narrativa'),
               () => deleteRecord('stories', record.id, record.title),
               'danger',
               'trash',
@@ -185,6 +186,6 @@ export function storyForm(record?: Story): HTMLElement {
   return el(
     'section',
     { className: 'panel editor-body' },
-    editorWorkspace(form, actions, ai, 'Editor da narrativa'),
+    editorWorkspace(form, actions, ai, t('Editor da narrativa')),
   );
 }

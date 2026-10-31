@@ -1,5 +1,6 @@
 import { EditSession } from '../shared/edit-session.ts';
 import { button, dialogFrame, el } from './dom.ts';
+import { t } from '../shared/i18n.ts';
 
 const edits = new EditSession();
 let prompt: HTMLDialogElement | undefined;
@@ -52,22 +53,31 @@ export function protectEdits(action: () => void, container?: Element): void {
   const resume = () => {
     prompt?.close();
   };
-  const actions = el('div', { className: 'form-actions' }, button('Continuar editando', resume, 'secondary'));
-  const { dialog, body } = dialogFrame(busy ? 'Salvamento em andamento' : 'Há alterações não salvas', '');
+  const actions = el(
+    'div',
+    { className: 'form-actions' },
+    button(t('Continuar editando'), resume, 'secondary'),
+  );
+  const { dialog, body } = dialogFrame(
+    busy ? t('Salvamento em andamento') : t('Há alterações não salvas'),
+    '',
+  );
   body.append(
     el(
       'p',
       {},
       busy
-        ? 'Aguarde o salvamento terminar antes de sair desta tela.'
-        : 'Continue editando para salvar seu trabalho. Se descartar, as alterações desta tela serão perdidas.',
+        ? t('Aguarde o salvamento terminar antes de sair desta tela.')
+        : t(
+            'Continue editando para salvar seu trabalho. Se descartar, as alterações desta tela serão perdidas.',
+          ),
     ),
     actions,
   );
   if (!busy)
     actions.append(
       button(
-        'Descartar e continuar',
+        t('Descartar e continuar'),
         () => {
           const discarded = changed ? changed.every((form) => edits.discard(form)) : edits.discard();
           if (!discarded) return;

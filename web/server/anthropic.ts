@@ -132,7 +132,7 @@ function payload(request: AnthropicRequest): Record<string, unknown> {
   if (
     !Number.isSafeInteger(request.maxTokens) ||
     request.maxTokens < 1 ||
-    request.maxTokens > 8192 ||
+    request.maxTokens > 32_000 ||
     typeof request.system !== 'string' ||
     typeof request.prompt !== 'string' ||
     !request.system ||
@@ -182,7 +182,7 @@ export function createAnthropicClient(options: { fetch?: typeof fetch } = {}): A
       response = await fetcher(counting ? `${endpoint}/count_tokens` : endpoint, {
         method: 'POST',
         redirect: 'error',
-        signal: AbortSignal.timeout(counting ? 30_000 : 120_000),
+        signal: AbortSignal.timeout(counting ? 30_000 : 600_000),
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',

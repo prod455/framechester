@@ -1,7 +1,14 @@
 import { renderCreate } from '../create.ts';
 import { go, state, studio } from '../studio/state.ts';
 import { editChannel } from './channels.ts';
-import { generateFinal, startProduction, viewJob, youtubeButton, youtubeStatus } from './production.ts';
+import {
+  generateFinal,
+  shortButton,
+  startProduction,
+  viewJob,
+  youtubeButton,
+  youtubeStatus,
+} from './production.ts';
 
 /** The default page: the four steps of the channel's current video. */
 export function createPage(): HTMLElement {
@@ -16,6 +23,7 @@ export function createPage(): HTMLElement {
       startProduction();
     },
     sendButton: youtubeButton,
+    shortButton,
     youtubeStatus,
     allVideos: () => go('production'),
   });

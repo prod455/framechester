@@ -31,6 +31,7 @@ import { toast } from '../studio/toast.ts';
 import { editorTabs } from '../ui-tabs.ts';
 import { deleteRecord, editChannel, requiredChannel } from './channels.ts';
 import { startScript } from './scripts.ts';
+import { languageTag, t, translateMessage } from '../../shared/i18n.ts';
 import type { ResearchCreativeValues } from '../../shared/creative-types.ts';
 import type { ResearchOrder } from '../../shared/research-order.ts';
 import type { Research, YoutubeDiscovery } from '../../shared/types.ts';
@@ -41,25 +42,25 @@ export function researchPage(): HTMLElement {
   const records = scoped(state().research);
   const cards = el('div', { className: 'entity-grid' });
   const query = input('search-research');
-  query.placeholder = 'Buscar pauta, nicho ou palavra-chave…';
-  query.setAttribute('aria-label', 'Buscar pautas e nichos');
+  query.placeholder = t('Buscar pauta, nicho ou palavra-chave…');
+  query.setAttribute('aria-label', t('Buscar pautas e nichos'));
   const order = select(
     'research-order',
     [
-      ['recent', 'Atualização recente'],
-      ['feasibility', 'Minha viabilidade: maior primeiro'],
-      ['demand', 'Minha demanda: maior primeiro'],
-      ['competition', 'Minha competição: menor primeiro'],
+      ['recent', t('Atualização recente')],
+      ['feasibility', t('Minha viabilidade: maior primeiro')],
+      ['demand', t('Minha demanda: maior primeiro')],
+      ['competition', t('Minha competição: menor primeiro')],
     ],
     'recent',
   );
-  order.setAttribute('aria-label', 'Ordenar pautas');
+  order.setAttribute('aria-label', t('Ordenar pautas'));
   function show(): void {
-    const term = query.value.trim().toLocaleLowerCase('pt-BR');
+    const term = query.value.trim().toLocaleLowerCase(languageTag());
     const filtered = orderResearch(
       records.filter((record) =>
         `${record.title} ${record.niche} ${record.keywords.join(' ')}`
-          .toLocaleLowerCase('pt-BR')
+          .toLocaleLowerCase(languageTag())
           .includes(term),
       ),
       order.value as ResearchOrder,
@@ -70,39 +71,53 @@ export function researchPage(): HTMLElement {
         const actions = el(
           'div',
           { className: 'card-actions' },
-          iconButton(`Editar ${record.title}`, 'edit', () => editResearch(record)),
-          iconButton(`Excluir ${record.title}`, 'trash', () =>
+          iconButton(t('Editar {title}', { title: record.title }), 'edit', () => editResearch(record)),
+          iconButton(t('Excluir {title}', { title: record.title }), 'trash', () =>
             deleteRecord('research', record.id, record.title),
           ),
         );
         return el(
           'article',
           { className: 'panel entity-card' },
+          // The state sits with the title it describes (law of proximity).
           el(
             'div',
-            { className: 'entity-card-top' },
-            el('div', { className: 'entity-card-icon' }, icon('search')),
+            { className: 'flex min-w-0 items-center gap-3 [&>h3]:mb-0 [&>h3]:min-w-0' },
+            el('h3', { title: record.title }, record.title),
             badge(record.status),
           ),
-          el('h3', { title: record.title }, record.title),
-          el('p', {}, record.hypothesis || 'Hipótese ainda não descrita.'),
+          el('p', {}, record.hypothesis || t('Hipótese ainda não descrita.')),
           el(
             'div',
             { className: 'entity-meta' },
-            el('span', { className: 'tag' }, record.niche || 'Nicho em desenvolvimento'),
-            el('span', { className: 'tag' }, `${record.sources.length} fonte(s)`),
+            el('span', { className: 'tag' }, record.niche || t('Nicho em desenvolvimento')),
+            el(
+              'span',
+              { className: 'tag' },
+              record.sources.length === 1
+                ? t('{count} fonte', { count: record.sources.length })
+                : t('{count} fontes', { count: record.sources.length }),
+            ),
             order.value === 'recent'
               ? null
               : el(
                   'span',
                   { className: 'tag' },
-                  `Nota manual: ${order.value === 'demand' ? record.demandScore : order.value === 'competition' ? record.competitionScore : record.feasibilityScore}/100`,
+                  t('Nota manual: {score}/100', {
+                    score:
+                      order.value === 'demand'
+                        ? record.demandScore
+                        : order.value === 'competition'
+                          ? record.competitionScore
+                          : record.feasibilityScore,
+                  }),
                 ),
           ),
           el(
             'div',
             { className: 'entity-card-bottom' },
-            button('Desenvolver roteiro', () => startScript(record.id), 'ghost', 'arrow'),
+            // Outlined, so its edge lines up with the text above (a ghost button's padding does not).
+            button(t('Desenvolver roteiro'), () => startScript(record.id), 'secondary', 'arrow'),
             actions,
           ),
         );
@@ -114,12 +129,12 @@ export function researchPage(): HTMLElement {
           'section',
           { className: 'panel full' },
           empty(
-            term ? 'Nenhum resultado nesta busca' : 'Nenhuma pauta neste canal',
+            term ? t('Nenhum resultado nesta busca') : t('Nenhuma pauta neste canal'),
             term
-              ? 'Tente outro termo ou limpe a busca.'
-              : 'Registre a pergunta do vídeo, o público e as fontes que você pretende conferir.',
+              ? t('Tente outro termo ou limpe a busca.')
+              : t('Registre a pergunta do vídeo, o público e as fontes que você pretende conferir.'),
             'search',
-            !term ? button('Criar primeira pauta', () => editResearch(), 'primary', 'plus') : undefined,
+            !term ? button(t('Criar primeira pauta'), () => editResearch(), 'primary', 'plus') : undefined,
           ),
         ),
       );
@@ -131,24 +146,31 @@ export function researchPage(): HTMLElement {
     'div',
     {},
     heading(
-      'Pesquisa de nichos',
-      'Investigue o público, registre hipóteses e compare fontes.',
-      button('Nova hipótese de nicho', () => editResearch(undefined, true), 'secondary', 'spark'),
-      button('Nova pauta', () => editResearch(), 'primary', 'plus'),
+      t('Pesquisa de nichos'),
+      t('Investigue o público, registre hipóteses e compare fontes.'),
+      button(t('Nova hipótese de nicho'), () => editResearch(undefined, true), 'secondary', 'spark'),
+      button(t('Nova pauta'), () => editResearch(), 'primary', 'plus'),
     ),
     discoveryPanel(),
     el(
       'div',
       { className: 'section-label' },
-      el('h2', {}, 'Sua pesquisa editorial'),
-      el('span', {}, 'Hipóteses, referências e próximos passos'),
+      el('h2', {}, t('Sua pesquisa editorial')),
+      el('span', {}, t('Hipóteses, referências e próximos passos')),
     ),
     el(
       'div',
-      { className: 'toolbar' },
+      // Search, order and count share one row; the select keeps its content width.
+      { className: 'toolbar justify-start [&>select]:w-auto' },
       query,
       order,
-      el('span', { className: 'toolbar-caption' }, `${records.length} registro(s) neste canal`),
+      el(
+        'span',
+        { className: 'toolbar-caption sm:ms-auto' },
+        records.length === 1
+          ? t('{count} registro neste canal', { count: records.length })
+          : t('{count} registros neste canal', { count: records.length }),
+      ),
     ),
     cards,
   );
@@ -160,8 +182,8 @@ export function editResearch(record?: Research, nicheMode = false, prefill: Part
     return;
   }
   const { dialog, body } = createDialog(
-    record ? 'Desenvolver esta pauta' : nicheMode ? 'Explorar uma hipótese de nicho' : 'Criar pauta',
-    'Registre o que você observou e o que ainda precisa investigar.',
+    record ? t('Desenvolver esta pauta') : nicheMode ? t('Explorar uma hipótese de nicho') : t('Criar pauta'),
+    t('Registre o que você observou e o que ainda precisa investigar.'),
   );
   const title = input('title', record?.title || prefill.title || '');
   title.required = true;
@@ -200,7 +222,7 @@ export function editResearch(record?: Research, nicheMode = false, prefill: Part
     () => ({ task: 'research', values: readCreative() }),
     (result) => {
       if (!form.isConnected || studio.channelId !== owner || !('hypothesis' in result))
-        throw new Error('A pauta mudou. Abra o assistente a partir do editor atual.');
+        throw new Error(t('A pauta mudou. Abra o assistente a partir do editor atual.'));
       title.value = result.title;
       niche.value = result.niche;
       audience.value = result.audience;
@@ -210,7 +232,7 @@ export function editResearch(record?: Research, nicheMode = false, prefill: Part
       notes.value = result.notes;
       status.value = 'draft';
       publicSearch.href = `https://www.google.com/search?q=${encodeURIComponent(title.value)}`;
-      toast('Rascunho nos campos. Revise as fontes e salve a pauta.');
+      toast(t('Rascunho nos campos. Revise as fontes e salve a pauta.'));
     },
     () => form,
   );
@@ -224,13 +246,13 @@ export function editResearch(record?: Research, nicheMode = false, prefill: Part
       href: 'https://www.google.com/',
     },
     icon('external'),
-    'Abrir pesquisa pública',
+    t('Abrir pesquisa pública'),
   );
   title.addEventListener('input', () => {
     publicSearch.href = `https://www.google.com/search?q=${encodeURIComponent(title.value)}`;
   });
   if (title.value) publicSearch.href = `https://www.google.com/search?q=${encodeURIComponent(title.value)}`;
-  const { form, fields, actions } = formWithSave('Salvar pesquisa', async () => {
+  const { form, fields, actions } = formWithSave(t('Salvar pesquisa'), async () => {
     await save(
       record ? `/api/research/${encodeURIComponent(record.id)}` : '/api/research',
       record ? 'PUT' : 'POST',
@@ -244,58 +266,58 @@ export function editResearch(record?: Research, nicheMode = false, prefill: Part
       },
     );
     dialog.close();
-    toast('Pesquisa salva no canal selecionado.');
+    toast(t('Pesquisa salva no canal selecionado.'));
   });
-  const researchTabs = editorTabs('Partes da pauta', [
+  const researchTabs = editorTabs(t('Partes da pauta'), [
     {
       key: 'brief',
-      label: 'Pauta',
+      label: t('Pauta'),
       content: el(
         'div',
         { className: 'form-stack' },
-        field(nicheMode ? 'Hipótese de nicho' : 'Pergunta ou título de trabalho', title),
-        el('div', { className: 'form-grid' }, field('Nicho', niche), field('Público', audience)),
-        field('Hipótese de interesse do público', hypothesis),
-        field('Contribuição original', differentiation),
-        field('Palavras-chave', keywords),
-        field('Notas e próximos passos', notes),
+        field(nicheMode ? t('Hipótese de nicho') : t('Pergunta ou título de trabalho'), title),
+        el('div', { className: 'form-grid' }, field(t('Nicho'), niche), field(t('Público'), audience)),
+        field(t('Hipótese de interesse do público'), hypothesis),
+        field(t('Contribuição original'), differentiation),
+        field(t('Palavras-chave'), keywords),
+        field(t('Notas e próximos passos'), notes),
       ),
     },
     {
       key: 'sources',
-      label: 'Fontes',
+      label: t('Fontes'),
       content: el(
         'div',
         { className: 'form-stack' },
         publicSearch,
         sources.node,
-        field('Estado editorial', status, 'Aplicar IA devolve a pauta para rascunho.'),
+        field(t('Estado editorial'), status, t('Aplicar IA devolve a pauta para rascunho.')),
       ),
     },
     {
       key: 'priority',
-      label: 'Priorização',
+      label: t('Priorização'),
       content: el(
         'fieldset',
         { className: 'fieldset' },
-        el('legend', {}, 'Minha avaliação'),
+        el('legend', {}, t('Minha avaliação')),
         el(
           'p',
           { className: 'field-hint' },
-          'Opcional. Notas manuais para ordenar pautas; não representam medição de mercado.',
+          t('Opcional. Notas manuais para ordenar pautas; não representam medição de mercado.'),
         ),
         el(
           'div',
           { className: 'form-grid' },
-          field('Demanda percebida', demand),
-          field('Competição percebida', competition),
-          field('Viabilidade de produção', feasibility),
+          field(t('Demanda percebida'), demand),
+          field(t('Competição percebida'), competition),
+          field(t('Viabilidade de produção'), feasibility),
         ),
       ),
     },
   ]);
   fields.append(researchTabs.node);
-  body.append(editorWorkspace(form, actions, ai, 'Editor da pauta'));
+  body.append(editorWorkspace(form, actions, ai, t('Editor da pauta')));
 }
 
 export function discoveryPanel(): HTMLElement {
@@ -305,10 +327,10 @@ export function discoveryPanel(): HTMLElement {
   query.required = true;
   query.minLength = 2;
   query.maxLength = 120;
-  query.placeholder = 'Uma pergunta, um assunto ou um nicho…';
-  query.setAttribute('aria-label', 'Tema para pesquisar no YouTube');
+  query.placeholder = t('Uma pergunta, um assunto ou um nicho…');
+  query.setAttribute('aria-label', t('Tema para pesquisar no YouTube'));
   query.setAttribute('data-testid', 'discovery-query');
-  const submit = button('Consultar YouTube', () => {}, 'primary', 'search');
+  const submit = button(t('Consultar YouTube'), () => {}, 'primary', 'search');
   submit.type = 'submit';
   submit.dataset.testid = 'discovery-submit';
   const error = el('div', { className: 'alert form-error', role: 'alert', hidden: true });
@@ -321,7 +343,9 @@ export function discoveryPanel(): HTMLElement {
     el(
       'p',
       { className: 'field-hint research-quota' },
-      'Consulta explícita à API oficial. Usa a quota do seu projeto e requer uma conexão autorizada do YouTube.',
+      t(
+        'Consulta explícita à API oficial. Usa a quota do seu projeto e requer uma conexão autorizada do YouTube.',
+      ),
     ),
     error,
     results,
@@ -330,8 +354,12 @@ export function discoveryPanel(): HTMLElement {
     const heading = el(
       'div',
       { className: 'discovery-heading' },
-      el('span', {}, `${response.items.length} vídeo(s) nesta amostra pública`),
-      el('span', { className: 'field-hint' }, `Fonte: YouTube Data API · ${date(response.queriedAt)}`),
+      el('span', {}, t('{count} vídeo(s) nesta amostra pública', { count: response.items.length })),
+      el(
+        'span',
+        { className: 'field-hint' },
+        t('Fonte: YouTube Data API · {date}', { date: date(response.queriedAt) }),
+      ),
     );
     const items = response.items.map((item) =>
       el(
@@ -345,28 +373,31 @@ export function discoveryPanel(): HTMLElement {
           el(
             'p',
             { className: 'field-hint' },
-            `${item.channelTitle} · Publicado em ${date(item.publishedAt)}`,
+            t('{channel} · Publicado em {date}', {
+              channel: item.channelTitle,
+              date: date(item.publishedAt),
+            }),
           ),
           el(
             'div',
             { className: 'entity-meta' },
-            el('span', { className: 'tag' }, `${number(item.views)} views`),
-            el('span', { className: 'tag' }, `${number(item.likes)} likes`),
-            el('span', { className: 'tag' }, `${number(item.comments)} comentários`),
+            el('span', { className: 'tag' }, t('{count} views', { count: number(item.views) })),
+            el('span', { className: 'tag' }, t('{count} likes', { count: number(item.likes) })),
+            el('span', { className: 'tag' }, t('{count} comentários', { count: number(item.comments) })),
           ),
         ),
         button(
-          'Usar como referência',
+          t('Usar como referência'),
           () =>
             editResearch(undefined, false, {
-              title: `Investigar: ${item.title}`,
+              title: t('Investigar: {title}', { title: item.title }),
               sources: [
                 {
                   title: item.title,
                   url: item.url,
                   publisher: item.channelTitle,
                   retrievedAt: response.queriedAt.slice(0, 10),
-                  license: 'Referência ao vídeo; licença de reprodução não verificada',
+                  license: t('Referência ao vídeo; licença de reprodução não verificada'),
                 },
               ],
             }),
@@ -381,12 +412,14 @@ export function discoveryPanel(): HTMLElement {
       ...items,
       !items.length
         ? empty(
-            'Nenhum vídeo retornado para esta consulta',
-            'Tente uma pergunta mais específica. Ausência nesta amostra não demonstra ausência de audiência.',
+            t('Nenhum vídeo retornado para esta consulta'),
+            t(
+              'Tente uma pergunta mais específica. Ausência nesta amostra não demonstra ausência de audiência.',
+            ),
             'search',
           )
         : null,
-      el('p', { className: 'field-hint discovery-note' }, response.note),
+      el('p', { className: 'field-hint discovery-note' }, translateMessage(response.note)),
     );
   };
   if (saved) drawResults(saved);
@@ -394,14 +427,16 @@ export function discoveryPanel(): HTMLElement {
     event.preventDefault();
     if (!queryForm.reportValidity() || submit.disabled) return;
     submit.disabled = true;
-    setButtonLabel(submit, 'Consultando…');
+    setButtonLabel(submit, t('Consultando…'));
     error.hidden = true;
     queryForm.setAttribute('aria-busy', 'true');
     try {
       const connection = scoped(state().connections).find((entry) => entry.platform === 'youtube');
       if (connection?.status !== 'connected')
         throw new Error(
-          'Conecte a conta do YouTube deste canal para consultar a API. A pesquisa editorial manual continua disponível abaixo.',
+          t(
+            'Conecte a conta do YouTube deste canal para consultar a API. A pesquisa editorial manual continua disponível abaixo.',
+          ),
         );
       const response = await request<YoutubeDiscovery>(
         `/api/channels/${encodeURIComponent(discoveryChannelId)}/research/discover`,
@@ -413,12 +448,12 @@ export function discoveryPanel(): HTMLElement {
     } catch (failure) {
       replace(
         error,
-        failure instanceof Error ? failure.message : 'A consulta não foi concluída.',
+        failure instanceof Error ? translateMessage(failure.message) : t('A consulta não foi concluída.'),
         el(
           'div',
           {},
           button(
-            'Ir para conexões',
+            t('Ir para conexões'),
             () => {
               studio.activePlatform = 'youtube';
               go('connections');
@@ -431,13 +466,13 @@ export function discoveryPanel(): HTMLElement {
       error.hidden = false;
     } finally {
       submit.disabled = false;
-      setButtonLabel(submit, 'Consultar YouTube', 'search');
+      setButtonLabel(submit, t('Consultar YouTube'), 'search');
       queryForm.removeAttribute('aria-busy');
     }
   });
   return panel(
-    'Explore o que está sendo publicado',
-    'Uma amostra real para investigar perguntas e desenvolver um ângulo próprio.',
+    t('Explore o que está sendo publicado'),
+    t('Uma amostra real para investigar perguntas e desenvolver um ângulo próprio.'),
     resultBody,
   );
 }

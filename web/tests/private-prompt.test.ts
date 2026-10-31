@@ -43,7 +43,7 @@ test('new installations prefer Claude and legacy model files remain on Ollama', 
     assert.equal(initial.provider, 'anthropic');
     assert.equal(initial.anthropicModel, 'claude-sonnet-5-5');
     assert.equal(initial.maxOutputTokens, 4096);
-    assert.equal(initial.maxCostUsd, 0.25);
+    assert.equal(initial.maxCostUsd, 1);
     await mkdir(join(root, '.framechester'));
     await writeFile(
       join(root, '.framechester', 'creative.local.json'),

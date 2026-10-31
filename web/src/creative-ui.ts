@@ -4,6 +4,7 @@ import { protectEdits } from './edit-protection.ts';
 import { editorTabs } from './ui-tabs.ts';
 import { createAIUsagePanel } from './ai-usage-ui.ts';
 import { button, el, field, input, replace, select, setButtonLabel, textarea } from './dom.ts';
+import { languageTag, t, translateMessage } from '../shared/i18n.ts';
 import type {
   CreativeCapabilities,
   CreativeDraft,
@@ -15,17 +16,20 @@ import type {
 } from '../shared/creative-types.ts';
 
 const titles: Record<CreativeTask, string> = {
-  research: 'Investigar um nicho',
-  script: 'Desenvolver um roteiro',
-  story: 'Construir uma narrativa',
+  research: t('Investigar um nicho'),
+  script: t('Desenvolver um roteiro'),
+  story: t('Construir uma narrativa'),
 };
 const hints: Record<CreativeTask, string> = {
-  research:
+  research: t(
     'Descreva o público, a pergunta e o que você quer investigar. Peça hipóteses e um plano de apuração.',
-  script:
+  ),
+  script: t(
     'Informe a pergunta do vídeo, formato, duração e o que já foi apurado. Defina o tom e o que o roteiro deve entregar.',
-  story:
+  ),
+  story: t(
     'Descreva a ideia central, o conflito e a descoberta que sustentam a história. Informe o público e a resposta que você pode demonstrar.',
+  ),
 };
 const drafts = new Map<
   string,
@@ -45,32 +49,34 @@ export interface CreativeEditorOptions {
   mount?: { host: HTMLElement; onClose: () => void };
 }
 const objectives: Record<CreativeTask, string> = {
-  research: 'Desenvolva esta hipótese a partir dos campos preenchidos e indique o que falta apurar.',
-  script:
+  research: t('Desenvolva esta hipótese a partir dos campos preenchidos e indique o que falta apurar.'),
+  script: t(
     'Desenvolva o roteiro a partir dos campos, da pauta e das fontes fornecidas. Preserve o formato escolhido e explicite o que falta verificar.',
-  story:
+  ),
+  story: t(
     'Desenvolva a narrativa a partir dos campos e do roteiro vinculado. Entregue a promessa e mantenha os limites das evidências.',
+  ),
 };
 function describeValues(values: object): string {
   const labels: Record<string, string> = {
-    title: 'Título',
-    niche: 'Nicho',
-    audience: 'Público',
-    hypothesis: 'Hipótese de interesse',
-    differentiation: 'Contribuição original',
-    keywords: 'Palavras-chave',
-    sources: 'Fontes fornecidas',
-    notes: 'Notas e próximos passos',
-    series: 'Série',
-    format: 'Formato',
-    hook: 'Gancho',
-    scenes: 'Cenas',
-    claims: 'Alegações',
-    setup: 'Contexto',
-    conflict: 'Tensão',
-    turningPoint: 'Descoberta',
-    resolution: 'Resolução',
-    cta: 'Próximo passo',
+    title: t('Título'),
+    niche: t('Nicho'),
+    audience: t('Público'),
+    hypothesis: t('Hipótese de interesse'),
+    differentiation: t('Contribuição original'),
+    keywords: t('Palavras-chave'),
+    sources: t('Fontes fornecidas'),
+    notes: t('Notas e próximos passos'),
+    series: t('Série'),
+    format: t('Formato'),
+    hook: t('Gancho'),
+    scenes: t('Cenas'),
+    claims: t('Alegações'),
+    setup: t('Contexto'),
+    conflict: t('Tensão'),
+    turningPoint: t('Descoberta'),
+    resolution: t('Resolução'),
+    cta: t('Próximo passo'),
   };
   const lines: string[] = [];
   for (const [key, value] of Object.entries(values)) {
@@ -78,27 +84,42 @@ function describeValues(values: object): string {
       if (value)
         lines.push(
           key === 'researchId'
-            ? 'Referência: a pauta selecionada deste canal será incluída.'
-            : 'Referência: o roteiro selecionado deste canal será incluído.',
+            ? t('Referência: a pauta selecionada deste canal será incluída.')
+            : t('Referência: o roteiro selecionado deste canal será incluído.'),
         );
       continue;
     }
     let text = typeof value === 'string' ? value : '';
-    if (key === 'format') text = value === 'long' ? 'Longo' : value === 'short' ? 'Curto' : text;
+    if (key === 'format') text = value === 'long' ? t('Longo') : value === 'short' ? t('Curto') : text;
     if (Array.isArray(value))
       text = value
         .map((item) => {
           if (typeof item === 'string') return item;
           if ('narration' in item)
-            return `${item.heading}\nFala: ${item.narration}\nVisual: ${item.visualBrief}\nDuração sugerida: ${item.durationHintSecs}s`;
+            return t('{heading}\nFala: {narration}\nVisual: {visual}\nDuração sugerida: {seconds}s', {
+              heading: item.heading,
+              narration: item.narration,
+              visual: item.visualBrief,
+              seconds: item.durationHintSecs,
+            });
           if ('url' in item)
-            return `${item.title} — ${item.publisher}\n${item.url}\nConsulta: ${item.retrievedAt}. Condição de uso: ${item.license}`;
+            return t('{title} — {publisher}\n{url}\nConsulta: {retrievedAt}. Condição de uso: {license}', {
+              title: item.title,
+              publisher: item.publisher,
+              url: item.url,
+              retrievedAt: item.retrievedAt,
+              license: item.license,
+            });
           if ('text' in item)
-            return `${item.text}\nEvidências: ${item.sourceUrls.join(', ') || 'Não fornecidas'}. Estado: ${statusLabels[item.status] || item.status}`;
+            return t('{text}\nEvidências: {sources}. Estado: {status}', {
+              text: item.text,
+              sources: item.sourceUrls.join(', ') || t('Não fornecidas'),
+              status: statusLabels[item.status] || item.status,
+            });
           return '';
         })
         .join('\n\n');
-    lines.push(`${labels[key] || key}: ${text || 'Não informado'}`);
+    lines.push(`${labels[key] || key}: ${text || t('Não informado')}`);
   }
   return lines.join('\n\n');
 }
@@ -124,20 +145,23 @@ export function creativeSettingsPanel(channelId?: string, channelName?: string):
       el(
         'div',
         {},
-        el('h2', {}, 'Assistente de criação'),
-        el('p', {}, 'Modelos, direção criativa e consumo.'),
+        el('h2', {}, t('Assistente de criação')),
+        el('p', {}, t('Modelos, direção criativa e consumo.')),
       ),
     ),
     el(
       'div',
-      { className: 'panel-body section-stack' },
+      // Buttons keep their content width instead of stretching across the column.
+      { className: 'panel-body section-stack [&>.button]:w-fit [&>.button]:justify-self-start' },
       el(
         'p',
         {},
-        'Conecte Claude ou OpenAI para desenvolver pautas, roteiros e narrativas a partir do seu trabalho.',
+        t(
+          'Conecte Claude ou OpenAI para desenvolver pautas, roteiros e narrativas a partir do seu trabalho.',
+        ),
       ),
       button(
-        'Configurar assistente',
+        t('Configurar assistente'),
         () => {
           void editCreativeSettings(channelId, channelName);
         },
@@ -147,7 +171,9 @@ export function creativeSettingsPanel(channelId?: string, channelName?: string):
       el(
         'p',
         { className: 'field-hint' },
-        'Suas instruções ficam fora do Git. Cada geração por API exige confirmação; a proposta continua sendo um rascunho para revisão.',
+        t(
+          'Suas instruções ficam fora do Git. Cada geração por API exige confirmação; a proposta continua sendo um rascunho para revisão.',
+        ),
       ),
     ),
   );
@@ -155,13 +181,17 @@ export function creativeSettingsPanel(channelId?: string, channelName?: string):
 
 export async function editCreativeSettings(channelId?: string, channelName?: string): Promise<void> {
   const { dialog, body } = createDialog(
-    'Assistente de criação',
+    t('Assistente de criação'),
     channelId
-      ? `Chave deste canal: ${channelName || channelId}. Modelo e direção criativa valem para esta instalação.`
-      : 'Selecione um canal para conectar sua chave. Modelo e direção criativa valem para esta instalação.',
+      ? t('Chave deste canal: {channel}. Modelo e direção criativa valem para esta instalação.', {
+          channel: channelName || channelId,
+        })
+      : t(
+          'Selecione um canal para conectar sua chave. Modelo e direção criativa valem para esta instalação.',
+        ),
   );
   dialog.classList.add('dialog-wide');
-  body.append(el('p', { role: 'status' }, 'Carregando suas instruções…'));
+  body.append(el('p', { role: 'status' }, t('Carregando suas instruções…')));
   try {
     const settings = await request<CreativeSettings>('/api/creative/settings');
     if (!dialog.isConnected) return;
@@ -177,7 +207,7 @@ export async function editCreativeSettings(channelId?: string, channelName?: str
     const content = textarea('personal-prompt', settings.prompt.content, 16);
     content.classList.add('prompt-editor');
     content.maxLength = 20_000;
-    const modelOptions: Array<[string, string]> = [['', 'Selecione um modelo local']];
+    const modelOptions: Array<[string, string]> = [['', t('Selecione um modelo local')]];
     for (const name of new Set(
       [...(capabilities?.provider === 'ollama' ? capabilities.models : []), settings.model].filter(Boolean),
     ))
@@ -186,25 +216,25 @@ export async function editCreativeSettings(channelId?: string, channelName?: str
     const provider = select(
       'creative-provider',
       [
-        ['anthropic', 'Claude · API Anthropic'],
-        ['openai', 'OpenAI · API'],
-        ['ollama', 'Ollama · neste computador'],
+        ['anthropic', t('Claude · API Anthropic')],
+        ['openai', t('OpenAI · API')],
+        ['ollama', t('Ollama · neste computador')],
       ],
       settings.provider || 'ollama',
     );
     const anthropicModel = select(
       'anthropic-model',
       [
-        ['claude-sonnet-5-5', 'Claude Sonnet 5.5'],
-        ['claude-haiku-5-5', 'Claude Haiku 5.5'],
+        ['claude-sonnet-5-5', 'Claude Sonnet 5.5'], // i18n-ignore: model name
+        ['claude-haiku-5-5', 'Claude Haiku 5.5'], // i18n-ignore: model name
       ],
       settings.anthropicModel || 'claude-sonnet-5-5',
     );
     const openaiModel = select(
       'openai-model',
       [
-        ['gpt-6.1-sol', 'GPT-6.1 Sol'],
-        ['gpt-6-luna', 'GPT-6 Luna'],
+        ['gpt-6.1-sol', 'GPT-6.1 Sol'], // i18n-ignore: model name
+        ['gpt-6-luna', 'GPT-6 Luna'], // i18n-ignore: model name
       ],
       settings.openaiModel || 'gpt-6.1-sol',
     );
@@ -213,13 +243,13 @@ export async function editCreativeSettings(channelId?: string, channelName?: str
     maxTokens.max = '8192';
     maxTokens.step = '1';
     maxTokens.required = true;
-    const maxCost = input('creative-max-cost', String(settings.maxCostUsd ?? 0.25), 'number');
+    const maxCost = input('creative-max-cost', String(settings.maxCostUsd ?? 1), 'number');
     maxCost.min = '0.001';
     maxCost.max = '5';
     maxCost.step = 'any';
     maxCost.required = true;
     const feedback = el('p', { role: 'status', className: 'field-hint' });
-    const { form, fields } = formWithSave('Salvar preferências', async () => {
+    const { form, fields } = formWithSave(t('Salvar preferências'), async () => {
       await request('/api/creative/settings', 'PUT', {
         content: content.value,
         model: model.value,
@@ -229,15 +259,15 @@ export async function editCreativeSettings(channelId?: string, channelName?: str
         maxOutputTokens: Number(maxTokens.value),
         maxCostUsd: Number(maxCost.value),
       });
-      feedback.textContent = 'Preferências salvas. Elas serão usadas no próximo pedido.';
+      feedback.textContent = t('Preferências salvas. Elas serão usadas no próximo pedido.');
     });
     const localFields = field(
-      'Modelo de IA local',
+      t('Modelo de IA local'),
       model,
-      'Use um modelo instalado no Ollama com licença compatível. Nenhum modelo é baixado automaticamente.',
+      t('Use um modelo instalado no Ollama com licença compatível. Nenhum modelo é baixado automaticamente.'),
     );
-    const anthropicField = field('Modelo Claude', anthropicModel),
-      openaiField = field('Modelo OpenAI', openaiModel);
+    const anthropicField = field(t('Modelo Claude'), anthropicModel),
+      openaiField = field(t('Modelo OpenAI'), openaiModel);
     const transmission = notice('');
     const cloudFields = el(
       'div',
@@ -248,14 +278,16 @@ export async function editCreativeSettings(channelId?: string, channelName?: str
         'div',
         { className: 'form-grid' },
         field(
-          'Limite da estimativa por geração (USD)',
+          t('Limite da estimativa por geração (USD)'),
           maxCost,
-          'Estimativas acima deste valor são bloqueadas. A cobrança final pode variar; confira também os controles de gasto no provedor.',
+          t(
+            'Estimativas acima deste valor são bloqueadas. A cobrança final pode variar; confira também os controles de gasto no provedor.',
+          ),
         ),
         field(
-          'Máximo de tokens de resposta',
+          t('Máximo de tokens de resposta'),
           maxTokens,
-          'Uma resposta mais longa pode custar mais. Respostas interrompidas são descartadas.',
+          t('Uma resposta mais longa pode custar mais. Respostas interrompidas são descartadas.'),
         ),
       ),
       transmission,
@@ -271,31 +303,37 @@ export async function editCreativeSettings(channelId?: string, channelName?: str
       maxTokens.disabled = !cloud;
       maxCost.disabled = !cloud;
       model.disabled = cloud;
-      transmission.querySelector('p')!.textContent =
-        `Ao calcular o custo, suas instruções, o perfil do canal e os campos usados no pedido são enviados ${provider.value === 'openai' ? 'à OpenAI' : 'à Anthropic'}. A geração usa sua chave de API. Assinatura do aplicativo e acesso/consumo da API seguem cobranças próprias. Consulte créditos no provedor.`;
+      transmission.querySelector('p')!.textContent = t(
+        'Ao calcular o custo, suas instruções, o perfil do canal e os campos usados no pedido são enviados à {provider}. A geração usa sua chave de API. Assinatura do aplicativo e acesso/consumo da API seguem cobranças próprias. Consulte créditos no provedor.',
+        { provider: provider.value === 'openai' ? 'OpenAI' : 'Anthropic' },
+      );
     };
     provider.addEventListener('change', showProvider);
     showProvider();
     fields.append(
-      field('Provedor', provider),
+      field(t('Provedor'), provider),
       cloudFields,
       localFields,
       el(
         'p',
         { className: 'field-hint' },
-        capabilities?.reason || 'Você pode salvar as preferências antes de conectar o assistente.',
+        capabilities?.reason
+          ? translateMessage(capabilities.reason)
+          : t('Você pode salvar as preferências antes de conectar o assistente.'),
       ),
       field(
-        'Sua direção criativa',
+        t('Sua direção criativa'),
         content,
-        'Defina estilo, público e limites. Não inclua senhas ou tokens. Estas preferências não concedem acesso a contas, arquivos ou ferramentas.',
+        t(
+          'Defina estilo, público e limites. Não inclua senhas ou tokens. Estas preferências não concedem acesso a contas, arquivos ou ferramentas.',
+        ),
       ),
       el('p', { className: 'field-hint mono' }, settings.prompt.fileName),
     );
     const connection = el(
       'section',
       { className: 'section-stack' },
-      el('h3', {}, 'Chaves de API deste canal'),
+      el('h3', {}, t('Chaves de API deste canal')),
     );
     if (channelId) {
       const keyProvider = select(
@@ -313,12 +351,12 @@ export async function editCreativeSettings(channelId?: string, channelName?: str
       key.pattern = '[A-Za-z0-9_-]{20,512}';
       key.required = true;
       key.spellcheck = false;
-      const keyStatus = el('p', { className: 'field-hint', role: 'status' }, 'Consultando o cofre local…');
+      const keyStatus = el('p', { className: 'field-hint', role: 'status' }, t('Consultando o cofre local…'));
       const keyPath = () =>
         `/api/channels/${encodeURIComponent(channelId)}/creative/keys/${keyProvider.value}`;
       let keyRevision = 0;
       const removeKey = button(
-        'Remover chave',
+        t('Remover chave'),
         () => {
           void (async () => {
             keyRevision++;
@@ -326,12 +364,14 @@ export async function editCreativeSettings(channelId?: string, channelName?: str
             keyProvider.disabled = true;
             try {
               await request(keyPath(), 'DELETE');
-              keyStatus.textContent = 'Nenhuma chave conectada a este canal para este provedor.';
+              keyStatus.textContent = t('Nenhuma chave conectada a este canal para este provedor.');
               key.value = '';
               removeKey.hidden = true;
             } catch (error) {
               keyStatus.textContent =
-                error instanceof Error ? error.message : 'Não foi possível remover a chave.';
+                error instanceof Error
+                  ? translateMessage(error.message)
+                  : t('Não foi possível remover a chave.');
             } finally {
               removeKey.disabled = false;
               keyProvider.disabled = false;
@@ -342,14 +382,16 @@ export async function editCreativeSettings(channelId?: string, channelName?: str
         'trash',
       );
       removeKey.hidden = true;
-      const keyForm = formWithSave('Salvar chave no cofre', async () => {
+      const keyForm = formWithSave(t('Salvar chave no cofre'), async () => {
         keyRevision++;
         keyProvider.disabled = true;
         removeKey.disabled = true;
         try {
           await request(keyPath(), 'PUT', { key: key.value });
           key.value = '';
-          keyStatus.textContent = 'Chave guardada no cofre local deste canal. Ela não é exibida novamente.';
+          keyStatus.textContent = t(
+            'Chave guardada no cofre local deste canal. Ela não é exibida novamente.',
+          );
           removeKey.hidden = false;
         } finally {
           keyProvider.disabled = false;
@@ -358,27 +400,30 @@ export async function editCreativeSettings(channelId?: string, channelName?: str
       });
       keyForm.fields.append(
         field(
-          'Chave de API deste canal',
+          t('Chave de API deste canal'),
           key,
-          'Guardada no cofre do sistema operacional. Não entra no prompt, nas preferências nem no Git.',
+          t('Guardada no cofre do sistema operacional. Não entra no prompt, nas preferências nem no Git.'),
         ),
       );
-      connection.append(field('Provedor da chave', keyProvider), keyStatus, keyForm.form, removeKey);
+      connection.append(field(t('Provedor da chave'), keyProvider), keyStatus, keyForm.form, removeKey);
       const readKeyStatus = async () => {
         const revision = ++keyRevision;
-        keyStatus.textContent = 'Consultando o cofre local…';
+        keyStatus.textContent = t('Consultando o cofre local…');
         removeKey.hidden = true;
         try {
           const stored = await request<{ configured: boolean }>(keyPath());
           if (!dialog.isConnected || revision !== keyRevision) return;
           keyStatus.textContent = stored.configured
-            ? 'Há uma chave guardada para este canal e provedor. Preencha o campo apenas para substituí-la.'
-            : 'Nenhuma chave conectada a este canal para este provedor.';
+            ? t(
+                'Há uma chave guardada para este canal e provedor. Preencha o campo apenas para substituí-la.',
+              )
+            : t('Nenhuma chave conectada a este canal para este provedor.');
           removeKey.hidden = !stored.configured;
         } catch {
           if (dialog.isConnected && revision === keyRevision)
-            keyStatus.textContent =
-              'Não foi possível consultar o cofre. Você pode tentar salvar a chave novamente.';
+            keyStatus.textContent = t(
+              'Não foi possível consultar o cofre. Você pode tentar salvar a chave novamente.',
+            );
         }
       };
       keyProvider.addEventListener('change', () => {
@@ -389,20 +434,20 @@ export async function editCreativeSettings(channelId?: string, channelName?: str
       if (!dialog.isConnected) return;
     } else
       connection.append(
-        el('p', { className: 'field-hint' }, 'Selecione um canal no cabeçalho para conectar sua chave.'),
+        el('p', { className: 'field-hint' }, t('Selecione um canal no cabeçalho para conectar sua chave.')),
       );
     const usage = createAIUsagePanel(channelId, channelName);
     let usageLoaded = false;
     const tabs = editorTabs(
-      'Configuração do assistente',
+      t('Configuração do assistente'),
       [
         {
           key: 'preferences',
-          label: 'Modelo e direção',
+          label: t('Modelo e direção'),
           content: el('section', { className: 'section-stack' }, form, feedback),
         },
-        { key: 'connection', label: 'Chave do canal', content: connection },
-        { key: 'usage', label: 'Consumo', content: usage.node },
+        { key: 'connection', label: t('Chave do canal'), content: connection },
+        { key: 'usage', label: t('Consumo'), content: usage.node },
       ],
       (key) => {
         if (key === 'usage' && !usageLoaded) {
@@ -418,7 +463,9 @@ export async function editCreativeSettings(channelId?: string, channelName?: str
       el(
         'div',
         { className: 'form-error', role: 'alert' },
-        error instanceof Error ? error.message : 'Não foi possível carregar as instruções pessoais.',
+        error instanceof Error
+          ? translateMessage(error.message)
+          : t('Não foi possível carregar as instruções pessoais.'),
       ),
     );
   }
@@ -451,7 +498,7 @@ export function openCreativeDraft(
   const session = draftSession;
   const modal = editor?.mount
     ? undefined
-    : createDialog(titles[task], `${channelName} · rascunho para revisão`);
+    : createDialog(titles[task], t('{channel} · rascunho para revisão', { channel: channelName }));
   modal?.dialog.classList.add('dialog-wide');
   const body = editor?.mount?.host ?? modal!.body;
   body.classList.add('assistant-workspace');
@@ -467,14 +514,17 @@ export function openCreativeDraft(
   brief.placeholder = hints[task];
   const references = input('creative-references', '', 'checkbox');
   const { control: style, node: styleField } = videoStyleField('creative-style');
-  const status = el('p', { className: 'assistant-status', role: 'status' }, 'Consultando o assistente…');
+  const status = el('p', { className: 'assistant-status', role: 'status' }, t('Consultando o assistente…'));
   let provider: 'ollama' | 'anthropic' | 'openai' = 'ollama';
   let quote: CreativeQuote | undefined;
   const cloud = () => provider !== 'ollama';
   const providerName = () => (provider === 'openai' ? 'OpenAI' : 'Anthropic');
   const costDetails = el('div', { className: 'section-stack', 'aria-live': 'polite', hidden: true });
   const transferNotice = notice(
-    'Calcular o custo envia à Anthropic suas instruções pessoais, o perfil deste canal, os campos do editor e as referências selecionadas. A geração paga só começa após você conferir a estimativa e autorizar.',
+    t(
+      'Calcular o custo envia à {provider} suas instruções pessoais, o perfil deste canal, os campos do editor e as referências selecionadas. A geração paga só começa após você conferir a estimativa e autorizar.',
+      { provider: 'Anthropic' },
+    ),
   );
   transferNotice.hidden = true;
   const output = el(
@@ -483,7 +533,7 @@ export function openCreativeDraft(
     el(
       'p',
       { className: 'field-hint' },
-      'A proposta aparece aqui depois de gerar. Nenhum campo será alterado antes de você aplicar.',
+      t('A proposta aparece aqui depois de gerar. Nenhum campo será alterado antes de você aplicar.'),
     ),
   );
   const resultActions = el('div', { className: 'assistant-result-actions' });
@@ -494,17 +544,28 @@ export function openCreativeDraft(
       editor && draft.fields ? renderValues(draft.fields) : textarea('creative-result', draft.body, 12);
     if (content instanceof HTMLTextAreaElement) {
       content.readOnly = true;
-      content.setAttribute('aria-label', 'Rascunho gerado pela IA');
+      content.setAttribute('aria-label', t('Rascunho gerado pela IA'));
     }
     replace(
       output,
       el('h3', {}, draft.title),
-      el('p', { className: 'field-hint' }, `Rascunho · ${draft.model} · revisão pendente`),
+      el(
+        'p',
+        { className: 'field-hint' },
+        t('Rascunho · {model} · revisão pendente', { model: draft.model }),
+      ),
       draft.usage
         ? el(
             'p',
             { className: 'field-hint' },
-            `${draft.usage.inputTokens.toLocaleString('pt-BR')} tokens de entrada · ${draft.usage.outputTokens.toLocaleString('pt-BR')} de resposta · custo calculado: ${usd(draft.usage.estimatedCostUsd)}. Confira a cobrança no provedor.`,
+            t(
+              '{input} tokens de entrada · {output} de resposta · custo calculado: {cost}. Confira a cobrança no provedor.',
+              {
+                input: draft.usage.inputTokens.toLocaleString(languageTag()),
+                output: draft.usage.outputTokens.toLocaleString(languageTag()),
+                cost: usd(draft.usage.estimatedCostUsd),
+              },
+            ),
           )
         : null,
       el('p', { className: 'creative-draft-summary' }, draft.body),
@@ -513,20 +574,22 @@ export function openCreativeDraft(
     replace(resultActions);
     if (editor && draft.fields) {
       const apply = button(
-        editor.applyLabel ?? 'Usar nos campos',
+        editor.applyLabel ?? t('Usar nos campos'),
         async () => {
           if (apply.disabled) return;
           apply.disabled = true;
           feedback.hidden = true;
           try {
-            if (!active()) throw new Error('Abra novamente o editor nesta sessão.');
+            if (!active()) throw new Error(t('Abra novamente o editor nesta sessão.'));
             const applying = editor.onApply(draft.fields!);
             if (applying) await applying;
             if (active()) close();
           } catch (error) {
             if (active()) {
               feedback.textContent =
-                error instanceof Error ? error.message : 'Não foi possível preencher o editor.';
+                error instanceof Error
+                  ? translateMessage(error.message)
+                  : t('Não foi possível preencher o editor.');
               feedback.hidden = false;
             }
           } finally {
@@ -540,7 +603,7 @@ export function openCreativeDraft(
     } else
       resultActions.append(
         button(
-          'Copiar rascunho',
+          t('Copiar rascunho'),
           () => {
             void navigator.clipboard.writeText(draft.body).catch(() => {
               if (content instanceof HTMLTextAreaElement) {
@@ -553,7 +616,8 @@ export function openCreativeDraft(
         ),
       );
   }
-  const submitLabel = () => (cloud() ? (quote ? 'Autorizar e gerar' : 'Calcular custo') : 'Gerar rascunho');
+  const submitLabel = () =>
+    cloud() ? (quote ? t('Autorizar e gerar') : t('Calcular custo')) : t('Gerar rascunho');
   const resetQuote = () => {
     quote = undefined;
     costDetails.hidden = true;
@@ -575,7 +639,9 @@ export function openCreativeDraft(
       resultActions.setAttribute('aria-busy', 'true');
       try {
         if (cloud() && !quote) {
-          status.textContent = `Calculando a estimativa ${provider === 'openai' ? 'na OpenAI' : 'na Anthropic'}. A geração ainda não começou…`;
+          status.textContent = t('Calculando a estimativa na {provider}. A geração ainda não começou…', {
+            provider: providerName(),
+          });
           const estimated = await request<CreativeQuote>(
             `/api/channels/${encodeURIComponent(channelId)}/creative/quote`,
             'POST',
@@ -593,42 +659,62 @@ export function openCreativeDraft(
             !Number.isFinite(Date.parse(estimated.expiresAt))
           )
             throw new Error(
-              'A estimativa não corresponde a este pedido. Calcule novamente antes de autorizar.',
+              t('A estimativa não corresponde a este pedido. Calcule novamente antes de autorizar.'),
             );
           quote = estimated;
           replace(
             costDetails,
-            el('h3', {}, 'Confira antes de gerar'),
+            el('h3', {}, t('Confira antes de gerar')),
             el(
               'p',
               {},
-              `${estimated.model} · ${estimated.inputTokens.toLocaleString('pt-BR')} tokens de entrada · até ${estimated.maxOutputTokens.toLocaleString('pt-BR')} de resposta.`,
+              t('{model} · {input} tokens de entrada · até {output} de resposta.', {
+                model: estimated.model,
+                input: estimated.inputTokens.toLocaleString(languageTag()),
+                output: estimated.maxOutputTokens.toLocaleString(languageTag()),
+              }),
             ),
             el(
               'p',
               {},
-              `Estimativa máxima com margem: ${usd(estimated.estimatedMaxCostUsd)}. Limite configurado: ${usd(estimated.costLimitUsd)}.`,
+              (estimated.attempts ?? 1) > 1
+                ? t(
+                    'Estimativa máxima com margem: {cost}, cobrindo até {attempts} gerações para cumprir a duração. Limite configurado: {limit}.',
+                    {
+                      cost: usd(estimated.estimatedMaxCostUsd),
+                      attempts: estimated.attempts ?? 1,
+                      limit: usd(estimated.costLimitUsd),
+                    },
+                  )
+                : t('Estimativa máxima com margem: {cost}. Limite configurado: {limit}.', {
+                    cost: usd(estimated.estimatedMaxCostUsd),
+                    limit: usd(estimated.costLimitUsd),
+                  }),
             ),
             el(
               'p',
               { className: 'field-hint' },
-              `Preços consultados em ${estimated.pricingCheckedAt}. A cobrança final pode variar. A autorização vale para este pedido por até cinco minutos. Alterar o pedido exige novo cálculo.`,
+              t(
+                'Preços consultados em {date}. A cobrança final pode variar. A autorização vale para este pedido por até cinco minutos. Alterar o pedido exige novo cálculo.',
+                { date: estimated.pricingCheckedAt },
+              ),
             ),
           );
           costDetails.hidden = false;
-          status.textContent =
-            'Estimativa pronta. Confira os valores e use Autorizar e gerar para iniciar a chamada paga.';
+          status.textContent = t(
+            'Estimativa pronta. Confira os valores e use Autorizar e gerar para iniciar a chamada paga.',
+          );
           return false;
         }
         const authorization = quote;
         if (cloud() && (!authorization || Date.parse(authorization.expiresAt) <= Date.now())) {
           resetQuote();
-          throw new Error('A estimativa expirou. Calcule novamente antes de autorizar a geração.');
+          throw new Error(t('A estimativa expirou. Calcule novamente antes de autorizar a geração.'));
         }
         resetQuote();
         status.textContent = cloud()
-          ? `Gerando a proposta ${provider === 'openai' ? 'com OpenAI' : 'com Claude'}…`
-          : 'Gerando a proposta no modelo local…';
+          ? t('Gerando a proposta com {provider}…', { provider: provider === 'openai' ? 'OpenAI' : 'Claude' })
+          : t('Gerando a proposta no modelo local…');
         paidAttempt = cloud();
         const draft = await request<CreativeDraft>(
           `/api/channels/${encodeURIComponent(channelId)}/creative/draft`,
@@ -636,7 +722,7 @@ export function openCreativeDraft(
           { ...payload(), ...(cloud() ? { quoteId: authorization!.id, authorizePaid: true } : {}) },
         );
         if (draft.channelId !== channelId || draft.task !== task)
-          throw new Error('O rascunho não corresponde ao canal e à tarefa solicitados.');
+          throw new Error(t('O rascunho não corresponde ao canal e à tarefa solicitados.'));
         if (
           editor &&
           (!draft.fields ||
@@ -646,7 +732,7 @@ export function openCreativeDraft(
             draft.reviewRequired !== true)
         )
           throw new Error(
-            'A resposta não contém campos válidos para este editor. Nenhuma alteração foi aplicada.',
+            t('A resposta não contém campos válidos para este editor. Nenhuma alteração foi aplicada.'),
           );
         if (session !== draftSession) return;
         drafts.delete(key);
@@ -660,16 +746,19 @@ export function openCreativeDraft(
         if (active()) {
           show(draft);
           tabs.activate('result');
-          status.textContent = 'Proposta pronta para revisão. Aplicar preenche o editor, sem salvar.';
+          status.textContent = t('Proposta pronta para revisão. Aplicar preenche o editor, sem salvar.');
         }
       } catch (error) {
         resetQuote();
         if (active())
           status.textContent = cloud()
             ? paidAttempt
-              ? `O pedido não foi concluído. Pode haver cobrança; confira o consumo ${provider === 'openai' ? 'na OpenAI' : 'na Anthropic'} antes de tentar novamente.`
-              : 'A geração não foi iniciada. Confira o erro e calcule novamente.'
-            : 'A proposta não foi gerada. Confira o erro e tente novamente.';
+              ? t(
+                  'O pedido não foi concluído. Pode haver cobrança; confira o consumo na {provider} antes de tentar novamente.',
+                  { provider: providerName() },
+                )
+              : t('A geração não foi iniciada. Confira o erro e calcule novamente.')
+            : t('A proposta não foi gerada. Confira o erro e tente novamente.');
         throw error;
       } finally {
         output.inert = false;
@@ -678,7 +767,7 @@ export function openCreativeDraft(
       }
     },
     undefined,
-    () => (cloud() && !quote ? 'Calculando…' : 'Gerando…'),
+    () => (cloud() && !quote ? t('Calculando…') : t('Gerando…')),
   );
   form.id = `creative-form-${crypto.randomUUID()}`;
   const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
@@ -688,37 +777,41 @@ export function openCreativeDraft(
     if (!quote) return;
     resetQuote();
     setButtonLabel(submit, submitLabel(), 'check');
-    status.textContent = 'Pedido alterado. Calcule o custo novamente antes de autorizar.';
+    status.textContent = t('Pedido alterado. Calcule o custo novamente antes de autorizar.');
   };
   brief.addEventListener('input', invalidateQuote);
   references.addEventListener('change', invalidateQuote);
   style.addEventListener('change', invalidateQuote);
   fields.append(
-    field('O que desenvolver?', brief, editor ? 'O pedido usa os campos atuais do editor.' : hints[task]),
+    field(
+      t('O que desenvolver?'),
+      brief,
+      editor ? t('O pedido usa os campos atuais do editor.') : hints[task],
+    ),
     ...(task === 'research' ? [] : [styleField]),
     el(
       'label',
       { className: 'checkbox-field' },
       references,
-      'Acrescentar outras pesquisas revisadas do canal',
+      t('Acrescentar outras pesquisas revisadas do canal'),
     ),
     el(
       'p',
       { className: 'field-hint' },
-      'Opcional: até seis pesquisas. As referências não são verificadas automaticamente.',
+      t('Opcional: até seis pesquisas. As referências não são verificadas automaticamente.'),
     ),
     transferNotice,
     costDetails,
   );
   const context = editor
     ? renderValues(editor.context.values)
-    : el('p', { className: 'field-hint' }, 'Este pedido usa o perfil do canal e as instruções pessoais.');
+    : el('p', { className: 'field-hint' }, t('Este pedido usa o perfil do canal e as instruções pessoais.'));
   const tabs = editorTabs(
-    'Assistente de criação',
+    t('Assistente de criação'),
     [
-      { key: 'request', label: 'Pedido', content: form },
-      { key: 'context', label: 'Dados usados', content: context },
-      { key: 'result', label: 'Proposta', content: output },
+      { key: 'request', label: t('Pedido'), content: form },
+      { key: 'context', label: t('Dados usados'), content: context },
+      { key: 'result', label: t('Proposta'), content: output },
     ],
     (key) => {
       actions.hidden = key !== 'request';
@@ -726,7 +819,7 @@ export function openCreativeDraft(
     },
   );
   const back = button(
-    editor?.mount ? 'Voltar ao editor' : 'Fechar',
+    editor?.mount ? t('Voltar ao editor') : t('Fechar'),
     () => protectEdits(close, body),
     'ghost',
     'chevron',
@@ -741,7 +834,7 @@ export function openCreativeDraft(
     resultActions,
   );
   const configuration = button(
-    'Configurar assistente',
+    t('Configurar assistente'),
     () =>
       protectEdits(() => {
         close();
@@ -755,7 +848,9 @@ export function openCreativeDraft(
     ? el(
         'p',
         { className: 'field-hint' },
-        'Configure o modelo em Configurações → Assistente de criação. Você pode voltar e continuar escrevendo.',
+        t(
+          'Configure o modelo em Configurações → Assistente de criação. Você pode voltar e continuar escrevendo.',
+        ),
       )
     : configuration;
   setupHint.hidden = true;
@@ -795,22 +890,30 @@ export function openCreativeDraft(
             ? 'anthropic'
             : 'ollama';
       transferNotice.hidden = !cloud();
-      transferNotice.querySelector('p')!.textContent =
-        `Calcular o custo envia ${provider === 'openai' ? 'à OpenAI' : 'à Anthropic'} suas instruções pessoais, o perfil deste canal, os campos do editor e as referências selecionadas. A geração paga só começa após você conferir a estimativa e autorizar.`;
+      transferNotice.querySelector('p')!.textContent = t(
+        'Calcular o custo envia à {provider} suas instruções pessoais, o perfil deste canal, os campos do editor e as referências selecionadas. A geração paga só começa após você conferir a estimativa e autorizar.',
+        { provider: providerName() },
+      );
       setButtonLabel(submit, submitLabel(), 'check');
       status.textContent = capabilities.available
         ? cloud()
-          ? `${providerName()}: ${capabilities.selectedModel}. Calcule a estimativa antes de autorizar a geração.`
-          : `Modelo local: ${capabilities.selectedModel}. A geração começa ao enviar o pedido.`
-        : capabilities.reason;
-      status.className = capabilities.available ? 'assistant-status' : 'assistant-status alert';
+          ? t('{provider}: {model}. Calcule a estimativa antes de autorizar a geração.', {
+              provider: providerName(),
+              model: capabilities.selectedModel,
+            })
+          : t('Modelo local: {model}. A geração começa ao enviar o pedido.', {
+              model: capabilities.selectedModel,
+            })
+        : translateMessage(capabilities.reason);
+      status.classList.toggle('alert', !capabilities.available);
       submit.disabled = !capabilities.available;
       setupHint.hidden = capabilities.available;
     })
     .catch((error) => {
       if (active()) {
-        status.textContent = error instanceof Error ? error.message : 'O assistente não respondeu.';
-        status.className = 'assistant-status alert';
+        status.textContent =
+          error instanceof Error ? translateMessage(error.message) : t('O assistente não respondeu.');
+        status.classList.add('alert');
         submit.disabled = true;
         setupHint.hidden = false;
       }
@@ -818,7 +921,7 @@ export function openCreativeDraft(
 }
 
 function usd(value: number): string {
-  return new Intl.NumberFormat('pt-BR', {
+  return new Intl.NumberFormat(languageTag(), {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 3,

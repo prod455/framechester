@@ -7,19 +7,31 @@ use crate::scene::{Anchor, Graph, Node, Shape};
 use crate::text::Typesetter;
 use crate::tokens;
 use framechester_core::error::Result;
+use framechester_core::persona::Persona;
 use framechester_core::storyboard::{Character, Composition, Pose, Storyboard, VideoFormat};
 use std::path::Path;
 
 pub const WIDTH: u32 = 1280;
 pub const HEIGHT: u32 = 720;
 
+/// Who appears on the thumbnail: a preset character or one the script described.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Cast {
+    Preset(Character),
+    Described(Persona),
+}
+
 /// The character the video already uses, so the thumbnail promises what the video shows.
-pub fn cast_of(storyboard: &Storyboard) -> Option<Character> {
+pub fn cast_of(storyboard: &Storyboard) -> Option<Cast> {
     storyboard
         .scenes
         .iter()
-        .find_map(|scene| match scene.composition {
-            Composition::Character { character, .. } => Some(character),
+        .find_map(|scene| match &scene.composition {
+            Composition::Character {
+                persona: Some(persona),
+                ..
+            } => Some(Cast::Described(persona.clone())),
+            Composition::Character { character, .. } => Some(Cast::Preset(*character)),
             _ => None,
         })
 }
@@ -28,7 +40,7 @@ pub fn cast_of(storyboard: &Storyboard) -> Option<Character> {
 pub fn compose(
     typesetter: &Typesetter,
     title: &str,
-    character: Character,
+    cast: &Cast,
 ) -> (Graph, Vec<crate::components::LayoutIssue>) {
     let canvas = Canvas::for_format(VideoFormat::X);
     let mut ctx = Ctx::new(&canvas, typesetter, 0);
@@ -39,7 +51,10 @@ pub fn compose(
     } else {
         Pose::Point
     };
-    let mut nodes = character::figure(stage, character, pose);
+    let mut nodes = match cast {
+        Cast::Preset(preset) => character::figure(stage, *preset, pose),
+        Cast::Described(persona) => character::persona_figure(stage, persona, pose),
+    };
     let text_area = Rect::new(
         stage.right() + 40.0,
         margin,
@@ -86,10 +101,10 @@ pub fn compose(
 pub fn render(
     typesetter: &Typesetter,
     title: &str,
-    character: Character,
+    cast: &Cast,
     path: &Path,
 ) -> Result<Vec<crate::components::LayoutIssue>> {
-    let (graph, issues) = compose(typesetter, title, character);
+    let (graph, issues) = compose(typesetter, title, cast);
     let svg = graph.svg(0.0, WIDTH, HEIGHT, tokens::FONT_SANS);
     Rasterizer::new(typesetter, WIDTH, HEIGHT).save_png(&svg, path)?;
     Ok(issues)
@@ -110,7 +125,7 @@ mod tests {
             ("Agente ou skill?", Character::Developer),
             ("O que a ciência diz sobre o sono", Character::Scientist),
         ] {
-            let (graph, issues) = compose(&typesetter, title, character);
+            let (graph, issues) = compose(&typesetter, title, &Cast::Preset(character));
             assert!(issues.is_empty(), "{title}: {issues:?}");
             let safe = Rect::new(0.0, 0.0, WIDTH as f32, HEIGHT as f32);
             for node in graph.nodes.iter().filter(|node| node.is_text()) {

@@ -27,6 +27,7 @@
 !web/server/
 !web/server/**
 !web/public/
+!web/public/favicon.svg
 !web/public/licenses/
 !web/public/licenses/**
 !docker/

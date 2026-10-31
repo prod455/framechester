@@ -1,4 +1,5 @@
 import type { Channel, PreparedVisuals, Script, WebAsset, WebConfig, WebJob } from '../shared/types.ts';
+import { t, translateMessage } from '../shared/i18n.ts';
 import { request } from './api.ts';
 import { createDialog, empty, formWithSave } from './components.ts';
 import { protectEdits } from './edit-protection.ts';
@@ -21,8 +22,10 @@ interface ProductionOptions {
 /** A saved script is the starting point; uploads are an optional source of visuals. */
 export function openProduction(options: ProductionOptions): HTMLDialogElement {
   const { dialog, body } = createDialog(
-    'Preparar vídeo',
-    `Canal: ${options.channel.name}. Confira as prévias das cenas e o que falta para gerar o vídeo.`,
+    t('Preparar vídeo'),
+    t('Canal: {channel}. Confira as prévias das cenas e o que falta para gerar o vídeo.', {
+      channel: options.channel.name,
+    }),
   );
   dialog.classList.add('production-dialog');
   const owner = options.channel.id,
@@ -33,11 +36,11 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
   if (!scripts.length) {
     body.append(
       empty(
-        'Adicione um roteiro primeiro',
-        'O motor usa as falas e as cenas do roteiro.',
+        t('Adicione um roteiro primeiro'),
+        t('O motor usa as falas e as cenas do roteiro.'),
         'script',
         button(
-          'Ir para roteiros',
+          t('Ir para roteiros'),
           () => {
             dialog.close();
             options.onEditScript('');
@@ -58,7 +61,7 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
     active,
   );
   const editor = el('div', { className: 'form-stack' });
-  body.append(field('Roteiro', picker), editor);
+  body.append(field(t('Roteiro'), picker), editor);
   const path = (suffix: string) => `/api/channels/${encodeURIComponent(owner)}/${suffix}`;
   const relevant = (scriptId: string) =>
     dialog.isConnected && options.currentChannelId() === owner && active === scriptId;
@@ -69,12 +72,12 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
     }, editor);
   async function prepare() {
     const scriptId = active;
-    replace(editor, el('p', { role: 'status' }, 'Criando e vinculando os visuais deste roteiro…'));
+    replace(editor, el('p', { role: 'status' }, t('Criando e vinculando os visuais deste roteiro…')));
     try {
       const prepared = await api<PreparedVisuals>(path('visuals/prepare'), 'POST', { scriptId });
       if (!relevant(scriptId)) return;
       if (prepared.scriptId !== scriptId || prepared.assets.some((asset) => asset.channelId !== owner))
-        throw new Error('A preparação retornou recursos de outro roteiro ou canal.');
+        throw new Error(t('A preparação retornou recursos de outro roteiro ou canal.'));
       options.onPrepared?.(prepared);
       const script = scripts.find((script) => script.id === scriptId)!;
       const available = prepared.assets.filter((asset) => asset.channelId === owner);
@@ -86,7 +89,7 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
         const control = select(
           `asset-${scene.id}`,
           [
-            ['', 'Selecione uma imagem ou clipe do canal'],
+            ['', t('Selecione uma imagem ou clipe do canal')],
             ...available.map((asset): [string, string] => [asset.id, asset.name]),
           ],
           selected,
@@ -103,11 +106,11 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
             asset?.kind === 'image'
               ? el('img', {
                   src: path(`assets/${encodeURIComponent(asset.id)}/preview`),
-                  alt: `Visual de ${scene.heading}`,
+                  alt: t('Visual de {heading}', { heading: scene.heading }),
                   loading: 'lazy',
                 })
               : asset
-                ? el('p', { className: 'field-hint' }, `Clipe selecionado: ${asset.name}`)
+                ? el('p', { className: 'field-hint' }, t('Clipe selecionado: {name}', { name: asset.name }))
                 : null,
           );
         }
@@ -119,20 +122,25 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
         const row = el(
           'section',
           { className: 'production-scene' },
-          el('h3', {}, `Cena ${index + 1} · ${scene.heading}`),
+          el('h3', {}, t('Cena {number} · {heading}', { number: index + 1, heading: scene.heading })),
           preview,
         );
         row.append(
-          el('p', { className: 'field-hint' }, 'Visual explicativo criado e associado a esta cena.'),
+          el('p', { className: 'field-hint' }, t('Visual explicativo criado e associado a esta cena.')),
           el(
             'details',
             {},
-            el('summary', {}, 'Usar outro recurso visual'),
+            el('summary', {}, t('Usar outro recurso visual')),
             el(
               'div',
               { className: 'production-scene-source' },
-              field('Imagem ou clipe do canal', control),
-              button('Adicionar arquivo próprio', () => leaveFor(options.onAddAssets), 'secondary', 'plus'),
+              field(t('Imagem ou clipe do canal'), control),
+              button(
+                t('Adicionar arquivo próprio'),
+                () => leaveFor(options.onAddAssets),
+                'secondary',
+                'plus',
+              ),
             ),
           ),
         );
@@ -144,13 +152,14 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
       subtitles.checked = true;
       let finalRequested = false;
       const { form, fields, actions } = formWithSave(
-        'Gerar prévia do vídeo',
+        t('Gerar prévia do vídeo'),
         async () => {
           const previewOnly = !finalRequested;
-          if (!relevant(scriptId)) throw new Error('O canal ou roteiro mudou. Abra a preparação novamente.');
+          if (!relevant(scriptId))
+            throw new Error(t('O canal ou roteiro mudou. Abra a preparação novamente.'));
           if (!previewOnly && !script.crossChecked)
             throw new Error(
-              'Marque “Conferi e cruzei as fontes e as alegações” no roteiro antes da versão final.',
+              t('Marque “Conferi e cruzei as fontes e as alegações” no roteiro antes da versão final.'),
             );
           const job = await api<WebJob>(path('jobs'), 'POST', {
             scriptId,
@@ -169,7 +178,7 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
           await options.onStarted(job);
         },
         () => dialog.close(),
-        'Iniciando produção…',
+        t('Iniciando produção…'),
       );
       // The final version needs the operator's declaration. A missing source is named by QA in the
       // report; only a contradicted claim or a reference outside the sources blocks it, the same
@@ -180,8 +189,12 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
       );
       const editorialReady = script.crossChecked && claimsReady;
       const editorialReason = !script.crossChecked
-        ? 'Para a versão final, marque “Conferi e cruzei as fontes e as alegações” no roteiro (aba Fontes e revisão).'
-        : 'Para a versão final, corrija no roteiro as alegações marcadas como contradição ou com URL fora das fontes.';
+        ? t(
+            'Para a versão final, marque “Conferi e cruzei as fontes e as alegações” no roteiro (aba Fontes e revisão).',
+          )
+        : t(
+            'Para a versão final, corrija no roteiro as alegações marcadas como contradição ou com URL fora das fontes.',
+          );
       const previewCount = Object.keys(prepared.previews ?? prepared.bindings).length;
       const summary = el(
         'section',
@@ -189,21 +202,23 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
         el(
           'h3',
           {},
-          previewCount
-            ? `${previewCount} prévia${previewCount === 1 ? '' : 's'} criada${previewCount === 1 ? '' : 's'}`
-            : 'A preparação precisa de atenção',
+          previewCount === 1
+            ? t('{count} prévia criada', { count: previewCount })
+            : previewCount
+              ? t('{count} prévias criadas', { count: previewCount })
+              : t('A preparação precisa de atenção'),
         ),
         el(
           'p',
           {},
-          'Os visuais explicativos já estão vinculados às cenas. Confira as imagens antes de continuar.',
+          t('Os visuais explicativos já estão vinculados às cenas. Confira as imagens antes de continuar.'),
         ),
       );
       const recovery = el('div', { className: 'production-summary-actions' });
       if (!editorialReady)
         recovery.append(
           button(
-            'Revisar roteiro',
+            t('Revisar roteiro'),
             () => leaveFor(() => options.onEditScript(scriptId)),
             'secondary',
             'script',
@@ -214,7 +229,7 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
       const readiness = el('p', { className: 'field-hint', role: 'status' });
       const submit = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
       const finalButton = button(
-        'Gerar versão final',
+        t('Gerar versão final'),
         () => {
           finalRequested = true;
           form.requestSubmit(submit);
@@ -231,11 +246,20 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
         submit.disabled = bindings.some(
           (binding) => !binding.control.value && !prepared.previews?.[String(binding.sceneId)],
         );
-        readiness.textContent = missing
-          ? `Falta resolver ${missing} cena${missing === 1 ? '' : 's'} para gerar a versão final. As prévias ilustrativas já estão disponíveis.`
-          : !editorialReady
-            ? editorialReason
-            : 'Cenas prontas para gerar o vídeo neste computador.';
+        readiness.textContent =
+          missing === 1
+            ? t(
+                'Falta resolver {count} cena para gerar a versão final. As prévias ilustrativas já estão disponíveis.',
+                { count: missing },
+              )
+            : missing
+              ? t(
+                  'Falta resolver {count} cenas para gerar a versão final. As prévias ilustrativas já estão disponíveis.',
+                  { count: missing },
+                )
+              : !editorialReady
+                ? editorialReason
+                : t('Cenas prontas para gerar o vídeo neste computador.');
       };
       updateReady();
       fields.append(
@@ -244,14 +268,16 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
         el(
           'div',
           { className: 'production-options' },
-          el('label', { className: 'checkbox-field' }, subtitles, 'Incluir legendas no vídeo'),
-          el('label', { className: 'checkbox-field' }, asr, 'Conferir a fala com ASR local'),
+          el('label', { className: 'checkbox-field' }, subtitles, t('Incluir legendas no vídeo')),
+          el('label', { className: 'checkbox-field' }, asr, t('Conferir a fala com ASR local')),
         ),
         readiness,
         el(
           'p',
           { className: 'field-hint' },
-          'A prévia de vídeo pode ser gerada antes da revisão editorial e recebe uma marca de revisão. Os visuais e a montagem são locais. A adaptação com IA pede autorização antes de qualquer geração paga.',
+          t(
+            'A prévia de vídeo pode ser gerada antes da revisão editorial e recebe uma marca de revisão. Os visuais e a montagem são locais. A adaptação com IA pede autorização antes de qualquer geração paga.',
+          ),
         ),
       );
       replace(editor, form);
@@ -262,10 +288,12 @@ export function openProduction(options: ProductionOptions): HTMLDialogElement {
         el(
           'div',
           { role: 'alert', className: 'alert' },
-          error instanceof Error ? error.message : 'Não foi possível preparar os visuais.',
+          error instanceof Error
+            ? translateMessage(error.message)
+            : t('Não foi possível preparar os visuais.'),
         ),
         button(
-          'Tentar novamente',
+          t('Tentar de novo'),
           () => {
             void prepare();
           },

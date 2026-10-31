@@ -1,3 +1,4 @@
+import { languageTag, t } from './i18n.ts';
 import type { RevenueEntry } from './types.ts';
 
 export type RecordedTotal = { status: 'empty' } | { status: 'overflow' } | { status: 'safe'; cents: number };
@@ -51,14 +52,14 @@ export function cashSummary(entries: readonly RevenueEntry[], channelId: string)
 
 export function recordedMoney(total: RecordedTotal, currency: string): string {
   if (total.status === 'empty') return '—';
-  if (total.status === 'overflow' || !Number.isSafeInteger(total.cents)) return 'Fora do limite';
+  if (total.status === 'overflow' || !Number.isSafeInteger(total.cents)) return t('Fora do limite');
   const integer = BigInt(total.cents);
   const absolute = integer < 0n ? -integer : integer;
   const fraction = String(absolute % 100n).padStart(2, '0');
   const whole = absolute / 100n;
   const sign = integer < 0n ? '−' : '';
   try {
-    const parts = new Intl.NumberFormat('pt-BR', {
+    const parts = new Intl.NumberFormat(languageTag(), {
       style: 'currency',
       currency,
       minimumFractionDigits: 2,
@@ -66,12 +67,12 @@ export function recordedMoney(total: RecordedTotal, currency: string): string {
     }).formatToParts(whole);
     return sign + parts.map((part) => (part.type === 'fraction' ? fraction : part.value)).join('');
   } catch {
-    return `${sign}${new Intl.NumberFormat('pt-BR').format(whole)},${fraction} ${currency}`;
+    return `${sign}${new Intl.NumberFormat(languageTag()).format(whole)},${fraction} ${currency}`;
   }
 }
 
 export function money(cents: number | null | undefined, currency = 'BRL'): string {
   if (cents == null) return '—';
-  if (!Number.isSafeInteger(cents)) return 'Fora do limite';
+  if (!Number.isSafeInteger(cents)) return t('Fora do limite');
   return recordedMoney({ status: 'safe', cents }, currency);
 }

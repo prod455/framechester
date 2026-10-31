@@ -10,6 +10,7 @@ import { deleteRecord, requiredChannel } from './channels.ts';
 import { platformTabs } from './connections.ts';
 import type { RevenueEntry } from '../../shared/types.ts';
 import type { IconName } from '../dom.ts';
+import { t, translateMessage } from '../../shared/i18n.ts';
 
 export function stat(label: string, value: string, detail: string, name: IconName): HTMLElement {
   return el(
@@ -38,7 +39,7 @@ export function analyticsPage(): HTMLElement {
     return !summaries.length
       ? '—'
       : summaries.length > 1
-        ? 'Várias moedas'
+        ? t('Várias moedas')
         : recordedMoney(
             kind === 'payment' ? summaries[0].payments : summaries[0].costs,
             summaries[0].currency,
@@ -46,11 +47,11 @@ export function analyticsPage(): HTMLElement {
   };
   const platform = studio.activePlatform;
   const sync = button(
-    'Consultar rede',
+    t('Consultar rede'),
     () => {
       void action(
         () => request(channelPath(`/connections/${platform}/sync`), 'POST', {}),
-        'Dados consultados no provedor.',
+        t('Dados consultados no provedor.'),
       );
     },
     'primary',
@@ -61,26 +62,26 @@ export function analyticsPage(): HTMLElement {
     'div',
     { className: 'stats-grid' },
     stat(
-      'Visualizações',
+      t('Visualizações'),
       number(latest?.stats.views),
-      latest ? 'Período informado pelo provedor' : 'Aguardando dados da rede',
+      latest ? t('Período informado pelo provedor') : t('Aguardando dados da rede'),
       'chart',
     ),
     stat(
-      'Seguidores',
+      t('Seguidores'),
       number(latest?.stats.followers),
-      latest ? 'Contagem na última consulta' : 'Nenhum valor presumido',
+      latest ? t('Contagem na última consulta') : t('Nenhum valor presumido'),
       'channels',
     ),
     stat(
-      'Receita estimada',
+      t('Receita estimada'),
       money(latest?.revenue.estimatedCents, latest?.revenue.currency),
       latest?.revenue.estimatedCents == null
-        ? 'Indisponível ou sem permissão'
-        : 'Estimativa do provedor, não pagamento',
+        ? t('Indisponível ou sem permissão')
+        : t('Estimativa do provedor, não pagamento'),
       'chart',
     ),
-    stat('Pagamentos registrados', totals('payment'), 'Registros manuais do operador', 'folder'),
+    stat(t('Pagamentos registrados'), totals('payment'), t('Registros manuais do operador'), 'folder'),
   );
   const snapshotTable = el(
     'table',
@@ -91,7 +92,7 @@ export function analyticsPage(): HTMLElement {
       el(
         'tr',
         {},
-        ...['Consulta', 'Período', 'Views', 'Seguidores', 'Receita estimada'].map((label) =>
+        ...[t('Consulta'), t('Período'), t('Views'), t('Seguidores'), t('Receita estimada')].map((label) =>
           el('th', { scope: 'col' }, label),
         ),
       ),
@@ -104,12 +105,12 @@ export function analyticsPage(): HTMLElement {
           'tr',
           {},
           el('td', {}, date(entry.fetchedAt)),
-          el('td', {}, `${entry.periodStart} a ${entry.periodEnd}`),
+          el('td', {}, t('{start} a {end}', { start: entry.periodStart, end: entry.periodEnd })),
           el('td', {}, number(entry.stats.views)),
           el('td', {}, number(entry.stats.followers)),
           el(
             'td',
-            { className: 'amount', title: entry.revenue.reason },
+            { className: 'amount', title: translateMessage(entry.revenue.reason) },
             money(entry.revenue.estimatedCents, entry.revenue.currency),
           ),
         ),
@@ -125,7 +126,9 @@ export function analyticsPage(): HTMLElement {
       el(
         'tr',
         {},
-        ...['Data', 'Natureza', 'Valor', 'Observação', ''].map((label) => el('th', { scope: 'col' }, label)),
+        ...[t('Data'), t('Natureza'), t('Valor'), t('Observação'), ''].map((label) =>
+          el('th', { scope: 'col' }, label),
+        ),
       ),
     ),
     el(
@@ -143,12 +146,13 @@ export function analyticsPage(): HTMLElement {
               {},
               el(
                 'span',
-                { className: 'badge' },
+                // Payments stand out a little; costs and estimates stay outlined.
+                { className: 'badge', 'data-variant': entry.kind === 'payment' ? 'secondary' : 'outline' },
                 entry.kind === 'cost'
-                  ? 'Custo manual'
+                  ? t('Custo manual')
                   : entry.kind === 'payment'
-                    ? 'Pagamento manual'
-                    : 'Estimativa manual',
+                    ? t('Pagamento manual')
+                    : t('Estimativa manual'),
               ),
             ),
             el('td', { className: 'amount' }, money(entry.amountCents, entry.currency)),
@@ -156,9 +160,9 @@ export function analyticsPage(): HTMLElement {
             el(
               'td',
               {},
-              iconButton('Editar registro financeiro', 'edit', () => editReceipt(entry)),
-              iconButton('Excluir registro financeiro', 'trash', () =>
-                deleteRecord('receipts', entry.id, entry.note || 'Registro financeiro'),
+              iconButton(t('Editar registro financeiro'), 'edit', () => editReceipt(entry)),
+              iconButton(t('Excluir registro financeiro'), 'trash', () =>
+                deleteRecord('receipts', entry.id, entry.note || t('Registro financeiro')),
               ),
             ),
           ),
@@ -166,62 +170,65 @@ export function analyticsPage(): HTMLElement {
     ),
   );
   const metadata = latest
-    ? `${labels[platform]} · Coleta: ${date(latest.fetchedAt)} · Conta: ${latest.accountId}`
-    : 'Dados desconhecidos aparecem como —. Conectar uma conta não comprova monetização.';
+    ? t('{network} · Coleta: {date} · Conta: {account}', {
+        network: labels[platform],
+        date: date(latest.fetchedAt),
+        account: latest.accountId,
+      })
+    : t('Dados desconhecidos aparecem como —. Conectar uma conta não comprova monetização.');
   return el(
     'div',
     {},
     heading(
-      'Resultados',
-      'Dados de audiência e finanças com origem e contexto.',
-      button('Registro financeiro', () => editReceipt(), 'secondary', 'plus'),
+      t('Resultados'),
+      t('Dados de audiência e finanças com origem e contexto.'),
+      button(t('Registro financeiro'), () => editReceipt(), 'secondary', 'plus'),
       sync,
     ),
     platformTabs(),
     stats,
     notice(
-      latest?.revenue.reason ||
-        capability?.revenueNote ||
-        'A receita depende do programa, da conta e dos escopos concedidos. Nenhuma receita é presumida.',
+      translateMessage(latest?.revenue.reason || capability?.revenueNote || '') ||
+        t('A receita depende do programa, da conta e dos escopos concedidos. Nenhuma receita é presumida.'),
     ),
     el(
       'div',
       { className: 'section-label' },
-      el('h2', {}, 'Consultas ao provedor'),
+      el('h2', {}, t('Consultas ao provedor')),
       el(
         'span',
         {},
-        latest ? 'Snapshots preservados · Não somar contagens acumuladas' : 'Sem coleta registrada',
+        latest ? t('Snapshots preservados · Não somar contagens acumuladas') : t('Sem coleta registrada'),
       ),
     ),
     panel(
-      'Histórico de dados',
+      t('Histórico de dados'),
       metadata,
       snapshots.length
         ? el('div', { className: 'table-scroll' }, snapshotTable)
         : empty(
-            'Conecte a conta e consulte suas métricas',
-            'Os dados disponíveis dependem das capacidades e permissões da API oficial de cada rede.',
+            t('Conecte a conta e consulte suas métricas'),
+            t('Os dados disponíveis dependem das capacidades e permissões da API oficial de cada rede.'),
             'chart',
-            button('Configurar conexão', () => go('connections'), 'primary', 'plug'),
+            button(t('Configurar conexão'), () => go('connections'), 'primary', 'plug'),
           ),
     ),
     el(
       'div',
       { className: 'section-label' },
-      el('h2', {}, 'Seu registro financeiro'),
-      el('span', {}, `Custos registrados: ${totals('cost')}`),
+      el('h2', {}, t('Seu registro financeiro')),
+      el('span', {}, t('Custos registrados: {total}', { total: totals('cost') })),
     ),
     panel(
-      'Histórico financeiro',
-      'Registros manuais são identificados e não substituem extratos ou confirmação da plataforma.',
+      t('Histórico financeiro'),
+      t('Registros manuais são identificados e não substituem extratos ou confirmação da plataforma.'),
       receipts.length
         ? el('div', { className: 'table-scroll' }, receiptTable)
         : empty(
-            'Nenhum registro financeiro neste canal e rede',
-            'Registre somente o que você conhece, indicando se é custo, estimativa ou pagamento.',
+            t('Nenhum registro financeiro neste canal e rede'),
+            t('Registre somente o que você conhece, indicando se é custo, estimativa ou pagamento.'),
             'folder',
-            button('Adicionar registro', () => editReceipt(), 'secondary', 'plus'),
+            button(t('Adicionar registro'), () => editReceipt(), 'secondary', 'plus'),
           ),
     ),
   );
@@ -229,8 +236,8 @@ export function analyticsPage(): HTMLElement {
 
 export function editReceipt(record?: RevenueEntry): void {
   const { dialog, body } = createDialog(
-    record ? 'Editar registro financeiro' : 'Registrar um movimento',
-    'Registro manual, associado à rede e ao canal selecionados.',
+    record ? t('Editar registro financeiro') : t('Registrar um movimento'),
+    t('Registro manual, associado à rede e ao canal selecionados.'),
   );
   const platform = select(
     'platform',
@@ -240,9 +247,9 @@ export function editReceipt(record?: RevenueEntry): void {
   const kind = select(
     'kind',
     [
-      ['cost', 'Custo realizado'],
-      ['estimate', 'Estimativa manual'],
-      ['payment', 'Pagamento recebido — registro manual'],
+      ['cost', t('Custo realizado')],
+      ['estimate', t('Estimativa manual')],
+      ['payment', t('Pagamento recebido — registro manual')],
     ],
     record?.kind || 'cost',
   );
@@ -261,7 +268,7 @@ export function editReceipt(record?: RevenueEntry): void {
   const from = input('periodStart', record?.periodStart || '', 'date');
   const to = input('periodEnd', record?.periodEnd || '', 'date');
   const { form, fields } = formWithSave(
-    'Salvar registro',
+    t('Salvar registro'),
     async () => {
       await save(
         record ? `/api/receipts/${encodeURIComponent(record.id)}` : '/api/receipts',
@@ -280,7 +287,7 @@ export function editReceipt(record?: RevenueEntry): void {
         },
       );
       dialog.close();
-      toast('Registro financeiro salvo com origem manual.');
+      toast(t('Registro financeiro salvo com origem manual.'));
     },
     () => dialog.close(),
   );
@@ -288,17 +295,19 @@ export function editReceipt(record?: RevenueEntry): void {
     el(
       'div',
       { className: 'form-grid' },
-      field('Rede', platform),
-      field('Natureza', kind),
-      field('Valor', amount),
-      field('Moeda', currency, 'Código de três letras, como BRL ou USD.'),
-      field('Data do registro', when),
-      field('Início do período (opcional)', from),
-      field('Fim do período (opcional)', to),
+      field(t('Rede'), platform),
+      field(t('Natureza'), kind),
+      field(t('Valor'), amount),
+      field(t('Moeda'), currency, t('Código de três letras, como BRL ou USD.')),
+      field(t('Data do registro'), when),
+      field(t('Início do período (opcional)'), from),
+      field(t('Fim do período (opcional)'), to),
     ),
-    field('Origem, motivo e observações', note),
+    field(t('Origem, motivo e observações'), note),
     notice(
-      'Estimativa e pagamento são registros diferentes. Não informe uma previsão como dinheiro recebido; use as evidências da sua própria conta.',
+      t(
+        'Estimativa e pagamento são registros diferentes. Não informe uma previsão como dinheiro recebido; use as evidências da sua própria conta.',
+      ),
     ),
   );
   body.append(form);

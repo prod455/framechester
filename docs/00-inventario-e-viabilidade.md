@@ -99,7 +99,7 @@
 |---|---|---|
 | Piper PT-BR | `piper.exe -m C:\piper\pt_BR-faber-medium.onnx` | OK; RTF 0,067 (5,14 s de áudio em ~0,30 s de inferência) |
 | ASR multilíngue | `ffmpeg -af whisper=model='C\:/whisper/models/ggml-base.bin':language=pt:...` | OK; transcreveu o áudio PT-BR gerado |
-| Limitação | Voz sintética diz "Piper"; ASR grafou algo proximo de "piper" | Esperado para nome próprio; revisar pronúncia/lexicon |
+| Limitação | Voz sintética diz "Piper"; ASR grafou algo próximo de "piper" | Esperado para nome próprio; revisar pronúncia/lexicon |
 
 ### 3.6. Backup/restore local com restic
 

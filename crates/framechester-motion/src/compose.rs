@@ -174,7 +174,16 @@ fn build_component(
             character,
             pose,
             text,
-        } => components::character::build(ctx, area, *character, *pose, text, index % 2 == 1),
+            persona,
+        } => components::character::build(
+            ctx,
+            area,
+            *character,
+            persona.as_ref(),
+            *pose,
+            text,
+            index % 2 == 1,
+        ),
     }
 }
 

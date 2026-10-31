@@ -90,7 +90,7 @@ function payload(request: OpenAIRequest): Record<string, unknown> {
   if (
     !Number.isSafeInteger(request.maxTokens) ||
     request.maxTokens < 1 ||
-    request.maxTokens > 8192 ||
+    request.maxTokens > 32_000 ||
     typeof request.system !== 'string' ||
     !request.system ||
     typeof request.prompt !== 'string' ||
@@ -174,7 +174,7 @@ export function createOpenAIClient(options: { fetch?: typeof fetch } = {}): Open
       response = await fetcher(counting ? `${endpoint}/input_tokens` : endpoint, {
         method: 'POST',
         redirect: 'error',
-        signal: AbortSignal.timeout(counting ? 30_000 : 120_000),
+        signal: AbortSignal.timeout(counting ? 30_000 : 600_000),
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',

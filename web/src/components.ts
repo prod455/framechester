@@ -4,6 +4,7 @@ import type { IconName } from './dom.ts';
 import type { WebJob } from '../shared/types.ts';
 import { protectEdits, watchForm } from './edit-protection.ts';
 import { revealControl } from './ui-tabs.ts';
+import { t, translateMessage } from '../shared/i18n.ts';
 
 export function mediaThumbnail(
   job: Pick<WebJob, 'id' | 'channelId' | 'videoAvailable' | 'previewOnly'>,
@@ -37,40 +38,43 @@ export function mediaThumbnail(
 }
 
 export const statusLabels: Record<string, string> = {
-  draft: 'Rascunho',
-  reviewed: 'Revisado',
-  archived: 'Arquivado',
-  connected: 'Conectado',
-  disconnected: 'Não conectado',
-  expired: 'Conexão expirada',
-  error: 'Requer atenção',
-  queued: 'Na fila',
-  running: 'Em produção',
-  needs_review: 'Revisão pendente',
-  completed: 'Concluído',
-  failed: 'Falhou',
-  blocked: 'Bloqueado',
-  pass: 'Aprovado',
-  fail: 'Reprovado',
-  needs_human: 'Revisão humana',
-  skipped: 'Não executado',
-  cited: 'Fonte citada',
-  unverified: 'A conferir',
-  contradicted: 'Contradição identificada',
+  draft: t('Rascunho'),
+  reviewed: t('Revisado'),
+  archived: t('Arquivado'),
+  connected: t('Conectado'),
+  disconnected: t('Não conectado'),
+  expired: t('Conexão expirada'),
+  error: t('Requer atenção'),
+  queued: t('Na fila'),
+  running: t('Em produção'),
+  needs_review: t('Revisão pendente'),
+  completed: t('Concluído'),
+  failed: t('Falhou'),
+  blocked: t('Bloqueado'),
+  pass: t('Aprovado'),
+  fail: t('Reprovado'),
+  needs_human: t('Revisão humana'),
+  skipped: t('Não executado'),
+  cited: t('Fonte citada'),
+  unverified: t('A conferir'),
+  contradicted: t('Contradição identificada'),
 };
 export function badge(status: string): HTMLElement {
-  const color = ['connected', 'completed', 'pass', 'reviewed'].includes(status)
-    ? 'green'
+  // A dot and the state in words, coloured by meaning. Not a Basecoat badge: those carry a
+  // filled or outlined pill, and restyling them would fight the design system.
+  const colour = ['connected', 'completed', 'pass', 'reviewed'].includes(status)
+    ? 'text-[var(--success)]'
     : ['failed', 'fail', 'error', 'contradicted'].includes(status)
-      ? 'red'
-      : ['needs_review', 'needs_human', 'blocked', 'expired'].includes(status)
-        ? 'amber'
-        : status === 'running'
-          ? 'violet'
-          : '';
+      ? 'text-[var(--danger)]'
+      : ['needs_review', 'needs_human', 'blocked', 'expired', 'running'].includes(status)
+        ? 'text-[var(--warning)]'
+        : 'text-muted-foreground';
   return el(
     'span',
-    { className: `badge status ${color ? `badge-${color}` : ''}`, 'data-variant': 'outline' },
+    {
+      className: `status inline-flex shrink-0 items-center gap-1.5 text-xs before:size-1 before:shrink-0 before:rounded-full before:bg-current ${colour}`,
+      'data-status': status,
+    },
     statusLabels[status] || status,
   );
 }
@@ -163,7 +167,7 @@ export function formWithSave(
   label: string | (() => string),
   onSave: () => Promise<void | false>,
   onCancel?: () => void,
-  busyLabel: string | (() => string) = 'Salvando…',
+  busyLabel: string | (() => string) = t('Salvando…'),
 ): { form: HTMLFormElement; fields: HTMLDivElement; actions: HTMLDivElement } {
   const fields = el('div', { className: 'form-stack' });
   const errorBox = el('div', { className: 'alert form-error', role: 'alert', hidden: true });
@@ -174,7 +178,7 @@ export function formWithSave(
   const actions = el(
     'div',
     { className: 'form-actions' },
-    onCancel ? button('Cancelar', () => protectEdits(onCancel, form), 'secondary') : null,
+    onCancel ? button(t('Cancelar'), () => protectEdits(onCancel, form), 'secondary') : null,
     saveButton,
   );
   const form = el('form', { className: 'form-stack' }, fields, errorBox, actions);
@@ -203,7 +207,7 @@ export function formWithSave(
       if ((await onSave()) !== false) edit.saved();
     } catch (error) {
       errorBox.textContent =
-        error instanceof Error ? error.message : 'Não foi possível concluir. Tente novamente.';
+        error instanceof Error ? error.message : t('Não foi possível concluir. Tente novamente.');
       errorBox.hidden = false;
       errorBox.scrollIntoView({ block: 'nearest' });
     } finally {
@@ -218,17 +222,18 @@ export function formWithSave(
   return { form, fields, actions };
 }
 
-const styleIntro = 'Define estrutura, ritmo e layouts visuais. Sem formato, a IA segue apenas o pedido.';
+const styleIntro = t('Define estrutura, ritmo e layouts visuais. Sem formato, a IA segue apenas o pedido.');
 /** Video style picker with a hint that summarizes the selected style. */
 export function videoStyleField(name: string): { control: HTMLSelectElement; node: HTMLDivElement } {
   const control = select(name, [
-    ['', 'Sem formato definido'],
-    ...videoStyles.map((style): [string, string] => [style.id, style.name]),
+    ['', t('Sem formato definido')],
+    ...videoStyles.map((style): [string, string] => [style.id, translateMessage(style.name)]),
   ]);
-  const node = field('Formato do vídeo', control, styleIntro);
+  const node = field(t('Formato do vídeo'), control, styleIntro);
   const hint = node.querySelector<HTMLElement>('.field-hint')!;
   control.addEventListener('change', () => {
-    hint.textContent = videoStyle(control.value)?.summary ?? styleIntro;
+    const summary = videoStyle(control.value)?.summary;
+    hint.textContent = summary ? translateMessage(summary) : styleIntro;
   });
   return { control, node };
 }

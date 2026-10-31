@@ -7,6 +7,10 @@ import { join } from 'node:path';
 import { createSocialService } from '../server/social.ts';
 import type { SocialFetch } from '../server/social.ts';
 import type { SecretVault } from '../server/vault.ts';
+import { mp4Fixture } from './mp4-fixture.ts';
+
+const MP4 = mp4Fixture();
+const MP4_TEXT = new TextDecoder().decode(MP4);
 
 const ACCOUNT = `UC${'a'.repeat(22)}`;
 const OTHER = `UC${'b'.repeat(22)}`;
@@ -527,7 +531,7 @@ async function uploadFixture(
 }> {
   const directory = await mkdtemp(join(tmpdir(), 'fc-youtube-upload-'));
   const video = join(directory, 'final.mp4');
-  await writeFile(video, 'synthetic mp4 fixture');
+  await writeFile(video, MP4);
   const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
   const service = createSocialService({
     vault: new MemoryVault(),
@@ -585,11 +589,8 @@ test('YouTube upload is resumable, private, streams the file and returns the vid
     assert.equal(metadata.status.selfDeclaredMadeForKids, false);
     assert.equal(metadata.snippet.title.length, 100);
     assert.doesNotMatch(metadata.snippet.title + metadata.snippet.description, /[<>]/);
-    assert.equal(calls[1].body, 'synthetic mp4 fixture');
-    assert.equal(
-      new Headers(calls[1].init!.headers).get('content-length'),
-      String('synthetic mp4 fixture'.length),
-    );
+    assert.equal(calls[1].body, MP4_TEXT);
+    assert.equal(new Headers(calls[1].init!.headers).get('content-length'), String(MP4.length));
   } finally {
     await cleanup();
   }
@@ -707,7 +708,7 @@ const IG = '17841400000000000';
 
 function tiktokFetch(
   calls: Array<{ url: string; init?: RequestInit; body?: string }>,
-  options: { username?: string; privacy?: readonly string[]; uploadUrl?: string } = {},
+  options: { username?: string; privacy?: readonly string[]; uploadUrl?: string; maxSeconds?: number } = {},
 ): SocialFetch {
   return async (raw, init) => {
     const url = new URL(raw);
@@ -737,7 +738,10 @@ function tiktokFetch(
     if (url.pathname === '/v2/post/publish/creator_info/query/') {
       calls.push({ url: raw, init });
       return json({
-        data: { privacy_level_options: options.privacy ?? ['PUBLIC_TO_EVERYONE', 'SELF_ONLY'] },
+        data: {
+          privacy_level_options: options.privacy ?? ['PUBLIC_TO_EVERYONE', 'SELF_ONLY'],
+          max_video_post_duration_sec: options.maxSeconds ?? 600,
+        },
         error: { code: 'ok' },
       });
     }
@@ -860,7 +864,7 @@ test('TikTok upload is a SELF_ONLY Direct Post with the caption, sent in ranged 
   const directory = await mkdtemp(join(tmpdir(), 'fc-tiktok-upload-'));
   try {
     const video = join(directory, 'final.mp4');
-    await writeFile(video, 'synthetic mp4 fixture');
+    await writeFile(video, MP4);
     const service = createSocialService({
       vault: new MemoryVault(),
       fetch: tiktokFetch(calls),
@@ -883,7 +887,7 @@ test('TikTok upload is a SELF_ONLY Direct Post with the caption, sent in ranged 
       init.post_info.title,
       /^Skills vs agentes\n\nFontes revisadas[\s\S]*youtube\.com\/@fixture$/,
     );
-    const size = 'synthetic mp4 fixture'.length;
+    const size = MP4.length;
     assert.deepEqual(init.source_info, {
       source: 'FILE_UPLOAD',
       video_size: size,
@@ -893,7 +897,7 @@ test('TikTok upload is a SELF_ONLY Direct Post with the caption, sent in ranged 
     const put = new Headers(calls[2].init!.headers);
     assert.equal(put.get('content-range'), `bytes 0-${size - 1}/${size}`);
     assert.equal(put.get('authorization'), null, 'The upload URL is signed; the token never goes there');
-    assert.equal(calls[2].body, 'synthetic mp4 fixture');
+    assert.equal(calls[2].body, MP4_TEXT);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -903,7 +907,7 @@ test('TikTok sends nothing when SELF_ONLY is not offered or the upload URL leave
   const directory = await mkdtemp(join(tmpdir(), 'fc-tiktok-refuse-'));
   try {
     const video = join(directory, 'final.mp4');
-    await writeFile(video, 'synthetic mp4 fixture');
+    await writeFile(video, MP4);
     for (const [options, pattern] of [
       [{ privacy: ['PUBLIC_TO_EVERYONE'] }, /Somente eu/],
       [{ uploadUrl: 'https://evil.example/video/?upload_id=1' }, /fora do endpoint/],
@@ -1029,7 +1033,7 @@ test('a Facebook Reel goes up as a DRAFT through rupload; horizontal video sends
   const directory = await mkdtemp(join(tmpdir(), 'fc-reel-upload-'));
   try {
     const video = join(directory, 'final.mp4');
-    await writeFile(video, 'synthetic mp4 fixture');
+    await writeFile(video, MP4);
     const service = createSocialService({
       vault: new MemoryVault(),
       fetch: metaFetch(calls),
@@ -1057,8 +1061,8 @@ test('a Facebook Reel goes up as a DRAFT through rupload; horizontal video sends
     const upload = new Headers(calls[1].init!.headers);
     assert.equal(upload.get('authorization'), 'OAuth fixture-page-token');
     assert.equal(upload.get('offset'), '0');
-    assert.equal(upload.get('file_size'), String('synthetic mp4 fixture'.length));
-    assert.equal(calls[1].body, 'synthetic mp4 fixture');
+    assert.equal(upload.get('file_size'), String(MP4.length));
+    assert.equal(calls[1].body, MP4_TEXT);
     const finish = new URLSearchParams(calls[2].body);
     assert.equal(finish.get('upload_phase'), 'finish');
     assert.equal(finish.get('video_state'), 'DRAFT');
@@ -1076,7 +1080,7 @@ test('a Page connected without pages_manage_posts asks to reconnect before sendi
   const directory = await mkdtemp(join(tmpdir(), 'fc-reel-scope-'));
   try {
     const video = join(directory, 'final.mp4');
-    await writeFile(video, 'synthetic mp4 fixture');
+    await writeFile(video, MP4);
     const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
     const service = createSocialService({
       vault: new MemoryVault(),
@@ -1100,8 +1104,9 @@ test('a TikTok file above 5 MB goes in 10 MiB chunks and the last one absorbs th
   const directory = await mkdtemp(join(tmpdir(), 'fc-tiktok-chunks-'));
   try {
     const video = join(directory, 'final.mp4');
-    const size = 25 * 1024 * 1024 + 7;
-    await writeFile(video, Buffer.alloc(size));
+    const file = mp4Fixture({ payload: 25 * 1024 * 1024 });
+    const size = file.length;
+    await writeFile(video, file);
     const service = createSocialService({
       vault: new MemoryVault(),
       fetch: tiktokFetch(calls),
@@ -1129,8 +1134,8 @@ test('a TikTok file above 5 MB goes in 10 MiB chunks and the last one absorbs th
       [`bytes 0-${chunk - 1}/${size}`, `bytes ${chunk}-${size - 1}/${size}`],
     );
     assert.deepEqual(
-      puts.map((call) => call.body!.length),
-      [chunk, size - chunk],
+      puts.map((call) => new Headers(call.init!.headers).get('content-length')),
+      [String(chunk), String(size - chunk)],
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -1192,7 +1197,7 @@ test('an Instagram Reel is published only after processing finishes, with captio
   const directory = await mkdtemp(join(tmpdir(), 'fc-instagram-publish-'));
   try {
     const video = join(directory, 'final.mp4');
-    await writeFile(video, 'synthetic mp4 fixture');
+    await writeFile(video, MP4);
     const service = createSocialService({
       vault: new MemoryVault(),
       fetch: instagramFetch(calls, ['IN_PROGRESS', 'FINISHED']),
@@ -1216,8 +1221,8 @@ test('an Instagram Reel is published only after processing finishes, with captio
     assert.match(container.get('caption')!, /^Skills vs agentes\n\nFontes[\s\S]*youtube\.com\/@fixture$/);
     const upload = new Headers(calls[1].init!.headers);
     assert.equal(upload.get('authorization'), 'OAuth fixture-long-user');
-    assert.equal(upload.get('file_size'), String('synthetic mp4 fixture'.length));
-    assert.equal(calls[1].body, 'synthetic mp4 fixture');
+    assert.equal(upload.get('file_size'), String(MP4.length));
+    assert.equal(calls[1].body, MP4_TEXT);
     assert.deepEqual(waits, [30_000, 30_000], 'Two checks at the documented pace');
     assert.equal(new URLSearchParams(calls.at(-1)!.body).get('creation_id'), '777');
   } finally {
@@ -1229,7 +1234,7 @@ test('a container that fails or never finishes processing is never published', a
   const directory = await mkdtemp(join(tmpdir(), 'fc-instagram-refuse-'));
   try {
     const video = join(directory, 'final.mp4');
-    await writeFile(video, 'synthetic mp4 fixture');
+    await writeFile(video, MP4);
     for (const [statuses, pattern] of [
       [['IN_PROGRESS', 'ERROR'], /nada foi publicado/],
       [[], /5 minutos/],
@@ -1265,7 +1270,7 @@ test('an Instagram connection without instagram_content_publish asks to reconnec
   const directory = await mkdtemp(join(tmpdir(), 'fc-instagram-scope-'));
   try {
     const video = join(directory, 'final.mp4');
-    await writeFile(video, 'synthetic mp4 fixture');
+    await writeFile(video, MP4);
     const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
     const service = createSocialService({
       vault: new MemoryVault(),
@@ -1279,6 +1284,41 @@ test('an Instagram connection without instagram_content_publish asks to reconnec
       /Reconecte o Instagram/,
     );
     assert.equal(calls.length, 0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('a video outside the network limits is refused before the upload starts', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'fc-limits-'));
+  try {
+    const video = join(directory, 'final.mp4');
+    await writeFile(video, mp4Fixture({ seconds: 95 }));
+    const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+    const meta = createSocialService({ vault: new MemoryVault(), fetch: metaFetch(calls), now: () => NOW });
+    await connectMeta(meta, 'facebook');
+    calls.length = 0;
+    await assert.rejects(
+      meta.publish('tech', 'facebook', { path: video, title: 'Vídeo', description: '', vertical: true }),
+      /de 3 a 90 s; este vídeo tem 95 s/,
+    );
+    assert.equal(calls.length, 0, 'Not even the token is checked: the file decides first');
+    const tiktokCalls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+    const tiktok = createSocialService({
+      vault: new MemoryVault(),
+      fetch: tiktokFetch(tiktokCalls, { maxSeconds: 60 }),
+      now: () => NOW,
+    });
+    const { state } = await connectTiktok(tiktok);
+    await tiktok.callbackOAuth('tiktok', { state, code: 'fixture-code' });
+    await assert.rejects(
+      tiktok.publish('tech', 'tiktok', { path: video, title: 'Vídeo', description: '', vertical: true }),
+      /Esta conta do TikTok aceita até 60 s; este vídeo tem 95 s/,
+    );
+    assert.equal(
+      tiktokCalls.some((call) => call.url.includes('/video/init/')),
+      false,
+    );
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

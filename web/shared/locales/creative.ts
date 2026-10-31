@@ -303,6 +303,15 @@ export default {
     'Modelo local: {model}. A geração começa ao enviar o pedido.':
       'Local model: {model}. Generation starts when you send the request.',
     'O assistente não respondeu.': "The assistant didn't respond.",
+    'O assistente do canal {channel} não está disponível: {reason}':
+      "The assistant for channel {channel} isn't available: {reason}",
+    '{channel}: roteiro com {model}, até {cost} ({attempts} gerações no máximo).':
+      '{channel}: script with {model}, up to {cost} ({attempts} generations at most).',
+    'Total: até {cost}.': 'Total: up to {cost}.',
+    falhou: 'failed',
+    'Também em outros idiomas': 'Also in other languages',
+    'A IA escreve cada versão direto no idioma do canal, com as mesmas fontes, e cada canal publica pelas próprias contas.':
+      "The AI writes each version directly in the channel's language, with the same sources, and each channel publishes through its own accounts.",
   },
   es: {
     // AI usage ledger
@@ -606,5 +615,14 @@ export default {
     'Modelo local: {model}. A geração começa ao enviar o pedido.':
       'Modelo local: {model}. La generación empieza al enviar el pedido.',
     'O assistente não respondeu.': 'El asistente no respondió.',
+    'O assistente do canal {channel} não está disponível: {reason}':
+      'El asistente del canal {channel} no está disponible: {reason}',
+    '{channel}: roteiro com {model}, até {cost} ({attempts} gerações no máximo).':
+      '{channel}: guion con {model}, hasta {cost} ({attempts} generaciones como máximo).',
+    'Total: até {cost}.': 'Total: hasta {cost}.',
+    falhou: 'falló',
+    'Também em outros idiomas': 'También en otros idiomas',
+    'A IA escreve cada versão direto no idioma do canal, com as mesmas fontes, e cada canal publica pelas próprias contas.':
+      'La IA escribe cada versión directamente en el idioma del canal, con las mismas fuentes, y cada canal publica con sus propias cuentas.',
   },
 } satisfies AreaCatalog;

@@ -550,6 +550,7 @@ export function startProduction(): void {
   if (!channel) return;
   openAutomaticProduction({
     channel,
+    channels: state().channels,
     scripts: scoped(state().scripts),
     research: scoped(state().research),
     selectedScriptId: studio.activeScriptId,

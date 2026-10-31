@@ -36,7 +36,7 @@ No Studio, **Produzir com IA** recebe sua orientação, escreve um roteiro novo 
 - Opcional: whisper/FFmpeg com modelo para o QA por ASR (`--asr`)
 - Opcional: chave da Anthropic para o adaptador de LLM pago
 
-A narração usa só Dora, Alex e Santa, vozes brasileiras do Kokoro-82M v1.0 sob Apache-2.0. O motor confere os hashes do modelo e das vozes antes de narrar. Piper e vozes fora do catálogo ficam bloqueados; configurações antigas migram para Dora. Veja [vozes comerciais](docs/VOZES_COMERCIAIS.md).
+A narração usa só as vozes revisadas do Kokoro-82M v1.0 sob Apache-2.0, em português (Dora, Alex, Santa), inglês (Heart, Bella, Michael) e espanhol (Dora, Alex, Santa). O motor confere os hashes do modelo e das vozes antes de narrar. Piper e vozes fora do catálogo ficam bloqueados; configurações antigas migram para Dora. Veja [vozes comerciais](docs/VOZES_COMERCIAIS.md).
 
 ## Studio web local
 

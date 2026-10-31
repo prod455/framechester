@@ -15,7 +15,8 @@ import type {
   VideoUpload,
   YoutubeThumbnail,
 } from '../shared/types.ts';
-import { canPublish, platformLabels } from '../shared/publishing.ts';
+import { canPublish, mediaProblem, platformLabels, postText } from '../shared/publishing.ts';
+import { probeMp4, type VideoProbe } from './mp4.ts';
 import type { SecretVault } from './vault.ts';
 
 export type SocialFetch = (url: string, init?: RequestInit) => Promise<Response>;
@@ -64,7 +65,6 @@ const INSTAGRAM_SCOPES = ['pages_show_list', 'pages_read_engagement', 'instagram
 const INSTAGRAM_UPLOAD = 'https://rupload.facebook.com/ig-api-upload/v26.0';
 // Content Publishing: Reels up to 300 MB; query the container once per minute for at most
 // 5 minutes is the documented pace, and an unpublished container expires in 24 h.
-const INSTAGRAM_MAX_VIDEO = 300 * 1024 * 1024;
 const INSTAGRAM_POLL_MS = 30_000;
 const INSTAGRAM_POLLS = 10;
 /** Scope that lets the stored token send videos; without it the operator reconnects. */
@@ -79,8 +79,6 @@ const REELS_UPLOAD = 'https://rupload.facebook.com/video-upload/v26.0';
 // count = floor(size / chunk), at most 1000; a file under 5 MB goes in a single chunk.
 const TIKTOK_MIN_CHUNK = 5 * 1024 * 1024;
 const TIKTOK_CHUNK = 10 * 1024 * 1024;
-const TIKTOK_CAPTION = 2200;
-const INSTAGRAM_CAPTION = 2200;
 const MAX_RESPONSE = 512 * 1024;
 interface OAuthProvider {
   authorize: string;
@@ -347,16 +345,6 @@ function storedProfile(credential: Credential): string | undefined {
       : undefined)
   );
 }
-/** TikTok has a single caption: the title first, then the description with its references. */
-function postCaption(title: string, description: string): string {
-  return [title, description.trim()].filter(Boolean).join('\n\n');
-}
-/** Truncates to a UTF-16 length without splitting a surrogate pair. */
-function utf16(text: string, max: number): string {
-  if (text.length <= max) return text;
-  const cut = text.slice(0, max);
-  return /[\ud800-\udbff]$/.test(cut) ? cut.slice(0, -1) : cut;
-}
 /** Upload URLs come from the provider: HTTPS on the expected host, no credentials or port. */
 function providerUrl(raw: unknown, host: string, path: (pathname: string) => boolean): string {
   let url: URL;
@@ -376,12 +364,6 @@ function providerUrl(raw: unknown, host: string, path: (pathname: string) => boo
   )
     throw new SocialError('blocked_endpoint', 'Sessão de envio fora do endpoint da plataforma.');
   return url.toString();
-}
-/** YouTube rejects angle brackets in titles and descriptions and limits their size. */
-function youtubeText(value: string, maxBytes: number): string {
-  let text = String(value).replace(/[<>]/g, '').trim();
-  while (Buffer.byteLength(text, 'utf8') > maxBytes) text = text.slice(0, -1);
-  return text;
 }
 /** The session URI comes from the provider: it must point back at the same upload endpoint. */
 function uploadSession(raw: string | null): string {
@@ -1346,13 +1328,27 @@ export class SocialService implements SocialApi {
         'invalid_video',
         `O ${platformLabels[platform]} recebe só vídeo vertical, como Reel; envie o Short deste vídeo.`,
       );
-    const title = youtubeText(video.title, 100);
-    if (!title) throw new SocialError('invalid_video', 'O vídeo precisa de título para ser enviado.');
+    // Every limit is checked here, before any network call: the same file and text always get
+    // the same answer.
+    const post = postText(platform, {
+      title: video.title,
+      body: video.description,
+      references: video.references ?? '',
+      tag: video.tag,
+    });
+    if (!post.title) throw new SocialError('invalid_video', 'O vídeo precisa de título para ser enviado.');
     const info = await stat(video.path).catch(() => undefined);
     if (!info?.isFile() || info.size === 0)
       throw new SocialError('invalid_video', 'Arquivo de vídeo ausente; gere a versão final novamente.');
-    if (platform === 'instagram' && info.size > INSTAGRAM_MAX_VIDEO)
-      throw new SocialError('invalid_video', 'O Instagram aceita Reels de até 300 MB.');
+    let probe: VideoProbe;
+    try {
+      probe = await probeMp4(video.path);
+    } catch (error) {
+      throw new SocialError('invalid_video', (error as Error).message);
+    }
+    const problem = mediaProblem(platform, probe);
+    if (problem) throw new SocialError('invalid_video', problem);
+    const fitted = { ...video, title: post.title, description: post.text };
     return this.locked(`${channelId}/${platform}`, async () => {
       const { credential } = await this.ready(channelId, platform);
       if (!credential.scopes.includes(PUBLISH_SCOPE[platform]!))
@@ -1361,12 +1357,10 @@ export class SocialService implements SocialApi {
           `Reconecte o ${platformLabels[platform]} em Contas conectadas para autorizar o envio de vídeos.`,
         );
       try {
-        if (platform === 'youtube')
-          return await this.uploadYoutube(credential, { ...video, title }, info.size);
-        if (platform === 'tiktok') return await this.uploadTiktok(credential, { ...video, title }, info.size);
-        if (platform === 'instagram')
-          return await this.publishInstagram(credential, { ...video, title }, info.size);
-        return await this.uploadReel(credential, { ...video, title }, info.size);
+        if (platform === 'youtube') return await this.uploadYoutube(credential, fitted, info.size);
+        if (platform === 'tiktok') return await this.uploadTiktok(credential, fitted, probe);
+        if (platform === 'instagram') return await this.publishInstagram(credential, fitted, info.size);
+        return await this.uploadReel(credential, fitted, info.size);
       } catch (error) {
         if (error instanceof SocialError) throw error;
         throw new SocialError(
@@ -1383,7 +1377,7 @@ export class SocialService implements SocialApi {
     video: VideoUpload,
     size: number,
   ): Promise<PublishResult> {
-    const description = youtubeText(video.description, 5000);
+    const description = video.description;
     const authorization = `Bearer ${credential.accessToken}`;
     const session = await this.fetcher(`${UPLOAD_ENDPOINT}?uploadType=resumable&part=snippet,status`, {
       method: 'POST',
@@ -1430,7 +1424,7 @@ export class SocialService implements SocialApi {
   private async uploadTiktok(
     credential: Credential,
     video: VideoUpload,
-    size: number,
+    probe: VideoProbe,
   ): Promise<PublishResult> {
     const creator = record(
       (await this.request(`${TIKTOK}/post/publish/creator_info/query/`, credential.accessToken, { json: {} }))
@@ -1441,6 +1435,14 @@ export class SocialService implements SocialApi {
         'api_denied',
         'O TikTok não oferece "Somente eu" para esta conta; nada foi enviado.',
       );
+    // The account's own ceiling can be shorter than the endpoint's 10 minutes.
+    const ceiling = numeric(creator.max_video_post_duration_sec);
+    if (ceiling !== null && ceiling > 0 && probe.seconds > ceiling)
+      throw new SocialError(
+        'invalid_video',
+        `Esta conta do TikTok aceita até ${ceiling} s; este vídeo tem ${Math.round(probe.seconds)} s.`,
+      );
+    const size = probe.bytes;
     const chunk = size < TIKTOK_MIN_CHUNK ? size : Math.min(TIKTOK_CHUNK, size);
     const chunks = Math.floor(size / chunk);
     if (chunks > 1000) throw new SocialError('invalid_video', 'Vídeo grande demais para o TikTok.');
@@ -1449,7 +1451,7 @@ export class SocialService implements SocialApi {
         await this.request(`${TIKTOK}/post/publish/video/init/`, credential.accessToken, {
           json: {
             post_info: {
-              title: utf16(postCaption(video.title, video.description), TIKTOK_CAPTION),
+              title: video.description,
               privacy_level: 'SELF_ONLY',
               disable_duet: false,
               disable_comment: false,
@@ -1505,7 +1507,7 @@ export class SocialService implements SocialApi {
       new URLSearchParams({
         media_type: 'REELS',
         upload_type: 'resumable',
-        caption: utf16(postCaption(video.title, video.description), INSTAGRAM_CAPTION),
+        caption: video.description,
         share_to_feed: 'true',
       }),
     );
@@ -1617,7 +1619,7 @@ export class SocialService implements SocialApi {
         video_id: videoId,
         video_state: 'DRAFT',
         title: video.title,
-        description: utf16(video.description, 5000),
+        description: video.description,
       }),
     );
     if (finish.success !== true)

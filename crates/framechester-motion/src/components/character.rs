@@ -7,6 +7,7 @@ use crate::format::Rect;
 use crate::scene::{Anchor, Node, Shape};
 use crate::tokens;
 use framechester_core::narration::syllables;
+use framechester_core::persona::{Beard, Colour, Hair, HairColour, Outfit, Persona, Prop, Skin};
 use framechester_core::storyboard::{Character, Easing, Pose, StoryboardScene};
 
 pub const BODY: &str = "character";
@@ -23,29 +24,128 @@ const SKIN: &str = "#C98B5E";
 const HAIR: &str = "#2A1F1A";
 const LINE: &str = "#05080E";
 
+/// Everything the drawing needs, from a preset character or a described persona.
 struct Look {
+    robot: bool,
+    skin: &'static str,
     top: &'static str,
     sleeve: &'static str,
+    outfit: Outfit,
+    hair: Hair,
+    hair_colour: &'static str,
+    beard: Beard,
+    beard_colour: &'static str,
+    brow: &'static str,
+    glasses: bool,
+    laurel: bool,
+    number: Option<u8>,
+    prop: Prop,
 }
 
-fn look(character: Character) -> Look {
+fn preset(character: Character) -> Look {
+    let base = Look {
+        robot: false,
+        skin: SKIN,
+        top: tokens::PRIMARY,
+        sleeve: tokens::PRIMARY,
+        outfit: Outfit::Shirt,
+        hair: Hair::Short,
+        hair_colour: HAIR,
+        beard: Beard::None,
+        beard_colour: HAIR,
+        brow: HAIR,
+        glasses: false,
+        laurel: false,
+        number: None,
+        prop: Prop::Microphone,
+    };
     match character {
-        Character::Presenter => Look {
-            top: tokens::PRIMARY,
-            sleeve: tokens::PRIMARY,
-        },
+        Character::Presenter => base,
         Character::Developer => Look {
             top: tokens::SECONDARY,
             sleeve: tokens::SECONDARY,
+            outfit: Outfit::Hoodie,
+            glasses: true,
+            prop: Prop::Laptop,
+            ..base
         },
         Character::Scientist => Look {
             top: tokens::INK,
             sleeve: tokens::INK,
+            outfit: Outfit::LabCoat,
+            hair_colour: tokens::INK_SOFT,
+            brow: tokens::MUTED,
+            prop: Prop::Flask,
+            ..base
         },
         Character::Robot => Look {
+            robot: true,
+            skin: tokens::MUTED,
             top: tokens::SURFACE_STRONG,
             sleeve: tokens::MUTED,
+            hair: Hair::Bald,
+            brow: tokens::SECONDARY,
+            prop: Prop::None,
+            ..base
         },
+    }
+}
+
+fn hair_hex(colour: HairColour) -> &'static str {
+    match colour {
+        HairColour::Black => HAIR,
+        HairColour::Brown => "#6B4423",
+        HairColour::Blonde => "#E3C16F",
+        HairColour::Red => "#B5502E",
+        HairColour::Grey => "#9AA0A6",
+        HairColour::White => "#E8EAED",
+    }
+}
+
+fn colour_hex(colour: Colour) -> &'static str {
+    match colour {
+        Colour::Blue => tokens::PRIMARY,
+        Colour::Red => "#E5484D",
+        Colour::Green => "#30A46C",
+        Colour::Yellow => "#F5C518",
+        Colour::White => "#F1F3F5",
+        Colour::Black => "#1C2024",
+        Colour::Purple => "#8E4EC6",
+        Colour::Orange => "#F76B15",
+        Colour::Grey => "#8B8D98",
+    }
+}
+
+fn described(persona: &Persona) -> Look {
+    let top = colour_hex(persona.colour);
+    let hair_colour = hair_hex(persona.hair_colour);
+    Look {
+        robot: false,
+        skin: match persona.skin {
+            Skin::Light => "#F1C9A5",
+            Skin::Medium => "#D9A06F",
+            Skin::Tan => SKIN,
+            Skin::Dark => "#8D5524",
+        },
+        top,
+        sleeve: top,
+        outfit: persona.outfit,
+        hair: persona.hair,
+        hair_colour,
+        beard: persona.beard,
+        beard_colour: hair_hex(persona.beard_colour),
+        // Bald heads keep brows the colour of the beard, or dark.
+        brow: if persona.hair == Hair::Bald && persona.beard != Beard::None {
+            hair_hex(persona.beard_colour)
+        } else if persona.hair == Hair::Bald {
+            HAIR
+        } else {
+            hair_colour
+        },
+        glasses: persona.glasses,
+        laurel: persona.laurel,
+        number: persona.number,
+        prop: persona.prop,
     }
 }
 
@@ -123,6 +223,22 @@ impl Figure {
         )
         .decorative()
     }
+    /// A closed, filled polygon.
+    fn shape(&self, object: &str, points: &[(f32, f32)], fill: &str) -> Node {
+        let (d, _) = self.polyline(points);
+        Node::new(
+            object,
+            Shape::Path {
+                d: format!("{d} Z"),
+                stroke: fill.into(),
+                width: 0.5 * self.k,
+                length: 0.0,
+                fill: Some(fill.into()),
+                dashed: false,
+            },
+        )
+        .decorative()
+    }
     fn stroke(&self, object: &str, points: &[(f32, f32)], width: f32, colour: &str) -> Node {
         let (d, length) = self.polyline(points);
         Node::new(
@@ -157,58 +273,42 @@ fn arms(pose: Pose) -> Vec<(&'static str, Vec<(f32, f32)>)> {
     }
 }
 
-fn figure_nodes(figure: &Figure, character: Character, pose: Pose) -> Vec<Node> {
-    let look = look(character);
-    let robot = character == Character::Robot;
-    let skin = if robot { tokens::MUTED } else { SKIN };
+fn figure_nodes(figure: &Figure, look: &Look, pose: Pose) -> Vec<Node> {
     let mut nodes = Vec::new();
-    // Torso and neck.
-    nodes.push(figure.block(BODY, (32.0, 80.0, 46.0, 80.0), 16.0, look.top));
-    nodes.push(figure.block(BODY, (49.0, 70.0, 12.0, 14.0), 3.0, skin));
-    match character {
-        Character::Scientist => {
-            nodes.push(figure.stroke(
-                BODY,
-                &[(42.0, 82.0), (55.0, 112.0), (68.0, 82.0)],
-                2.5,
-                tokens::MUTED,
-            ));
-            nodes.push(figure.block(BODY, (52.0, 90.0, 6.0, 22.0), 2.0, tokens::ACCENT));
-        }
-        Character::Developer => {
-            nodes.push(figure.stroke(BODY, &[(48.0, 84.0), (48.0, 104.0)], 2.0, tokens::INK));
-            nodes.push(figure.stroke(BODY, &[(62.0, 84.0), (62.0, 104.0)], 2.0, tokens::INK));
-        }
-        Character::Robot => {
-            nodes.push(figure.block(
-                BODY,
-                (43.0, 96.0, 24.0, 18.0),
-                4.0,
-                tokens::BACKGROUND_RAISED,
-            ));
-            nodes.push(figure.dot(BODY, 55.0, 105.0, 4.0, tokens::SECONDARY));
-        }
-        Character::Presenter => {
-            nodes.push(figure.stroke(
-                BODY,
-                &[(46.0, 82.0), (55.0, 94.0), (64.0, 82.0)],
-                2.5,
-                tokens::INK,
-            ));
-        }
+    // Torso and neck; a dress flares to the hem.
+    if look.outfit == Outfit::Dress {
+        nodes.push(figure.shape(
+            BODY,
+            &[(36.0, 80.0), (74.0, 80.0), (86.0, 160.0), (24.0, 160.0)],
+            look.top,
+        ));
+    } else {
+        nodes.push(figure.block(BODY, (32.0, 80.0, 46.0, 80.0), 16.0, look.top));
+    }
+    nodes.push(figure.block(BODY, (49.0, 70.0, 12.0, 14.0), 3.0, look.skin));
+    if look.robot {
+        nodes.push(figure.block(
+            BODY,
+            (43.0, 96.0, 24.0, 18.0),
+            4.0,
+            tokens::BACKGROUND_RAISED,
+        ));
+        nodes.push(figure.dot(BODY, 55.0, 105.0, 4.0, tokens::SECONDARY));
+    } else {
+        nodes.extend(outfit_details(figure, look));
     }
     // Arms over the torso; hands are dots at the ends.
     for (object, points) in arms(pose) {
         nodes.push(figure.stroke(object, &points, 10.0, look.sleeve).with_z(1));
         let (hx, hy) = points[points.len() - 1];
-        nodes.push(figure.dot(object, hx, hy, 6.0, skin).with_z(1));
+        nodes.push(figure.dot(object, hx, hy, 6.0, look.skin).with_z(1));
     }
     // Something in the resting hand; celebrating raises both hands, so nothing is held.
     if pose != Pose::Celebrate {
-        nodes.extend(prop(figure, character));
+        nodes.extend(prop(figure, look.prop));
     }
     // Head.
-    if robot {
+    if look.robot {
         nodes.push(figure.stroke(BODY, &[(55.0, 26.0), (55.0, 14.0)], 2.5, tokens::MUTED));
         nodes.push(figure.dot(BODY, 55.0, 12.0, 4.0, tokens::ACCENT));
         nodes.push(figure.block(BODY, (31.0, 26.0, 48.0, 46.0), 10.0, tokens::SURFACE_STRONG));
@@ -219,25 +319,106 @@ fn figure_nodes(figure: &Figure, character: Character, pose: Pose) -> Vec<Node> 
             tokens::BACKGROUND_RAISED,
         ));
     } else {
-        nodes.push(figure.dot(BODY, 55.0, 48.0, 24.0, skin));
-        let hair = if character == Character::Scientist {
-            tokens::INK_SOFT
-        } else {
-            HAIR
-        };
-        nodes.push(figure.stroke(
-            BODY,
-            &[
-                (32.0, 46.0),
-                (36.0, 30.0),
-                (55.0, 22.0),
-                (74.0, 30.0),
-                (78.0, 46.0),
-            ],
-            9.0,
-            hair,
-        ));
-        if character == Character::Developer {
+        // Long hair and a bun sit behind the head.
+        match look.hair {
+            Hair::Long => {
+                nodes.push(figure.block(BODY, (28.0, 34.0, 54.0, 46.0), 14.0, look.hair_colour));
+            }
+            Hair::Bun => nodes.push(figure.dot(BODY, 55.0, 20.0, 9.0, look.hair_colour)),
+            _ => {}
+        }
+        nodes.push(figure.dot(BODY, 55.0, 48.0, 24.0, look.skin));
+        match look.hair {
+            Hair::Bald => {}
+            Hair::Curly => {
+                for (x, y) in [
+                    (34.0, 40.0),
+                    (38.0, 30.0),
+                    (47.0, 24.0),
+                    (55.0, 22.0),
+                    (63.0, 24.0),
+                    (72.0, 30.0),
+                    (76.0, 40.0),
+                ] {
+                    nodes.push(figure.dot(BODY, x, y, 7.5, look.hair_colour));
+                }
+            }
+            Hair::Short | Hair::Long | Hair::Bun => nodes.push(figure.stroke(
+                BODY,
+                &[
+                    (32.0, 46.0),
+                    (36.0, 30.0),
+                    (55.0, 22.0),
+                    (74.0, 30.0),
+                    (78.0, 46.0),
+                ],
+                9.0,
+                look.hair_colour,
+            )),
+        }
+        // Beards sit under the mouth, which stays drawn on top.
+        match look.beard {
+            Beard::None => {}
+            Beard::Moustache => nodes.push(
+                figure
+                    .stroke(
+                        BODY,
+                        &[(48.0, 56.5), (55.0, 55.0), (62.0, 56.5)],
+                        3.5,
+                        look.beard_colour,
+                    )
+                    .with_z(2),
+            ),
+            Beard::Goatee => nodes.push(
+                figure
+                    .dot(BODY, 55.0, 69.0, 4.5, look.beard_colour)
+                    .with_z(2),
+            ),
+            Beard::Short => nodes.push(
+                figure
+                    .stroke(
+                        BODY,
+                        &[
+                            (37.0, 58.0),
+                            (43.0, 68.0),
+                            (55.0, 73.0),
+                            (67.0, 68.0),
+                            (73.0, 58.0),
+                        ],
+                        6.0,
+                        look.beard_colour,
+                    )
+                    .with_z(2),
+            ),
+            Beard::Long => nodes.push(
+                figure
+                    .shape(
+                        BODY,
+                        &[
+                            (33.0, 50.0),
+                            (40.0, 64.0),
+                            (48.0, 64.0),
+                            (62.0, 64.0),
+                            (70.0, 64.0),
+                            (77.0, 50.0),
+                            (66.0, 96.0),
+                            (55.0, 102.0),
+                            (44.0, 96.0),
+                        ],
+                        look.beard_colour,
+                    )
+                    .with_z(2),
+            ),
+        }
+        if look.laurel {
+            for side in [
+                [(31.0, 46.0), (34.0, 32.0), (44.0, 24.0)],
+                [(79.0, 46.0), (76.0, 32.0), (66.0, 24.0)],
+            ] {
+                nodes.push(figure.stroke(BODY, &side, 4.5, LAUREL).with_z(2));
+            }
+        }
+        if look.glasses {
             for x in [40.0, 58.0] {
                 nodes.push(
                     Node::new(
@@ -256,7 +437,7 @@ fn figure_nodes(figure: &Figure, character: Character, pose: Pose) -> Vec<Node> 
         }
     }
     // Eyes and mouth animate on their own objects.
-    let (eye, mouth) = if robot {
+    let (eye, mouth) = if look.robot {
         (tokens::SECONDARY, tokens::SECONDARY)
     } else {
         (LINE, LINE)
@@ -264,16 +445,104 @@ fn figure_nodes(figure: &Figure, character: Character, pose: Pose) -> Vec<Node> 
     for x in [44.5, 62.5] {
         nodes.push(figure.block(EYES, (x, 44.0, 4.0, 7.0), 2.0, eye).with_z(3));
     }
-    let brow = match character {
-        Character::Robot => tokens::SECONDARY,
-        Character::Scientist => tokens::MUTED,
-        _ => HAIR,
-    };
     for points in brows(pose) {
-        nodes.push(figure.stroke(BROWS, &points, 2.4, brow).with_z(3));
+        nodes.push(figure.stroke(BROWS, &points, 2.4, look.brow).with_z(3));
     }
     nodes.push(mouth_node(figure, pose, mouth));
     nodes
+}
+
+const LAUREL: &str = "#6E9F4E";
+
+/// Collars, ties, strings, sashes and jersey numbers drawn over the torso.
+fn outfit_details(figure: &Figure, look: &Look) -> Vec<Node> {
+    match look.outfit {
+        Outfit::Shirt => vec![figure.stroke(
+            BODY,
+            &[(46.0, 82.0), (55.0, 94.0), (64.0, 82.0)],
+            2.5,
+            tokens::INK,
+        )],
+        Outfit::LabCoat => vec![
+            figure.stroke(
+                BODY,
+                &[(42.0, 82.0), (55.0, 112.0), (68.0, 82.0)],
+                2.5,
+                tokens::MUTED,
+            ),
+            figure.block(BODY, (52.0, 90.0, 6.0, 22.0), 2.0, tokens::ACCENT),
+        ],
+        Outfit::Hoodie => vec![
+            figure.stroke(BODY, &[(48.0, 84.0), (48.0, 104.0)], 2.0, tokens::INK),
+            figure.stroke(BODY, &[(62.0, 84.0), (62.0, 104.0)], 2.0, tokens::INK),
+        ],
+        Outfit::Suit => vec![
+            figure.shape(
+                BODY,
+                &[(44.0, 81.0), (55.0, 104.0), (66.0, 81.0)],
+                "#F1F3F5",
+            ),
+            figure.shape(
+                BODY,
+                &[
+                    (53.0, 86.0),
+                    (57.0, 86.0),
+                    (58.5, 104.0),
+                    (55.0, 108.0),
+                    (51.5, 104.0),
+                ],
+                tokens::DANGER,
+            ),
+        ],
+        Outfit::Toga => vec![figure.stroke(
+            BODY,
+            &[(36.0, 84.0), (55.0, 118.0), (72.0, 156.0)],
+            6.0,
+            tokens::MUTED,
+        )],
+        Outfit::Dress => {
+            vec![figure.stroke(BODY, &[(36.0, 108.0), (74.0, 108.0)], 3.0, tokens::INK_SOFT)]
+        }
+        Outfit::Jersey => {
+            let mut nodes = vec![figure.stroke(
+                BODY,
+                &[(46.0, 82.0), (55.0, 89.0), (64.0, 82.0)],
+                3.0,
+                tokens::INK_SOFT,
+            )];
+            if let Some(number) = look.number {
+                let size = 26.0 * figure.k;
+                let (x, y) = figure.p(55.0, 132.0);
+                let content = number.to_string();
+                let width = size * 0.62 * content.len() as f32;
+                // Light jerseys get a dark number.
+                let fill = if matches!(look.top, "#F5C518" | "#F1F3F5" | "#F76B15" | "#8B8D98") {
+                    LINE
+                } else {
+                    tokens::INK
+                };
+                nodes.push(
+                    Node::new(
+                        BODY,
+                        Shape::Text {
+                            x,
+                            y,
+                            size,
+                            weight: tokens::WEIGHT_BOLD,
+                            family: tokens::FONT_SANS,
+                            fill: fill.into(),
+                            anchor: Anchor::Middle,
+                            content,
+                            bbox: Rect::new(x - width / 2.0, y - size, width, size),
+                            counter: None,
+                        },
+                    )
+                    .decorative(),
+                );
+            }
+            nodes
+        }
+    }
 }
 
 /// Brows carry the expression: friendly arches to explain, level and firm to point, one
@@ -328,10 +597,11 @@ fn mouth_node(figure: &Figure, pose: Pose, colour: &str) -> Node {
 }
 
 /// Objects held in the resting hand (at 26, 138 in the unit box).
-fn prop(figure: &Figure, character: Character) -> Vec<Node> {
-    match character {
+fn prop(figure: &Figure, prop: Prop) -> Vec<Node> {
+    match prop {
+        Prop::None => Vec::new(),
         // A closed laptop carried under the arm, with a lit logo.
-        Character::Developer => vec![
+        Prop::Laptop => vec![
             figure
                 .block(PROP, (12.0, 108.0, 9.0, 38.0), 2.5, tokens::SURFACE_STRONG)
                 .with_z(2),
@@ -340,7 +610,7 @@ fn prop(figure: &Figure, character: Character) -> Vec<Node> {
                 .with_z(2),
         ],
         // An erlenmeyer flask with coloured liquid.
-        Character::Scientist => {
+        Prop::Flask => {
             let (d, length) = figure.polyline(&[
                 (23.0, 116.0),
                 (23.0, 124.0),
@@ -381,20 +651,75 @@ fn prop(figure: &Figure, character: Character) -> Vec<Node> {
             ]
         }
         // A handheld microphone.
-        Character::Presenter => vec![
+        Prop::Microphone => vec![
             figure
                 .block(PROP, (23.5, 128.0, 5.0, 16.0), 2.0, tokens::SURFACE_STRONG)
                 .with_z(2),
             figure.dot(PROP, 26.0, 126.0, 5.0, tokens::MUTED).with_z(2),
         ],
-        // The robot keeps its chest screen as the focal point.
-        Character::Robot => Vec::new(),
+        // A rolled parchment with darker ends.
+        Prop::Scroll => vec![
+            figure
+                .block(PROP, (14.0, 118.0, 24.0, 12.0), 3.0, "#EDE3C8")
+                .with_z(2),
+            figure.dot(PROP, 14.0, 124.0, 6.0, "#C9B98F").with_z(2),
+            figure.dot(PROP, 38.0, 124.0, 6.0, "#C9B98F").with_z(2),
+        ],
+        // A closed book, spine towards the viewer.
+        Prop::Book => vec![
+            figure
+                .block(PROP, (14.0, 114.0, 22.0, 28.0), 2.0, tokens::DANGER)
+                .with_z(2),
+            figure
+                .block(PROP, (14.0, 114.0, 4.0, 28.0), 1.0, "#9E2F33")
+                .with_z(2),
+        ],
+        // A ball under the hand, with a dark patch.
+        Prop::Ball => vec![
+            figure.dot(PROP, 24.0, 148.0, 10.0, "#F1F3F5").with_z(2),
+            figure.dot(PROP, 24.0, 148.0, 3.5, LINE).with_z(2),
+        ],
+        // A whistle on a cord around the neck.
+        Prop::Whistle => vec![
+            figure
+                .stroke(
+                    PROP,
+                    &[(48.0, 82.0), (58.0, 104.0), (64.0, 82.0)],
+                    1.5,
+                    tokens::INK,
+                )
+                .with_z(2),
+            figure
+                .block(PROP, (55.0, 102.0, 9.0, 6.0), 2.0, tokens::ACCENT)
+                .with_z(2),
+        ],
+        // A trophy cup.
+        Prop::Trophy => vec![
+            figure
+                .shape(
+                    PROP,
+                    &[(14.0, 110.0), (38.0, 110.0), (32.0, 128.0), (20.0, 128.0)],
+                    tokens::ACCENT,
+                )
+                .with_z(2),
+            figure
+                .block(PROP, (24.0, 128.0, 4.0, 8.0), 1.0, tokens::ACCENT)
+                .with_z(2),
+            figure
+                .block(PROP, (18.0, 136.0, 16.0, 5.0), 1.5, tokens::ACCENT)
+                .with_z(2),
+        ],
     }
 }
 
 /// The figure alone, scaled to fit `area` and standing on its bottom edge.
 pub fn figure(area: Rect, character: Character, pose: Pose) -> Vec<Node> {
-    figure_nodes(&Figure::fit(area, false), character, pose)
+    figure_nodes(&Figure::fit(area, false), &preset(character), pose)
+}
+
+/// A described persona alone, for thumbnails.
+pub fn persona_figure(area: Rect, persona: &Persona, pose: Pose) -> Vec<Node> {
+    figure_nodes(&Figure::fit(area, false), &described(persona), pose)
 }
 
 /// `mirrored` alternates sides between scenes: the character faces left and, on wide
@@ -403,6 +728,7 @@ pub fn build(
     ctx: &mut Ctx<'_>,
     area: Rect,
     character: Character,
+    persona: Option<&Persona>,
     pose: Pose,
     text: &str,
     mirrored: bool,
@@ -433,7 +759,8 @@ pub fn build(
         )
     };
     let figure = Figure::fit(stage, mirrored);
-    let mut nodes = figure_nodes(&figure, character, pose);
+    let look = persona.map_or_else(|| preset(character), described);
+    let mut nodes = figure_nodes(&figure, &look, pose);
     // Speech card with a tail towards the character's head.
     nodes.push(ctx.card(SPEECH, speech, framechester_core::storyboard::Role::Neutral));
     let (head_x, head_y) = figure.p(55.0, 30.0);
@@ -476,10 +803,22 @@ pub fn build(
         .decorative(),
     );
     let scale = ctx.canvas.type_scale;
+    // A described character says who it is: the name sits on top of the speech card.
+    let mut text_area = speech.inset(gap);
+    if let Some(persona) = persona {
+        nodes.push(ctx.kicker(SPEECH, &persona.name, text_area, tokens::ACCENT));
+        let skip = ctx.line_height(scale.small) + gap * 0.4;
+        text_area = Rect::new(
+            text_area.x,
+            text_area.y + skip,
+            text_area.w,
+            text_area.h - skip,
+        );
+    }
     let (text_nodes, _) = ctx.fitted(
         SPEECH,
         text,
-        speech.inset(gap),
+        text_area,
         scale.heading,
         scale.body,
         tokens::WEIGHT_BOLD,
@@ -625,6 +964,60 @@ mod tests {
         assert!(props(Character::Presenter, Pose::Point) > 0, "microphone");
         assert_eq!(props(Character::Robot, Pose::Explain), 0);
         assert_eq!(props(Character::Developer, Pose::Celebrate), 0);
+    }
+
+    #[test]
+    fn a_described_persona_draws_its_traits() {
+        let area = Rect::new(0.0, 0.0, 330.0, 480.0);
+        let striker = framechester_core::persona::parse(
+            "Camisa 10 (pele escura, cabelo cacheado preto, camisa 10 amarela, bola)",
+        )
+        .unwrap()
+        .unwrap();
+        let nodes = persona_figure(area, &striker, Pose::Explain);
+        let texts: Vec<&str> = nodes
+            .iter()
+            .filter_map(|node| match &node.shape {
+                Shape::Text { content, fill, .. } => {
+                    assert_eq!(fill, LINE, "dark number on a yellow jersey");
+                    Some(content.as_str())
+                }
+                _ => None,
+            })
+            .collect();
+        assert_eq!(texts, vec!["10"]);
+        let fills = |nodes: &[Node], colour: &str| {
+            nodes
+                .iter()
+                .filter(|node| match &node.shape {
+                    Shape::Circle { fill, .. } | Shape::Rect { fill, .. } => fill == colour,
+                    Shape::Path { stroke, .. } => stroke == colour,
+                    _ => false,
+                })
+                .count()
+        };
+        assert_eq!(
+            fills(&nodes, "#8D5524"),
+            4,
+            "head, neck and both hands in the dark skin"
+        );
+        assert_eq!(fills(&nodes, HAIR), 7 + 2, "seven curls and two brows");
+        assert!(fills(&nodes, "#F5C518") >= 3, "jersey torso and sleeves");
+
+        let socrates = framechester_core::persona::parse(
+            "Sócrates (careca, barba longa branca, toga branca, louros, pergaminho)",
+        )
+        .unwrap()
+        .unwrap();
+        let nodes = persona_figure(area, &socrates, Pose::Think);
+        assert_eq!(fills(&nodes, LAUREL), 2, "laurel on both sides");
+        assert!(fills(&nodes, "#EDE3C8") == 1, "the scroll");
+        assert!(
+            fills(&nodes, "#E8EAED") >= 3,
+            "white beard and brows on a bald head"
+        );
+        let celebrating = persona_figure(area, &socrates, Pose::Celebrate);
+        assert_eq!(fills(&celebrating, "#EDE3C8"), 0, "hands up, nothing held");
     }
 
     #[test]

@@ -334,18 +334,16 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
     let artifacts = render(&storyboard, &request)?;
     // The thumbnail shows the character the video uses, else the one that fits the topic.
     let thumbnail = workdir.join("render").join("thumbnail.png");
-    let cast = framechester_motion::thumbnail::cast_of(&storyboard)
-        .or_else(|| {
-            planned
-                .script
-                .as_ref()
-                .map(framechester_core::planner::cast_for)
-        })
-        .unwrap_or(framechester_core::storyboard::Character::Presenter);
+    let cast = framechester_motion::thumbnail::cast_of(&storyboard).unwrap_or_else(|| {
+        framechester_motion::thumbnail::Cast::Preset(planned.script.as_ref().map_or(
+            framechester_core::storyboard::Character::Presenter,
+            framechester_core::planner::cast_for,
+        ))
+    });
     for issue in framechester_motion::thumbnail::render(
         &framechester_motion::text::Typesetter::new()?,
         &storyboard.title,
-        cast,
+        &cast,
         &thumbnail,
     )? {
         warnings.push(format!("thumbnail: {}", issue.detail));

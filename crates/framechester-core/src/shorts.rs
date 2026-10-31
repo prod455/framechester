@@ -152,6 +152,7 @@ mod tests {
                     character: Character::Robot,
                     pose: Pose::Think,
                     text: "Gancho?".into(),
+                    persona: None,
                 },
             ),
             scene(1, 20.0, title()),

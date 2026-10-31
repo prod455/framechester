@@ -170,7 +170,7 @@ export function jobCard(job: WebJob): HTMLElement {
   );
 }
 
-function youtubeStatus(job: WebJob): HTMLElement | null {
+export function youtubeStatus(job: WebJob): HTMLElement | null {
   const youtube = job.youtube;
   if (!youtube) return null;
   if (youtube.status === 'uploading')
@@ -197,7 +197,7 @@ function youtubeStatus(job: WebJob): HTMLElement | null {
 }
 
 /** Only an approved final version goes out, once; a failed upload can be retried. */
-function youtubeButton(job: WebJob): HTMLElement | null {
+export function youtubeButton(job: WebJob): HTMLElement | null {
   if (
     job.status !== 'completed' ||
     job.previewOnly ||

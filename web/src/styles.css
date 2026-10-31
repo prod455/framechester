@@ -37,6 +37,25 @@ p { line-height: var(--line-copy); }
 .nav { display: grid; align-content: start; gap: var(--space-1); min-height: 0; overflow-y: auto; }
 .nav-group-label { margin: var(--space-6) 0 var(--space-2); padding: 0 var(--space-3); color: var(--muted-foreground); font-size: var(--font-xs); line-height: var(--line-ui); font-weight: 500; }
 .nav-group-label:first-child { margin-top: 0; }
+.nav-advanced > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: var(--space-2); }
+.nav-advanced > summary::-webkit-details-marker { display: none; }
+.nav-advanced > summary::before { content: "▸"; font-size: var(--font-xs); }
+.nav-advanced[open] > summary::before { content: "▾"; }
+.create-flow { max-width: 760px; margin: 0 auto; display: grid; gap: var(--space-6); }
+.create-header h1 { margin: 0 0 var(--space-2); }
+.create-header p { margin: 0; color: var(--muted-foreground); }
+.create-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+.create-step { display: grid; grid-template-columns: 40px 1fr auto; gap: var(--space-4); align-items: center; padding: var(--space-4); border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.create-step[data-state="waiting"] { opacity: 0.6; }
+.create-step[data-state="current"] { border-color: var(--primary); }
+.create-step[data-state="stopped"] { border-color: var(--destructive); }
+.create-step-number { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: var(--muted); }
+.create-step[data-state="done"] .create-step-number { background: var(--primary); color: var(--primary-foreground); }
+.create-step-copy h3 { margin: 0 0 var(--space-1); display: flex; gap: var(--space-2); align-items: center; font-size: var(--font-md, 1rem); }
+.create-step-copy p { margin: 0; color: var(--muted-foreground); }
+.create-step-buttons { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.create-footer { margin: 0; }
+@media (max-width: 640px) { .create-step { grid-template-columns: 32px 1fr; } .create-step-action { grid-column: 1 / -1; } }
 .nav-item { min-height: 40px; padding: var(--space-2) var(--space-3); display: flex; align-items: center; gap: var(--space-3); border-radius: 5px; color: var(--sidebar-text); font-size: var(--font-sm); line-height: var(--line-ui); font-weight: 400; text-decoration: none; }
 .nav-item:hover { background: var(--sidebar-hover); color: var(--ink); }
 .nav-item[aria-current="page"] { background: var(--sidebar-hover); color: var(--ink); font-weight: 600; }

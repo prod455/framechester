@@ -17,11 +17,12 @@ import {
 import { toast } from '../studio/toast.ts';
 import { requiredChannel } from './channels.ts';
 import type { Platform } from '../../shared/types.ts';
+import { t, translateMessage } from '../../shared/i18n.ts';
 
 export function platformTabs(): HTMLElement {
   return el(
     'div',
-    { className: 'network-tabs', role: 'group', 'aria-label': 'Rede social' },
+    { className: 'network-tabs', role: 'group', 'aria-label': t('Rede social') },
     ...platforms.map((platform) => {
       const tab = button(labels[platform], () => {}, 'ghost');
       tab.classList.add('network-tab');
@@ -59,7 +60,11 @@ export function connectionsPage(): HTMLElement {
           { title: connection?.displayName || labels[platform] },
           connection?.displayName || labels[platform],
         ),
-        el('p', { className: 'field-hint' }, connection?.accountId || 'Nenhuma conta vinculada neste canal'),
+        el(
+          'p',
+          { className: 'field-hint' },
+          connection?.accountId || t('Nenhuma conta vinculada neste canal'),
+        ),
       ),
       el('span', { className: 'spacer' }),
       badge(connection?.status || 'disconnected'),
@@ -70,7 +75,12 @@ export function connectionsPage(): HTMLElement {
       el(
         'p',
         { className: 'field-hint' },
-        `Conexão: ${date(connection.connectedAt)}${connection.expiresAt ? ` · Expiração: ${date(connection.expiresAt)}` : ''}`,
+        connection.expiresAt
+          ? t('Conexão: {connected} · Expiração: {expires}', {
+              connected: date(connection.connectedAt),
+              expires: date(connection.expiresAt),
+            })
+          : t('Conexão: {connected}', { connected: date(connection.connectedAt) }),
       ),
       el(
         'div',
@@ -79,24 +89,24 @@ export function connectionsPage(): HTMLElement {
       ),
     );
   if (connection?.message)
-    content.append(el('div', { className: 'notice' }, icon('circle'), connection.message));
+    content.append(el('div', { className: 'notice' }, icon('circle'), translateMessage(connection.message)));
   if (connected)
     content.append(
       el(
         'div',
         { className: 'form-actions' },
         button(
-          'Consultar métricas',
+          t('Consultar métricas'),
           () => {
             void action(
               () => request(channelPath(`/connections/${platform}/sync`), 'POST', {}),
-              'Consulta concluída. Confira os dados e seus períodos em Análises.',
+              t('Consulta concluída. Confira os dados e seus períodos em Análises.'),
             );
           },
           'primary',
           'refresh',
         ),
-        button('Remover vínculo local', () => disconnectPlatform(platform), 'secondary', 'plug'),
+        button(t('Remover vínculo local'), () => disconnectPlatform(platform), 'secondary', 'plug'),
       ),
     );
   else if (capability) {
@@ -111,7 +121,7 @@ export function connectionsPage(): HTMLElement {
     const scopes = input('scopes', '');
     const result = el('div');
     const { form, fields } = formWithSave(
-      platform === 'youtube' ? 'Preparar autorização OAuth' : 'Salvar vínculo no servidor local',
+      platform === 'youtube' ? t('Preparar autorização OAuth') : t('Salvar vínculo no servidor local'),
       async () => {
         const secretValue = secret.value;
         secret.value = '';
@@ -126,16 +136,22 @@ export function connectionsPage(): HTMLElement {
             );
             const url = new URL(response.authorizationUrl);
             if (url.protocol !== 'https:' || url.hostname !== 'accounts.google.com')
-              throw new Error('Destino de autorização inesperado.');
+              throw new Error(t('Destino de autorização inesperado.'));
             replace(
               result,
               notice(
-                'Autorize a conta correta no Google. O vínculo só será confirmado após o retorno ao servidor local.',
+                t(
+                  'Autorize a conta correta no Google. O vínculo só será confirmado após o retorno ao servidor local.',
+                ),
               ),
-              el('p', { className: 'field-hint' }, `Autorização válida até ${date(response.expiresAt)}`),
-              externalLink('Continuar no Google', url.href),
+              el(
+                'p',
+                { className: 'field-hint' },
+                t('Autorização válida até {date}', { date: date(response.expiresAt) }),
+              ),
+              externalLink(t('Continuar no Google'), url.href),
             );
-            toast('Autorização preparada. Continue pelo link do Google.');
+            toast(t('Autorização preparada. Continue pelo link do Google.'));
           } else {
             await request(channelPath(`/connections/${platform}/token`), 'POST', {
               accountId: account.value.trim(),
@@ -147,46 +163,52 @@ export function connectionsPage(): HTMLElement {
                 .filter(Boolean),
             });
             await refresh();
-            toast('Vínculo salvo no servidor local. Consulte a rede para verificar seus dados.');
+            toast(t('Vínculo salvo no servidor local. Consulte a rede para verificar seus dados.'));
           }
         } catch {
           throw new Error(
-            'Não foi possível concluir a conexão. Confira o identificador, a credencial e os requisitos do provedor; o segredo foi removido do formulário.',
+            t(
+              'Não foi possível concluir a conexão. Confira o identificador, a credencial e os requisitos do provedor; o segredo foi removido do formulário.',
+            ),
           );
         }
       },
     );
     fields.append(
-      field(platform === 'youtube' ? 'ID do canal no YouTube' : 'ID da conta no provedor', account),
+      field(platform === 'youtube' ? t('ID do canal no YouTube') : t('ID da conta no provedor'), account),
     );
     if (platform === 'youtube') {
       clientId.required = true;
       fields.append(
-        field('OAuth Client ID', clientId),
-        field('OAuth Client Secret', secret),
+        field('OAuth Client ID', clientId), // i18n-ignore: Google Cloud field name
+        field('OAuth Client Secret', secret), // i18n-ignore: Google Cloud field name
         notice(
-          'Use o cliente OAuth configurado para esta instalação. A autorização ocorre no Google; senhas da sua conta não são solicitadas aqui.',
+          t(
+            'Use o cliente OAuth configurado para esta instalação. A autorização ocorre no Google; senhas da sua conta não são solicitadas aqui.',
+          ),
         ),
       );
     } else
       fields.append(
         field(
-          'Token de acesso oficial',
+          t('Token de acesso oficial'),
           secret,
-          'Enviado apenas ao servidor local e removido deste formulário após o envio.',
+          t('Enviado apenas ao servidor local e removido deste formulário após o envio.'),
         ),
         el(
           'div',
           { className: 'form-grid' },
-          field('Expiração (se conhecida)', expires),
-          field('Escopos concedidos', scopes, 'Separe os escopos por vírgula.'),
+          field(t('Expiração (se conhecida)'), expires),
+          field(t('Escopos concedidos'), scopes, t('Separe os escopos por vírgula.')),
         ),
       );
     content.append(el('div', { className: 'divider' }), form, result);
   } else
     content.append(
       notice(
-        'A capacidade desta integração não foi informada pelo servidor. Atualize o estúdio antes de configurar uma conexão.',
+        t(
+          'A capacidade desta integração não foi informada pelo servidor. Atualize o estúdio antes de configurar uma conexão.',
+        ),
       ),
     );
   const requirements = el(
@@ -197,68 +219,75 @@ export function connectionsPage(): HTMLElement {
       { className: 'capability-row' },
       el(
         'span',
-        { className: `badge ${capability?.metricsAvailable ? 'badge-green' : ''}` },
-        capability?.metricsAvailable ? 'Métricas disponíveis' : 'Métricas indisponíveis',
+        { className: 'badge', 'data-variant': capability?.metricsAvailable ? 'secondary' : 'outline' },
+        capability?.metricsAvailable ? t('Métricas disponíveis') : t('Métricas indisponíveis'),
       ),
       el(
         'span',
-        { className: `badge ${capability?.revenueAvailable ? 'badge-violet' : ''}` },
-        capability?.revenueAvailable ? 'Receita sujeita a escopo' : 'Sem receita nesta API',
+        { className: 'badge', 'data-variant': capability?.revenueAvailable ? 'secondary' : 'outline' },
+        capability?.revenueAvailable ? t('Receita sujeita a escopo') : t('Sem receita nesta API'),
       ),
       el(
         'span',
-        { className: 'badge' },
-        capability?.publishingAvailable ? 'Publicação exige autorização' : 'Publicação não implementada',
+        { className: 'badge', 'data-variant': capability?.publishingAvailable ? 'secondary' : 'outline' },
+        capability?.publishingAvailable ? t('Envio privado disponível') : t('Sem envio nesta API'),
       ),
     ),
     el('div', { className: 'divider' }),
     el(
       'ul',
       { className: 'requirements' },
-      ...(capability?.requirements || []).map((item) => el('li', {}, icon('circle'), item)),
+      ...(capability?.requirements || []).map((item) => el('li', {}, icon('circle'), translateMessage(item))),
     ),
     el(
       'p',
       { className: 'field-hint' },
-      capability?.revenueNote || 'As informações dependem das permissões e funcionalidades do provedor.',
+      (capability?.revenueNote && translateMessage(capability.revenueNote)) ||
+        t('As informações dependem das permissões e funcionalidades do provedor.'),
     ),
     capability?.docsUrl
-      ? el('div', { className: 'form-actions' }, externalLink('Documentação oficial', capability.docsUrl))
+      ? el('div', { className: 'form-actions' }, externalLink(t('Documentação oficial'), capability.docsUrl))
       : null,
   );
   return el(
     'div',
     {},
-    heading('Contas conectadas', 'Cada rede, com a conta e as permissões certas.'),
+    heading(t('Contas conectadas'), t('Cada rede, com a conta e as permissões certas.')),
     platformTabs(),
     el(
       'div',
       { className: 'connection-layout' },
-      panel(`Conectar ao ${labels[platform]}`, `Vínculo exclusivo de ${currentChannel()!.name}.`, content),
-      panel('O que esta integração permite', 'Capacidades informadas pelo servidor.', requirements),
+      panel(
+        t('Conectar ao {network}', { network: labels[platform] }),
+        t('Vínculo exclusivo de {channel}.', { channel: currentChannel()!.name }),
+        content,
+      ),
+      panel(t('O que esta integração permite'), t('Capacidades informadas pelo servidor.'), requirements),
     ),
   );
 }
 
 export function disconnectPlatform(platform: Platform): void {
   const { dialog, body } = createDialog(
-    'Remover este vínculo local?',
+    t('Remover este vínculo local?'),
     `${labels[platform]} · ${currentChannel()?.name}`,
   );
   body.append(
     el(
       'p',
       { className: 'muted' },
-      'A credencial deste vínculo será removida da instalação. Seus vídeos na plataforma não serão excluídos. Para consultar a rede novamente, será necessário reconectar.',
+      t(
+        'A credencial deste vínculo será removida da instalação. Seus vídeos na plataforma não serão excluídos. Para consultar a rede novamente, será necessário reconectar.',
+      ),
     ),
   );
   const { form } = formWithSave(
-    'Remover vínculo',
+    t('Remover vínculo'),
     async () => {
       await request(channelPath(`/connections/${platform}`), 'DELETE');
       dialog.close();
       await refresh();
-      toast('Vínculo local removido.');
+      toast(t('Vínculo local removido.'));
     },
     () => dialog.close(),
   );

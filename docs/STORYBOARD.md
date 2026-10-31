@@ -46,7 +46,7 @@ Storyboard
 | `annotation` | árvore (pastas, arquivos) com notas | `objects` com `parent`, `notes` |
 | `infographic` | cartões de dados | `title`, `objects` |
 | `cause_effect` | causa → consequência, passos | `objects` |
-| `character` | personagem que fala ao lado de um balão | `character` (`presenter`, `developer`, `scientist`, `robot`), `pose` (`explain`, `point`, `think`, `celebrate`), `text` (≤ 140) |
+| `character` | personagem que fala ao lado de um balão | `character` (`presenter`, `developer`, `scientist`, `robot`), `pose` (`explain`, `point`, `think`, `celebrate`), `text` (≤ 140), `persona` opcional (personagem descrito: `name`, `skin`, `hair`, `hair_colour`, `beard`, `beard_colour`, `outfit`, `colour`, `number`, `prop`, `glasses`, `laurel`) |
 
 Cada objeto tem `id`, `label` (≤ 60 caracteres), `detail` (≤ 120), `role`
 (`neutral`, `primary`, `secondary`, `accent`, `success`, `warning`, `danger`), `icon`
@@ -101,6 +101,32 @@ O autor do roteiro (pessoa ou modelo) escreve uma diretiva na primeira linha de
 
 Qualquer rótulo aceita um ícone `[agent]` e um papel `{primary}`. A linha seguinte do
 `visual_brief` vira o `learning_goal` da cena.
+
+**Personagens da pauta.** No lugar de um personagem pronto, o roteiro pode descrever quem
+fala: `#personagem Sócrates (careca, barba longa branca, toga branca, pergaminho) | explicar | Só sei que nada sei`.
+A descrição usa até 10 traços de um vocabulário fechado, e o motor desenha cada traço em
+vetor, sempre igual:
+
+| Traço | Palavras |
+|---|---|
+| Pele | `pele clara`, `pele media`, `pele morena`, `pele escura` |
+| Cabelo | `careca`, `coque`, `cabelo curto`, `cabelo longo`, `cabelo cacheado`, com cor `preto`, `castanho`, `loiro`, `ruivo`, `grisalho`, `branco` |
+| Barba | `bigode`, `cavanhaque`, `barba curta`, `barba longa`, com cor |
+| Roupa | `camisa`, `terno`, `toga`, `jaleco`, `moletom`, `vestido`, `uniforme`, com cor `azul`, `vermelho`, `verde`, `amarelo`, `branco`, `preto`, `roxo`, `laranja`, `cinza`; um número de 1 a 99 vira camisa de time (`camisa 10 amarela`) |
+| Objeto | `pergaminho`, `livro`, `bola`, `apito`, `microfone`, `notebook`, `frasco`, `trofeu` |
+| Extras | `oculos`, `louros` |
+
+- Descreva uma vez; nas cenas seguintes, o nome basta (`#personagem Sócrates | pensar`).
+- O primeiro personagem descrito apresenta as cenas sem diretiva.
+- O nome aparece no topo do balão e o personagem vai para a miniatura.
+- Um traço fora da lista ou um nome nunca descrito não para a produção: a cena usa o layout
+  padrão e o aviso diz o que corrigir.
+
+O desenho nunca copia rosto, escudo, logotipo ou patrocinador: quem identifica o personagem
+é o nome e os traços escolhidos. Figuras históricas podem falar com frases documentadas ou
+claramente ilustrativas. **Pessoa viva** aparece por arquétipo (Camisa 10, Goleiro, Técnico)
+ou com fala em terceira pessoa ou citação que esteja nas fontes: inventar fala em primeira
+pessoa de alguém vivo, num vídeo monetizado, expõe o canal a pedido por uso de imagem.
 
 **Personagens.** `#personagem` aceita `apresentador`, `dev`, `cientista` ou `robo` e as
 poses `explicar`, `apontar`, `pensar` ou `comemorar`. Uma cena **sem diretiva** no motor

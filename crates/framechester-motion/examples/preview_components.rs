@@ -42,7 +42,7 @@ fn main() {
         let issues = framechester_motion::thumbnail::render(
             &typesetter,
             title,
-            character,
+            &framechester_motion::thumbnail::Cast::Preset(character),
             &out.join(format!("thumbnail-{name}.png")),
         )
         .unwrap();

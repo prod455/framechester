@@ -41,19 +41,19 @@ debug é 5–8× mais lento). O build web verifica TypeScript e
 gera `web/dist/`. A instalação completa de dependências é necessária também
 para `start`, que usa `tsx`.
 
-Na raiz, os atalhos equivalentes sao `npm run setup` (instalacao/build inicial),
+Na raiz, os atalhos equivalentes são `npm run setup` (instalação/build inicial),
 `npm start` (uso cotidiano), `npm run dev` (desenvolvimento) e `npm stop`
-(encerramento dos processos identificados desta instalacao). `npm start` e
+(encerramento dos processos identificados desta instalação). `npm start` e
 `npm run dev` reinstalam as dependências quando o `package-lock.json` mudou e
 recompilam o motor Rust (incremental) antes de iniciar; `npm start` também
-recompila a interface. Depois de atualizar o código, basta `npm start`. `npm stop` tambem
-para o Compose deste projeto quando ja preparado, sem remover os volumes.
+recompila a interface. Depois de atualizar o código, basta `npm start`. `npm stop` também
+para o Compose deste projeto quando já preparado, sem remover os volumes.
 
 Para Docker Desktop/Engine + Compose, use `npm run docker:up`; o comando prepara
-a chave externa, constroi a imagem e aguarda a saude do servico. `npm run docker:down`
-para preservando os dados. O perfil Docker e independente do perfil nativo;
-nao monta nem converte silenciosamente o cofre DPAPI existente. Consulte
-[DOCKER.md](DOCKER.md) para operacao, modelos, seguranca e recuperacao.
+a chave externa, constrói a imagem e aguarda a saúde do serviço. `npm run docker:down`
+para preservando os dados. O perfil Docker é independente do perfil nativo;
+não monta nem converte silenciosamente o cofre DPAPI existente. Consulte
+[DOCKER.md](DOCKER.md) para operação, modelos, segurança e recuperação.
 
 O servidor escuta somente em `127.0.0.1`. Esta entrega é para uso no próprio
 computador; não inclui hospedagem, proxy público, HTTPS remoto ou acesso de
@@ -315,6 +315,78 @@ operador do sistema. A exclusão é bloqueada quando há conteúdo, histórico,
 jobs, assets ou conexões a preservar. Num canal vazio, os vínculos/autorizações
 pendentes locais são limpos antes da exclusão; falha nessa limpeza preserva o
 canal. Desconectar não revoga consentimentos globais no provedor.
+
+## Idioma da interface
+
+O Studio fala português, inglês e espanhol. Troque em **Idioma**, no rodapé da barra
+lateral ou da tela de acesso; a página recarrega no idioma escolhido, e a escolha fica
+salva neste navegador. No primeiro acesso, ele segue o idioma do navegador.
+
+O idioma da interface não muda o conteúdo: roteiros, narração e legendas seguem o
+idioma do canal.
+
+Para quem mexe no código: escreva a mensagem em pt-BR dentro de `t()`
+(`t('Short na fila: {title}', { title })`) e acrescente as traduções em inglês e espanhol
+no catálogo da área em `web/shared/locales/`. Mensagens já montadas, como erros do
+servidor e o status das produções, passam por `translateMessage()`. O teste
+`web/tests/i18n.test.ts` falha se faltar tradução ou se uma frase escapar do `t()`.
+
+## Duração do vídeo é regra
+
+O formato define a duração, e o Studio confere antes de aceitar o roteiro:
+
+| Formato | Duração | Narração somada das cenas |
+|---|---|---|
+| short | 65 s a 90 s | 174 a 220 palavras |
+| long | 7 min a 12 min | 1.120 a 1.764 palavras |
+
+As faixas vêm do ritmo medido do narrador local (147 a 160 palavras por minuto,
+pausas incluídas). O mínimo usa o ritmo mais rápido e o máximo o mais lento, então
+um roteiro dentro da faixa de palavras fica dentro da faixa de tempo.
+
+1. A IA recebe a faixa de palavras junto com o pedido.
+2. Se o roteiro vier curto ou longo demais, ela reescreve o roteiro inteiro sabendo
+   quantas palavras faltam ou sobram. São até 3 gerações.
+3. Se nenhuma cumprir, o Studio mostra quantas palavras vieram e **não salva** o
+   roteiro.
+
+Um roteiro longo pede até 16.000 tokens de resposta, mesmo que o limite de saída
+em Configurações seja menor. Com Claude ou OpenAI, a estimativa de custo cobre
+todas as gerações; se passar do limite de custo, aumente-o em **Avançado →
+Configurações → Assistente de criação**. Você só paga o que for de fato gerado.
+
+## Short a partir de um vídeo pronto
+
+Quando a versão final de um vídeo feito pelo motor motion fica pronta, o passo
+**Enviar ao YouTube** de **Criar vídeo** e o card do vídeo em **Vídeos** mostram
+**Gerar Short**. Um clique coloca na fila um corte vertical do mesmo vídeo:
+
+- **Gancho no primeiro quadro.** A cena de abertura fica sempre, começando sem
+  transição.
+- **Até 58 s.** O corte cabe em menos de um minuto, a faixa em que Shorts têm o
+  ciclo de repetição mais curto.
+- **O que mais segura a atenção.** O final fica quando cabe (é onde estão a
+  conclusão e a chamada). No meio entram primeiro as cenas com mais informação
+  por segundo: gráficos e infográficos, depois comparações e transformações,
+  personagens, código e linhas do tempo, e por último títulos.
+- **Mesma ordem, mesmas palavras.** Nada é reescrito; a narração é refeita no
+  formato vertical, com legendas por palavra.
+- **Revisão herdada.** Como o texto é o mesmo, o Short herda a revisão editorial
+  do vídeo de origem e passa só pelo QA técnico.
+- **No YouTube**, ele vai como vídeo privado com `#Shorts` no título e na
+  descrição, sem miniatura personalizada (o YouTube não usa miniatura em Shorts).
+
+O botão só aparece para versões finais do motor motion. Prévias, vídeos do
+caminho antigo e o próprio Short não oferecem o corte. Essas regras seguem as
+boas práticas de retenção; elas não garantem uma taxa de cliques específica.
+
+Pela linha de comando, o mesmo corte sai de qualquer storyboard já narrado:
+
+```bash
+cargo run --release -p framechester-cli -- short --from artifacts/motion-horizontal/channels/<canal>/storyboard.json --workdir artifacts/short
+```
+
+Use `--max-secs` para outro limite e `--json` para ler o resultado num script.
 
 ## Painel das quatro redes e finanças
 

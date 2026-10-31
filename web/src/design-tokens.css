@@ -1,11 +1,11 @@
 /* Framechester Studio · semantic tokens. Local fonts only. */
 :root {
   color-scheme: light;
-  --font-ui: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-  --font-xs: .75rem;
-  --font-sm: .8125rem;
-  --font-md: .875rem;
+  --font-ui: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
+  --font-xs: 0.75rem;
+  --font-sm: 0.8125rem;
+  --font-md: 0.875rem;
   --font-lg: 1.0625rem;
   --font-xl: 1.25rem;
   --font-display: 1.5rem;
@@ -83,4 +83,23 @@
   --sidebar-foreground: var(--sidebar-text);
   --sidebar-accent: var(--sidebar-hover);
   --sidebar-accent-foreground: var(--ink);
+}
+
+/* Responsive tokens stay with the tokens, unlayered, so they override the defaults above
+   (inside the "studio" layer an unlayered default would win). */
+@media (max-width: 1100px) {
+  :root {
+    --sidebar-width: 196px;
+    --page-inset: 28px;
+  }
+}
+@media (max-width: 820px) {
+  :root {
+    --page-inset: 24px;
+  }
+}
+@media (max-width: 560px) {
+  :root {
+    --page-inset: 20px;
+  }
 }

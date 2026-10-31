@@ -1,5 +1,6 @@
 import { iconButton } from '../components.ts';
 import { button, el, field, select, textarea } from '../dom.ts';
+import { t } from '../../shared/i18n.ts';
 import type { Claim } from '../../shared/types.ts';
 
 export function claimsEditor(initial: Claim[]): {
@@ -15,9 +16,9 @@ export function claimsEditor(initial: Claim[]): {
     const status = select(
       'claim-status',
       [
-        ['unverified', 'A conferir'],
-        ['cited', 'Fonte citada'],
-        ['contradicted', 'Contradição identificada — bloqueia a versão final'],
+        ['unverified', t('A conferir')],
+        ['cited', t('Fonte citada')],
+        ['contradicted', t('Contradição identificada — bloqueia a versão final')],
       ],
       claim?.status || 'unverified',
     );
@@ -28,22 +29,22 @@ export function claimsEditor(initial: Claim[]): {
       el(
         'div',
         { className: 'source-card-head' },
-        'Alegação verificável',
+        t('Alegação verificável'),
         el('span', { className: 'spacer' }),
-        iconButton('Remover esta alegação', 'trash', () => node.remove()),
+        iconButton(t('Remover esta alegação'), 'trash', () => node.remove()),
       ),
       el(
         'div',
         { className: 'form-stack' },
-        field('O que está sendo afirmado?', text),
+        field(t('O que está sendo afirmado?'), text),
         el(
           'div',
           { className: 'form-grid' },
-          field('Estado da evidência', status),
+          field(t('Estado da evidência'), status),
           field(
-            'URLs que sustentam a alegação',
+            t('URLs que sustentam a alegação'),
             urls,
-            'Uma por linha. Use URLs presentes nas fontes do roteiro.',
+            t('Uma por linha. Use URLs presentes nas fontes do roteiro.'),
           ),
         ),
       ),
@@ -69,8 +70,8 @@ export function claimsEditor(initial: Claim[]): {
       el(
         'div',
         { className: 'editor-section-heading' },
-        el('h3', {}, 'Alegações & evidências'),
-        button('Adicionar alegação', () => add(), 'ghost', 'plus'),
+        el('h3', {}, t('Alegações & evidências')),
+        button(t('Adicionar alegação'), () => add(), 'ghost', 'plus'),
       ),
       container,
     ),

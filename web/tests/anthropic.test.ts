@@ -183,7 +183,7 @@ test('Anthropic rejects unsafe input before any network effect', async () => {
   for (const change of [
     { model: 'unknown' },
     { maxTokens: 0 },
-    { maxTokens: 8193 },
+    { maxTokens: 32_001 },
     { maxTokens: 1.5 },
     { prompt: 'x'.repeat(100001) },
   ])

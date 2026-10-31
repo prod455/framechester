@@ -460,6 +460,9 @@ test('a channel job passes authored JSON and licensed media to the fixed Rust en
         timing: 0,
         cross_check: 1,
       });
+      // The engine scratch area lives in the Studio data, never in the read-only app folder.
+      const engineConfig = await readFile(args[args.indexOf('--config') + 1], 'utf8');
+      assert.match(engineConfig, /\nworkdir = ".*production[\\/]+engine"\n/);
       const authored = JSON.parse(await readFile(args[args.indexOf('--script') + 1], 'utf8'));
       assert.equal(authored.script.scenes[0].id, 42);
       assert.equal(authored.script.scenes[0].narration, 'Texto autoral preservado.');
@@ -1107,6 +1110,85 @@ test('an opted-in channel sends each approved final version once, privately, and
       'uploaded',
     );
     assert.equal(uploads.length, 2);
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('a Short is cut from an approved motion video, inherits its review and goes out tagged #Shorts', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'framechester-web-short-'));
+  const input = state();
+  const sourceOutput = join(home, 'production', 'jobs', 'tech', 'source-final', 'output', 'channels', 'tech');
+  await mkdir(join(sourceOutput, 'publish'), { recursive: true });
+  await writeFile(join(sourceOutput, 'storyboard.json'), '{}');
+  await writeFile(join(sourceOutput, 'publish', 'description.txt'), 'Descrição com fontes');
+  const base = {
+    channelId: 'tech',
+    scriptId: 'script-one',
+    createdAt: '2026-10-31T10:00:00Z',
+    videoAvailable: true,
+  };
+  await writeFile(
+    join(home, 'production', 'jobs.json'),
+    JSON.stringify([
+      { ...base, id: 'source-final', status: 'completed', message: 'ok', engine: 'motion' },
+      {
+        ...base,
+        id: 'source-preview',
+        status: 'needs_review',
+        message: 'ok',
+        engine: 'motion',
+        previewOnly: true,
+      },
+      { ...base, id: 'source-legacy', status: 'completed', message: 'ok', engine: 'legacy' },
+    ]),
+  );
+  await writeFile(join(home, 'production', 'assets.json'), '[]');
+  const calls: string[][] = [];
+  const uploads: Array<{ title: string; description: string; thumbnail?: string }> = [];
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => structuredClone(input),
+    execute: async (args) => {
+      calls.push(args);
+      const out = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
+      await mkdir(join(out, 'render'), { recursive: true });
+      await writeFile(join(out, 'render', 'final.mp4'), 'synthetic short');
+      await writeFile(
+        join(out, 'pipeline_report.json'),
+        JSON.stringify({ stage: 'editorial_qa', technical_qa: { checks: [{ status: 'pass' }] } }),
+      );
+      return { exitCode: 0, stdout: '', stderr: '' };
+    },
+    publish: async (_channel, video) => {
+      uploads.push({ title: video.title, description: video.description, thumbnail: video.thumbnail });
+      return { videoId: 'abcdefghijk' };
+    },
+  });
+  try {
+    await assert.rejects(runner.startShort('tech', 'source-preview'), /versão final aprovada/);
+    await assert.rejects(runner.startShort('tech', 'source-legacy'), /motor motion/);
+    const short = await runner.startShort('tech', 'source-final');
+    assert.equal(short.kind, 'short');
+    await runner.idle();
+    const args = calls[0];
+    assert.equal(args[args.indexOf('--config') + 2], 'short');
+    assert.equal(args[args.indexOf('--from') + 1], join(sourceOutput, 'storyboard.json'));
+    const done = (await runner.list('tech')).find((item) => item.id === short.id)!;
+    assert.equal(done.status, 'completed', done.message);
+    assert.equal(done.qa?.editorial, 'pass', 'the source approval covers the same words');
+    await assert.rejects(runner.startShort('tech', short.id), /já é um Short/);
+    await runner.publish('tech', short.id);
+    await runner.idle();
+    assert.deepEqual(uploads, [
+      {
+        title: `${input.scripts[0].title} #Shorts`,
+        description: 'Descrição com fontes\n\n#Shorts',
+        thumbnail: undefined,
+      },
+    ]);
   } finally {
     await runner.close();
     await rm(home, { recursive: true, force: true });

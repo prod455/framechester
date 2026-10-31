@@ -7,11 +7,13 @@ pub mod error;
 pub mod finance;
 pub mod narration;
 pub mod package;
+pub mod persona;
 pub mod pipeline;
 pub mod planner;
 pub mod ports;
 pub mod qa;
 pub mod security;
+pub mod shorts;
 pub mod storyboard;
 
 pub use error::{FramechesterError, Result};

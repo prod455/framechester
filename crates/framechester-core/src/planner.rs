@@ -205,6 +205,24 @@ fn pose_for(heading: &str, index: usize, total: usize) -> Pose {
     }
 }
 
+/// Characters the script describes in words, in order of first appearance: the folded name
+/// and the full `Nome (traços)` spec.
+fn described_cast(script: &Script) -> Vec<(String, String)> {
+    let mut cast: Vec<(String, String)> = Vec::new();
+    for scene in &script.scenes {
+        if let (Some(("personagem", args)), _) = split_brief(&scene.visual_brief) {
+            let who = args.split('|').next().unwrap_or("").trim();
+            if let (Some(open), true) = (who.find('('), who.ends_with(')')) {
+                let key = crate::persona::key(&who[..open]);
+                if !key.is_empty() && !cast.iter().any(|(existing, _)| *existing == key) {
+                    cast.push((key, who.to_string()));
+                }
+            }
+        }
+    }
+    cast
+}
+
 fn character_name(character: Character) -> &'static str {
     match character {
         Character::Presenter => "apresentador",
@@ -654,9 +672,14 @@ pub fn parse_composition(scene: &Scene) -> Result<Composition> {
             if parts.len() < 2 || parts.len() > 3 {
                 return Err(invalid(id, "use #personagem PERSONAGEM | POSE | FALA (fala opcional)"));
             }
-            let character = parse_character(&parts[0].to_lowercase()).ok_or_else(|| {
-                invalid(id, format!("personagem '{}' nao existe; use apresentador, dev, cientista ou robo", parts[0]))
-            })?;
+            // A preset by name, or a character described in words: `Nome (traço, traço)`.
+            let persona = crate::persona::parse(parts[0]).map_err(|detail| invalid(id, detail))?;
+            let character = match &persona {
+                Some(_) => Character::Presenter,
+                None => parse_character(&parts[0].to_lowercase()).ok_or_else(|| {
+                    invalid(id, format!("personagem '{}' nao existe; use apresentador, dev, cientista, robo ou descreva: Nome (careca, barba longa, toga)", parts[0]))
+                })?,
+            };
             let pose = parse_pose(&parts[1].to_lowercase()).ok_or_else(|| {
                 invalid(id, format!("pose '{}' nao existe; use explicar, apontar, pensar ou comemorar", parts[1]))
             })?;
@@ -668,6 +691,7 @@ pub fn parse_composition(scene: &Scene) -> Result<Composition> {
                 character,
                 pose,
                 text: text.to_string(),
+                persona,
             }
         }
         "causa" | "lista" => {
@@ -1037,7 +1061,12 @@ pub fn plan_script(
 ) -> Result<(Storyboard, Vec<String>)> {
     let mut fallbacks = Vec::new();
     let mut scenes = Vec::with_capacity(script.scenes.len());
-    let cast = cast_for(script);
+    let described = described_cast(script);
+    // The first character the script describes hosts the scenes without a directive.
+    let cast = described.first().map_or_else(
+        || character_name(cast_for(script)).to_string(),
+        |(_, spec)| spec.clone(),
+    );
     let total = script.scenes.len();
     for (index, scene) in script.scenes.iter().enumerate() {
         // A scene without a directive, or a question, is told by the character that fits
@@ -1051,11 +1080,28 @@ pub fn plan_script(
             Some(("pergunta", question)) if !question.is_empty() => Some((Pose::Think, question)),
             _ => None,
         };
+        // A described character is described once; later scenes may use the bare name.
+        let scene = &match directive {
+            Some(("personagem", args)) => {
+                let (who, rest) = args.split_once('|').unwrap_or((args, ""));
+                match described
+                    .iter()
+                    .find(|(key, _)| *key == crate::persona::key(who))
+                {
+                    Some((_, spec)) if !who.contains('(') => Scene {
+                        visual_brief: format!("#personagem {spec} |{rest}\n{note}"),
+                        ..scene.clone()
+                    },
+                    _ => scene.clone(),
+                }
+            }
+            _ => scene.clone(),
+        };
         let scene = &match spoken {
             Some((pose, line)) => Scene {
                 visual_brief: format!(
                     "#personagem {} | {} | {}\n{note}",
-                    character_name(cast),
+                    cast,
                     pose_name(pose),
                     line.replace('|', "/"),
                 ),
@@ -1129,6 +1175,7 @@ mod tests {
                 character: Character::Robot,
                 pose: Pose::Point,
                 text: "Metade dos tokens".into(),
+                persona: None,
             }
         );
         let default_line = parse_composition(&scene("#personagem dev | pensar", "n")).unwrap();
@@ -1137,7 +1184,7 @@ mod tests {
             ("#personagem robo", "PERSONAGEM | POSE"),
             (
                 "#personagem pirata | apontar",
-                "apresentador, dev, cientista ou robo",
+                "apresentador, dev, cientista, robo ou descreva",
             ),
             (
                 "#personagem robo | dancar",
@@ -1164,6 +1211,70 @@ mod tests {
         ] {
             assert_eq!(cast_for(&script(title, Vec::new())), cast, "{title}");
         }
+    }
+
+    #[test]
+    fn a_character_described_once_is_reused_by_name_and_hosts_the_plain_scenes() {
+        let mut opening = scene(
+            "#personagem Sócrates (careca, barba longa branca, toga branca) | explicar | Só sei que nada sei",
+            "Só sei que nada sei.",
+        );
+        opening.id = 1;
+        let mut again = scene("#personagem socrates | pensar | E você?", "E você?");
+        again.id = 2;
+        let mut plato = scene(
+            "#personagem Platão (barba curta grisalha, toga azul, livro) | apontar",
+            "Platão.",
+        );
+        plato.id = 3;
+        let mut plain = scene("", "Uma cena sem diretiva.");
+        plain.id = 4;
+        let (storyboard, fallbacks) = plan_script(
+            &script("Filosofia grega", vec![opening, again, plato, plain]),
+            "Canal",
+            VideoFormat::Horizontal,
+        )
+        .unwrap();
+        assert!(fallbacks.is_empty(), "{fallbacks:?}");
+        let names: Vec<Option<(String, Pose)>> = storyboard
+            .scenes
+            .iter()
+            .map(|scene| match &scene.composition {
+                Composition::Character {
+                    persona: Some(persona),
+                    pose,
+                    ..
+                } => Some((persona.name.clone(), *pose)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            names,
+            vec![
+                Some(("Sócrates".into(), Pose::Explain)),
+                Some(("Sócrates".into(), Pose::Think)),
+                Some(("Platão".into(), Pose::Point)),
+                Some(("Sócrates".into(), Pose::Celebrate)),
+            ],
+            "the bare name reuses the description; the first described character hosts plain scenes"
+        );
+    }
+
+    #[test]
+    fn an_undescribed_name_or_an_unknown_trait_falls_back_and_says_why() {
+        let mut unknown = scene("#personagem Aristóteles | explicar", "n");
+        unknown.id = 1;
+        let mut bad = scene("#personagem Kant (peruca, terno) | explicar", "n");
+        bad.id = 2;
+        let (storyboard, fallbacks) = plan_script(
+            &script("Filosofia", vec![unknown, bad]),
+            "Canal",
+            VideoFormat::Vertical,
+        )
+        .unwrap();
+        assert_eq!(storyboard.scenes.len(), 2);
+        assert!(fallbacks[0].contains("descreva"), "{fallbacks:?}");
+        assert!(fallbacks[1].contains("'peruca'"), "{fallbacks:?}");
     }
 
     #[test]

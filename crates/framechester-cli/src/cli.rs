@@ -3,7 +3,7 @@ use crate::commands::analytics::analytics_report;
 use crate::commands::backup::{backup_check, backup_restore, backup_snapshot};
 use crate::commands::doctor::{config_check, doctor};
 use crate::commands::finance::finance_report;
-use crate::commands::produce::{plan_command, produce};
+use crate::commands::produce::{plan_command, produce, short};
 use crate::commands::qa::qa_video;
 use crate::commands::report::report_command;
 use crate::commands::run::run_pipeline;
@@ -65,6 +65,10 @@ pub(crate) enum Commands {
         about = "produz um video explicativo animado: storyboard, narracao por segmento, render vetorial, mixagem e QA"
     )]
     Produce(ProduceArgs),
+    #[command(
+        about = "corta um video ja narrado em um Short vertical: abertura, fechamento e as cenas que mais prendem, ate o limite"
+    )]
+    Short(ShortArgs),
     #[command(about = "prepara visuais explicativos locais; nao usa API nem chaves")]
     Visuals {
         #[arg(long)]
@@ -230,6 +234,28 @@ pub(crate) struct ProduceArgs {
 }
 
 #[derive(Debug, clap::Args)]
+pub(crate) struct ShortArgs {
+    #[arg(
+        long,
+        help = "storyboard.json narrado de um video pronto (pasta do trabalho)"
+    )]
+    pub(crate) from: PathBuf,
+    #[arg(long, default_value_t = framechester_core::shorts::DEFAULT_MAX_SECS, help = "duracao maxima em segundos")]
+    pub(crate) max_secs: f32,
+    #[arg(
+        long,
+        help = "id local cadastrado em [[channels]]; obrigatorio quando ha canais"
+    )]
+    pub(crate) channel: Option<String>,
+    #[arg(long)]
+    pub(crate) workdir: Option<PathBuf>,
+    #[arg(long)]
+    pub(crate) voice: Option<String>,
+    #[arg(long)]
+    pub(crate) json: bool,
+}
+
+#[derive(Debug, clap::Args)]
 pub(crate) struct FinanceArgs {
     #[arg(long)]
     pub(crate) eligible: bool,
@@ -330,6 +356,7 @@ pub(crate) fn run(cli: Cli) -> anyhow::Result<i32> {
         Commands::Run(args) => run_pipeline(&cli.config, args),
         Commands::Plan(args) => plan_command(&cli.config, args),
         Commands::Produce(args) => produce(&cli.config, args),
+        Commands::Short(args) => short(&cli.config, args),
         Commands::Visuals { input, output } => visuals(&input, &output),
         Commands::Qa {
             video,

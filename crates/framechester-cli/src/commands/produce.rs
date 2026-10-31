@@ -2,7 +2,7 @@
 //! storyboard) becomes a semantic storyboard, is narrated segment by segment, rendered
 //! with animated components for the chosen format, and gated by the extended QA. The
 //! legacy still-image pipeline in `run` is untouched; `run --engine motion` delegates here.
-use crate::cli::{load_config, ProduceArgs};
+use crate::cli::{load_config, ProduceArgs, ShortArgs};
 use crate::commands::report::{print_report, write_html_report};
 use anyhow::{bail, Context};
 use framechester_adapters::authored_script::AuthoredScriptLlm;
@@ -457,6 +457,48 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
         }
     }
     Ok(if stage == Stage::Blocked { 2 } else { 0 })
+}
+
+/// Cuts a narrated storyboard into a Short and produces it vertically. The narration comes
+/// back from the TTS cache, so a Short of an existing video costs little more than a render.
+pub(crate) fn short(config_path: &Option<PathBuf>, args: ShortArgs) -> anyhow::Result<i32> {
+    let text = std::fs::read_to_string(&args.from)
+        .with_context(|| format!("ler storyboard {}", args.from.display()))?;
+    let source: Storyboard =
+        serde_json::from_str(&text).with_context(|| "storyboard JSON invalido")?;
+    source.validate()?;
+    let cut = framechester_core::shorts::cut(&source, args.max_secs)?;
+    let workdir = args
+        .workdir
+        .clone()
+        .unwrap_or_else(|| PathBuf::from("artifacts/short"));
+    std::fs::create_dir_all(&workdir)?;
+    let plan = workdir.join("short.storyboard.json");
+    std::fs::write(&plan, serde_json::to_string_pretty(&cut.storyboard)?)?;
+    eprintln!(
+        "short: {} de {} cenas, cerca de {:.0} s (mantidas {:?}; cortadas {:?})",
+        cut.kept.len(),
+        source.scenes.len(),
+        cut.duration_secs,
+        cut.kept,
+        cut.dropped
+    );
+    produce(
+        config_path,
+        ProduceArgs {
+            script: None,
+            storyboard: Some(plan),
+            topic: None,
+            topic_index: 0,
+            format: Some("vertical".into()),
+            channel: args.channel,
+            workdir: Some(workdir),
+            output: None,
+            voice: args.voice,
+            preview_only: false,
+            json: args.json,
+        },
+    )
 }
 
 fn expected_codec(encoder: &str) -> &'static str {

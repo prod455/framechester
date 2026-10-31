@@ -12,6 +12,7 @@ pub mod planner;
 pub mod ports;
 pub mod qa;
 pub mod security;
+pub mod shorts;
 pub mod storyboard;
 
 pub use error::{FramechesterError, Result};

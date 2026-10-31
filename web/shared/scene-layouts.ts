@@ -21,6 +21,7 @@ export const motionDirectives = [
   'anotacao',
   'infografico',
   'causa',
+  'personagem',
 ] as const;
 
 const maxSlot = 160,
@@ -146,5 +147,6 @@ Diretivas animadas do motor motion (framechester produce), quando o vídeo for r
 #anotacao pasta/arquivo: nota; … — árvore com anotações.
 #infografico TÍTULO | rótulo=valor: detalhe; … — cartões de dados.
 #causa A => B => C — causa e consequência.
+#personagem PERSONAGEM | POSE | FALA — personagem animado (apresentador, dev, cientista ou robo; explicar, apontar, pensar ou comemorar) ao lado de um balão; a fala tem até 140 caracteres. Sem diretiva ou com #pergunta, a cena já usa o personagem que combina com a pauta.
 Cada campo tem até 160 caracteres. Não use outras diretivas.
 Toda cena vira composição gerada localmente: não peça gravação real, gravação de tela, captura de tela nem CAPTURA PENDENTE.`;

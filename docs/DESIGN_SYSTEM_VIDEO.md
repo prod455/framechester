@@ -84,6 +84,22 @@ Transições entre cenas (0,42 s): `push` (padrão a partir da segunda cena), `f
 Justificativa: movimento só quando a narração traz algo novo (um objeto, uma relação,
 um valor) ou para manter o quadro vivo; nunca zoom decorativo, nunca animação aleatória.
 
+## Personagens
+
+Quatro figuras vetoriais em estilo flat, desenhadas pelo motor numa caixa de 110 × 160
+unidades: **apresentador** (camisa `PRIMARY`), **dev** (moletom `SECONDARY` e óculos),
+**cientista** (jaleco `INK` e gravata `ACCENT`) e **robô** (corpo `SURFACE_STRONG`, rosto
+de tela e antena `ACCENT`). Mesma pele neutra para os humanos; nenhuma é retrato de pessoa
+real. No vertical o balão ocupa o terço de cima e o personagem fica abaixo; no horizontal
+e no X o personagem ocupa a coluna esquerda e o balão aponta para a cabeça.
+
+| Vida | Ritmo |
+|---|---|
+| entrada | sobe 40 px com fade em 0,5 s |
+| boca | abre e fecha a cada 0,14 s, só enquanto um segmento da narração toca |
+| olhos | piscam a cada 3,1 s |
+| braço do gesto | balança 6 px a cada 0,7 s |
+
 ## Proibições (impostas por QA quando mensuráveis)
 
 - parágrafos longos ocupando a tela — rótulos ≤ 60 caracteres, detalhes ≤ 120;

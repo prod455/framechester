@@ -21,6 +21,10 @@ fn main() {
         ("anotacao", "#anotacao revisar-pr/SKILL.md: instrucoes e metadados; revisar-pr/scripts/check.py: codigo opcional; revisar-pr/exemplos: casos reais", "A pasta tem o SKILL.md com instrucoes, scripts opcionais e exemplos."),
         ("infografico", "#infografico O que muda | Tokens=40%: do contexto [chart]; Passos=3: etapas fixas [check]; Erros [shield]: menos retrabalho", "Caem para 40% os tokens, sao 3 passos fixos e menos erros."),
         ("causa", "#causa Sem skill => O agente improvisa => Resultados variam => Mais retrabalho", "Sem skill, o agente improvisa, os resultados variam e ha mais retrabalho."),
+        ("personagem-apresentador", "#personagem apresentador | explicar | Uma skill é uma receita que o agente segue", "Uma skill e uma receita. O agente segue os passos dela."),
+        ("personagem-dev", "#personagem dev | apontar | O SKILL.md fica na pasta do projeto", "O arquivo fica na pasta do projeto, versionado com o codigo."),
+        ("personagem-cientista", "#personagem cientista | pensar | Dá para medir a diferença?", "Da para medir a diferenca? Vamos testar duas vezes."),
+        ("personagem-robo", "#personagem robo | comemorar | Mesma tarefa, metade dos tokens", "Mesma tarefa, com menos tokens no contexto."),
     ];
     let typesetter = Typesetter::new().unwrap();
     for format in [

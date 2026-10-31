@@ -8,7 +8,6 @@ import {
   heading,
   mediaThumbnail,
   notice,
-  panel,
   statusLabels,
 } from '../components.ts';
 import { button, el, field, icon, input, select, textarea } from '../dom.ts';
@@ -36,15 +35,16 @@ export function productionPage(): HTMLElement {
   const snapshot = state();
   const jobs = scoped(snapshot.jobs).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const assets = scoped(snapshot.assets);
-  const startButton = button('Produzir com IA', () => startProduction(), 'primary', 'film');
+  // One primary action, named as on Criar vídeo (law of similarity, Von Restorff).
+  const startButton = button('Novo vídeo', () => startProduction(), 'primary', 'spark');
   startButton.disabled = snapshot.engine?.available === false;
   const jobsBody = jobs.length
     ? el('div', {}, ...jobs.map(jobCard))
     : empty(
-        'Da sua orientação ao vídeo para revisão',
-        'A IA desenvolve o roteiro; o motor prepara os visuais, a voz, a montagem e o QA em sequência.',
+        'Nenhum vídeo ainda',
+        'Mande a pauta: a IA escreve o roteiro e o motor monta as cenas, a voz e o QA.',
         'film',
-        button('Produzir com IA', () => startProduction(), 'primary', 'plus'),
+        button('Novo vídeo', () => startProduction(), 'primary', 'spark'),
       );
   const assetBody = assets.length
     ? el(
@@ -75,31 +75,35 @@ export function productionPage(): HTMLElement {
         ),
       )
     : empty(
-        'Os visuais são preparados a partir do roteiro',
-        'As imagens explicativas entram aqui automaticamente ao preparar o vídeo. Você também pode adicionar arquivos próprios.',
+        'Nenhum arquivo próprio',
+        'Adicione uma gravação ou imagem sua para usar numa cena específica.',
         'folder',
         button('Adicionar arquivo próprio', () => uploadAsset(), 'secondary', 'plus'),
       );
+  // Own files are an occasional need: one place, collapsed (progressive disclosure, Hick).
+  const library = el(
+    'details',
+    { className: 'library-disclosure' },
+    el('summary', {}, `Arquivos próprios do canal (${assets.length})`),
+    el(
+      'p',
+      { className: 'field-hint' },
+      'Gravações e imagens suas, com origem e direitos. Os visuais explicativos são gerados pelo motor; estes são opcionais.',
+    ),
+    assetBody,
+    assets.length ? button('Adicionar arquivo próprio', () => uploadAsset(), 'secondary', 'plus') : null,
+  );
   return el(
     'div',
     { className: 'section-stack' },
     heading(
-      'Produção',
-      'Gere o vídeo, confira a qualidade e revise o resultado.',
-      button('Adicionar arquivo próprio', () => uploadAsset(), 'secondary', 'plus'),
+      'Vídeos',
+      `${jobs.length} vídeo${jobs.length === 1 ? '' : 's'} neste canal. ${currentChannel()?.youtubeAutoUpload ? 'Versões finais aprovadas seguem ao YouTube como privadas.' : 'O envio automático ao YouTube está desligado neste canal.'}`,
       startButton,
     ),
     snapshot.engine?.available === false ? notice(snapshot.engine.message) : null,
-    panel(
-      'Fila de produção',
-      `${jobs.length} produções neste canal. ${currentChannel()?.youtubeAutoUpload ? 'Versões finais aprovadas seguem ao YouTube como privadas.' : 'O envio automático ao YouTube está desligado neste canal.'}`,
-      jobsBody,
-    ),
-    panel(
-      'Biblioteca do canal',
-      `${assets.length} recursos visuais. Confira a origem e os direitos de cada arquivo.`,
-      assetBody,
-    ),
+    jobsBody,
+    library,
   );
 }
 
@@ -107,26 +111,30 @@ export function jobCard(job: WebJob): HTMLElement {
   const script = state().scripts.find(
     (entry) => entry.channelId === studio.channelId && entry.id === job.scriptId,
   );
-  const started = Boolean(job.startedAt);
-  const stages = el(
-    'div',
-    { className: 'job-stages' },
-    el('span', { className: 'job-stage reached' }, '1 · Solicitação registrada'),
-    el('span', { className: `job-stage ${started ? 'reached' : ''}` }, '2 · Motor iniciado'),
-    el('span', { className: `job-stage ${job.qa ? 'reached' : ''}` }, '3 · Relatório de QA'),
-    el('span', { className: `job-stage ${job.videoAvailable ? 'reached' : ''}` }, '4 · Arquivo disponível'),
-  );
-  const qa = job.qa
+  const active = job.status === 'queued' || job.status === 'running';
+  // Stages only matter while the work is moving; a finished card shows its outcome.
+  const stages = active
     ? el(
         'div',
-        { className: 'entity-meta' },
-        el('span', { className: 'field-hint' }, 'Qualidade do arquivo:'),
-        badge(job.qa.technical),
-        el('span', { className: 'field-hint' }, 'Conteúdo:'),
-        badge(job.qa.editorial),
+        { className: 'job-stages' },
+        el('progress', { className: 'job-progress', 'aria-label': 'Produzindo' }),
+        el('span', { className: 'job-stage reached' }, job.startedAt ? 'Motor trabalhando' : 'Na fila'),
       )
     : null;
-  const diagnostic = ['failed', 'blocked'].includes(job.status)
+  // QA labels only when something still needs a look; "aprovado" is already in the message.
+  const qa =
+    job.qa && !(job.qa.technical === 'pass' && job.qa.editorial === 'pass')
+      ? el(
+          'div',
+          { className: 'entity-meta' },
+          el('span', { className: 'field-hint' }, 'Qualidade do arquivo:'),
+          badge(job.qa.technical),
+          el('span', { className: 'field-hint' }, 'Conteúdo:'),
+          badge(job.qa.editorial),
+        )
+      : null;
+  const stopped = ['failed', 'blocked'].includes(job.status) && !job.videoAvailable;
+  const diagnostic = stopped
     ? el(
         'details',
         {},
@@ -134,6 +142,20 @@ export function jobCard(job: WebJob): HTMLElement {
         el('pre', { className: 'job-diagnostic' }, job.message),
       )
     : el('p', {}, job.message);
+  // A stop ends with a way forward, not only a log (peak-end rule, feedback loop).
+  const retry =
+    stopped && script && script.status !== 'archived'
+      ? button(
+          'Tentar de novo',
+          () => {
+            studio.activeScriptId = script.id;
+            startProduction();
+          },
+          // In a list several cards can stop; only Gerar versão final stays dark (Von Restorff).
+          'secondary',
+          'refresh',
+        )
+      : null;
   return el(
     'article',
     { className: 'job-card', 'data-testid': `job-${job.id}` },
@@ -144,25 +166,30 @@ export function jobCard(job: WebJob): HTMLElement {
       el(
         'div',
         {},
-        el('h3', { title: script?.title || 'Produção do canal' }, script?.title || 'Produção do canal'),
+        // The state sits with the title it describes (law of proximity).
+        el(
+          'div',
+          { className: 'job-title-row' },
+          el('h3', { title: script?.title || 'Vídeo do canal' }, script?.title || 'Vídeo do canal'),
+          badge(job.status),
+        ),
         el(
           'p',
           {},
-          `Solicitado em ${date(job.createdAt)}${job.engine ? ` · ${job.engine === 'motion' ? 'Motor motion' : 'Imagens por cena'}` : ''}`,
+          `${job.previewOnly ? 'Prévia' : 'Versão final'} · ${date(job.createdAt)}${job.engine ? ` · ${job.engine === 'motion' ? 'Motor motion' : 'Imagens por cena'}` : ''}`,
         ),
       ),
-      el('span', { className: 'spacer' }),
-      badge(job.status),
     ),
     stages,
     diagnostic,
     qa,
     youtubeStatus(job),
-    job.videoAvailable
+    job.videoAvailable || retry
       ? el(
           'div',
           { className: 'job-artifacts' },
-          button('Revisar vídeo', () => viewJob(job), 'secondary', 'film'),
+          retry,
+          job.videoAvailable ? button('Assistir', () => viewJob(job), 'secondary', 'film') : null,
           finalVersionButton(job, script),
           youtubeButton(job),
         )

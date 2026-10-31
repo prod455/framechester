@@ -147,3 +147,31 @@ test('an estimate for another channel cannot authorize production', async () => 
   assert.equal(jobs, 0);
   assert.match(dialog.textContent!, /estimativa/i);
 });
+
+test('without an assistant key the dialog offers the settings directly, and hides it once ready', async () => {
+  for (const available of [false, true]) {
+    let opened = 0;
+    const dialog = openAutomaticProduction({
+      channel,
+      scripts: [script],
+      research: [],
+      currentChannelId: () => channel.id,
+      onStarted: async () => {},
+      onManual: () => {},
+      onSettings: () => opened++,
+      api: async <T>() =>
+        (available
+          ? { available: true, provider: 'anthropic', selectedModel: 'fixture' }
+          : { available: false, provider: 'anthropic', reason: 'Adicione a chave.' }) as T,
+    });
+    await tick();
+    const visible = [...dialog.querySelectorAll<HTMLButtonElement>('button')].filter(
+      (button) =>
+        button.textContent?.includes('Configurar assistente') && !button.hidden && !button.closest('details'),
+    );
+    assert.equal(visible.length, available ? 0 : 1, `available=${available}`);
+    visible[0]?.click();
+    assert.equal(opened, available ? 0 : 1);
+    dialog.close();
+  }
+});

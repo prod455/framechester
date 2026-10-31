@@ -121,3 +121,23 @@ review; UI styling never authorizes external actions.
 Validate populated, empty and error states in the browser at desktop and
 narrow widths. Run the mechanical detector as supplementary evidence, never
 as a substitute for visual judgment. Project Impeccable telemetry is disabled.
+
+## UX laws in practice
+
+Changes to the Studio are checked against the 20 laws listed in
+`docs/UI_REVIEW_20261031.md`. The standing rules that came out of them:
+
+- One primary (dark) action per view; in lists, only the step that moves a
+  video forward is primary (Von Restorff, Hick).
+- One name per action across pages and dialogs (similarity, Jakob): **Novo
+  vídeo**, **Assistir**, **Gerar versão final**, **Tentar de novo**.
+- A state sits next to the thing it describes; labels name facts instead of
+  leaving them to be decoded (proximity, recognition over recall).
+- Occasional needs live in one collapsed disclosure (progressive disclosure);
+  cost, consent and errors never hide.
+- Every wait shows motion and elapsed time; every stop ends with a way forward
+  (Doherty, peak-end, feedback loops).
+- Receding states use colour and border, never opacity on text; links in
+  running text are underlined. axe-core (WCAG 2 A/AA) runs on Criar vídeo,
+  Vídeos, Canais and the Novo vídeo dialog before merging UI changes.
+

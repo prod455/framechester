@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { commercialVoiceError } from '../shared/voices.ts';
+import { commercialVoiceError, productionLanguage, voiceFor } from '../shared/voices.ts';
 import { HttpError } from './auth.ts';
 import { randomUUID, createHash } from 'node:crypto';
 import { existsSync, statSync } from 'node:fs';
@@ -166,9 +166,27 @@ function shortTitle(title: string): string {
  * container runs with a read-only root, so the engine's default (`artifacts/` under its
  * working directory) fails on the first uncached sentence.
  */
-function rustConfig(config: WebConfig, channelId: string, workdir: string): string {
+/** The channel's production settings, spoken in the channel's language: the voice and the
+ * speech check follow it, so an English channel never narrates with a Portuguese voice. */
+type JobConfig = WebConfig & { language: string };
+function jobConfig(state: AppState, channelId: string, repositoryRoot: string): JobConfig {
+  const config = productionConfig(
+    Object.hasOwn(state.channelConfigs, channelId) ? state.channelConfigs[channelId]! : state.config,
+    repositoryRoot,
+  );
+  const tag = state.channels.find((item) => item.id === channelId)?.language ?? 'pt-BR';
+  const language = productionLanguage(tag);
+  if (!language)
+    throw new RunnerError(
+      `O idioma ${tag} deste canal não tem voz comercial. Use pt-BR, en-US ou es no cadastro do canal.`,
+    );
+  config.tts.voiceName = voiceFor(config.tts.voiceName, language);
+  config.asr.language = language.asr;
+  return { ...config, language: language.tag };
+}
+function rustConfig(config: JobConfig, channelId: string, workdir: string): string {
   const q = (value: string) => JSON.stringify(value);
-  return `[[channels]]\nid = ${q(channelId)}\n[app]\nworkdir = ${q(workdir)}\ndry_run = true\ntelemetry = false\n[render]\nwidth = ${config.render.width}\nheight = ${config.render.height}\nfps = ${config.render.fps}\ncrf = ${config.render.crf}\npreset = ${q(config.render.preset)}\nvideo_codec = "libx264"\n[tts]\nengine = "kokoro"\npython_path = ${q(config.tts.pythonPath!)}\nvoice_styles = ${q(config.tts.voiceStyles!)}\nvoice_model = ${q(config.tts.voiceModel)}\nvoice_name = ${q(config.tts.voiceName)}\n[asr]\nenabled = ${config.asr.enabled}\nmodel = ${q(config.asr.model)}\nlanguage = ${q(config.asr.language)}\nmin_coverage = ${config.asr.minCoverage}\n[publish]\nenabled = false\nprivacy = "private"\n`;
+  return `[[channels]]\nid = ${q(channelId)}\nlanguage = ${q(config.language)}\n[app]\nworkdir = ${q(workdir)}\ndry_run = true\ntelemetry = false\n[render]\nwidth = ${config.render.width}\nheight = ${config.render.height}\nfps = ${config.render.fps}\ncrf = ${config.render.crf}\npreset = ${q(config.render.preset)}\nvideo_codec = "libx264"\n[tts]\nengine = "kokoro"\npython_path = ${q(config.tts.pythonPath!)}\nvoice_styles = ${q(config.tts.voiceStyles!)}\nvoice_model = ${q(config.tts.voiceModel)}\nvoice_name = ${q(config.tts.voiceName)}\n[asr]\nenabled = ${config.asr.enabled}\nmodel = ${q(config.asr.model)}\nlanguage = ${q(config.asr.language)}\nmin_coverage = ${config.asr.minCoverage}\n[publish]\nenabled = false\nprivacy = "private"\n`;
 }
 function checkScript(script: Script, previewOnly = false) {
   if (!previewOnly && !script.crossChecked)
@@ -676,10 +694,7 @@ export class LocalRunner implements RunnerApi {
       throw new RunnerError(
         'O roteiro mudou ou este visual foi preparado para outra cena. Prepare os visuais novamente antes de gerar o vídeo.',
       );
-    const config = productionConfig(
-      Object.hasOwn(state.channelConfigs, channelId) ? state.channelConfigs[channelId] : state.config,
-      this.options.repositoryRoot,
-    );
+    const config = jobConfig(state, channelId, this.options.repositoryRoot);
     const voiceError = commercialVoiceError(config.tts);
     if (voiceError) throw new RunnerError(voiceError);
     const job: WebJob = {
@@ -714,10 +729,7 @@ export class LocalRunner implements RunnerApi {
       )
     )
       throw new RunnerError('O roteiro de referência não pertence a este canal.');
-    const config = productionConfig(
-      Object.hasOwn(state.channelConfigs, channelId) ? state.channelConfigs[channelId] : state.config,
-      this.options.repositoryRoot,
-    );
+    const config = jobConfig(state, channelId, this.options.repositoryRoot);
     const voiceError = commercialVoiceError(config.tts);
     if (voiceError) throw new RunnerError(voiceError);
     if (!this.options.execute) {
@@ -800,7 +812,7 @@ export class LocalRunner implements RunnerApi {
   private async run(
     job: WebJob,
     script: Script,
-    config: WebConfig,
+    config: JobConfig,
     assets: StoredAsset[],
     input: StartJobInput,
   ) {
@@ -1066,10 +1078,7 @@ export class LocalRunner implements RunnerApi {
       )
     )
       throw new RunnerError('Este vídeo já tem um Short.');
-    const config = productionConfig(
-      Object.hasOwn(state.channelConfigs, channelId) ? state.channelConfigs[channelId] : state.config,
-      this.options.repositoryRoot,
-    );
+    const config = jobConfig(state, channelId, this.options.repositoryRoot);
     const job: WebJob = {
       id: randomUUID(),
       channelId,

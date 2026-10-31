@@ -313,6 +313,15 @@ export default {
       'Your own Meta app with Facebook Login for Business and the local callback registered; the configuration asks for pages_show_list, pages_read_engagement, instagram_basic and instagram_content_publish.',
     'Publicação pública direta como Reel (vídeo vertical): a API do Instagram não tem rascunho nem modo privado. Só sai a versão final aprovada no QA, por clique confirmado ou com o opt-in do canal.':
       'Direct public posting as a Reel (vertical video): the Instagram API has no draft or private mode. Only the final version approved in QA goes out, by a confirmed click or with the channel opt-in.',
+    '{language} · sem voz comercial': '{language} · no commercial voice',
+    'Voz do narrador': 'Narrator voice',
+    'Segue o idioma do canal ({language}).': "Follows the channel's language ({language}).",
+    'Heart · feminina · EN-US': 'Heart · female · EN-US',
+    'Bella · feminina · EN-US': 'Bella · female · EN-US',
+    'Michael · masculina · EN-US': 'Michael · male · EN-US',
+    'Dora · feminina · ES': 'Dora · female · ES',
+    'Alex · masculina · ES': 'Alex · male · ES',
+    'Santa · masculina · ES': 'Santa · male · ES',
   },
   es: {
     'Comece pelo seu canal': 'Empieza por tu canal',
@@ -626,5 +635,14 @@ export default {
       'App propia de Meta con Facebook Login for Business y el callback local registrado; la configuración pide pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish.',
     'Publicação pública direta como Reel (vídeo vertical): a API do Instagram não tem rascunho nem modo privado. Só sai a versão final aprovada no QA, por clique confirmado ou com o opt-in do canal.':
       'Publicación pública directa como Reel (video vertical): la API de Instagram no tiene borrador ni modo privado. Solo sale la versión final aprobada en el QA, con un clic confirmado o con el opt-in del canal.',
+    '{language} · sem voz comercial': '{language} · sin voz comercial',
+    'Voz do narrador': 'Voz del narrador',
+    'Segue o idioma do canal ({language}).': 'Sigue el idioma del canal ({language}).',
+    'Heart · feminina · EN-US': 'Heart · femenina · EN-US',
+    'Bella · feminina · EN-US': 'Bella · femenina · EN-US',
+    'Michael · masculina · EN-US': 'Michael · masculina · EN-US',
+    'Dora · feminina · ES': 'Dora · femenina · ES',
+    'Alex · masculina · ES': 'Alex · masculina · ES',
+    'Santa · masculina · ES': 'Santa · masculina · ES',
   },
 } satisfies AreaCatalog;

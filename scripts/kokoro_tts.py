@@ -11,7 +11,14 @@ import pathlib
 import sys
 import wave
 
-VOICES = ("pf_dora", "pm_alex", "pm_santa")
+# Reviewed voices of the Kokoro-82M v1.0 bundle and the eSpeak language each one is spoken in;
+# the language follows the voice, never the operator's input.
+LANGUAGES = {
+    "pf_dora": "pt-br", "pm_alex": "pt-br", "pm_santa": "pt-br",
+    "af_heart": "en-us", "af_bella": "en-us", "am_michael": "en-us",
+    "ef_dora": "es", "em_alex": "es", "em_santa": "es",
+}
+VOICES = tuple(LANGUAGES)
 FILES = {
     "model": (325505369, "beb0d1848dee9a49da392cc3df26958d46cfa35d321edf434f52949153f0df3a"),
     "voices": (28214398, "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d"),
@@ -32,7 +39,7 @@ def validate_file(path, kind):
 
 def validate(model, voices, voice):
     if voice not in VOICES:
-        raise ValueError("Voz fora do catálogo comercial: escolha Dora, Alex ou Santa (Kokoro).")
+        raise ValueError("Voz fora do catálogo comercial: escolha uma voz Kokoro revisada (PT-BR, EN-US ou ES).")
     validate_file(model, "model")
     validate_file(voices, "voices")
 
@@ -54,7 +61,7 @@ def synthesize(model, voices, voice, text, output):
     onnxruntime.disable_telemetry_events()
     from kokoro_onnx import Kokoro
 
-    samples, rate = Kokoro(str(model), str(voices)).create(text, voice=voice, lang="pt-br", speed=1.0)
+    samples, rate = Kokoro(str(model), str(voices)).create(text, voice=voice, lang=LANGUAGES[voice], speed=1.0)
     if rate != 24_000 or samples.size == 0 or not np.isfinite(samples).all():
         raise ValueError("O narrador não produziu áudio válido.")
     pcm = (np.clip(samples, -1, 1) * 32767).astype("<i2")
@@ -84,7 +91,7 @@ def synthesize_batch(model, voices, voice, requests):
         output = pathlib.Path(str(request.get("output", "")))
         if not text.strip() or len(text) > 50_000 or not request.get("output"):
             raise ValueError("Trecho de narração vazio, sem destino ou maior que 50.000 caracteres.")
-        samples, rate = narrator.create(text, voice=voice, lang="pt-br", speed=1.0)
+        samples, rate = narrator.create(text, voice=voice, lang=LANGUAGES[voice], speed=1.0)
         if rate != 24_000 or samples.size == 0 or not np.isfinite(samples).all():
             raise ValueError("O narrador não produziu áudio válido.")
         pcm = (np.clip(samples, -1, 1) * 32767).astype("<i2")
@@ -97,7 +104,7 @@ def synthesize_batch(model, voices, voice, requests):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Kokoro PT-BR · catálogo comercial Apache-2.0")
+    parser = argparse.ArgumentParser(description="Kokoro · catálogo comercial Apache-2.0 (PT-BR, EN-US, ES)")
     parser.add_argument("--model", required=True)
     parser.add_argument("--voices", required=True)
     parser.add_argument("--voice", required=True, choices=VOICES)
@@ -110,7 +117,7 @@ def main():
             validate(args.model, args.voices, args.voice)
             if importlib.util.find_spec("kokoro_onnx") is None:
                 raise ValueError("Runtime Kokoro ausente; execute npm run voices:setup.")
-            print("Kokoro PT-BR: arquivos conferidos; licença Apache-2.0.")
+            print(f"Kokoro {LANGUAGES[args.voice]}: arquivos conferidos; licença Apache-2.0.")
         elif args.batch:
             import json
             requests = json.loads(sys.stdin.buffer.read(4_000_000).decode("utf-8"))

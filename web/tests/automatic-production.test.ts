@@ -233,3 +233,69 @@ test('a generated script without references gets peer-reviewed sources looked up
     await rm(home, { recursive: true, force: true });
   }
 });
+
+test('a language version reads the reference of the source channel and asks for native writing', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-automatic-language-'));
+  const store = new LocalStore(home);
+  await store.ready;
+  await store.saveChannel({ id: 'tech', name: 'Tech BR', language: 'pt-BR' });
+  await store.saveChannel({ id: 'tech-en', name: 'Tech EN', language: 'en-US', niche: 'Technology' });
+  const research = await store.saveResource('research', {
+    channelId: 'tech',
+    title: 'Por que a GPU venceu',
+    niche: 'Tecnologia',
+    audience: 'Curiosos',
+    hypothesis: 'Paralelismo',
+    differentiation: '',
+    keywords: [],
+    sources: [],
+    demandScore: 1,
+    competitionScore: 1,
+    feasibilityScore: 1,
+    notes: '',
+  });
+  let quoted: CreativeInput | undefined;
+  const creative = {
+    capabilities: async () => ({
+      provider: 'anthropic',
+      available: true,
+      models: [],
+      selectedModel: 'fixture',
+      reason: '',
+      endpoint: 'fixture',
+      supports: ['script'],
+    }),
+    quote: async (owner: string, input: CreativeInput) => {
+      assert.equal(owner, 'tech-en');
+      quoted = input;
+      return { id: 'quote-en', channelId: owner } as never;
+    },
+    draft: async () => {
+      throw new Error('not used');
+    },
+  } as unknown as CreativeApi;
+  const automation = createAutomaticProduction({ store, runner: {} as RunnerApi, creative });
+  try {
+    await automation.quote(
+      'tech-en',
+      { brief: 'GPU', format: 'short', researchId: research.id, originChannelId: 'tech' },
+      'scope',
+    );
+    const values = (quoted!.editorContext as unknown as { values: Record<string, unknown> }).values;
+    assert.equal(values.title, 'Por que a GPU venceu');
+    assert.equal(values.researchId, undefined, 'A research record stays in its channel');
+    assert.equal(values.series, 'Technology');
+    assert.match(String(quoted!.brief), /Versão em en-US: escreva de forma nativa/);
+    await assert.rejects(
+      automation.quote('tech-en', { brief: 'GPU', format: 'short', researchId: research.id }, 'scope'),
+      /não pertence a este canal/,
+      'Without the origin, the reference must be this channel’s',
+    );
+    await assert.rejects(
+      automation.quote('tech-en', { brief: 'GPU', format: 'short', originChannelId: 'missing' }, 'scope'),
+      /origem não encontrado/,
+    );
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+});

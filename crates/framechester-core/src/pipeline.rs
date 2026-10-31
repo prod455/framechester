@@ -355,7 +355,15 @@ impl Pipeline {
         let publish_request = PublishRequest {
             media_path: render.path.clone(),
             title: script.title.clone(),
-            description: package::build_description(&script, &topic, &timeline),
+            description: package::build_description(
+                &script,
+                &topic,
+                &timeline,
+                self.options
+                    .channel
+                    .as_ref()
+                    .map_or("pt-BR", |channel| channel.language()),
+            ),
             privacy: self.options.privacy,
             dry_run: self.options.dry_run,
             channel: self
@@ -851,6 +859,7 @@ mod tests {
             let channel = crate::channel::ChannelProfile {
                 id: id.into(),
                 youtube_channel_id: Some(format!("synthetic-{id}")),
+                language: None,
             };
             let mut adapters = providers();
             adapters.publisher = Box::new(ChannelPublisher(format!("synthetic-{id}")));
@@ -891,6 +900,7 @@ mod tests {
                 channel: Some(crate::channel::ChannelProfile {
                     id: "../escape".into(),
                     youtube_channel_id: None,
+                    language: None,
                 }),
                 workdir: root.clone(),
                 ..PipelineOptions::default()

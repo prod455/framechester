@@ -153,7 +153,58 @@ pub fn build_srt(script: &Script, timeline: &Timeline) -> String {
     output
 }
 
-pub fn build_description(script: &Script, topic: &Topic, timeline: &Timeline) -> String {
+/// Fixed text of the description, in the channel's language.
+struct DescriptionText {
+    chapters: &'static str,
+    sources: &'static str,
+    license: &'static str,
+    none: &'static str,
+    disclosure: &'static str,
+    tags: [&'static str; 3],
+}
+
+fn description_text(language: &str) -> DescriptionText {
+    match language {
+        "en-US" => DescriptionText {
+            chapters: "In this video:",
+            sources: "Sources and licenses:",
+            license: "license",
+            none: "(none)",
+            disclosure: "Disclosure: this video's narration was synthesized locally with Kokoro (Apache-2.0). \
+                         The script, facts and sources require human review before publication. \
+                         This content does not promise financial results, eligibility or revenue.",
+            tags: ["technology", "science", "artificial intelligence"],
+        },
+        "es" => DescriptionText {
+            chapters: "En este video:",
+            sources: "Fuentes y licencias:",
+            license: "licencia",
+            none: "(ninguna)",
+            disclosure: "Transparencia: la narración de este video se sintetizó localmente con Kokoro (Apache-2.0). \
+                         El guion, los datos y las fuentes requieren revisión humana antes de publicarse. \
+                         Este contenido no promete resultados financieros, elegibilidad ni ingresos.",
+            tags: ["tecnología", "ciencia", "inteligencia artificial"],
+        },
+        _ => DescriptionText {
+            chapters: "Neste vídeo:",
+            sources: "Fontes e licenças:",
+            license: "licença",
+            none: "(nenhuma)",
+            disclosure: "Transparência: a narração deste vídeo foi sintetizada localmente com Kokoro (Apache-2.0). \
+                         O roteiro, os fatos e as fontes exigem revisão humana antes da publicação. \
+                         Este conteúdo não promete resultados financeiros, elegibilidade ou receita.",
+            tags: ["tecnologia", "ciencia", "inteligencia artificial"],
+        },
+    }
+}
+
+pub fn build_description(
+    script: &Script,
+    topic: &Topic,
+    timeline: &Timeline,
+    language: &str,
+) -> String {
+    let text = description_text(language);
     let mut chapters = String::new();
     let mut cursor = 0.0f32;
     for (index, scene) in script.scenes.iter().enumerate() {
@@ -173,34 +224,30 @@ pub fn build_description(script: &Script, topic: &Topic, timeline: &Timeline) ->
         .iter()
         .map(|source| {
             format!(
-                "- {} | {} | {} | licença: {}",
-                source.title, source.publisher, source.url, source.license
+                "- {} | {} | {} | {}: {}",
+                source.title, source.publisher, source.url, text.license, source.license
             )
         })
         .collect::<Vec<_>>()
         .join("\n");
     format!(
-        "{hook}\n\nNeste vídeo:\n{chapters}\nFontes e licenças:\n{sources}\n\n\
-         Transparência: a narração deste vídeo foi sintetizada localmente com Kokoro (Apache-2.0). \
-         O roteiro, os fatos e as fontes exigem revisão humana antes da publicação. \
-         Este conteúdo não promete resultados financeiros, elegibilidade ou receita.",
+        "{hook}\n\n{heading}\n{chapters}\n{sources_heading}\n{sources}\n\n{disclosure}",
         hook = script.hook,
+        heading = text.chapters,
         chapters = chapters.trim_end(),
+        sources_heading = text.sources,
         sources = if sources.is_empty() {
-            "(nenhuma)"
+            text.none
         } else {
             &sources
-        }
+        },
+        disclosure = text.disclosure,
     )
 }
 
-pub fn build_tags(script: &Script, topic: &Topic) -> Vec<String> {
-    let mut tags = vec![
-        topic.series.clone(),
-        "tecnologia".to_string(),
-        "ciencia".to_string(),
-        "inteligencia artificial".to_string(),
-    ];
+pub fn build_tags(script: &Script, topic: &Topic, language: &str) -> Vec<String> {
+    let mut tags = vec![topic.series.clone()];
+    tags.extend(description_text(language).tags.map(str::to_string));
     for word in script
         .title
         .split(|character: char| !character.is_alphanumeric())
@@ -233,12 +280,14 @@ pub fn build_metadata(
     editorial: &QaReport,
     privacy: PublishPrivacy,
     thumbnail: Option<&Path>,
+    language: &str,
 ) -> serde_json::Value {
-    let description = build_description(script, topic, timeline);
+    let description = build_description(script, topic, timeline, language);
     serde_json::json!({
         "title": script.title,
         "description": description,
-        "tags": build_tags(script, topic),
+        "language": language,
+        "tags": build_tags(script, topic, language),
         "categoryId": "28",
         "privacyStatus": privacy,
         "madeForKids": false,
@@ -316,7 +365,11 @@ pub fn write_package(
     let metadata = directory.join("metadata.json");
     let sources = directory.join("sources.md");
     std::fs::write(&subtitles, build_srt(script, timeline))?;
-    std::fs::write(&description, build_description(script, topic, timeline))?;
+    let language = channel.map_or("pt-BR", |channel| channel.language());
+    std::fs::write(
+        &description,
+        build_description(script, topic, timeline, language),
+    )?;
     std::fs::write(&sources, build_sources_markdown(topic, script))?;
     let mut metadata_value = build_metadata(
         script,
@@ -327,6 +380,7 @@ pub fn write_package(
         editorial,
         privacy,
         thumbnail.as_deref(),
+        language,
     );
     if let Some(channel) = channel {
         metadata_value["channel"] = serde_json::to_value(channel)?;
@@ -478,10 +532,24 @@ mod tests {
 
     #[test]
     fn description_contains_sources_and_disclosure() {
-        let text = build_description(&script(), &topic(), &timeline());
+        let text = build_description(&script(), &topic(), &timeline(), "pt-BR");
         assert!(text.contains("https://example.com"));
         assert!(text.contains("Transparência"));
         assert!(text.contains("Neste vídeo"));
+    }
+
+    #[test]
+    fn description_and_tags_follow_the_channel_language() {
+        let english = build_description(&script(), &topic(), &timeline(), "en-US");
+        assert!(english.contains("In this video:"));
+        assert!(english.contains("Sources and licenses:"));
+        assert!(english.contains("Disclosure:"));
+        assert!(!english.contains("Fontes"));
+        let spanish = build_description(&script(), &topic(), &timeline(), "es");
+        assert!(spanish.contains("En este video:"));
+        assert!(spanish.contains("licencia:"));
+        assert!(build_tags(&script(), &topic(), "en-US").contains(&"technology".to_string()));
+        assert!(!build_tags(&script(), &topic(), "en-US").contains(&"tecnologia".to_string()));
     }
 
     #[test]
@@ -495,6 +563,7 @@ mod tests {
             &qa(),
             PublishPrivacy::Private,
             None,
+            "pt-BR",
         );
         assert_eq!(value["containsSyntheticMedia"], true);
         assert_eq!(value["privacyStatus"], "private");
@@ -512,6 +581,7 @@ mod tests {
             &qa(),
             PublishPrivacy::Private,
             None,
+            "pt-BR",
         );
         assert_eq!(value["render"]["subtitlesBurned"], true);
     }

@@ -177,7 +177,7 @@ export function openAutomaticProduction(options: AutomaticProductionOptions): HT
     el(
       'p',
       { className: 'field-hint' },
-      'O roteiro original é preservado. A criação continua no servidor depois de iniciada. O vídeo recebe identificação de revisão pendente; a publicação permanece desativada.',
+      'O roteiro original é preservado. A criação continua no servidor depois de iniciada. O vídeo sai como prévia para sua revisão; nada é publicado sem você.',
     ),
   );
   const advanced = el(

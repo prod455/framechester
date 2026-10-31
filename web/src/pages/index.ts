@@ -1,6 +1,7 @@
 import { analyticsPage } from './analytics.ts';
 import { channelsPage } from './channels.ts';
 import { connectionsPage } from './connections.ts';
+import { createPage } from './create.ts';
 import { overviewPage } from './overview.ts';
 import { productionPage } from './production.ts';
 import { researchPage } from './research.ts';
@@ -11,6 +12,7 @@ import type { Page } from '../studio/state.ts';
 
 /** One renderer per navigation entry; the shell mounts the result in `#main-content`. */
 export const renderers: Record<Page, () => HTMLElement> = {
+  create: createPage,
   overview: overviewPage,
   channels: channelsPage,
   research: researchPage,

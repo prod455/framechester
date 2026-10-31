@@ -65,10 +65,14 @@ vários usuários.
    protege o Studio e é independente das senhas das redes sociais.
 2. Cadastre um canal com identificador local, nome, nicho, público e idioma.
    Selecione o canal antes de trabalhar com conteúdo, contas e resultados.
-3. Abra **Configurações** e confira os caminhos do Python do Kokoro, do modelo, do arquivo de vozes e,
-   se utilizado, do ASR. Ajuste resolução, FPS, CRF e preset para o computador.
-4. Produza um trabalho de teste com roteiro e mídia próprios, depois confira
-   o vídeo e os resultados de QA no painel de produção.
+3. Em **Avançado → Configurações**, adicione a chave do assistente de criação e confira
+   os caminhos do Python do Kokoro, do modelo e do arquivo de vozes.
+4. Volte a **Criar vídeo**, a página inicial. Ela mostra o vídeo atual do canal em
+   quatro passos, cada um com o próximo botão: **Pauta** (Novo vídeo), **Gerar vídeo**
+   (andamento ou diagnóstico), **Revisar** (Assistir, Gerar versão final) e **Enviar ao
+   YouTube** (Conectar YouTube ou Enviar como privado). **Vídeos** lista todas as
+   produções; o restante (pesquisa, roteiros, narrativas, resultados, contas,
+   configurações e visão geral) fica em **Avançado**, recolhido.
 
 A senha é derivada com scrypt e salt aleatório; `auth.json` contém somente a
 derivação e o salt. A sessão fica em memória no servidor, com cookie

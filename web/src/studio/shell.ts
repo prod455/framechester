@@ -112,8 +112,14 @@ function render(): void {
   const page = currentPage();
   document.title = `${pages[page].title} · Framechester`;
   const nav = el('nav', { className: 'nav', 'aria-label': 'Navegação principal' });
+  // Everything beyond making a video is one click away, collapsed unless you are there.
+  const advanced = el(
+    'details',
+    { className: 'nav-advanced' },
+    el('summary', { className: 'nav-group-label' }, 'Avançado'),
+  );
+  advanced.open = pages[page].advanced;
   for (const [key, item] of Object.entries(pages)) {
-    if (item.group) nav.append(el('div', { className: 'nav-group-label' }, item.group));
     const link = el(
       'a',
       {
@@ -131,8 +137,9 @@ function render(): void {
       sidebar.classList.remove('open');
       mobile.setAttribute('aria-expanded', 'false');
     });
-    nav.append(link);
+    (item.advanced ? advanced : nav).append(link);
   }
+  nav.append(advanced);
   const sidebar = el(
     'aside',
     { className: 'studio-sidebar' },

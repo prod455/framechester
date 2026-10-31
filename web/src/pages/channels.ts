@@ -60,7 +60,7 @@ export function channelsPage(): HTMLElement {
                   'Abrir canal',
                   () => {
                     studio.channelId = channel.id;
-                    go('overview');
+                    go('create');
                   },
                   'ghost',
                   'arrow',
@@ -134,7 +134,7 @@ export function editChannel(record?: Channel): void {
       studio.channelId = id;
       dialog.close();
       render();
-      toast(record ? 'Canal atualizado.' : 'Canal criado. Seu próximo passo é desenvolver uma pauta.');
+      toast(record ? 'Canal atualizado.' : 'Canal criado. Agora mande a pauta do primeiro vídeo.');
     },
     () => dialog.close(),
   );

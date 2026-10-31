@@ -26,6 +26,17 @@ Só a versão final com QA técnico e editorial aprovados pode ser enviada; pré
 
 TikTok exige no Login Kit Desktop o `code_challenge` como **hex** do SHA-256 (não base64url), callback com porta, e aceita `http://127.0.0.1`. O access token dura 24 h e é renovado com o refresh token (365 dias) quando o cliente protegido corresponde; o `open_id` renovado precisa ser o mesmo.
 
+**Retorno do login pelo intermediário (padrão).** O portal do TikTok recusa endereços de retorno locais ("localhost is not supported"), mesmo para Desktop. Por isso o login volta por uma página estática HTTPS, `https://prod455.github.io/framechester/oauth/tiktok/` (`docs/oauth/tiktok/index.html`, servida pelo GitHub Pages deste repositório). Ela só lê `code` e `state` e repassa para `http://127.0.0.1:<porta>/api/oauth/tiktok/callback` neste mesmo computador; a porta vem na frente do `state`, que o Studio gera. A página não carrega nada de fora, não envia o código a nenhum servidor (CSP `default-src 'none'`, `no-referrer`) e recusa qualquer `state` que o Studio não tenha gerado. O código sozinho não serve: a troca por token exige o client secret, que fica no cofre local. Nesse modo o app usa o Login Kit **Web**, sem PKCE (o TikTok não usa PKCE na Web).
+
+Configuração no painel do TikTok (aba Sandbox ou Production):
+
+1. **Platforms:** marque **Web**. Em **Web/Desktop URL**, use `https://github.com/prod455/framechester`.
+2. **Login Kit → Redirect URI → Web:** `https://prod455.github.io/framechester/oauth/tiktok/` (com a barra final).
+3. **Content Posting API** com **Direct Post**, e os escopos `user.info.basic`, `user.info.profile`, `user.info.stats` e `video.publish`.
+4. **Sandbox → Target users:** a conta do TikTok que vai conectar.
+
+No GitHub, a página precisa estar publicada uma vez: **Settings → Pages → Build and deployment → Deploy from a branch → `main` / `/docs`**. Num fork, publique a sua e aponte `FRAMECHESTER_TIKTOK_REDIRECT_URI` para ela; `FRAMECHESTER_TIKTOK_REDIRECT_URI=loopback` volta ao retorno direto em `127.0.0.1` (Login Kit Desktop, com PKCE).
+
 **Facebook.** Reels da Página em três fases: `POST /{page-id}/video_reels` com `upload_phase=start`, envio binário a `rupload.facebook.com/video-upload/v26.0/{video-id}` (`Authorization: OAuth`, `offset`, `file_size`) e `upload_phase=finish` com `video_state=DRAFT`, título e descrição. Reel é vertical: um vídeo horizontal não é oferecido ao Facebook; envie o Short dele. A doc consultada limita a 30 posts por API em 24 h. O card leva ao Meta Business Suite para revisar e publicar. [Reels Publishing](https://developers.facebook.com/docs/video-api/guides/reels-publishing).
 
 O Facebook Login troca o código por token de usuário (POST com o segredo no corpo, nunca na URL), troca esse token por um de longa duração (`fb_exchange_token`) e lê as permissões concedidas em `/me/permissions`. No Facebook, o token salvo é o da Página esperada, que não tem validade própria quando vem de um token de longa duração; no Instagram, é o token de usuário de longa duração (cerca de 60 dias, sem renovação automática: reconecte ao expirar). A Meta só aceita callback `http://localhost`/`127.0.0.1` com o app em modo de desenvolvimento; confira as configurações do Facebook Login do seu app.

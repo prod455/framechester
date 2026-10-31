@@ -102,6 +102,8 @@ export interface NetworkCapability {
   requirements: string[];
   revenueNote: string;
   docsUrl: string;
+  /** Redirect URI to register with the provider when it is not this Studio's loopback callback. */
+  redirectUri?: string;
 }
 export interface SocialConnection {
   channelId: string;

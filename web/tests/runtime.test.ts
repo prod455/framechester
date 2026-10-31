@@ -131,3 +131,15 @@ test('a Tailscale name lets the phone in through tailscale serve; public names s
     await rm(home, { recursive: true, force: true });
   }
 });
+
+test('TikTok logins return through the public relay unless the operator chooses loopback or their own page', () => {
+  assert.equal(runtimeConfiguration({}).tiktokRelay, 'https://prod455.github.io/framechester/oauth/tiktok/');
+  assert.equal(runtimeConfiguration({ FRAMECHESTER_TIKTOK_REDIRECT_URI: 'loopback' }).tiktokRelay, undefined);
+  assert.equal(
+    runtimeConfiguration({ FRAMECHESTER_TIKTOK_REDIRECT_URI: 'https://me.github.io/fc/oauth/tiktok/' })
+      .tiktokRelay,
+    'https://me.github.io/fc/oauth/tiktok/',
+  );
+  for (const value of ['http://me.github.io/x/', 'https://me.github.io/x/?a=1', 'not a url'])
+    assert.throws(() => runtimeConfiguration({ FRAMECHESTER_TIKTOK_REDIRECT_URI: value }), /HTTPS/, value);
+});

@@ -17,7 +17,36 @@ import {
 import { toast } from '../studio/toast.ts';
 import { requiredChannel } from './channels.ts';
 import type { Platform } from '../../shared/types.ts';
+import { publicPlatforms } from '../../shared/publishing.ts';
 import { t, translateMessage } from '../../shared/i18n.ts';
+
+/** Field names as each provider's developer console shows them. */
+const oauthFields: Record<Platform, { provider: string; host: string; id: string; secret: string }> = {
+  youtube: {
+    provider: 'Google',
+    host: 'accounts.google.com',
+    id: 'OAuth Client ID', // i18n-ignore: Google Cloud field name
+    secret: 'OAuth Client Secret', // i18n-ignore: Google Cloud field name
+  },
+  tiktok: {
+    provider: 'TikTok',
+    host: 'www.tiktok.com',
+    id: 'Client key', // i18n-ignore: TikTok for Developers field name
+    secret: 'Client secret', // i18n-ignore: TikTok for Developers field name
+  },
+  instagram: {
+    provider: 'Facebook',
+    host: 'www.facebook.com',
+    id: 'App ID', // i18n-ignore: Meta for Developers field name
+    secret: 'App Secret', // i18n-ignore: Meta for Developers field name
+  },
+  facebook: {
+    provider: 'Facebook',
+    host: 'www.facebook.com',
+    id: 'App ID', // i18n-ignore: Meta for Developers field name
+    secret: 'App Secret', // i18n-ignore: Meta for Developers field name
+  },
+};
 
 export function platformTabs(): HTMLElement {
   return el(
@@ -110,98 +139,99 @@ export function connectionsPage(): HTMLElement {
       ),
     );
   else if (capability) {
-    const account = input('accountId', connection?.accountId || currentChannel()?.youtubeChannelId || '');
+    const client = oauthFields[platform];
+    const account = input(
+      'accountId',
+      connection?.accountId || (platform === 'youtube' ? currentChannel()?.youtubeChannelId : '') || '',
+    );
     account.required = true;
-    const secret = input(platform === 'youtube' ? 'clientSecret' : 'accessToken', '', 'password');
+    account.pattern = capability.accountPattern;
+    const secret = input('clientSecret', '', 'password');
     secret.required = true;
     secret.autocomplete = 'off';
     const clientId = input('clientId');
+    clientId.required = true;
     clientId.autocomplete = 'off';
-    const expires = input('expiresAt', '', 'datetime-local');
-    const scopes = input('scopes', '');
+    const meta = platform === 'facebook' || platform === 'instagram';
+    const configId = input('configId');
+    configId.autocomplete = 'off';
+    configId.pattern = '^\\d{1,32}$';
+    configId.required = platform === 'instagram';
     const result = el('div');
-    const { form, fields } = formWithSave(
-      platform === 'youtube' ? t('Preparar autorização OAuth') : t('Salvar vínculo no servidor local'),
-      async () => {
-        const secretValue = secret.value;
-        secret.value = '';
-        const clientValue = clientId.value;
-        clientId.value = '';
-        try {
-          if (platform === 'youtube') {
-            const response = await request<{ authorizationUrl: string; expiresAt: string }>(
-              channelPath('/connections/youtube/oauth'),
-              'POST',
-              { accountId: account.value.trim(), clientId: clientValue.trim(), clientSecret: secretValue },
-            );
-            const url = new URL(response.authorizationUrl);
-            if (url.protocol !== 'https:' || url.hostname !== 'accounts.google.com')
-              throw new Error(t('Destino de autorização inesperado.'));
-            replace(
-              result,
-              notice(
-                t(
-                  'Autorize a conta correta no Google. O vínculo só será confirmado após o retorno ao servidor local.',
-                ),
-              ),
-              el(
-                'p',
-                { className: 'field-hint' },
-                t('Autorização válida até {date}', { date: date(response.expiresAt) }),
-              ),
-              externalLink(t('Continuar no Google'), url.href),
-            );
-            toast(t('Autorização preparada. Continue pelo link do Google.'));
-          } else {
-            await request(channelPath(`/connections/${platform}/token`), 'POST', {
-              accountId: account.value.trim(),
-              accessToken: secretValue,
-              expiresAt: expires.value ? new Date(expires.value).toISOString() : undefined,
-              scopes: scopes.value
-                .split(/[,\n]/)
-                .map((scope) => scope.trim())
-                .filter(Boolean),
-            });
-            await refresh();
-            toast(t('Vínculo salvo no servidor local. Consulte a rede para verificar seus dados.'));
-          }
-        } catch {
-          throw new Error(
+    const { form, fields } = formWithSave(t('Preparar autorização OAuth'), async () => {
+      const secretValue = secret.value;
+      secret.value = '';
+      const clientValue = clientId.value;
+      clientId.value = '';
+      try {
+        const response = await request<{ authorizationUrl: string; expiresAt: string }>(
+          channelPath(`/connections/${platform}/oauth`),
+          'POST',
+          {
+            accountId: account.value.trim(),
+            clientId: clientValue.trim(),
+            clientSecret: secretValue,
+            ...(meta && configId.value.trim() ? { configId: configId.value.trim() } : {}),
+          },
+        );
+        const url = new URL(response.authorizationUrl);
+        if (url.protocol !== 'https:' || url.hostname !== client.host)
+          throw new Error(t('Destino de autorização inesperado.'));
+        replace(
+          result,
+          notice(
             t(
-              'Não foi possível concluir a conexão. Confira o identificador, a credencial e os requisitos do provedor; o segredo foi removido do formulário.',
+              'Autorize a conta correta em {provider}. O vínculo só será confirmado após o retorno ao servidor local.',
+              { provider: client.provider },
             ),
-          );
-        }
-      },
-    );
-    fields.append(
-      field(platform === 'youtube' ? t('ID do canal no YouTube') : t('ID da conta no provedor'), account),
-    );
-    if (platform === 'youtube') {
-      clientId.required = true;
-      fields.append(
-        field('OAuth Client ID', clientId), // i18n-ignore: Google Cloud field name
-        field('OAuth Client Secret', secret), // i18n-ignore: Google Cloud field name
-        notice(
-          t(
-            'Use o cliente OAuth configurado para esta instalação. A autorização ocorre no Google; senhas da sua conta não são solicitadas aqui.',
           ),
+          el(
+            'p',
+            { className: 'field-hint' },
+            t('Autorização válida até {date}', { date: date(response.expiresAt) }),
+          ),
+          externalLink(t('Continuar em {provider}', { provider: client.provider }), url.href),
+        );
+        toast(t('Autorização preparada. Continue pelo link de {provider}.', { provider: client.provider }));
+      } catch {
+        throw new Error(
+          t(
+            'Não foi possível concluir a conexão. Confira o identificador, a credencial e os requisitos do provedor; o segredo foi removido do formulário.',
+          ),
+        );
+      }
+    });
+    fields.append(
+      field(translateMessage(capability.accountLabel), account),
+      field(client.id, clientId),
+      field(client.secret, secret),
+      ...(meta
+        ? [
+            field(
+              t('ID da configuração do Facebook Login for Business'),
+              configId,
+              platform === 'instagram'
+                ? t(
+                    'Obrigatório no Instagram: o envio do arquivo só funciona com Facebook Login for Business.',
+                  )
+                : t('Opcional no Facebook; use a mesma configuração do Instagram se tiver uma.'),
+            ),
+          ]
+        : []),
+      el(
+        'p',
+        { className: 'field-hint' },
+        t('Callback a registrar no aplicativo: {url}', {
+          url: `http://127.0.0.1:${location.port || '4317'}/api/oauth/${platform}/callback`,
+        }),
+      ),
+      notice(
+        t(
+          'Use o aplicativo OAuth configurado para esta instalação. A autorização ocorre em {provider}; senhas da sua conta não são solicitadas aqui.',
+          { provider: client.provider },
         ),
-      );
-    } else
-      fields.append(
-        field(
-          t('Token de acesso oficial'),
-          secret,
-          t('Enviado apenas ao servidor local e removido deste formulário após o envio.'),
-        ),
-        el(
-          'div',
-          { className: 'form-grid' },
-          field(t('Expiração (se conhecida)'), expires),
-          field(t('Escopos concedidos'), scopes, t('Separe os escopos por vírgula.')),
-        ),
-      );
+      ),
+    );
     content.append(el('div', { className: 'divider' }), form, result);
   } else
     content.append(
@@ -230,7 +260,11 @@ export function connectionsPage(): HTMLElement {
       el(
         'span',
         { className: 'badge', 'data-variant': capability?.publishingAvailable ? 'secondary' : 'outline' },
-        capability?.publishingAvailable ? t('Envio privado disponível') : t('Sem envio nesta API'),
+        !capability?.publishingAvailable
+          ? t('Sem envio nesta API')
+          : publicPlatforms.includes(platform)
+            ? t('Publicação pública direta')
+            : t('Envio não público disponível'),
       ),
     ),
     el('div', { className: 'divider' }),

@@ -46,7 +46,8 @@ export async function startLocalServer() {
     repositoryRoot: resolve(webRoot, '..'),
     binary: runtime.engineBinary,
     readState: () => store.read(),
-    publish: (channelId, video) => social.uploadYoutube(channelId, video),
+    publish: (channelId, platform, video) => social.publish(channelId, platform, video),
+    profiles: (channelId) => social.profiles(channelId),
   });
   const privatePrompt = new PrivatePromptStore(runtime.privateRoot ?? resolve(webRoot, '..'));
   const usage = new AIUsageStore(join(home, 'ai-usage'));

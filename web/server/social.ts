@@ -4,15 +4,18 @@ import { readFile, stat } from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import type {
   NetworkCapability,
+  OAuthInput,
   Platform,
+  ProfileLink,
+  PublishResult,
   SocialApi,
   SocialConnection,
   SocialSnapshot,
   TokenConnectionInput,
-  YoutubeOAuthInput,
+  VideoUpload,
   YoutubeThumbnail,
-  YoutubeUpload,
 } from '../shared/types.ts';
+import { canPublish, platformLabels } from '../shared/publishing.ts';
 import type { SecretVault } from './vault.ts';
 
 export type SocialFetch = (url: string, init?: RequestInit) => Promise<Response>;
@@ -21,6 +24,8 @@ export interface SocialServiceOptions {
   fetch?: SocialFetch;
   now?: () => number;
   timeoutMs?: number;
+  /** Pause between Instagram processing checks; tests skip the wait. */
+  wait?: (ms: number) => Promise<void>;
 }
 export class SocialError extends Error {
   constructor(
@@ -45,7 +50,101 @@ const MAX_THUMBNAIL = 2 * 1024 * 1024;
 const UPLOAD_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 const PLATFORMS: Platform[] = ['youtube', 'tiktok', 'instagram', 'facebook'];
 const GRAPH = 'https://graph.facebook.com/v26.0';
+const TIKTOK = 'https://open.tiktokapis.com/v2';
+const TIKTOK_PUBLISH = 'video.publish';
+const TIKTOK_SCOPES = ['user.info.basic', 'user.info.profile', 'user.info.stats', TIKTOK_PUBLISH];
+const PAGE_PUBLISH = 'pages_manage_posts';
+const FACEBOOK_SCOPES = ['pages_show_list', 'pages_read_engagement', PAGE_PUBLISH];
+const INSTAGRAM_PUBLISH = 'instagram_content_publish';
+const INSTAGRAM_SCOPES = ['pages_show_list', 'pages_read_engagement', 'instagram_basic', INSTAGRAM_PUBLISH];
+const INSTAGRAM_UPLOAD = 'https://rupload.facebook.com/ig-api-upload/v26.0';
+// Content Publishing: Reels up to 300 MB; query the container once per minute for at most
+// 5 minutes is the documented pace, and an unpublished container expires in 24 h.
+const INSTAGRAM_MAX_VIDEO = 300 * 1024 * 1024;
+const INSTAGRAM_POLL_MS = 30_000;
+const INSTAGRAM_POLLS = 10;
+/** Scope that lets the stored token send videos; without it the operator reconnects. */
+const PUBLISH_SCOPE: Partial<Record<Platform, string>> = {
+  youtube: VIDEO_UPLOAD,
+  tiktok: TIKTOK_PUBLISH,
+  facebook: PAGE_PUBLISH,
+  instagram: INSTAGRAM_PUBLISH,
+};
+const REELS_UPLOAD = 'https://rupload.facebook.com/video-upload/v26.0';
+// TikTok Media Transfer Guide: chunks of 5-64 MB, the last one absorbs the remainder (up to 128 MB),
+// count = floor(size / chunk), at most 1000; a file under 5 MB goes in a single chunk.
+const TIKTOK_MIN_CHUNK = 5 * 1024 * 1024;
+const TIKTOK_CHUNK = 10 * 1024 * 1024;
+const TIKTOK_CAPTION = 2200;
+const INSTAGRAM_CAPTION = 2200;
 const MAX_RESPONSE = 512 * 1024;
+interface OAuthProvider {
+  authorize: string;
+  scopes: string[];
+  separator: string;
+  clientParam: 'client_id' | 'client_key';
+  /** Google uses RFC 7636 base64url; TikTok's desktop flow requires the hex digest. */
+  pkce: 'base64url' | 'hex' | null;
+  extra: Record<string, string>;
+}
+const META_DIALOG = 'https://www.facebook.com/v26.0/dialog/oauth';
+const OAUTH: Record<Platform, OAuthProvider> = {
+  youtube: {
+    authorize: 'https://accounts.google.com/o/oauth2/v2/auth',
+    scopes: YOUTUBE_SCOPES,
+    separator: ' ',
+    clientParam: 'client_id',
+    pkce: 'base64url',
+    extra: { access_type: 'offline', prompt: 'consent' },
+  },
+  tiktok: {
+    authorize: 'https://www.tiktok.com/v2/auth/authorize/',
+    scopes: TIKTOK_SCOPES,
+    separator: ',',
+    clientParam: 'client_key',
+    pkce: 'hex',
+    extra: {},
+  },
+  facebook: {
+    authorize: META_DIALOG,
+    scopes: FACEBOOK_SCOPES,
+    separator: ',',
+    clientParam: 'client_id',
+    pkce: null,
+    extra: {},
+  },
+  instagram: {
+    authorize: META_DIALOG,
+    scopes: INSTAGRAM_SCOPES,
+    separator: ',',
+    clientParam: 'client_id',
+    pkce: null,
+    extra: {},
+  },
+};
+const ENDPOINTS: Array<{ host: string; path: RegExp; body: Array<'none' | 'form' | 'json'> }> = [
+  { host: 'www.googleapis.com', path: /^\/youtube\/v3\/(channels|search|videos)$/, body: ['none'] },
+  { host: 'youtubeanalytics.googleapis.com', path: /^\/v2\/reports$/, body: ['none'] },
+  { host: 'oauth2.googleapis.com', path: /^\/(token|tokeninfo)$/, body: ['none', 'form'] },
+  {
+    host: 'graph.facebook.com',
+    path: /^\/v26\.0\/(me(?:\/accounts|\/permissions)?|\d{1,32})$/,
+    body: ['none'],
+  },
+  {
+    host: 'graph.facebook.com',
+    path: /^\/v26\.0\/(oauth\/access_token|\d{1,32}\/(video_reels|media|media_publish))$/,
+    body: ['form'],
+  },
+  { host: 'open.tiktokapis.com', path: /^\/v2\/user\/info\/$/, body: ['none'] },
+  { host: 'open.tiktokapis.com', path: /^\/v2\/oauth\/token\/$/, body: ['form'] },
+  {
+    host: 'open.tiktokapis.com',
+    path: /^\/v2\/post\/publish\/(creator_info\/query|video\/init)\/$/,
+    body: ['json'],
+  },
+];
+type RequestBody = URLSearchParams | { json: unknown };
 const CAPABILITIES: NetworkCapability[] = [
   {
     platform: 'youtube',
@@ -54,6 +153,9 @@ const CAPABILITIES: NetworkCapability[] = [
     metricsAvailable: true,
     revenueAvailable: true,
     publishingAvailable: true,
+    accountLabel: 'ID do canal no YouTube',
+    // HTML pattern attributes compile with the v flag: a bare hyphen in a class is invalid there.
+    accountPattern: '^UC[\\w\\-]{22}$',
     requirements: [
       'Cliente OAuth Web próprio e callback local registrado exatamente.',
       'YouTube Data API e Analytics API habilitadas.',
@@ -67,47 +169,56 @@ const CAPABILITIES: NetworkCapability[] = [
   {
     platform: 'tiktok',
     label: 'TikTok',
-    connectionMethod: 'token',
+    connectionMethod: 'oauth',
     metricsAvailable: true,
     revenueAvailable: false,
-    publishingAvailable: false,
+    publishingAvailable: true,
+    accountLabel: 'Nome de usuário no TikTok',
+    accountPattern: '^@?[A-Za-z0-9._]{2,24}$',
     requirements: [
-      'Aplicativo e token autorizados para a conta.',
-      'Display API: user.info.basic e user.info.stats.',
+      'Aplicativo próprio no TikTok for Developers, plataforma Desktop, com o callback local registrado exatamente.',
+      'Login Kit e Content Posting API (Direct Post): user.info.basic, user.info.profile, user.info.stats e video.publish.',
+      'Envio sempre como "Somente eu" (SELF_ONLY); a publicação é decisão do operador no app do TikTok.',
     ],
     revenueNote:
       'A Display API usada aqui fornece perfil e contadores, não comprovantes ou receita do Creator Rewards. Recebimentos exigem importação manual.',
-    docsUrl: 'https://developers.tiktok.com/doc/tiktok-api-v2-get-user-info',
+    docsUrl: 'https://developers.tiktok.com/doc/content-posting-api-reference-direct-post',
   },
   {
     platform: 'instagram',
     label: 'Instagram',
-    connectionMethod: 'token',
+    connectionMethod: 'oauth',
     metricsAvailable: true,
     revenueAvailable: false,
-    publishingAvailable: false,
+    publishingAvailable: true,
+    accountLabel: 'ID da conta profissional do Instagram',
+    accountPattern: '^\\d{1,32}$',
     requirements: [
       'Conta profissional ligada a uma Página.',
-      'Token de usuário do Facebook Login com pages_show_list, pages_read_engagement e instagram_basic, conforme aprovação do aplicativo.',
+      'Aplicativo Meta próprio com Facebook Login for Business e o callback local registrado; a configuração pede pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish.',
+      'Publicação pública direta como Reel (vídeo vertical): a API do Instagram não tem rascunho nem modo privado. Só sai a versão final aprovada no QA, por clique confirmado ou com o opt-in do canal.',
     ],
     revenueNote:
       'Esta integração lê contadores da conta profissional; não implementa API de recebimentos do Instagram. Importe comprovantes manualmente.',
-    docsUrl: 'https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/',
+    docsUrl: 'https://developers.facebook.com/docs/instagram-platform/content-publishing',
   },
   {
     platform: 'facebook',
     label: 'Facebook',
-    connectionMethod: 'token',
+    connectionMethod: 'oauth',
     metricsAvailable: true,
     revenueAvailable: false,
-    publishingAvailable: false,
+    publishingAvailable: true,
+    accountLabel: 'ID da Página do Facebook',
+    accountPattern: '^\\d{1,32}$',
     requirements: [
-      'Token de acesso da Página, não um perfil pessoal.',
-      'Permissões de leitura da Página e aprovação exigida pela Meta.',
+      'Aplicativo Meta próprio com Facebook Login e o callback local registrado; o token salvo é o da Página, não de um perfil pessoal.',
+      'pages_show_list, pages_read_engagement e pages_manage_posts, com a aprovação exigida pela Meta.',
+      'Envio sempre como rascunho de Reel (vídeo vertical); a publicação é decisão do operador no Meta Business Suite.',
     ],
     revenueNote:
       'Esta integração lê contadores da Página e não integra receitas ou pagamentos. Importe comprovantes manualmente.',
-    docsUrl: 'https://developers.facebook.com/docs/pages-api/',
+    docsUrl: 'https://developers.facebook.com/docs/video-api/guides/reels-publishing',
   },
 ];
 
@@ -124,10 +235,13 @@ interface Credential {
   scopesVerified: boolean;
   connectedAt: string;
   clientId?: string;
+  profileUrl?: string;
 }
 interface PendingOAuth {
   channelId: string;
-  accountId: string;
+  platform: Platform;
+  /** YouTube channel ID, TikTok username, Facebook Page ID or Instagram account ID. */
+  expected: string;
   clientId: string;
   redirectUri: string;
   verifier: string;
@@ -191,6 +305,72 @@ function identityInput(platform: Platform, accountId: string): void {
     throw new SocialError('invalid_account', 'Identidade da conta ou plataforma inválida.');
   }
 }
+/** TikTok's open_id is per app and unknown before authorizing: the operator names the username. */
+function tiktokUsername(value: string): string {
+  const name = typeof value === 'string' ? value.trim().replace(/^@/, '') : '';
+  if (!/^[A-Za-z0-9._]{2,24}$/.test(name))
+    throw new SocialError('invalid_account', 'Identidade da conta ou plataforma inválida.');
+  return name;
+}
+/** Public profile built only from validated identifiers, never from a provider-supplied URL. */
+function profileUrl(
+  platform: Platform,
+  accountId: string,
+  data: Record<string, unknown>,
+): string | undefined {
+  if (platform === 'youtube') {
+    const custom = record(data.snippet).customUrl;
+    const handle = typeof custom === 'string' ? custom.replace(/^@/, '') : '';
+    return /^[A-Za-z0-9._-]{3,30}$/.test(handle)
+      ? `https://www.youtube.com/@${handle}`
+      : `https://www.youtube.com/channel/${accountId}`;
+  }
+  if (platform === 'facebook') return `https://www.facebook.com/${accountId}`;
+  const username = data.username;
+  if (typeof username !== 'string') return undefined;
+  if (platform === 'tiktok')
+    return /^[A-Za-z0-9._]{2,24}$/.test(username) ? `https://www.tiktok.com/@${username}` : undefined;
+  return /^[A-Za-z0-9._]{1,30}$/.test(username) ? `https://www.instagram.com/${username}/` : undefined;
+}
+/** Connections saved before profiles existed: the ID alone is enough on YouTube and Facebook. */
+function storedProfile(credential: Credential): string | undefined {
+  return (
+    credential.profileUrl ??
+    (credential.platform === 'youtube' || credential.platform === 'facebook'
+      ? profileUrl(credential.platform, credential.accountId, {})
+      : undefined)
+  );
+}
+/** TikTok has a single caption: the title first, then the description with its references. */
+function postCaption(title: string, description: string): string {
+  return [title, description.trim()].filter(Boolean).join('\n\n');
+}
+/** Truncates to a UTF-16 length without splitting a surrogate pair. */
+function utf16(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  return /[\ud800-\udbff]$/.test(cut) ? cut.slice(0, -1) : cut;
+}
+/** Upload URLs come from the provider: HTTPS on the expected host, no credentials or port. */
+function providerUrl(raw: unknown, host: string, path: (pathname: string) => boolean): string {
+  let url: URL;
+  try {
+    url = new URL(typeof raw === 'string' ? raw : '');
+  } catch {
+    throw new SocialError('invalid_response', 'A plataforma não abriu a sessão de envio.');
+  }
+  if (
+    url.protocol !== 'https:' ||
+    url.hostname !== host ||
+    url.port ||
+    url.username ||
+    url.password ||
+    url.hash ||
+    !path(url.pathname)
+  )
+    throw new SocialError('blocked_endpoint', 'Sessão de envio fora do endpoint da plataforma.');
+  return url.toString();
+}
 /** YouTube rejects angle brackets in titles and descriptions and limits their size. */
 function youtubeText(value: string, maxBytes: number): string {
   let text = String(value).replace(/[<>]/g, '').trim();
@@ -241,6 +421,7 @@ export class SocialService implements SocialApi {
   private readonly fetcher: SocialFetch;
   private readonly now: () => number;
   private readonly timeoutMs: number;
+  private readonly wait: (ms: number) => Promise<void>;
   private readonly pending = new Map<string, PendingOAuth>();
   private readonly locks = new Map<string, Promise<void>>();
 
@@ -249,6 +430,7 @@ export class SocialService implements SocialApi {
     this.fetcher = options.fetch ?? globalThis.fetch.bind(globalThis);
     this.now = options.now ?? Date.now;
     this.timeoutMs = Math.min(30000, Math.max(1000, options.timeoutMs ?? 15000));
+    this.wait = options.wait ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   }
 
   capabilities(): NetworkCapability[] {
@@ -269,38 +451,32 @@ export class SocialService implements SocialApi {
     return result;
   }
 
-  private async request(
-    raw: string,
-    token?: string,
-    form?: URLSearchParams,
-  ): Promise<Record<string, unknown>> {
+  private async request(raw: string, token?: string, body?: RequestBody): Promise<Record<string, unknown>> {
     const url = new URL(raw);
+    const kind = !body ? 'none' : body instanceof URLSearchParams ? 'form' : 'json';
     const allowed =
       url.protocol === 'https:' &&
       !url.username &&
       !url.password &&
       !url.port &&
       !url.hash &&
-      ((url.hostname === 'www.googleapis.com' &&
-        /^\/youtube\/v3\/(channels|search|videos)$/.test(url.pathname) &&
-        !form) ||
-        (url.hostname === 'youtubeanalytics.googleapis.com' && url.pathname === '/v2/reports' && !form) ||
-        (url.hostname === 'oauth2.googleapis.com' && ['/token', '/tokeninfo'].includes(url.pathname)) ||
-        (url.hostname === 'graph.facebook.com' &&
-          /^\/v26\.0\/(me(?:\/accounts)?|\d{1,32})$/.test(url.pathname) &&
-          !form) ||
-        (url.hostname === 'open.tiktokapis.com' && url.pathname === '/v2/user/info/' && !form));
-    if (!allowed || url.searchParams.has('access_token'))
+      ENDPOINTS.some(
+        (rule) => rule.host === url.hostname && rule.path.test(url.pathname) && rule.body.includes(kind),
+      );
+    if (!allowed || url.searchParams.has('access_token') || url.searchParams.has('client_secret'))
       throw new SocialError('blocked_endpoint', 'Endpoint não permitido.');
     const headers: Record<string, string> = { accept: 'application/json' };
     if (token) headers.authorization = `Bearer ${token}`;
-    const method = form || url.pathname === '/tokeninfo' ? 'POST' : 'GET';
-    if (method === 'POST') headers['content-type'] = 'application/x-www-form-urlencoded';
+    const method = body || url.pathname === '/tokeninfo' ? 'POST' : 'GET';
+    if (kind === 'json') headers['content-type'] = 'application/json; charset=UTF-8';
+    else if (method === 'POST') headers['content-type'] = 'application/x-www-form-urlencoded';
     try {
       const response = await this.fetcher(url.toString(), {
         method,
         headers,
-        ...(form ? { body: form.toString() } : {}),
+        ...(body
+          ? { body: body instanceof URLSearchParams ? body.toString() : JSON.stringify(body.json) }
+          : {}),
         redirect: 'error',
         signal: AbortSignal.timeout(this.timeoutMs),
       });
@@ -370,9 +546,12 @@ export class SocialService implements SocialApi {
     };
   }
 
-  private async youtubeClient(channelId: string): Promise<{ clientId: string; clientSecret: string }> {
+  private async oauthClient(
+    channelId: string,
+    platform: Platform,
+  ): Promise<{ clientId: string; clientSecret: string }> {
     try {
-      const config = record(JSON.parse((await this.vault.get(channelId, 'youtube-client')) ?? '{}'));
+      const config = record(JSON.parse((await this.vault.get(channelId, `${platform}-client`)) ?? '{}'));
       if (typeof config.clientId !== 'string' || typeof config.clientSecret !== 'string') throw Error();
       secret(config.clientId);
       secret(config.clientSecret);
@@ -390,6 +569,7 @@ export class SocialService implements SocialApi {
     accountId: string,
     token: string,
     stats = false,
+    profile = false,
   ): Promise<Identity> {
     if (platform === 'youtube') {
       const data = await this.request(
@@ -403,9 +583,12 @@ export class SocialService implements SocialApi {
       return { displayName: label(record(item.snippet).title, 'YouTube'), data: item };
     }
     if (platform === 'tiktok') {
-      const fields = stats
-        ? 'open_id,display_name,follower_count,likes_count,video_count'
-        : 'open_id,display_name';
+      // username needs user.info.profile; tokens saved without it would be refused outright.
+      const fields = [
+        'open_id,display_name',
+        ...(profile ? ['username'] : []),
+        ...(stats ? ['follower_count,likes_count,video_count'] : []),
+      ].join(',');
       const payload = await this.request(`https://open.tiktokapis.com/v2/user/info/?fields=${fields}`, token);
       const user = record(record(payload.data).user);
       if (user.open_id !== accountId)
@@ -463,6 +646,7 @@ export class SocialService implements SocialApi {
       connectedAt: credential.connectedAt,
       expiresAt: credential.expiresAt,
       scopes: [...credential.scopes],
+      ...(storedProfile(credential) ? { profileUrl: storedProfile(credential) } : {}),
       message: credential.scopesVerified
         ? 'Identidade e escopos verificados pela API; isso não confirma monetização.'
         : 'Identidade verificada; escopos não retornados por esta integração. Validade pode ter sido informada pelo operador.',
@@ -554,18 +738,28 @@ export class SocialService implements SocialApi {
         expiresAt: metadata.expiresAt,
         connectedAt: new Date(this.now()).toISOString(),
       };
+      const profile = profileUrl(input.platform, input.accountId, identity.data);
+      if (profile) credential.profileUrl = profile;
       await this.vault.set(input.channelId, input.platform, JSON.stringify(credential));
       return this.publicConnection(credential);
     });
   }
 
-  async startYoutubeOAuth(
-    input: YoutubeOAuthInput,
-  ): Promise<{ authorizationUrl: string; expiresAt: string }> {
+  async startOAuth(input: OAuthInput): Promise<{ authorizationUrl: string; expiresAt: string }> {
     channel(input.channelId);
-    identityInput('youtube', input.accountId);
+    if (!PLATFORMS.includes(input.platform)) throw new SocialError('invalid_platform', 'Rede inválida.');
+    const expected =
+      input.platform === 'tiktok'
+        ? tiktokUsername(input.accountId)
+        : (identityInput(input.platform, input.accountId), input.accountId);
     secret(input.clientId);
     secret(input.clientSecret);
+    // Facebook Login for Business names its permissions in a configuration, not in `scope`.
+    if (
+      input.configId !== undefined &&
+      (!['facebook', 'instagram'].includes(input.platform) || !/^\d{1,32}$/.test(input.configId))
+    )
+      throw new SocialError('invalid_config', 'ID de configuração do Facebook Login for Business inválido.');
     let redirect: URL;
     try {
       redirect = new URL(input.redirectUri);
@@ -575,7 +769,7 @@ export class SocialService implements SocialApi {
     if (
       !['http:', 'https:'].includes(redirect.protocol) ||
       !['127.0.0.1', 'localhost', '[::1]'].includes(redirect.hostname) ||
-      redirect.pathname !== '/api/oauth/youtube/callback' ||
+      redirect.pathname !== `/api/oauth/${input.platform}/callback` ||
       redirect.username ||
       redirect.password ||
       redirect.search ||
@@ -584,17 +778,22 @@ export class SocialService implements SocialApi {
     ) {
       throw new SocialError(
         'invalid_redirect',
-        'OAuth exige callback de loopback local registrado exatamente no cliente Google.',
+        'OAuth exige callback de loopback local registrado exatamente no aplicativo do provedor.',
       );
     }
-    return this.locked(`${input.channelId}/youtube`, async () => {
+    const provider = OAUTH[input.platform];
+    return this.locked(`${input.channelId}/${input.platform}`, async () => {
       for (const [key, value] of this.pending)
-        if (value.expiresAt <= this.now() || value.channelId === input.channelId) this.pending.delete(key);
+        if (
+          value.expiresAt <= this.now() ||
+          (value.channelId === input.channelId && value.platform === input.platform)
+        )
+          this.pending.delete(key);
       if (this.pending.size >= 128)
         throw new SocialError('oauth_busy', 'Há muitas autorizações pendentes. Aguarde a expiração.');
       await this.vault.set(
         input.channelId,
-        'youtube-client',
+        `${input.platform}-client`,
         JSON.stringify({ clientId: input.clientId, clientSecret: input.clientSecret }),
       );
       const state = randomBytes(24).toString('hex');
@@ -602,85 +801,258 @@ export class SocialService implements SocialApi {
       const expiresAt = this.now() + 10 * 60 * 1000;
       this.pending.set(state, {
         channelId: input.channelId,
-        accountId: input.accountId,
+        platform: input.platform,
+        expected,
         clientId: input.clientId,
         redirectUri: input.redirectUri,
         verifier,
         expiresAt,
       });
-      const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+      const url = new URL(provider.authorize);
       for (const [key, value] of Object.entries({
-        client_id: input.clientId,
+        [provider.clientParam]: input.clientId,
         redirect_uri: input.redirectUri,
         response_type: 'code',
-        access_type: 'offline',
-        prompt: 'consent',
-        scope: YOUTUBE_SCOPES.join(' '),
+        ...provider.extra,
+        ...(input.configId
+          ? { config_id: input.configId, override_default_response_type: 'true' }
+          : { scope: provider.scopes.join(provider.separator) }),
         state,
-        code_challenge: createHash('sha256').update(verifier).digest('base64url'),
-        code_challenge_method: 'S256',
+        ...(provider.pkce
+          ? {
+              code_challenge: createHash('sha256')
+                .update(verifier)
+                .digest(provider.pkce === 'hex' ? 'hex' : 'base64url'),
+              code_challenge_method: 'S256',
+            }
+          : {}),
       }))
         url.searchParams.set(key, value);
       return { authorizationUrl: url.toString(), expiresAt: new Date(expiresAt).toISOString() };
     });
   }
 
-  async callbackYoutubeOAuth(input: { state: string; code: string }): Promise<SocialConnection> {
+  async callbackOAuth(platform: Platform, input: { state: string; code: string }): Promise<SocialConnection> {
     const pending = this.pending.get(input.state);
-    if (!pending)
-      throw new SocialError(
+    const invalid = () =>
+      new SocialError(
         'invalid_state',
         'Autorização OAuth ausente, expirada ou já utilizada. Inicie novamente.',
       );
-    return this.locked(`${pending.channelId}/youtube`, async () => {
+    // A state is bound to one network: the callback of another network cannot redeem it.
+    if (!pending || pending.platform !== platform) throw invalid();
+    return this.locked(`${pending.channelId}/${platform}`, async () => {
       if (this.pending.get(input.state) !== pending || pending.expiresAt <= this.now()) {
         this.pending.delete(input.state);
-        throw new SocialError(
-          'invalid_state',
-          'Autorização OAuth ausente, expirada ou já utilizada. Inicie novamente.',
-        );
+        throw invalid();
       }
       this.pending.delete(input.state);
       secret(input.code);
-      const config = await this.youtubeClient(pending.channelId);
+      const config = await this.oauthClient(pending.channelId, platform);
       if (config.clientId !== pending.clientId)
         throw new SocialError('oauth_changed', 'A configuração OAuth mudou; inicie novamente.');
-      const token = await this.request(
-        'https://oauth2.googleapis.com/token',
-        undefined,
-        new URLSearchParams({
-          code: input.code,
-          client_id: pending.clientId,
-          client_secret: config.clientSecret,
-          redirect_uri: pending.redirectUri,
-          code_verifier: pending.verifier,
-          grant_type: 'authorization_code',
-        }),
-      );
-      if (typeof token.access_token !== 'string')
-        throw new SocialError('invalid_response', 'Google não retornou um token válido.');
-      secret(token.access_token);
-      const metadata = await this.tokenMetadata(token.access_token);
-      if (metadata.clientId && metadata.clientId !== pending.clientId)
-        throw new SocialError('account_mismatch', 'Token emitido para outro aplicativo OAuth.');
-      const identity = await this.verifyIdentity('youtube', pending.accountId, token.access_token);
-      const credential: Credential = {
-        version: 1,
-        channelId: pending.channelId,
-        platform: 'youtube',
-        accountId: pending.accountId,
-        displayName: identity.displayName,
+      const credential =
+        platform === 'youtube'
+          ? await this.youtubeCallback(pending, config.clientSecret, input.code)
+          : platform === 'tiktok'
+            ? await this.tiktokCallback(pending, config.clientSecret, input.code)
+            : await this.metaCallback(pending, config.clientSecret, input.code);
+      await this.vault.set(pending.channelId, platform, JSON.stringify(credential));
+      return this.publicConnection(credential);
+    });
+  }
+
+  private credential(
+    pending: PendingOAuth,
+    accountId: string,
+    identity: Identity,
+    token: { accessToken: string; refreshToken?: string; expiresAt: string | null },
+    scopes: { scopes: string[]; scopesVerified: boolean },
+  ): Credential {
+    const profile = profileUrl(pending.platform, accountId, identity.data);
+    return {
+      version: 1,
+      channelId: pending.channelId,
+      platform: pending.platform,
+      accountId,
+      displayName: identity.displayName,
+      accessToken: token.accessToken,
+      ...(token.refreshToken ? { refreshToken: token.refreshToken } : {}),
+      expiresAt: token.expiresAt,
+      scopes: scopes.scopes,
+      scopesVerified: scopes.scopesVerified,
+      connectedAt: new Date(this.now()).toISOString(),
+      clientId: pending.clientId,
+      ...(profile ? { profileUrl: profile } : {}),
+    };
+  }
+
+  private async youtubeCallback(
+    pending: PendingOAuth,
+    clientSecret: string,
+    code: string,
+  ): Promise<Credential> {
+    const token = await this.request(
+      'https://oauth2.googleapis.com/token',
+      undefined,
+      new URLSearchParams({
+        code,
+        client_id: pending.clientId,
+        client_secret: clientSecret,
+        redirect_uri: pending.redirectUri,
+        code_verifier: pending.verifier,
+        grant_type: 'authorization_code',
+      }),
+    );
+    if (typeof token.access_token !== 'string')
+      throw new SocialError('invalid_response', 'Google não retornou um token válido.');
+    secret(token.access_token);
+    const metadata = await this.tokenMetadata(token.access_token);
+    if (metadata.clientId && metadata.clientId !== pending.clientId)
+      throw new SocialError('account_mismatch', 'Token emitido para outro aplicativo OAuth.');
+    const identity = await this.verifyIdentity('youtube', pending.expected, token.access_token);
+    return this.credential(
+      pending,
+      pending.expected,
+      identity,
+      {
         accessToken: token.access_token,
         ...(typeof token.refresh_token === 'string' ? { refreshToken: token.refresh_token } : {}),
         expiresAt: metadata.expiresAt,
-        scopes: metadata.scopes,
-        scopesVerified: metadata.scopesVerified,
-        connectedAt: new Date(this.now()).toISOString(),
-        clientId: pending.clientId,
-      };
-      await this.vault.set(pending.channelId, 'youtube', JSON.stringify(credential));
-      return this.publicConnection(credential);
+      },
+      metadata,
+    );
+  }
+
+  /** TikTok token responses carry open_id, scope and both lifetimes at the top level. */
+  private tiktokToken(token: Record<string, unknown>): {
+    openId: string;
+    accessToken: string;
+    refreshToken?: string;
+    expiresAt: string | null;
+    scopes: string[];
+  } {
+    if (typeof token.access_token !== 'string' || typeof token.open_id !== 'string')
+      throw new SocialError('invalid_response', 'O TikTok não retornou um token válido.');
+    secret(token.access_token);
+    identityInput('tiktok', token.open_id);
+    const expires = numeric(token.expires_in);
+    return {
+      openId: token.open_id,
+      accessToken: token.access_token,
+      ...(typeof token.refresh_token === 'string' ? { refreshToken: token.refresh_token } : {}),
+      expiresAt: expires !== null && expires > 0 ? new Date(this.now() + expires * 1000).toISOString() : null,
+      scopes:
+        typeof token.scope === 'string'
+          ? token.scope
+              .split(',')
+              .map((item) => item.trim())
+              .filter(Boolean)
+          : [],
+    };
+  }
+
+  private async tiktokCallback(
+    pending: PendingOAuth,
+    clientSecret: string,
+    code: string,
+  ): Promise<Credential> {
+    const token = this.tiktokToken(
+      await this.request(
+        `${TIKTOK}/oauth/token/`,
+        undefined,
+        new URLSearchParams({
+          client_key: pending.clientId,
+          client_secret: clientSecret,
+          code,
+          grant_type: 'authorization_code',
+          redirect_uri: pending.redirectUri,
+          code_verifier: pending.verifier,
+        }),
+      ),
+    );
+    const identity = await this.verifyIdentity('tiktok', token.openId, token.accessToken, false, true);
+    if (
+      typeof identity.data.username !== 'string' ||
+      identity.data.username.toLowerCase() !== pending.expected.toLowerCase()
+    )
+      throw new SocialError('account_mismatch', 'O token não corresponde à conta TikTok esperada.');
+    return this.credential(pending, token.openId, identity, token, {
+      scopes: token.scopes,
+      scopesVerified: true,
     });
+  }
+
+  /** Facebook Login: code → user token → long-lived user token; a Page keeps its own Page token. */
+  private async metaCallback(pending: PendingOAuth, clientSecret: string, code: string): Promise<Credential> {
+    const exchange = async (params: Record<string, string>) => {
+      const token = await this.request(
+        `${GRAPH}/oauth/access_token`,
+        undefined,
+        new URLSearchParams({ client_id: pending.clientId, client_secret: clientSecret, ...params }),
+      );
+      if (typeof token.access_token !== 'string')
+        throw new SocialError('invalid_response', 'A Meta não retornou um token válido.');
+      secret(token.access_token);
+      return token;
+    };
+    const short = await exchange({ code, redirect_uri: pending.redirectUri });
+    const long = await exchange({
+      grant_type: 'fb_exchange_token',
+      fb_exchange_token: short.access_token as string,
+    });
+    const userToken = long.access_token as string;
+    const permissions = await this.request(`${GRAPH}/me/permissions`, userToken);
+    const scopes = array(permissions.data)
+      .map(record)
+      .filter((item) => item.status === 'granted' && typeof item.permission === 'string')
+      .map((item) => item.permission as string);
+    if (pending.platform === 'instagram') {
+      const identity = await this.verifyIdentity('instagram', pending.expected, userToken);
+      const expires = numeric(long.expires_in);
+      return this.credential(
+        pending,
+        pending.expected,
+        identity,
+        {
+          accessToken: userToken,
+          expiresAt:
+            expires !== null && expires > 0 ? new Date(this.now() + expires * 1000).toISOString() : null,
+        },
+        { scopes, scopesVerified: Array.isArray(permissions.data) },
+      );
+    }
+    let pageToken: string | undefined;
+    let cursor: string | undefined;
+    for (let page = 0; page < 10 && !pageToken; page++) {
+      const url = new URL(`${GRAPH}/me/accounts`);
+      url.searchParams.set('fields', 'id,access_token');
+      url.searchParams.set('limit', '100');
+      if (cursor) url.searchParams.set('after', cursor);
+      const pages = await this.request(url.toString(), userToken);
+      const match = array(pages.data)
+        .map(record)
+        .find((item) => item.id === pending.expected);
+      if (typeof match?.access_token === 'string') pageToken = match.access_token;
+      const after = record(record(pages.paging).cursors).after;
+      if (!record(pages.paging).next || typeof after !== 'string' || after.length > 2048) break;
+      cursor = after;
+    }
+    if (!pageToken)
+      throw new SocialError(
+        'account_mismatch',
+        'A Página Facebook esperada não está entre as Páginas autorizadas.',
+      );
+    secret(pageToken);
+    const identity = await this.verifyIdentity('facebook', pending.expected, pageToken);
+    // A Page token derived from a long-lived user token carries no expiry of its own.
+    return this.credential(
+      pending,
+      pending.expected,
+      identity,
+      { accessToken: pageToken, expiresAt: null },
+      { scopes, scopesVerified: Array.isArray(permissions.data) },
+    );
   }
 
   private async ready(
@@ -691,54 +1063,87 @@ export class SocialService implements SocialApi {
     if (!credential)
       throw new SocialError('not_connected', 'Conecte a conta desta rede antes de sincronizar.');
     const expiry = credential.expiresAt !== null ? Date.parse(credential.expiresAt) : null;
+    const before = JSON.stringify(credential);
     if (
-      platform === 'youtube' &&
+      (platform === 'youtube' || platform === 'tiktok') &&
       expiry !== null &&
       expiry <= this.now() + 60000 &&
       credential.refreshToken &&
       credential.clientId
     ) {
-      const config = await this.youtubeClient(channelId);
+      const config = await this.oauthClient(channelId, platform);
       if (config.clientId !== credential.clientId)
         throw new SocialError('oauth_changed', 'Cliente OAuth indisponível ou alterado; conecte novamente.');
-      const refreshed = await this.request(
-        'https://oauth2.googleapis.com/token',
+      credential =
+        platform === 'youtube'
+          ? await this.refreshYoutube(credential, config.clientSecret)
+          : await this.refreshTiktok(credential, config.clientSecret);
+    } else if (expiry !== null && expiry <= this.now())
+      throw new SocialError('expired', 'Token expirado; conecte novamente esta conta.');
+    const identity = await this.verifyIdentity(
+      platform,
+      credential.accountId,
+      credential.accessToken,
+      // Counters need user.info.stats; a token saved by hand has no verified scopes and keeps asking.
+      platform === 'tiktok' && (!credential.scopesVerified || credential.scopes.includes('user.info.stats')),
+      platform === 'tiktok' && credential.scopes.includes('user.info.profile'),
+    );
+    const profile = profileUrl(platform, credential.accountId, identity.data);
+    if (profile) credential = { ...credential, profileUrl: profile };
+    if (JSON.stringify(credential) !== before)
+      await this.vault.set(channelId, platform, JSON.stringify(credential));
+    return { credential, identity };
+  }
+
+  private async refreshYoutube(credential: Credential, clientSecret: string): Promise<Credential> {
+    const refreshed = await this.request(
+      'https://oauth2.googleapis.com/token',
+      undefined,
+      new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: credential.refreshToken!,
+        client_id: credential.clientId!,
+        client_secret: clientSecret,
+      }),
+    );
+    if (typeof refreshed.access_token !== 'string')
+      throw new SocialError('invalid_response', 'Google não retornou token renovado válido.');
+    secret(refreshed.access_token);
+    const metadata = await this.tokenMetadata(refreshed.access_token);
+    if (metadata.clientId && metadata.clientId !== credential.clientId)
+      throw new SocialError('account_mismatch', 'Token renovado pertence a outro aplicativo.');
+    return {
+      ...credential,
+      accessToken: refreshed.access_token,
+      ...(typeof refreshed.refresh_token === 'string' ? { refreshToken: refreshed.refresh_token } : {}),
+      scopes: metadata.scopes,
+      scopesVerified: metadata.scopesVerified,
+      expiresAt: metadata.expiresAt,
+    };
+  }
+
+  private async refreshTiktok(credential: Credential, clientSecret: string): Promise<Credential> {
+    const token = this.tiktokToken(
+      await this.request(
+        `${TIKTOK}/oauth/token/`,
         undefined,
         new URLSearchParams({
+          client_key: credential.clientId!,
+          client_secret: clientSecret,
           grant_type: 'refresh_token',
-          refresh_token: credential.refreshToken,
-          client_id: credential.clientId,
-          client_secret: config.clientSecret,
+          refresh_token: credential.refreshToken!,
         }),
-      );
-      if (typeof refreshed.access_token !== 'string')
-        throw new SocialError('invalid_response', 'Google não retornou token renovado válido.');
-      secret(refreshed.access_token);
-      const metadata = await this.tokenMetadata(refreshed.access_token);
-      if (metadata.clientId && metadata.clientId !== credential.clientId)
-        throw new SocialError('account_mismatch', 'Token renovado pertence a outro aplicativo.');
-      const identity = await this.verifyIdentity(platform, credential.accountId, refreshed.access_token);
-      credential = {
-        ...credential,
-        accessToken: refreshed.access_token,
-        ...(typeof refreshed.refresh_token === 'string' ? { refreshToken: refreshed.refresh_token } : {}),
-        scopes: metadata.scopes,
-        scopesVerified: metadata.scopesVerified,
-        expiresAt: metadata.expiresAt,
-      };
-      await this.vault.set(channelId, platform, JSON.stringify(credential));
-      return { credential, identity };
-    }
-    if (expiry !== null && expiry <= this.now())
-      throw new SocialError('expired', 'Token expirado; conecte novamente esta conta.');
-    return {
-      credential,
-      identity: await this.verifyIdentity(
-        platform,
-        credential.accountId,
-        credential.accessToken,
-        platform === 'tiktok',
       ),
+    );
+    if (token.openId !== credential.accountId)
+      throw new SocialError('account_mismatch', 'O token não corresponde à conta TikTok esperada.');
+    return {
+      ...credential,
+      accessToken: token.accessToken,
+      ...(token.refreshToken ? { refreshToken: token.refreshToken } : {}),
+      scopes: token.scopes,
+      scopesVerified: true,
+      expiresAt: token.expiresAt,
     };
   }
 
@@ -905,74 +1310,293 @@ export class SocialService implements SocialApi {
     });
   }
 
-  /** Resumable upload, always private: the operator reviews and publishes in YouTube Studio. */
-  async uploadYoutube(
-    channelId: string,
-    video: YoutubeUpload,
-  ): Promise<{ videoId: string; thumbnail?: YoutubeThumbnail }> {
+  /** Sends an approved video: non-public on YouTube, TikTok and Facebook; public on Instagram,
+   * whose API has no draft or private mode. */
+  async publish(channelId: string, platform: Platform, video: VideoUpload): Promise<PublishResult> {
     channel(channelId);
+    if (!PLATFORMS.includes(platform)) throw new SocialError('invalid_platform', 'Rede inválida.');
+    if (!canPublish(platform, video.vertical))
+      throw new SocialError(
+        'invalid_video',
+        `O ${platformLabels[platform]} recebe só vídeo vertical, como Reel; envie o Short deste vídeo.`,
+      );
     const title = youtubeText(video.title, 100);
-    const description = youtubeText(video.description, 5000);
     if (!title) throw new SocialError('invalid_video', 'O vídeo precisa de título para ser enviado.');
     const info = await stat(video.path).catch(() => undefined);
     if (!info?.isFile() || info.size === 0)
       throw new SocialError('invalid_video', 'Arquivo de vídeo ausente; gere a versão final novamente.');
-    return this.locked(`${channelId}/youtube`, async () => {
-      const { credential } = await this.ready(channelId, 'youtube');
-      if (!credential.scopes.includes(VIDEO_UPLOAD))
+    if (platform === 'instagram' && info.size > INSTAGRAM_MAX_VIDEO)
+      throw new SocialError('invalid_video', 'O Instagram aceita Reels de até 300 MB.');
+    return this.locked(`${channelId}/${platform}`, async () => {
+      const { credential } = await this.ready(channelId, platform);
+      if (!credential.scopes.includes(PUBLISH_SCOPE[platform]!))
         throw new SocialError(
           'missing_scope',
-          'Reconecte o YouTube em Contas conectadas para autorizar o envio de vídeos.',
+          `Reconecte o ${platformLabels[platform]} em Contas conectadas para autorizar o envio de vídeos.`,
         );
-      const authorization = `Bearer ${credential.accessToken}`;
       try {
-        const session = await this.fetcher(`${UPLOAD_ENDPOINT}?uploadType=resumable&part=snippet,status`, {
-          method: 'POST',
-          headers: {
-            authorization,
-            'content-type': 'application/json; charset=UTF-8',
-            'x-upload-content-type': 'video/mp4',
-            'x-upload-content-length': String(info.size),
-          },
-          body: JSON.stringify({
-            snippet: { title, description, categoryId: '28' },
-            status: { privacyStatus: 'private', selfDeclaredMadeForKids: false },
-          }),
-          redirect: 'error',
-          signal: AbortSignal.timeout(this.timeoutMs),
-        });
-        await session.body?.cancel();
-        if (!session.ok)
-          throw new SocialError(
-            'api_denied',
-            `O YouTube recusou o envio (HTTP ${session.status}); confira a quota e as permissões do projeto.`,
-          );
-        const location = uploadSession(session.headers.get('location'));
-        const sent = await this.fetcher(location, {
-          method: 'PUT',
-          headers: { authorization, 'content-type': 'video/mp4', 'content-length': String(info.size) },
-          body: Readable.toWeb(createReadStream(video.path)) as ReadableStream,
-          duplex: 'half',
-          redirect: 'error',
-          signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
-        } as RequestInit);
-        if (!sent.ok) {
-          await sent.body?.cancel();
-          throw new SocialError('api_denied', `O YouTube recusou o arquivo (HTTP ${sent.status}).`);
-        }
-        const videoId = (await this.readJson(sent)).id;
-        if (typeof videoId !== 'string' || !/^[A-Za-z0-9_-]{11}$/.test(videoId))
-          throw new SocialError('invalid_response', 'O YouTube não retornou o ID do vídeo enviado.');
-        if (!video.thumbnail) return { videoId };
-        return { videoId, thumbnail: await this.setThumbnail(videoId, video.thumbnail, authorization) };
+        if (platform === 'youtube')
+          return await this.uploadYoutube(credential, { ...video, title }, info.size);
+        if (platform === 'tiktok') return await this.uploadTiktok(credential, { ...video, title }, info.size);
+        if (platform === 'instagram')
+          return await this.publishInstagram(credential, { ...video, title }, info.size);
+        return await this.uploadReel(credential, { ...video, title }, info.size);
       } catch (error) {
         if (error instanceof SocialError) throw error;
         throw new SocialError(
           'api_unavailable',
-          'Não foi possível concluir o envio ao YouTube. Nenhum token ou detalhe privado foi registrado.',
+          `Não foi possível concluir o envio ao ${platformLabels[platform]}. Nenhum token ou detalhe privado foi registrado.`,
         );
       }
     });
+  }
+
+  /** Resumable upload, always private: the operator reviews and publishes in YouTube Studio. */
+  private async uploadYoutube(
+    credential: Credential,
+    video: VideoUpload,
+    size: number,
+  ): Promise<PublishResult> {
+    const description = youtubeText(video.description, 5000);
+    const authorization = `Bearer ${credential.accessToken}`;
+    const session = await this.fetcher(`${UPLOAD_ENDPOINT}?uploadType=resumable&part=snippet,status`, {
+      method: 'POST',
+      headers: {
+        authorization,
+        'content-type': 'application/json; charset=UTF-8',
+        'x-upload-content-type': 'video/mp4',
+        'x-upload-content-length': String(size),
+      },
+      body: JSON.stringify({
+        snippet: { title: video.title, description, categoryId: '28' },
+        status: { privacyStatus: 'private', selfDeclaredMadeForKids: false },
+      }),
+      redirect: 'error',
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
+    await session.body?.cancel();
+    if (!session.ok)
+      throw new SocialError(
+        'api_denied',
+        `O YouTube recusou o envio (HTTP ${session.status}); confira a quota e as permissões do projeto.`,
+      );
+    const location = uploadSession(session.headers.get('location'));
+    const sent = await this.fetcher(location, {
+      method: 'PUT',
+      headers: { authorization, 'content-type': 'video/mp4', 'content-length': String(size) },
+      body: Readable.toWeb(createReadStream(video.path)) as ReadableStream,
+      duplex: 'half',
+      redirect: 'error',
+      signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
+    } as RequestInit);
+    if (!sent.ok) {
+      await sent.body?.cancel();
+      throw new SocialError('api_denied', `O YouTube recusou o arquivo (HTTP ${sent.status}).`);
+    }
+    const videoId = (await this.readJson(sent)).id;
+    if (typeof videoId !== 'string' || !/^[A-Za-z0-9_-]{11}$/.test(videoId))
+      throw new SocialError('invalid_response', 'O YouTube não retornou o ID do vídeo enviado.');
+    if (!video.thumbnail) return { postId: videoId };
+    return { postId: videoId, thumbnail: await this.setThumbnail(videoId, video.thumbnail, authorization) };
+  }
+
+  /** Direct Post as SELF_ONLY ("Somente eu"): the operator changes the visibility in the TikTok app. */
+  private async uploadTiktok(
+    credential: Credential,
+    video: VideoUpload,
+    size: number,
+  ): Promise<PublishResult> {
+    const creator = record(
+      (await this.request(`${TIKTOK}/post/publish/creator_info/query/`, credential.accessToken, { json: {} }))
+        .data,
+    );
+    if (!array(creator.privacy_level_options).includes('SELF_ONLY'))
+      throw new SocialError(
+        'api_denied',
+        'O TikTok não oferece "Somente eu" para esta conta; nada foi enviado.',
+      );
+    const chunk = size < TIKTOK_MIN_CHUNK ? size : Math.min(TIKTOK_CHUNK, size);
+    const chunks = Math.floor(size / chunk);
+    if (chunks > 1000) throw new SocialError('invalid_video', 'Vídeo grande demais para o TikTok.');
+    const init = record(
+      (
+        await this.request(`${TIKTOK}/post/publish/video/init/`, credential.accessToken, {
+          json: {
+            post_info: {
+              title: utf16(postCaption(video.title, video.description), TIKTOK_CAPTION),
+              privacy_level: 'SELF_ONLY',
+              disable_duet: false,
+              disable_comment: false,
+              disable_stitch: false,
+              // Synthetic narration and generated visuals: TikTok asks for the AI-generated label.
+              is_aigc: true,
+            },
+            source_info: {
+              source: 'FILE_UPLOAD',
+              video_size: size,
+              chunk_size: chunk,
+              total_chunk_count: chunks,
+            },
+          },
+        })
+      ).data,
+    );
+    const publishId = init.publish_id;
+    if (typeof publishId !== 'string' || !/^[A-Za-z0-9._~-]{1,64}$/.test(publishId))
+      throw new SocialError('invalid_response', 'O TikTok não retornou o ID do envio.');
+    const target = providerUrl(init.upload_url, 'open-upload.tiktokapis.com', () => true);
+    for (let index = 0; index < chunks; index++) {
+      const start = index * chunk;
+      const end = index === chunks - 1 ? size - 1 : start + chunk - 1;
+      const sent = await this.fetcher(target, {
+        method: 'PUT',
+        headers: {
+          'content-type': 'video/mp4',
+          'content-length': String(end - start + 1),
+          'content-range': `bytes ${start}-${end}/${size}`,
+        },
+        body: Readable.toWeb(createReadStream(video.path, { start, end })) as ReadableStream,
+        duplex: 'half',
+        redirect: 'error',
+        signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
+      } as RequestInit);
+      await sent.body?.cancel();
+      if (!sent.ok) throw new SocialError('api_denied', `O TikTok recusou o arquivo (HTTP ${sent.status}).`);
+    }
+    return { postId: publishId };
+  }
+
+  /** Instagram Reel, published publicly: container, rupload, processing check, media_publish. */
+  private async publishInstagram(
+    credential: Credential,
+    video: VideoUpload,
+    size: number,
+  ): Promise<PublishResult> {
+    const account = credential.accountId;
+    const container = await this.request(
+      `${GRAPH}/${account}/media`,
+      credential.accessToken,
+      new URLSearchParams({
+        media_type: 'REELS',
+        upload_type: 'resumable',
+        caption: utf16(postCaption(video.title, video.description), INSTAGRAM_CAPTION),
+        share_to_feed: 'true',
+      }),
+    );
+    const containerId = container.id;
+    if (typeof containerId !== 'string' || !/^\d{1,32}$/.test(containerId))
+      throw new SocialError('invalid_response', 'O Instagram não retornou o contêiner do Reel.');
+    const target = providerUrl(
+      container.uri ?? `${INSTAGRAM_UPLOAD}/${containerId}`,
+      'rupload.facebook.com',
+      (pathname) => pathname === `/ig-api-upload/v26.0/${containerId}`,
+    );
+    const sent = await this.fetcher(target, {
+      method: 'POST',
+      headers: {
+        authorization: `OAuth ${credential.accessToken}`,
+        offset: '0',
+        file_size: String(size),
+        'content-type': 'application/octet-stream',
+        'content-length': String(size),
+      },
+      body: Readable.toWeb(createReadStream(video.path)) as ReadableStream,
+      duplex: 'half',
+      redirect: 'error',
+      signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
+    } as RequestInit);
+    if (!sent.ok) {
+      await sent.body?.cancel();
+      throw new SocialError('api_denied', `O Instagram recusou o arquivo (HTTP ${sent.status}).`);
+    }
+    if ((await this.readJson(sent)).success !== true)
+      throw new SocialError('invalid_response', 'O Instagram não confirmou o recebimento do arquivo.');
+    // Publishing an unfinished container fails; nothing goes public until processing finished.
+    let status: unknown;
+    for (let poll = 0; poll < INSTAGRAM_POLLS && status !== 'FINISHED'; poll++) {
+      await this.wait(INSTAGRAM_POLL_MS);
+      status = (await this.request(`${GRAPH}/${containerId}?fields=status_code`, credential.accessToken))
+        .status_code;
+      if (status === 'ERROR' || status === 'EXPIRED')
+        throw new SocialError('api_denied', 'O Instagram recusou o vídeo ao processar; nada foi publicado.');
+    }
+    if (status !== 'FINISHED')
+      throw new SocialError(
+        'api_unavailable',
+        'O Instagram não terminou de processar o vídeo em 5 minutos; nada foi publicado. Tente de novo.',
+      );
+    const media = (
+      await this.request(
+        `${GRAPH}/${account}/media_publish`,
+        credential.accessToken,
+        new URLSearchParams({ creation_id: containerId }),
+      )
+    ).id;
+    if (typeof media !== 'string' || !/^\d{1,32}$/.test(media))
+      throw new SocialError('invalid_response', 'O Instagram não retornou o ID da publicação.');
+    // The post is public already: a missing permalink is reported as absent, never as a failure.
+    try {
+      const link = (await this.request(`${GRAPH}/${media}?fields=permalink`, credential.accessToken))
+        .permalink;
+      const url = providerUrl(link, 'www.instagram.com', (pathname) =>
+        /^\/(reel|p)\/[A-Za-z0-9_-]{1,64}\/?$/.test(pathname),
+      );
+      return { postId: media, url };
+    } catch {
+      return { postId: media };
+    }
+  }
+
+  /** Facebook Reel saved as DRAFT: the operator publishes it in Meta Business Suite. */
+  private async uploadReel(credential: Credential, video: VideoUpload, size: number): Promise<PublishResult> {
+    const reels = `${GRAPH}/${credential.accountId}/video_reels`;
+    const start = await this.request(
+      reels,
+      credential.accessToken,
+      new URLSearchParams({ upload_phase: 'start' }),
+    );
+    const videoId = start.video_id;
+    if (typeof videoId !== 'string' || !/^\d{1,32}$/.test(videoId))
+      throw new SocialError('invalid_response', 'O Facebook não retornou o ID do vídeo.');
+    const target = providerUrl(
+      start.upload_url ?? `${REELS_UPLOAD}/${videoId}`,
+      'rupload.facebook.com',
+      (pathname) => pathname === `/video-upload/v26.0/${videoId}`,
+    );
+    const sent = await this.fetcher(target, {
+      method: 'POST',
+      headers: {
+        authorization: `OAuth ${credential.accessToken}`,
+        offset: '0',
+        file_size: String(size),
+        'content-type': 'application/octet-stream',
+        'content-length': String(size),
+      },
+      body: Readable.toWeb(createReadStream(video.path)) as ReadableStream,
+      duplex: 'half',
+      redirect: 'error',
+      signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
+    } as RequestInit);
+    if (!sent.ok) {
+      await sent.body?.cancel();
+      throw new SocialError('api_denied', `O Facebook recusou o arquivo (HTTP ${sent.status}).`);
+    }
+    if ((await this.readJson(sent)).success !== true)
+      throw new SocialError('invalid_response', 'O Facebook não confirmou o recebimento do arquivo.');
+    const finish = await this.request(
+      reels,
+      credential.accessToken,
+      new URLSearchParams({
+        upload_phase: 'finish',
+        video_id: videoId,
+        video_state: 'DRAFT',
+        title: video.title,
+        description: utf16(video.description, 5000),
+      }),
+    );
+    if (finish.success !== true)
+      throw new SocialError('invalid_response', 'O Facebook não confirmou o rascunho do Reel.');
+    return { postId: videoId };
   }
 
   /** The video is already uploaded: a refused thumbnail is reported, never thrown. */
@@ -1008,15 +1632,21 @@ export class SocialService implements SocialApi {
     }
   }
 
+  /** Connected profiles, cited in the descriptions sent to the other networks. */
+  async profiles(channelId: string): Promise<ProfileLink[]> {
+    return (await this.listConnections(channelId))
+      .filter((connection) => connection.status === 'connected' && connection.profileUrl)
+      .map((connection) => ({ platform: connection.platform, url: connection.profileUrl! }));
+  }
+
   async disconnect(channelId: string, platform: Platform): Promise<void> {
     channel(channelId);
     if (!PLATFORMS.includes(platform)) throw new SocialError('invalid_platform', 'Rede inválida.');
     await this.locked(`${channelId}/${platform}`, async () => {
       await this.vault.delete(channelId, platform);
-      if (platform === 'youtube') {
-        await this.vault.delete(channelId, 'youtube-client');
-        for (const [key, value] of this.pending) if (value.channelId === channelId) this.pending.delete(key);
-      }
+      await this.vault.delete(channelId, `${platform}-client`);
+      for (const [key, value] of this.pending)
+        if (value.channelId === channelId && value.platform === platform) this.pending.delete(key);
     });
   }
 }

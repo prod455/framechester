@@ -943,6 +943,8 @@ function metaFetch(
     unlinked?: boolean;
     /** Meta granted no Page at all. */
     noPages?: boolean;
+    /** Granular scopes recorded in the token (debug_token). */
+    granted?: Array<{ scope: string; target_ids?: string[] }>;
   } = {},
 ): SocialFetch {
   return async (raw, init) => {
@@ -982,6 +984,12 @@ function metaFetch(
             : [{ id: PAGE, instagram_business_account: { id: IG, username: 'Fixture.IG' } }],
       });
     }
+    if (url.pathname === '/v26.0/debug_token') {
+      assert.equal(url.searchParams.get('input_token'), 'fixture-long-user');
+      return json({ data: { granular_scopes: options.granted ?? [] } });
+    }
+    if (url.pathname === `/v26.0/${PAGE}` && url.searchParams.get('fields')?.startsWith('name,'))
+      return json({ id: PAGE, name: 'Skills na Prática', instagram_business_account: { id: IG } });
     if (url.pathname === '/v26.0/me') {
       assert.equal(auth, 'Bearer fixture-page-token');
       return json({ id: PAGE, name: 'Fixture Page', followers_count: 5 });
@@ -1205,10 +1213,21 @@ test('Instagram OAuth can use a Facebook Login for Business configuration instea
 });
 
 test('Instagram can be connected by its @: the ID is found among the authorized Pages', async () => {
-  const connect = async (accountId: string, unlinked = false, noPages = false, permissions?: string[]) => {
+  const connect = async (
+    accountId: string,
+    unlinked = false,
+    noPages = false,
+    permissions?: string[],
+    granted?: Array<{ scope: string; target_ids?: string[] }>,
+  ) => {
     const service = createSocialService({
       vault: new MemoryVault(),
-      fetch: metaFetch([], { unlinked, noPages, ...(permissions ? { permissions } : {}) }),
+      fetch: metaFetch([], {
+        unlinked,
+        noPages,
+        ...(permissions ? { permissions } : {}),
+        ...(granted ? { granted } : {}),
+      }),
       now: () => NOW,
     });
     const started = await service.startOAuth({
@@ -1243,6 +1262,19 @@ test('Instagram can be connected by its @: the ID is found among the authorized 
   await assert.rejects(
     connect('@fixture.ig', false, true, ['instagram_basic']),
     /não concedeu pages_show_list.*\(concedidas: instagram_basic\)/,
+  );
+  // An empty /me/accounts falls back to what the person picked at login (granular scopes).
+  assert.equal(
+    (await connect('@fixture.ig', false, true, undefined, [{ scope: 'instagram_basic', target_ids: [IG] }]))
+      .accountId,
+    IG,
+    'the Instagram account picked at login',
+  );
+  assert.equal(
+    (await connect('@fixture.ig', false, true, undefined, [{ scope: 'pages_show_list', target_ids: [PAGE] }]))
+      .accountId,
+    IG,
+    'the Instagram account linked to the Page picked at login',
   );
   await assert.rejects(connect('@nome inválido'), /Identidade da conta/);
 });

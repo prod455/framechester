@@ -28,7 +28,8 @@ import {
 import { toast } from '../studio/toast.ts';
 import { requiredChannel } from './channels.ts';
 import { t, translateMessage } from '../../shared/i18n.ts';
-import type { Script, WebJob } from '../../shared/types.ts';
+import type { Platform, Script, WebJob } from '../../shared/types.ts';
+import { canPublish, platformLabels, publishingPlatforms } from '../../shared/publishing.ts';
 
 export function productionPage(): HTMLElement {
   const missing = requiredChannel();
@@ -105,7 +106,15 @@ export function productionPage(): HTMLElement {
     { className: 'section-stack' },
     heading(
       t('Vídeos'),
-      `${jobs.length === 1 ? t('{count} vídeo neste canal.', { count: jobs.length }) : t('{count} vídeos neste canal.', { count: jobs.length })} ${currentChannel()?.youtubeAutoUpload ? t('Versões finais aprovadas seguem ao YouTube como privadas.') : t('O envio automático ao YouTube está desligado neste canal.')}`,
+      `${jobs.length === 1 ? t('{count} vídeo neste canal.', { count: jobs.length }) : t('{count} vídeos neste canal.', { count: jobs.length })} ${
+        currentChannel()?.autoUpload?.length
+          ? t('Versões finais aprovadas seguem sem publicar para: {networks}.', {
+              networks: currentChannel()!
+                .autoUpload!.map((network) => platformLabels[network])
+                .join(', '),
+            })
+          : t('O envio automático às redes está desligado neste canal.')
+      }`,
       startButton,
     ),
     snapshot.engine?.available === false ? notice(translateMessage(snapshot.engine.message)) : null,
@@ -191,7 +200,7 @@ export function jobCard(job: WebJob): HTMLElement {
       stages,
       diagnostic,
       qa,
-      youtubeStatus(job),
+      publicationStatus(job),
       job.videoAvailable || retry
         ? el(
             'div',
@@ -199,46 +208,10 @@ export function jobCard(job: WebJob): HTMLElement {
             retry,
             job.videoAvailable ? button(t('Assistir'), () => viewJob(job), 'secondary', 'film') : null,
             finalVersionButton(job, script),
-            youtubeButton(job),
+            ...publishButtons(job),
             shortButton(job),
           )
         : null,
-    ),
-  );
-}
-
-export function youtubeStatus(job: WebJob): HTMLElement | null {
-  const youtube = job.youtube;
-  if (!youtube) return null;
-  if (youtube.status === 'uploading')
-    return el('p', { role: 'status' }, t('Enviando ao YouTube como vídeo privado…'));
-  if (youtube.status === 'failed')
-    return el(
-      'p',
-      { className: 'field-hint', role: 'alert' },
-      t('Envio ao YouTube falhou: {message}', { message: translateMessage(youtube.message) }),
-    );
-  const studioUrl = `https://studio.youtube.com/video/${encodeURIComponent(youtube.videoId)}/edit`;
-  const thumbnail =
-    youtube.thumbnail === 'set'
-      ? `${t('Thumbnail aplicada.')} `
-      : youtube.thumbnail
-        ? `${translateMessage(youtube.thumbnail.error)} `
-        : '';
-  return el(
-    'p',
-    {},
-    `${t('Enviado ao YouTube como privado em {date}.', { date: date(youtube.uploadedAt) })} ${thumbnail}`,
-    el(
-      'a',
-      {
-        href: studioUrl,
-        target: '_blank',
-        rel: 'noopener noreferrer',
-        // Links in running text are underlined, not told apart by colour alone (WCAG 1.4.1).
-        className: 'underline underline-offset-4',
-      },
-      t('Revisar e publicar no YouTube Studio'),
     ),
   );
 }
@@ -269,22 +242,111 @@ export function shortButton(job: WebJob): HTMLElement | null {
   return action;
 }
 
-/** Only an approved final version goes out, once; a failed upload can be retried. */
-export function youtubeButton(job: WebJob): HTMLElement | null {
+/** Where the operator reviews and publishes what was sent; TikTok has no web page for it. */
+function reviewLink(platform: Platform, postId: string): HTMLElement | null {
+  const target =
+    platform === 'youtube'
+      ? {
+          href: `https://studio.youtube.com/video/${encodeURIComponent(postId)}/edit`,
+          label: t('Revisar e publicar no YouTube Studio'),
+        }
+      : platform === 'facebook'
+        ? { href: 'https://business.facebook.com/', label: t('Revisar e publicar no Meta Business Suite') }
+        : null;
+  if (!target) return null;
+  return el(
+    'a',
+    {
+      href: target.href,
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      // Links in running text are underlined, not told apart by colour alone (WCAG 1.4.1).
+      className: 'underline underline-offset-4',
+    },
+    target.label,
+  );
+}
+
+function uploadedText(platform: Platform, when: string): string {
+  if (platform === 'youtube') return t('Enviado ao YouTube como privado em {date}.', { date: when });
+  if (platform === 'tiktok')
+    return t('Enviado ao TikTok como "Somente eu" em {date}. Revise e publique pelo app do TikTok.', {
+      date: when,
+    });
+  return t('Enviado ao Facebook como rascunho de Reel em {date}.', { date: when });
+}
+
+/** One line per network the video went to; nothing is public until the operator publishes there. */
+export function publicationStatus(job: WebJob, only?: Platform): HTMLElement | null {
+  const lines = publishingPlatforms
+    .filter((platform) => !only || platform === only)
+    .map((platform) => {
+      const publication = job.publications?.[platform];
+      if (!publication) return null;
+      const network = platformLabels[platform];
+      if (publication.status === 'uploading')
+        return el('p', { role: 'status' }, t('Enviando ao {network} sem publicar…', { network }));
+      if (publication.status === 'failed')
+        return el(
+          'p',
+          { className: 'field-hint', role: 'alert' },
+          t('Envio ao {network} falhou: {message}', {
+            network,
+            message: translateMessage(publication.message),
+          }),
+        );
+      const thumbnail =
+        publication.thumbnail === 'set'
+          ? `${t('Thumbnail aplicada.')} `
+          : publication.thumbnail
+            ? `${translateMessage(publication.thumbnail.error)} `
+            : '';
+      return el(
+        'p',
+        {},
+        `${uploadedText(platform, date(publication.uploadedAt))} ${thumbnail}`,
+        reviewLink(platform, publication.postId),
+      );
+    })
+    .filter((line) => line !== null);
+  return lines.length ? el('div', { className: 'section-stack' }, ...lines) : null;
+}
+
+function vertical(job: WebJob): boolean {
+  const script = scoped(state().scripts).find((item) => item.id === job.scriptId);
+  return job.kind === 'short' || script?.format === 'short';
+}
+
+/** Only an approved final version goes out, once per network; a failed upload can be retried. */
+export function publishButton(job: WebJob, platform: Platform): HTMLElement | null {
+  const status = job.publications?.[platform]?.status;
   if (
     job.status !== 'completed' ||
     job.previewOnly ||
-    ['uploading', 'uploaded'].includes(job.youtube?.status ?? '')
+    status === 'uploading' ||
+    status === 'uploaded' ||
+    !canPublish(platform, vertical(job))
   )
     return null;
+  const network = platformLabels[platform];
+  const labels: Record<Platform, string> = {
+    youtube: t('Enviar ao YouTube (privado)'),
+    tiktok: t('Enviar ao TikTok (Somente eu)'),
+    facebook: t('Enviar ao Facebook (rascunho)'),
+    instagram: '',
+  };
   const action = button(
-    job.youtube?.status === 'failed' ? t('Tentar enviar de novo') : t('Enviar ao YouTube (privado)'),
+    status === 'failed' ? t('Tentar enviar ao {network} de novo', { network }) : labels[platform],
     async () => {
       action.disabled = true;
       try {
-        await request(channelPath(`/jobs/${encodeURIComponent(job.id)}/youtube`), 'POST', {});
+        await request(
+          channelPath(`/jobs/${encodeURIComponent(job.id)}/publish/${encodeURIComponent(platform)}`),
+          'POST',
+          {},
+        );
         await refresh();
-        toast(t('Envio iniciado. O vídeo entra no YouTube como privado; publique pelo YouTube Studio.'));
+        toast(t('Envio iniciado. Nada fica público: publique pelo próprio {network}.', { network }));
       } catch (error) {
         action.disabled = false;
         toast(
@@ -295,8 +357,21 @@ export function youtubeButton(job: WebJob): HTMLElement | null {
     'secondary',
     'external',
   );
-  action.dataset.testid = `youtube-${job.id}`;
+  action.dataset.testid = `publish-${platform}-${job.id}`;
   return action;
+}
+
+/** YouTube always, since it is the channel's home; the other networks once they are connected. */
+export function publishButtons(job: WebJob): HTMLElement[] {
+  const connected = new Set(
+    scoped(state().connections)
+      .filter((connection) => connection.status === 'connected')
+      .map((connection) => connection.platform),
+  );
+  return publishingPlatforms
+    .filter((platform) => platform === 'youtube' || connected.has(platform) || job.publications?.[platform])
+    .map((platform) => publishButton(job, platform))
+    .filter((item): item is HTMLElement => item !== null);
 }
 
 /** A watched preview leads straight to its final version; no menus in between. */

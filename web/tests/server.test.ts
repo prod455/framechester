@@ -204,15 +204,15 @@ test('YouTube OAuth can return through a cross-site document navigation without 
     connectToken: async () => {
       throw Error('not used');
     },
-    startYoutubeOAuth: async () => {
+    startOAuth: async () => {
       throw Error('not used');
     },
     sync: async () => {
       throw Error('not used');
     },
     disconnect: async () => {},
-    callbackYoutubeOAuth: async ({ state, code }) => {
-      if (state !== 'fixture-state' || code !== 'fixture-code' || accepted)
+    callbackOAuth: async (network, { state, code }) => {
+      if (network !== 'youtube' || state !== 'fixture-state' || code !== 'fixture-code' || accepted)
         throw new SocialError(
           'invalid_state',
           'Autorização OAuth ausente, expirada ou já utilizada. Inicie novamente.',
@@ -274,6 +274,7 @@ test('YouTube OAuth can return through a cross-site document navigation without 
       '/api/auth/status',
       '/api/channels/tech/jobs',
       '/api/oauth/youtube/callback/other',
+      '/api/oauth/myspace/callback?state=fixture-state&code=fixture-code',
     ])
       assert.equal((await send(path)).status, 403);
     assert.equal((await send('/', { ...navigation, 'Sec-Fetch-Dest': 'iframe' })).status, 403);
@@ -299,6 +300,11 @@ test('YouTube OAuth can return through a cross-site document navigation without 
         })
       ).status,
       403,
+    );
+    // The state belongs to YouTube: TikTok's callback cannot redeem it.
+    assert.equal(
+      (await send('/api/oauth/tiktok/callback?state=fixture-state&code=fixture-code')).status,
+      400,
     );
     const replay = await send('/api/oauth/youtube/callback?state=fixture-state&code=fixture-code');
     assert.equal(replay.status, 400);
@@ -635,10 +641,10 @@ test('social metadata omits secrets, sync keeps unknown revenue null and connect
     connectToken: async () => {
       throw new Error('not used');
     },
-    startYoutubeOAuth: async () => {
+    startOAuth: async () => {
       throw new Error('not used');
     },
-    callbackYoutubeOAuth: async () => {
+    callbackOAuth: async () => {
       throw new Error('not used');
     },
     sync: async () => structuredClone(snapshot),
@@ -700,10 +706,10 @@ test('official estimated adjustments retain their sign and only controlled servi
     connectToken: async () => {
       throw new Error('not used');
     },
-    startYoutubeOAuth: async () => {
+    startOAuth: async () => {
       throw new Error('not used');
     },
-    callbackYoutubeOAuth: async () => {
+    callbackOAuth: async () => {
       throw new Error('not used');
     },
     disconnect: async () => {},
@@ -763,10 +769,10 @@ test('deleting an empty channel clears pending authorizations first and cleanup 
     connectToken: async () => {
       throw new Error('not used');
     },
-    startYoutubeOAuth: async () => {
+    startOAuth: async () => {
       throw new Error('not used');
     },
-    callbackYoutubeOAuth: async () => {
+    callbackOAuth: async () => {
       throw new Error('not used');
     },
     sync: async () => {
@@ -793,8 +799,8 @@ test('deleting an empty channel clears pending authorizations first and cleanup 
   }
 });
 
-test('the YouTube opt-in is a validated channel flag and sending a job needs a session and CSRF', async () => {
-  const published: Array<[string, string]> = [];
+test('the per-network opt-in is validated, the legacy YouTube flag migrates, and sending needs a session and CSRF', async () => {
+  const published: Array<[string, string, string]> = [];
   const unused = async () => {
     throw new Error('not used');
   };
@@ -807,8 +813,8 @@ test('the YouTube opt-in is a validated channel flag and sending a job needs a s
     assetFile: async () => undefined,
     file: async () => undefined,
     engineStatus: () => ({ available: true, message: 'synthetic test engine' }),
-    publish: async (channelId, jobId) => {
-      published.push([channelId, jobId]);
+    publish: async (channelId, jobId, network) => {
+      published.push([channelId, jobId, network]);
       return {
         id: jobId,
         channelId,
@@ -817,7 +823,7 @@ test('the YouTube opt-in is a validated channel flag and sending a job needs a s
         createdAt: '2026-10-31T12:00:00Z',
         message: 'synthetic fixture',
         videoAvailable: true,
-        youtube: { status: 'uploading', startedAt: '2026-10-31T12:00:00Z' },
+        publications: { [network]: { status: 'uploading', startedAt: '2026-10-31T12:00:00Z' } },
       };
     },
   };
@@ -833,20 +839,39 @@ test('the YouTube opt-in is a validated channel flag and sending a job needs a s
         .status,
       201,
     );
-    const channels = await (await context.call('/api/bootstrap')).json();
+    let channels = await (await context.call('/api/bootstrap')).json();
+    assert.deepEqual(channels.channels.find((item: { id: string }) => item.id === 'tech').autoUpload, [
+      'youtube',
+    ]);
+    for (const autoUpload of [['instagram'], ['myspace'], 'youtube'])
+      assert.equal(
+        (await context.call('/api/channels/tech', 'PUT', { name: 'tech', autoUpload })).status,
+        400,
+        JSON.stringify(autoUpload),
+      );
     assert.equal(
-      channels.channels.find((item: { id: string }) => item.id === 'tech').youtubeAutoUpload,
-      true,
+      (await context.call('/api/channels/tech', 'PUT', { name: 'tech', autoUpload: ['facebook', 'tiktok'] }))
+        .status,
+      200,
     );
+    channels = await (await context.call('/api/bootstrap')).json();
+    const saved = channels.channels.find((item: { id: string }) => item.id === 'tech');
+    assert.deepEqual(saved.autoUpload, ['tiktok', 'facebook'], 'Fixed order, no duplicates');
+    assert.equal(saved.youtubeAutoUpload, undefined);
     assert.equal(
-      (await fetch(context.origin + '/api/channels/tech/jobs/job-1/youtube', { method: 'POST' })).status,
+      (await fetch(context.origin + '/api/channels/tech/jobs/job-1/publish/tiktok', { method: 'POST' }))
+        .status,
       403,
     );
     assert.deepEqual(published, [], 'A request without session and CSRF sends nothing');
-    const sent = await context.call('/api/channels/tech/jobs/job-1/youtube', 'POST', {});
+    assert.equal(
+      (await context.call('/api/channels/tech/jobs/job-1/publish/myspace', 'POST', {})).status,
+      400,
+    );
+    const sent = await context.call('/api/channels/tech/jobs/job-1/publish/tiktok', 'POST', {});
     assert.equal(sent.status, 202);
-    assert.equal((await sent.json()).youtube.status, 'uploading');
-    assert.deepEqual(published, [['tech', 'job-1']]);
+    assert.equal((await sent.json()).publications.tiktok.status, 'uploading');
+    assert.deepEqual(published, [['tech', 'job-1', 'tiktok']]);
   } finally {
     await context.close();
   }

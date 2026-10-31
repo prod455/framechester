@@ -3,7 +3,8 @@ import { createDialog, empty, formWithSave, heading, iconButton } from '../compo
 import { button, el, field, input, textarea } from '../dom.ts';
 import { currentChannel, go, refresh, render, save, state, studio } from '../studio/state.ts';
 import { toast } from '../studio/toast.ts';
-import type { Channel } from '../../shared/types.ts';
+import type { Channel, Platform } from '../../shared/types.ts';
+import { platformLabels, publishingPlatforms } from '../../shared/publishing.ts';
 import { t } from '../../shared/i18n.ts';
 
 export function requiredChannel(): HTMLElement | undefined {
@@ -58,8 +59,14 @@ export function channelsPage(): HTMLElement {
                 },
                 el('dt', {}, t('Nicho')),
                 el('dd', {}, channel.niche || t('a definir')),
-                el('dt', {}, t('Envio ao YouTube')),
-                el('dd', {}, channel.youtubeAutoUpload ? t('automático, como privado') : t('manual')),
+                el('dt', {}, t('Envio automático')),
+                el(
+                  'dd',
+                  {},
+                  channel.autoUpload?.length
+                    ? `${channel.autoUpload.map((network) => platformLabels[network]).join(', ')} · ${t('nunca público')}`
+                    : t('manual'),
+                ),
                 el('dt', {}, t('Identificador')),
                 el('dd', { className: 'mono' }, channel.id),
               ),
@@ -123,8 +130,11 @@ export function editChannel(record?: Channel): void {
   const language = input('language', record?.language || 'pt-BR');
   language.required = true;
   const youtubeChannelId = input('youtubeChannelId', record?.youtubeChannelId || '');
-  const youtubeAutoUpload = input('youtubeAutoUpload', '', 'checkbox');
-  youtubeAutoUpload.checked = record?.youtubeAutoUpload === true;
+  const autoUpload = publishingPlatforms.map((network) => {
+    const box = input(`autoUpload-${network}`, '', 'checkbox');
+    box.checked = record?.autoUpload?.includes(network) === true;
+    return { network, box };
+  });
   const { form, fields } = formWithSave(
     record ? t('Salvar canal') : t('Criar canal'),
     async () => {
@@ -140,7 +150,7 @@ export function editChannel(record?: Channel): void {
           audience: audience.value.trim(),
           language: language.value.trim(),
           youtubeChannelId: youtubeChannelId.value.trim() || undefined,
-          youtubeAutoUpload: youtubeAutoUpload.checked,
+          autoUpload: autoUpload.filter((item) => item.box.checked).map((item) => item.network),
         },
       );
       studio.channelId = id;
@@ -167,14 +177,21 @@ export function editChannel(record?: Channel): void {
     ),
   );
   fields.append(field(t('Descrição e proposta editorial'), description));
+  const autoUploadLabels: Record<Platform, string> = {
+    youtube: t(
+      'Enviar cada versão final aprovada ao YouTube como vídeo privado (exige o YouTube conectado com permissão de envio)',
+    ),
+    tiktok: t(
+      'Enviar cada versão final aprovada ao TikTok como "Somente eu" (exige o TikTok conectado com permissão de envio)',
+    ),
+    facebook: t(
+      'Enviar cada vídeo vertical aprovado ao Facebook como rascunho de Reel (exige a Página conectada com permissão de envio)',
+    ),
+    instagram: '',
+  };
   fields.append(
-    el(
-      'label',
-      { className: 'checkbox-field' },
-      youtubeAutoUpload,
-      t(
-        'Enviar cada versão final aprovada ao YouTube como vídeo privado (exige o YouTube conectado com permissão de envio)',
-      ),
+    ...autoUpload.map(({ network, box }) =>
+      el('label', { className: 'checkbox-field' }, box, autoUploadLabels[network]),
     ),
   );
   body.append(form);

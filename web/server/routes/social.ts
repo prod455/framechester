@@ -87,19 +87,21 @@ export const socialRoutes: Route[] = [
   },
   {
     method: 'POST',
-    pattern: '/api/channels/:id/connections/youtube/oauth',
+    pattern: '/api/channels/:id/connections/:platform/oauth',
     async handle(context) {
       const id = await requireChannel(context);
+      const provider = platform(context.params.platform);
       const { request, response, publicPort } = context;
       const body = await readJson(request);
       ownerBody(body, id);
       allowedKeys(body, ['channelId', 'accountId', 'clientId', 'clientSecret', 'redirectUri']);
-      const redirectUri = `http://127.0.0.1:${publicPort ?? request.socket.localPort ?? 4317}/api/oauth/youtube/callback`;
+      const redirectUri = `http://127.0.0.1:${publicPort ?? request.socket.localPort ?? 4317}/api/oauth/${provider}/callback`;
       json(
         response,
         200,
-        await context.social().startYoutubeOAuth({
+        await context.social().startOAuth({
           channelId: id,
+          platform: provider,
           accountId: string(body.accountId, 'accountId', 300),
           clientId: string(body.clientId, 'clientId', 3000),
           clientSecret: string(body.clientSecret, 'clientSecret', 10000),

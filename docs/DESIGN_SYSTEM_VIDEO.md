@@ -84,6 +84,16 @@ Transições entre cenas (0,42 s): `push` (padrão a partir da segunda cena), `f
 Justificativa: movimento só quando a narração traz algo novo (um objeto, uma relação,
 um valor) ou para manter o quadro vivo; nunca zoom decorativo, nunca animação aleatória.
 
+## Câmera e variedade
+
+Cada cena tem um movimento lento de câmera que cobre a duração inteira, em ciclo para que
+duas cenas seguidas nunca repitam: aproximar 2,5%, deslizar para a esquerda, afastar
+2,5%, deslizar para a direita (14 px de cada lado, com 1,25% de zoom). As legendas ficam
+fora do movimento. A escala vai para o SVG com 4 casas decimais: com 2, um zoom lento
+andaria em degraus de ~10 px. A primeira cena entra em corte; as seguintes alternam
+empurrar, zoom e fade. O personagem troca de lado nas cenas ímpares (no horizontal e no
+X ele fica à direita do balão, virado para a esquerda).
+
 ## Gancho (primeira cena)
 
 O quadro 0 é a capa do Short e a primeira impressão: tudo o que entraria nos primeiros

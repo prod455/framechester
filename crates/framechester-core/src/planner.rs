@@ -1014,10 +1014,12 @@ pub fn plan_scene(scene: &Scene, index: usize) -> Result<StoryboardScene> {
             max_still_secs: 5.0,
             readable_without_audio: true,
         },
+        // The opening cuts in; later scenes rotate push, zoom and fade so no two
+        // consecutive changes look the same.
         transition: if index == 0 {
             Transition::Cut
         } else {
-            Transition::Push
+            [Transition::Fade, Transition::Push, Transition::Zoom][index % 3]
         },
     };
     planned.validate()?;
@@ -1243,6 +1245,27 @@ mod tests {
         )));
         assert!(planned.captions.emphasis.contains(&"decide".to_string()));
         assert_eq!(planned.transition, Transition::Push);
+    }
+
+    #[test]
+    fn transitions_rotate_after_the_opening_cut() {
+        let transitions: Vec<Transition> = (0..5)
+            .map(|index| {
+                plan_scene(&scene("#destaque", "Uma frase."), index)
+                    .unwrap()
+                    .transition
+            })
+            .collect();
+        assert_eq!(
+            transitions,
+            vec![
+                Transition::Cut,
+                Transition::Push,
+                Transition::Zoom,
+                Transition::Fade,
+                Transition::Push
+            ]
+        );
     }
 
     #[test]

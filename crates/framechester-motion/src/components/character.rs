@@ -52,23 +52,32 @@ struct Figure {
     x: f32,
     y: f32,
     k: f32,
+    /// Facing left: the unit box is flipped horizontally.
+    mirrored: bool,
 }
 
 impl Figure {
-    fn fit(area: Rect) -> Self {
+    fn fit(area: Rect, mirrored: bool) -> Self {
         let k = (area.w / UNIT_W).min(area.h / UNIT_H);
         Self {
             x: area.cx() - UNIT_W * k / 2.0,
             y: area.bottom() - UNIT_H * k,
             k,
+            mirrored,
         }
     }
     fn p(&self, x: f32, y: f32) -> (f32, f32) {
+        let x = if self.mirrored { UNIT_W - x } else { x };
         (self.x + x * self.k, self.y + y * self.k)
     }
     fn rect(&self, x: f32, y: f32, w: f32, h: f32) -> Rect {
-        let (px, py) = self.p(x, y);
-        Rect::new(px, py, w * self.k, h * self.k)
+        let x = if self.mirrored { UNIT_W - x - w } else { x };
+        Rect::new(
+            self.x + x * self.k,
+            self.y + y * self.k,
+            w * self.k,
+            h * self.k,
+        )
     }
     fn polyline(&self, points: &[(f32, f32)]) -> (String, f32) {
         let mut d = String::new();
@@ -259,15 +268,18 @@ fn figure_nodes(figure: &Figure, character: Character, pose: Pose) -> Vec<Node> 
 
 /// The figure alone, scaled to fit `area` and standing on its bottom edge.
 pub fn figure(area: Rect, character: Character, pose: Pose) -> Vec<Node> {
-    figure_nodes(&Figure::fit(area), character, pose)
+    figure_nodes(&Figure::fit(area, false), character, pose)
 }
 
+/// `mirrored` alternates sides between scenes: the character faces left and, on wide
+/// formats, stands to the right of the speech card.
 pub fn build(
     ctx: &mut Ctx<'_>,
     area: Rect,
     character: Character,
     pose: Pose,
     text: &str,
+    mirrored: bool,
 ) -> Vec<Node> {
     let gap = ctx.canvas.gap;
     let (speech, stage) = if ctx.canvas.vertical {
@@ -283,17 +295,18 @@ pub fn build(
         )
     } else {
         let stage_w = area.w * 0.36;
+        let speech_w = area.w - stage_w - gap * 2.0;
+        let (speech_x, stage_x) = if mirrored {
+            (area.x, area.right() - stage_w)
+        } else {
+            (area.x + stage_w + gap * 2.0, area.x)
+        };
         (
-            Rect::new(
-                area.x + stage_w + gap * 2.0,
-                area.y + area.h * 0.1,
-                area.w - stage_w - gap * 2.0,
-                area.h * 0.62,
-            ),
-            Rect::new(area.x, area.y, stage_w, area.h),
+            Rect::new(speech_x, area.y + area.h * 0.1, speech_w, area.h * 0.62),
+            Rect::new(stage_x, area.y, stage_w, area.h),
         )
     };
-    let figure = Figure::fit(stage);
+    let figure = Figure::fit(stage, mirrored);
     let mut nodes = figure_nodes(&figure, character, pose);
     // Speech card with a tail towards the character's head.
     nodes.push(ctx.card(SPEECH, speech, framechester_core::storyboard::Role::Neutral));
@@ -308,12 +321,16 @@ pub fn build(
             head_x + gap * 0.6
         )
     } else {
-        let base = speech.x;
+        // The tail leaves the card edge that faces the character.
+        let (base, tip) = if mirrored {
+            (speech.right(), speech.right() + gap * 0.9)
+        } else {
+            (speech.x, speech.x - gap * 0.9)
+        };
         let y = head_y.clamp(speech.y + gap, speech.bottom() - gap);
         format!(
-            "M{base:.1} {:.1} L{:.1} {y:.1} L{base:.1} {:.1} Z",
+            "M{base:.1} {:.1} L{tip:.1} {y:.1} L{base:.1} {:.1} Z",
             y - gap * 0.6,
-            base - gap * 0.9,
             y + gap * 0.6
         )
     };

@@ -943,6 +943,8 @@ function metaFetch(
     unlinked?: boolean;
     /** Meta granted no Page at all. */
     noPages?: boolean;
+    /** A system-user token: the long-lived exchange is refused with Meta's error body. */
+    systemUser?: boolean;
     /** Granular scopes recorded in the token (debug_token). */
     granted?: Array<{ scope: string; target_ids?: string[] }>;
   } = {},
@@ -955,10 +957,19 @@ function metaFetch(
     if (url.pathname === '/v26.0/oauth/access_token') {
       const body = new URLSearchParams(String(init!.body));
       calls.push({ url: raw, init, body: String(init!.body) });
+      if (options.systemUser && body.get('grant_type') === 'fb_exchange_token')
+        return new Response(
+          JSON.stringify({
+            error: { message: 'private detail', type: 'OAuthException', code: 190, error_subcode: 460 },
+          }),
+          { status: 400, headers: { 'content-type': 'application/json' } },
+        );
       return json({
         access_token:
-          body.get('grant_type') === 'fb_exchange_token' ? 'fixture-long-user' : 'fixture-short-user',
-        expires_in: 5183944,
+          body.get('grant_type') === 'fb_exchange_token' || options.systemUser
+            ? 'fixture-long-user'
+            : 'fixture-short-user',
+        ...(options.systemUser ? {} : { expires_in: 5183944 }),
       });
     }
     if (url.pathname === '/v26.0/me/permissions')
@@ -1318,6 +1329,39 @@ test('Instagram returns through the HTTPS relay page, since Meta refuses an http
     new URLSearchParams(calls[0]!.body).get('redirect_uri'),
     relay,
     'the code exchange repeats the registered URI',
+  );
+});
+
+test('a system-user token keeps working when Meta refuses the long-lived exchange', async () => {
+  const service = createSocialService({
+    vault: new MemoryVault(),
+    fetch: metaFetch([], { systemUser: true }),
+    now: () => NOW,
+  });
+  const connection = await connectMeta(service, 'instagram');
+  assert.equal(connection.accountId, IG);
+  assert.equal(connection.expiresAt, null, 'a system-user token does not expire');
+});
+
+test('a refused API call names the endpoint and Meta error code, never the provider message', async () => {
+  const service = createSocialService({
+    vault: new MemoryVault(),
+    fetch: async () =>
+      new Response(
+        JSON.stringify({ error: { message: 'secret token detail', code: 100, error_subcode: 33 } }),
+        {
+          status: 400,
+          headers: { 'content-type': 'application/json' },
+        },
+      ),
+    now: () => NOW,
+  });
+  await assert.rejects(
+    connectMeta(service, 'instagram'),
+    (error: Error) =>
+      error.message ===
+        'Consulta recusada ou indisponível na API (HTTP 400 em graph.facebook.com/v26.0/oauth/access_token, código 100/33).' &&
+      !error.message.includes('secret'),
   );
 });
 

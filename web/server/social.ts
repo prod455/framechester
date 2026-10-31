@@ -647,7 +647,7 @@ export class SocialService implements SocialApi {
 
   /** Finds the professional account named `username` among those linked to the Pages this token
    * authorizes. The error names what was found, so the operator knows which link is missing. */
-  private async instagramId(username: string, token: string): Promise<string> {
+  private async instagramId(username: string, token: string, granted: string[]): Promise<string> {
     const found: string[] = [];
     // Page names say which Pages Meta authorized, so the error tells a Page that was never
     // granted apart from a Page without Instagram.
@@ -686,7 +686,9 @@ export class SocialService implements SocialApi {
         ? `O Instagram @${username} não está ligado a nenhuma Página autorizada. Contas encontradas: ${found.join(', ')}.`
         : pageNames.length
           ? `A Meta liberou a Página ${pageNames.join(', ')}, mas ela não tem uma conta profissional do Instagram ligada. Ligue o Instagram a essa Página (perfil da Página → Configurações → Contas vinculadas → Instagram) e conecte de novo.`
-          : 'A Meta não liberou nenhuma Página para o Studio. Na configuração do Facebook Login for Business, marque os ativos Páginas e Contas do Instagram; depois remova o app em Facebook → Configurações → Integrações comerciais e conecte de novo, marcando a Página e o Instagram.',
+          : granted.includes('pages_show_list')
+            ? `A Meta não liberou nenhuma Página para o Studio, embora tenha concedido ${granted.join(', ')}. Este perfil do Facebook não marcou nenhuma Página no login ou não administra uma. Remova o app em facebook.com/settings/?tab=business_tools, conecte de novo e, na tela da Meta, use Editar acesso para marcar a Página.`
+            : `A Meta não concedeu pages_show_list, sem a qual o Studio não vê nenhuma Página (concedidas: ${granted.join(', ') || 'nenhuma'}). Inclua pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish na configuração do Facebook Login for Business e conecte de novo sem desmarcar nenhuma.`,
     );
   }
 
@@ -1074,7 +1076,7 @@ export class SocialService implements SocialApi {
       .map((item) => item.permission as string);
     if (pending.platform === 'instagram') {
       const accountId = pending.expected.startsWith('@')
-        ? await this.instagramId(pending.expected.slice(1), userToken)
+        ? await this.instagramId(pending.expected.slice(1), userToken, scopes)
         : pending.expected;
       const identity = await this.verifyIdentity('instagram', accountId, userToken);
       const expires = numeric(long.expires_in);

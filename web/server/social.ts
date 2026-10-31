@@ -649,14 +649,27 @@ export class SocialService implements SocialApi {
    * authorizes. The error names what was found, so the operator knows which link is missing. */
   private async instagramId(username: string, token: string): Promise<string> {
     const found: string[] = [];
+    // Page names say which Pages Meta authorized, so the error tells a Page that was never
+    // granted apart from a Page without Instagram.
+    const pageNames: string[] = [];
     let cursor: string | undefined;
     for (let page = 0; page < 10; page++) {
       const url = new URL(`${GRAPH}/me/accounts`);
-      url.searchParams.set('fields', 'id,instagram_business_account{id,username}');
+      url.searchParams.set('fields', 'id,name,instagram_business_account{id,username}');
       url.searchParams.set('limit', '100');
       if (cursor) url.searchParams.set('after', cursor);
       const pages = await this.request(url.toString(), token);
       for (const item of array(pages.data)) {
+        const pageName = record(item).name;
+        if (pageNames.length < 5)
+          pageNames.push(
+            typeof pageName === 'string' && pageName.trim()
+              ? pageName
+                  .trim()
+                  .replace(/[\u0000-\u001f]/g, '')
+                  .slice(0, 60)
+              : String(record(item).id ?? '?').slice(0, 32),
+          );
         const account = record(record(item).instagram_business_account);
         if (typeof account.id !== 'string' || !/^\d{1,32}$/.test(account.id)) continue;
         const name = typeof account.username === 'string' ? account.username : '';
@@ -671,7 +684,9 @@ export class SocialService implements SocialApi {
       'account_mismatch',
       found.length
         ? `O Instagram @${username} não está ligado a nenhuma Página autorizada. Contas encontradas: ${found.join(', ')}.`
-        : 'Nenhuma Página autorizada tem uma conta profissional do Instagram ligada. Ligue o Instagram à Página (Configurações da Página → Contas vinculadas) e autorize a Página e o Instagram ao conectar.',
+        : pageNames.length
+          ? `A Meta liberou a Página ${pageNames.join(', ')}, mas ela não tem uma conta profissional do Instagram ligada. Ligue o Instagram a essa Página (perfil da Página → Configurações → Contas vinculadas → Instagram) e conecte de novo.`
+          : 'A Meta não liberou nenhuma Página para o Studio. Na configuração do Facebook Login for Business, marque os ativos Páginas e Contas do Instagram; depois remova o app em Facebook → Configurações → Integrações comerciais e conecte de novo, marcando a Página e o Instagram.',
     );
   }
 

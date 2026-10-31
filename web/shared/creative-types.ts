@@ -77,7 +77,13 @@ export interface CreativeDraft {
   reviewRequired: true;
   fields?: CreativeFields;
   /** Script length checked against the format's rule before the draft was accepted. */
-  duration?: { words: number; estimatedSecs: number; attempts: number };
+  duration?: {
+    words: number;
+    estimatedSecs: number;
+    attempts: number;
+    /** Middle scenes removed to fit the format; their words were not rewritten. */
+    droppedScenes?: number[];
+  };
   usage?: {
     inputTokens: number;
     outputTokens: number;

@@ -61,6 +61,41 @@ export function formatDuration(secs: number): string {
   const rest = Math.round(secs % 60);
   return rest ? `${minutes} min ${rest} s` : `${minutes} min`;
 }
+/** Fits a script that is too long by removing whole middle scenes: the opening (the hook)
+ * and the closing scene stay, words are never rewritten. Among the subsets that land inside
+ * the range, the one that removes the fewest scenes wins, then the one that keeps the most
+ * words. Undefined when no subset fits, so the caller asks for a rewrite instead. */
+export function fitByDroppingScenes<Scene extends Pick<ScriptScene, 'id' | 'narration'>>(
+  scenes: Scene[],
+  rule: DurationRule,
+): { scenes: Scene[]; dropped: number[] } | undefined {
+  const words = scenes.map((scene) => narrationWords([scene]));
+  const total = words.reduce((sum, value) => sum + value, 0);
+  if (total <= rule.maxWords) return undefined;
+  const middle = scenes.map((_, index) => index).slice(1, -1);
+  // 2^16 subsets at most; longer scripts keep only their 16 longest middle scenes as candidates.
+  const candidates = [...middle].sort((a, b) => words[b]! - words[a]!).slice(0, 16);
+  let best: { mask: number; count: number; kept: number } | undefined;
+  for (let mask = 1; mask < 1 << candidates.length; mask++) {
+    let removed = 0,
+      count = 0;
+    for (let bit = 0; bit < candidates.length; bit++)
+      if (mask & (1 << bit)) {
+        removed += words[candidates[bit]!]!;
+        count++;
+      }
+    const kept = total - removed;
+    if (kept < rule.minWords || kept > rule.maxWords) continue;
+    if (!best || count < best.count || (count === best.count && kept > best.kept))
+      best = { mask, count, kept };
+  }
+  if (!best) return undefined;
+  const drop = new Set(candidates.filter((_, bit) => best.mask & (1 << bit)));
+  return {
+    scenes: scenes.filter((_, index) => !drop.has(index)),
+    dropped: scenes.filter((_, index) => drop.has(index)).map((scene) => scene.id),
+  };
+}
 /** Instruction sent with every script request: concrete word counts the model can plan for. */
 export function durationInstruction(format: ScriptFormat): string {
   const target = DURATION_RULES[format];

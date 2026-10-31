@@ -345,9 +345,12 @@ pausas incluídas). O mínimo usa o ritmo mais rápido e o máximo o mais lento,
 um roteiro dentro da faixa de palavras fica dentro da faixa de tempo.
 
 1. A IA recebe a faixa de palavras junto com o pedido.
-2. Se o roteiro vier curto ou longo demais, ela reescreve o roteiro inteiro sabendo
+2. Se vier **longo demais** e der para caber tirando cenas inteiras do meio, o Studio
+   tira essas cenas e mantém a abertura e o fechamento. As palavras continuam as da IA,
+   e nenhuma geração extra é feita.
+3. Senão, se o roteiro vier curto ou longo demais, ela reescreve o roteiro inteiro sabendo
    quantas palavras faltam ou sobram. São até 3 gerações.
-3. Se nenhuma cumprir, o Studio mostra quantas palavras vieram e **não salva** o
+4. Se nenhuma cumprir, o Studio mostra quantas palavras vieram e **não salva** o
    roteiro.
 
 Um roteiro longo pede até 16.000 tokens de resposta, mesmo que o limite de saída

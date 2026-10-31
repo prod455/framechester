@@ -814,7 +814,7 @@ test('through the HTTPS relay, TikTok returns via the public page with the port 
     vault: new MemoryVault(),
     fetch: tiktokFetch(calls),
     now: () => NOW,
-    tiktokRelay: relay,
+    relays: { tiktok: relay },
   });
   const { started, state } = await connectTiktok(service);
   const authorize = new URL(started.authorizationUrl);
@@ -1230,6 +1230,39 @@ test('Instagram can be connected by its @: the ID is found among the authorized 
   );
   await assert.rejects(connect('@fixture.ig', true), /Nenhuma Página autorizada tem uma conta profissional/);
   await assert.rejects(connect('@nome inválido'), /Identidade da conta/);
+});
+
+test('Instagram returns through the HTTPS relay page, since Meta refuses an http callback', async () => {
+  const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+  const relay = 'https://prod455.github.io/framechester/oauth/instagram/';
+  const service = createSocialService({
+    vault: new MemoryVault(),
+    fetch: metaFetch(calls),
+    now: () => NOW,
+    relays: { instagram: relay },
+  });
+  const started = await service.startOAuth({
+    platform: 'instagram',
+    channelId: 'tech',
+    accountId: '@fixture.ig',
+    clientId: '1122334455',
+    clientSecret: 'fixture-app-secret',
+    redirectUri: 'http://127.0.0.1:4317/api/oauth/instagram/callback',
+  });
+  const authorize = new URL(started.authorizationUrl);
+  assert.equal(authorize.searchParams.get('redirect_uri'), relay);
+  const state = authorize.searchParams.get('state')!;
+  assert.match(state, /^4317\.[0-9a-f]{48}$/);
+  const capability = service.capabilities().find((item) => item.platform === 'instagram')!;
+  assert.equal(capability.redirectUri, relay);
+  assert.match(capability.requirements.join(' '), /endereço de retorno abaixo/);
+  const connection = await service.callbackOAuth('instagram', { state, code: 'fixture-code' });
+  assert.equal(connection.accountId, IG);
+  assert.equal(
+    new URLSearchParams(calls[0]!.body).get('redirect_uri'),
+    relay,
+    'the code exchange repeats the registered URI',
+  );
 });
 
 test('an Instagram Reel is published only after processing finishes, with caption and permalink', async () => {

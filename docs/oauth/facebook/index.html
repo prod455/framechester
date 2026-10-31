@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- The authorization code is in this page's address: never send it to anyone as a referrer. -->
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wkVwtomua8Awg1IcadTIDZTsT8Cy5eLnW2Byff//8CA='; style-src 'unsafe-inline'">
+<title>Framechester · voltando para o Studio</title>
+<style>
+  body { font: 16px/1.5 system-ui, sans-serif; background: #101426; color: #eef2f8; display: grid; place-items: center; min-height: 100vh; margin: 0; }
+  main { max-width: 32rem; padding: 2rem; }
+  a { color: #f2b544; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Voltando para o Framechester…</h1>
+  <p id="status">Se nada acontecer, confira se o Studio está aberto neste computador.</p>
+</main>
+<script>
+// Relay for OAuth redirects that cannot point at this computer: TikTok's portal refuses
+// loopback addresses and Meta (Instagram, Facebook) enforces HTTPS. The provider sends the
+// browser here; this page forwards only `code` and `state` to the Studio running on this same
+// computer (127.0.0.1) and nowhere else. The network comes from this page's own address
+// (/oauth/<network>/), never from the query. The code is useless without the app secret, which
+// never leaves the operator's computer. The Studio puts its port in front of the state.
+(function () {
+  var params = new URLSearchParams(location.search);
+  var state = params.get('state') || '';
+  var code = params.get('code') || '';
+  var status = document.getElementById('status');
+  var network = (/\/oauth\/(tiktok|instagram|facebook)\/(?:index\.html)?$/.exec(location.pathname) || [])[1];
+  var match = /^(\d{2,5})\.[0-9a-f]{48}$/.exec(state);
+  var port = match ? Number(match[1]) : 0;
+  if (!network || !match || port < 1 || port > 65535) {
+    status.textContent = 'Este endereço não veio de um login iniciado pelo Framechester.';
+    return;
+  }
+  if (!code) {
+    status.textContent = 'O login não foi autorizado: ' + (params.get('error_description') || params.get('error_reason') || params.get('error') || 'login cancelado') + '. Volte ao Studio e tente de novo.';
+    return;
+  }
+  var target = 'http://127.0.0.1:' + port + '/api/oauth/' + network + '/callback?' +
+    new URLSearchParams({ code: code, state: state }).toString();
+  // Replace, so the code does not stay in the browser history.
+  location.replace(target);
+})();
+</script>
+</body>
+</html>

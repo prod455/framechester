@@ -59,9 +59,17 @@ const TIKTOK = 'https://open.tiktokapis.com/v2';
 const TIKTOK_PUBLISH = 'video.publish';
 const TIKTOK_SCOPES = ['user.info.basic', 'user.info.profile', 'user.info.stats', TIKTOK_PUBLISH];
 const PAGE_PUBLISH = 'pages_manage_posts';
-const FACEBOOK_SCOPES = ['pages_show_list', 'pages_read_engagement', PAGE_PUBLISH];
+/** Pages owned by a business portfolio only reach /me/accounts with business_management. */
+const BUSINESS = 'business_management';
+const FACEBOOK_SCOPES = ['pages_show_list', 'pages_read_engagement', BUSINESS, PAGE_PUBLISH];
 const INSTAGRAM_PUBLISH = 'instagram_content_publish';
-const INSTAGRAM_SCOPES = ['pages_show_list', 'pages_read_engagement', 'instagram_basic', INSTAGRAM_PUBLISH];
+const INSTAGRAM_SCOPES = [
+  'pages_show_list',
+  'pages_read_engagement',
+  BUSINESS,
+  'instagram_basic',
+  INSTAGRAM_PUBLISH,
+];
 const INSTAGRAM_UPLOAD = 'https://rupload.facebook.com/ig-api-upload/v26.0';
 // Content Publishing: Reels up to 300 MB; query the container once per minute for at most
 // 5 minutes is the documented pace, and an unpublished container expires in 24 h.
@@ -197,7 +205,7 @@ const CAPABILITIES: NetworkCapability[] = [
     accountPattern: '^(@?[A-Za-z0-9._]{1,30}|\\d{1,32})$',
     requirements: [
       'Conta profissional ligada a uma Página.',
-      'Aplicativo Meta próprio com Facebook Login for Business e o callback local registrado; a configuração pede pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish.',
+      'Aplicativo Meta próprio com Facebook Login for Business e o callback local registrado; a configuração pede pages_show_list, pages_read_engagement, business_management, instagram_basic e instagram_content_publish.',
       'Publicação pública direta como Reel (vídeo vertical): a API do Instagram não tem rascunho nem modo privado. Só sai a versão final aprovada no QA, por clique confirmado ou com o opt-in do canal.',
     ],
     revenueNote:
@@ -215,7 +223,7 @@ const CAPABILITIES: NetworkCapability[] = [
     accountPattern: '^\\d{1,32}$',
     requirements: [
       'Aplicativo Meta próprio com Facebook Login e o callback local registrado; o token salvo é o da Página, não de um perfil pessoal.',
-      'pages_show_list, pages_read_engagement e pages_manage_posts, com a aprovação exigida pela Meta.',
+      'pages_show_list, pages_read_engagement, business_management e pages_manage_posts, com a aprovação exigida pela Meta.',
       'Envio sempre como rascunho de Reel (vídeo vertical); a publicação é decisão do operador no Meta Business Suite.',
     ],
     revenueNote:
@@ -743,9 +751,11 @@ export class SocialService implements SocialApi {
         ? `O Instagram @${username} não está ligado a nenhuma Página autorizada. Contas encontradas: ${found.join(', ')}.`
         : pageNames.length
           ? `A Meta liberou a Página ${pageNames.join(', ')}, mas ela não tem uma conta profissional do Instagram ligada. Ligue o Instagram a essa Página (perfil da Página → Configurações → Contas vinculadas → Instagram) e conecte de novo.`
-          : granted.includes('pages_show_list')
-            ? `A Meta não liberou nenhuma Página para o Studio, embora tenha concedido ${granted.join(', ')}. Este perfil do Facebook não marcou nenhuma Página no login ou não administra uma. Remova o app em facebook.com/settings/?tab=business_tools, conecte de novo e, na tela da Meta, use Editar acesso para marcar a Página.`
-            : `A Meta não concedeu pages_show_list, sem a qual o Studio não vê nenhuma Página (concedidas: ${granted.join(', ') || 'nenhuma'}). Inclua pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish na configuração do Facebook Login for Business e conecte de novo sem desmarcar nenhuma.`,
+          : granted.includes('pages_show_list') && !granted.includes(BUSINESS)
+            ? `A Meta não liberou nenhuma Página para o Studio e não concedeu business_management, sem a qual Páginas de um portfólio de empresa não aparecem (concedidas: ${granted.join(', ')}). Conecte de novo aceitando todas as permissões; se usar o ID da configuração, inclua business_management nela.`
+            : granted.includes('pages_show_list')
+              ? `A Meta não liberou nenhuma Página para o Studio, embora tenha concedido ${granted.join(', ')}. Este perfil do Facebook não marcou nenhuma Página no login ou não administra uma. Remova o app em facebook.com/settings/?tab=business_tools, conecte de novo e, na tela da Meta, use Editar acesso para marcar a Página.`
+              : `A Meta não concedeu pages_show_list, sem a qual o Studio não vê nenhuma Página (concedidas: ${granted.join(', ') || 'nenhuma'}). Inclua pages_show_list, pages_read_engagement, business_management, instagram_basic e instagram_content_publish na configuração do Facebook Login for Business e conecte de novo sem desmarcar nenhuma.`,
     );
   }
 

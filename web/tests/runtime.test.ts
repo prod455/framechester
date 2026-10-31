@@ -78,3 +78,56 @@ test('health is minimal and public on allowed hosts; mapped container port prese
     await rm(home, { recursive: true, force: true });
   }
 });
+
+test('a Tailscale name lets the phone in through tailscale serve; public names stay refused', async () => {
+  assert.equal(runtimeConfiguration({}).tailnetHost, undefined);
+  assert.equal(
+    runtimeConfiguration({ FRAMECHESTER_TAILNET_HOST: ' Meu-PC.tail1234.ts.net ' }).tailnetHost,
+    'meu-pc.tail1234.ts.net',
+  );
+  assert.equal(
+    runtimeConfiguration({ FRAMECHESTER_TAILNET_HOST: 'meu-pc.tail1234.ts.net' }).host,
+    '127.0.0.1',
+  );
+  for (const value of [
+    'framechester.com',
+    'ts.net',
+    'meu-pc.ts.net.evil.com',
+    'http://meu-pc.tail1234.ts.net',
+  ])
+    assert.throws(() => runtimeConfiguration({ FRAMECHESTER_TAILNET_HOST: value }), /\.ts\.net/, value);
+
+  const home = await mkdtemp(join(tmpdir(), 'fc-tailnet-'));
+  const app = await createApp({ home, tailnetHost: 'meu-pc.tail1234.ts.net' });
+  const server = createServer(app.handler);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const addr = server.address();
+  assert.ok(addr && typeof addr !== 'string');
+  const status = (host: string, origin?: string, method = 'GET', path = '/healthz') =>
+    new Promise<number>((resolve, reject) => {
+      const req = httpRequest(
+        `http://127.0.0.1:${addr.port}${path}`,
+        { method, headers: { Host: host, ...(origin ? { Origin: origin } : {}) } },
+        (response) => {
+          response.resume();
+          resolve(response.statusCode ?? 0);
+        },
+      );
+      req.on('error', reject);
+      req.end();
+    });
+  try {
+    assert.equal(await status('meu-pc.tail1234.ts.net'), 200);
+    assert.equal(await status('meu-pc.tail1234.ts.net', 'https://meu-pc.tail1234.ts.net'), 200);
+    assert.equal(await status('meu-pc.tail1234.ts.net', 'http://meu-pc.tail1234.ts.net'), 403, 'HTTPS only');
+    assert.equal(await status('outro-pc.tail1234.ts.net'), 403);
+    assert.equal(
+      await status('meu-pc.tail1234.ts.net', 'https://meu-pc.tail1234.ts.net', 'GET', '/api/bootstrap'),
+      401,
+      'the password still applies',
+    );
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await rm(home, { recursive: true, force: true });
+  }
+});

@@ -8,6 +8,21 @@ function filePath(value: string | undefined): string | undefined {
     throw new InvalidRuntimeConfiguration('Caminhos de infraestrutura devem ser absolutos e válidos.');
   return value;
 }
+/** A Tailscale MagicDNS name (`meu-pc.tail1234.ts.net`). It only resolves inside the
+ * operator's tailnet, so accepting it lets the operator's own phone reach the Studio through
+ * `tailscale serve` while the server keeps listening on loopback only. Any other public name
+ * is refused: the Studio is never published to the internet. */
+function tailnetHost(value: string | undefined): string | undefined {
+  if (value === undefined || value === '') return undefined;
+  const host = value.trim().toLowerCase();
+  if (
+    !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*\.ts\.net$/.test(host)
+  )
+    throw new InvalidRuntimeConfiguration(
+      'FRAMECHESTER_TAILNET_HOST aceita só o nome do computador no Tailscale, terminado em .ts.net.',
+    );
+  return host;
+}
 /** Native operation remains loopback-only. Container ingress must be published on host loopback. */
 export function runtimeConfiguration(environment: NodeJS.ProcessEnv, containerDetected = false) {
   const container = environment.FRAMECHESTER_CONTAINER === '1';
@@ -29,6 +44,7 @@ export function runtimeConfiguration(environment: NodeJS.ProcessEnv, containerDe
     publicPort,
     vaultKeyFile,
     privateRoot: filePath(environment.FRAMECHESTER_PRIVATE_ROOT),
+    tailnetHost: tailnetHost(environment.FRAMECHESTER_TAILNET_HOST),
     engineBinary: filePath(environment.FRAMECHESTER_ENGINE_BINARY),
   };
 }

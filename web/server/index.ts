@@ -65,6 +65,7 @@ export async function startLocalServer() {
     creative,
     sources: createSourceFinder(),
     publicPort: runtime.publicPort,
+    tailnetHost: runtime.tailnetHost,
     distDir: join(webRoot, 'dist'),
     dev: process.env.FRAMECHESTER_WEB_DEV === '1',
   });

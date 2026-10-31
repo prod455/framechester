@@ -69,6 +69,11 @@ no QA.
   semântico (`semantic_motion`, `long_still`) é o que mede explicação, não o detector
   de pixels.
 
+- **Frames pretos no tema escuro.** O fundo `#0B0F17` tem cerca de 6% de luminância, e o
+  `blackdetect` com o limite usual de 8% acusava como preto toda cena esparsa e toda
+  transição. O QA calcula o limite como metade da luminância do fundo do design (cerca de
+  3%): preto real continua bloqueando, o fundo não.
+
 ## Limitações conhecidas
 
 - Sem alinhador forçado, sem ASR no caminho motion (o `--asr` do pipeline legado

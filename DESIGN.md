@@ -137,6 +137,10 @@ Changes to the Studio are checked against the 20 laws listed in
   cost, consent and errors never hide.
 - Every wait shows motion and elapsed time; every stop ends with a way forward
   (Doherty, peak-end, feedback loops).
+- Use the Basecoat component before writing CSS: `item`/`item-group` for step or
+  record rows, `progress` for bars, badge variants `primary`, `secondary`, `outline`,
+  `destructive` only. Spacing and alignment tweaks are Tailwind utilities on the
+  element (Tailwind scans `src/**/*.ts`), not new rules layered over Basecoat.
 - Receding states use colour and border, never opacity on text; links in
   running text are underlined. axe-core (WCAG 2 A/AA) runs on Criar vídeo,
   Vídeos, Canais and the Novo vídeo dialog before merging UI changes.

@@ -332,6 +332,24 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
         preview_watermark: args.preview_only,
     };
     let artifacts = render(&storyboard, &request)?;
+    // The thumbnail shows the character the video uses, else the one that fits the topic.
+    let thumbnail = workdir.join("render").join("thumbnail.png");
+    let cast = framechester_motion::thumbnail::cast_of(&storyboard)
+        .or_else(|| {
+            planned
+                .script
+                .as_ref()
+                .map(framechester_core::planner::cast_for)
+        })
+        .unwrap_or(framechester_core::storyboard::Character::Presenter);
+    for issue in framechester_motion::thumbnail::render(
+        &framechester_motion::text::Typesetter::new()?,
+        &storyboard.title,
+        cast,
+        &thumbnail,
+    )? {
+        warnings.push(format!("thumbnail: {}", issue.detail));
+    }
 
     let qa_document = audit(
         &storyboard,
@@ -374,7 +392,7 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
                     &technical,
                     &editorial,
                     PublishPrivacy::Private,
-                    None,
+                    Some(thumbnail.clone()),
                     channel.as_ref(),
                 )?;
                 // Word-synced captions replace the estimated ones of the legacy package.

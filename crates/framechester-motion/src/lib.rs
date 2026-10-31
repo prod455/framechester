@@ -18,4 +18,5 @@ pub mod raster;
 pub mod render;
 pub mod scene;
 pub mod text;
+pub mod thumbnail;
 pub mod tokens;

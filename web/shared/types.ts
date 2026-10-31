@@ -185,7 +185,7 @@ export interface WebJob {
 /** Uploads are always private; publishing stays a decision made in YouTube Studio. */
 export type YoutubePublication =
   | { status: 'uploading'; startedAt: string }
-  | { status: 'uploaded'; videoId: string; uploadedAt: string }
+  | { status: 'uploaded'; videoId: string; uploadedAt: string; thumbnail?: YoutubeThumbnail }
   | { status: 'failed'; message: string; failedAt: string };
 export interface AppState {
   schemaVersion: 1;
@@ -266,13 +266,20 @@ export interface SocialApi {
   sync(channelId: string, platform: Platform): Promise<SocialSnapshot>;
   disconnect(channelId: string, platform: Platform): Promise<void>;
   discoverYoutube?(channelId: string, query: string): Promise<YoutubeDiscovery>;
-  uploadYoutube?(channelId: string, video: YoutubeUpload): Promise<{ videoId: string }>;
+  uploadYoutube?(
+    channelId: string,
+    video: YoutubeUpload,
+  ): Promise<{ videoId: string; thumbnail?: YoutubeThumbnail }>;
 }
 export interface YoutubeUpload {
   path: string;
   title: string;
   description: string;
+  /** PNG drawn by the motion engine; absent on the still-image path. */
+  thumbnail?: string;
 }
+/** `set` when YouTube accepted the thumbnail; an error keeps the video uploaded. */
+export type YoutubeThumbnail = 'set' | { error: string };
 export interface RunnerApi {
   list(channelId: string): Promise<WebJob[]>;
   start(channelId: string, input: StartJobInput): Promise<WebJob>;

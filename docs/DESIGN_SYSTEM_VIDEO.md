@@ -100,6 +100,14 @@ e no X o personagem ocupa a coluna esquerda e o balão aponta para a cabeça.
 | olhos | piscam a cada 3,1 s |
 | braço do gesto | balança 6 px a cada 0,7 s |
 
+## Thumbnail
+
+`render/thumbnail.png`, 1280 × 720: o personagem do vídeo (ou o da pauta) ocupa a coluna
+esquerda apontando para o título, em Inter Bold de 104 a 56 px com barra `ACCENT` ao lado;
+título com `?` usa a pose pensar. Título que não cabe no tamanho mínimo vira aviso no
+relatório, nunca texto cortado. Revisão visual: `cargo run --release -p
+framechester-motion --example preview_components -- <pasta>`.
+
 ## Proibições (impostas por QA quando mensuráveis)
 
 - parágrafos longos ocupando a tela — rótulos ≤ 60 caracteres, detalhes ≤ 120;

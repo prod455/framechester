@@ -27,6 +27,29 @@ fn main() {
         ("personagem-robo", "#personagem robo | comemorar | Mesma tarefa, metade dos tokens", "Mesma tarefa, com menos tokens no contexto."),
     ];
     let typesetter = Typesetter::new().unwrap();
+    for (name, title, character) in [
+        (
+            "robo",
+            "Skills vs. Agentes de IA: a diferença na prática",
+            framechester_core::storyboard::Character::Robot,
+        ),
+        (
+            "cientista",
+            "Dá para medir a diferença?",
+            framechester_core::storyboard::Character::Scientist,
+        ),
+    ] {
+        let issues = framechester_motion::thumbnail::render(
+            &typesetter,
+            title,
+            character,
+            &out.join(format!("thumbnail-{name}.png")),
+        )
+        .unwrap();
+        if !issues.is_empty() {
+            println!("thumbnail {name}: {issues:?}");
+        }
+    }
     for format in [
         VideoFormat::Vertical,
         VideoFormat::Horizontal,

@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import type {
   NetworkCapability,
@@ -10,6 +10,7 @@ import type {
   SocialSnapshot,
   TokenConnectionInput,
   YoutubeOAuthInput,
+  YoutubeThumbnail,
   YoutubeUpload,
 } from '../shared/types.ts';
 import type { SecretVault } from './vault.ts';
@@ -37,6 +38,9 @@ const MONETARY_READ = 'https://www.googleapis.com/auth/yt-analytics-monetary.rea
 const VIDEO_UPLOAD = 'https://www.googleapis.com/auth/youtube.upload';
 const YOUTUBE_SCOPES = [CHANNEL_READ, ANALYTICS_READ, MONETARY_READ, VIDEO_UPLOAD];
 const UPLOAD_ENDPOINT = 'https://www.googleapis.com/upload/youtube/v3/videos';
+const THUMBNAIL_ENDPOINT = 'https://www.googleapis.com/upload/youtube/v3/thumbnails/set';
+// YouTube Studio limit for custom thumbnails; the API accepts more, the page does not.
+const MAX_THUMBNAIL = 2 * 1024 * 1024;
 // A long video on a home connection; the session itself stays valid for a week.
 const UPLOAD_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 const PLATFORMS: Platform[] = ['youtube', 'tiktok', 'instagram', 'facebook'];
@@ -902,7 +906,10 @@ export class SocialService implements SocialApi {
   }
 
   /** Resumable upload, always private: the operator reviews and publishes in YouTube Studio. */
-  async uploadYoutube(channelId: string, video: YoutubeUpload): Promise<{ videoId: string }> {
+  async uploadYoutube(
+    channelId: string,
+    video: YoutubeUpload,
+  ): Promise<{ videoId: string; thumbnail?: YoutubeThumbnail }> {
     channel(channelId);
     const title = youtubeText(video.title, 100);
     const description = youtubeText(video.description, 5000);
@@ -956,7 +963,8 @@ export class SocialService implements SocialApi {
         const videoId = (await this.readJson(sent)).id;
         if (typeof videoId !== 'string' || !/^[A-Za-z0-9_-]{11}$/.test(videoId))
           throw new SocialError('invalid_response', 'O YouTube não retornou o ID do vídeo enviado.');
-        return { videoId };
+        if (!video.thumbnail) return { videoId };
+        return { videoId, thumbnail: await this.setThumbnail(videoId, video.thumbnail, authorization) };
       } catch (error) {
         if (error instanceof SocialError) throw error;
         throw new SocialError(
@@ -965,6 +973,39 @@ export class SocialService implements SocialApi {
         );
       }
     });
+  }
+
+  /** The video is already uploaded: a refused thumbnail is reported, never thrown. */
+  private async setThumbnail(
+    videoId: string,
+    path: string,
+    authorization: string,
+  ): Promise<YoutubeThumbnail> {
+    try {
+      const image = await readFile(path);
+      if (image.length === 0 || image.length > MAX_THUMBNAIL)
+        return { error: 'Thumbnail vazia ou acima de 2 MB; defina no YouTube Studio.' };
+      const response = await this.fetcher(
+        `${THUMBNAIL_ENDPOINT}?videoId=${encodeURIComponent(videoId)}&uploadType=media`,
+        {
+          method: 'POST',
+          headers: { authorization, 'content-type': 'image/png', 'content-length': String(image.length) },
+          body: image,
+          redirect: 'error',
+          signal: AbortSignal.timeout(this.timeoutMs),
+        },
+      );
+      await response.body?.cancel();
+      if (response.ok) return 'set';
+      return {
+        error:
+          response.status === 403
+            ? 'O YouTube não permitiu thumbnail personalizada nesta conta (verifique o canal por telefone); defina no YouTube Studio.'
+            : `O YouTube recusou a thumbnail (HTTP ${response.status}); defina no YouTube Studio.`,
+      };
+    } catch {
+      return { error: 'Não foi possível enviar a thumbnail; defina no YouTube Studio.' };
+    }
   }
 
   async disconnect(channelId: string, platform: Platform): Promise<void> {

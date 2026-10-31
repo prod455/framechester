@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createSocialService } from '../server/social.ts';
 import type { SocialFetch } from '../server/social.ts';
 import type { SecretVault } from '../server/vault.ts';
@@ -72,11 +75,14 @@ function youtubeFetch(
   };
 }
 
-test('capabilities cover four networks honestly and never enable publishing', () => {
+test('capabilities cover four networks honestly and only YouTube accepts private uploads', () => {
   const service = createSocialService({ vault: new MemoryVault(), fetch: youtubeFetch(), now: () => NOW });
   const capabilities = service.capabilities();
   assert.equal(capabilities.length, 4);
-  assert.ok(capabilities.every((item) => !item.publishingAvailable));
+  assert.deepEqual(
+    capabilities.filter((item) => item.publishingAvailable).map((item) => item.platform),
+    ['youtube'],
+  );
   assert.deepEqual(
     capabilities.filter((item) => item.revenueAvailable).map((item) => item.platform),
     ['youtube'],
@@ -497,4 +503,127 @@ test('Instagram pagination rebuilds fixed API calls and never follows a provider
     accessToken: 'fixture-token',
   });
   assert.deepEqual(hosts, ['graph.facebook.com', 'graph.facebook.com', 'graph.facebook.com']);
+});
+
+const UPLOAD = 'https://www.googleapis.com/auth/youtube.upload';
+const SESSION =
+  'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&upload_id=fixture-session';
+
+async function uploadFixture(options: { scopes?: string[]; location?: string } = {}): Promise<{
+  service: ReturnType<typeof createSocialService>;
+  calls: Array<{ url: string; init?: RequestInit; body?: string }>;
+  video: string;
+  cleanup: () => Promise<void>;
+}> {
+  const directory = await mkdtemp(join(tmpdir(), 'fc-youtube-upload-'));
+  const video = join(directory, 'final.mp4');
+  await writeFile(video, 'synthetic mp4 fixture');
+  const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+  const service = createSocialService({
+    vault: new MemoryVault(),
+    now: () => NOW,
+    fetch: async (raw, init) => {
+      const url = new URL(raw);
+      assert.equal(init?.redirect, 'error');
+      if (url.pathname === '/tokeninfo')
+        return json({
+          scope: (options.scopes ?? [READ, ANALYTICS, MONEY, UPLOAD]).join(' '),
+          expires_in: 3600,
+        });
+      if (url.pathname === '/youtube/v3/channels')
+        return json({ items: [{ id: ACCOUNT, snippet: { title: 'Fixture' } }] });
+      if (url.pathname === '/upload/youtube/v3/videos' && init?.method === 'POST') {
+        calls.push({ url: raw, init, body: String(init.body) });
+        return new Response(null, { status: 200, headers: { location: options.location ?? SESSION } });
+      }
+      if (raw === SESSION && init?.method === 'PUT') {
+        const body = await new Response(init.body as ReadableStream).text();
+        calls.push({ url: raw, init, body });
+        return json({ id: 'abcdefghijk', status: { privacyStatus: 'private' } });
+      }
+      throw Error(`Unexpected API endpoint ${raw}`);
+    },
+  });
+  await service.connectToken({
+    channelId: 'tech',
+    platform: 'youtube',
+    accountId: ACCOUNT,
+    accessToken: 'fixture-access-token',
+  });
+  return { service, calls, video, cleanup: () => rm(directory, { recursive: true, force: true }) };
+}
+
+test('YouTube upload is resumable, private, streams the file and returns the video id', async () => {
+  const { service, calls, video, cleanup } = await uploadFixture();
+  try {
+    const result = await service.uploadYoutube('tech', {
+      path: video,
+      title: `Skills <vs> agentes ${'x'.repeat(200)}`,
+      description: 'Fontes revisadas <script>',
+    });
+    assert.deepEqual(result, { videoId: 'abcdefghijk' });
+    assert.equal(calls.length, 2);
+    const start = new URL(calls[0].url);
+    assert.equal(start.searchParams.get('uploadType'), 'resumable');
+    const metadata = JSON.parse(calls[0].body!);
+    assert.equal(metadata.status.privacyStatus, 'private');
+    assert.equal(metadata.status.selfDeclaredMadeForKids, false);
+    assert.equal(metadata.snippet.title.length, 100);
+    assert.doesNotMatch(metadata.snippet.title + metadata.snippet.description, /[<>]/);
+    assert.equal(calls[1].body, 'synthetic mp4 fixture');
+    assert.equal(
+      new Headers(calls[1].init!.headers).get('content-length'),
+      String('synthetic mp4 fixture'.length),
+    );
+  } finally {
+    await cleanup();
+  }
+});
+
+test('an old connection without the upload scope asks to reconnect and sends nothing', async () => {
+  const { service, calls, video, cleanup } = await uploadFixture({ scopes: [READ, ANALYTICS, MONEY] });
+  try {
+    await assert.rejects(
+      service.uploadYoutube('tech', { path: video, title: 'Vídeo', description: '' }),
+      (error: Error & { code?: string }) =>
+        error.code === 'missing_scope' && /Reconecte o YouTube/.test(error.message),
+    );
+    assert.equal(calls.length, 0);
+  } finally {
+    await cleanup();
+  }
+});
+
+test('a session URI outside the YouTube upload endpoint never receives the video or the token', async () => {
+  for (const location of [
+    'https://evil.example/upload/youtube/v3/videos?uploadType=resumable&upload_id=x',
+    'https://www.googleapis.com:8443/upload/youtube/v3/videos?uploadType=resumable&upload_id=x',
+    'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=multipart&upload_id=x',
+    '',
+  ]) {
+    const { service, calls, video, cleanup } = await uploadFixture({ location });
+    try {
+      await assert.rejects(service.uploadYoutube('tech', { path: video, title: 'Vídeo', description: '' }));
+      assert.equal(calls.length, 1, location);
+    } finally {
+      await cleanup();
+    }
+  }
+});
+
+test('a missing video file fails before any network call', async () => {
+  const { service, calls, cleanup } = await uploadFixture();
+  try {
+    await assert.rejects(
+      service.uploadYoutube('tech', {
+        path: join(tmpdir(), 'absent-final.mp4'),
+        title: 'Vídeo',
+        description: '',
+      }),
+      /Arquivo de vídeo ausente/,
+    );
+    assert.equal(calls.length, 0);
+  } finally {
+    await cleanup();
+  }
 });

@@ -12,6 +12,8 @@ export interface Channel extends Timestamped {
   audience: string;
   language: string;
   youtubeChannelId?: string;
+  /** Opt-in: send each approved final version to YouTube as a private video. */
+  youtubeAutoUpload?: boolean;
 }
 export interface Source {
   title: string;
@@ -178,7 +180,13 @@ export interface WebJob {
   previewOnly?: boolean;
   automated?: boolean;
   engine?: VideoEngine;
+  youtube?: YoutubePublication;
 }
+/** Uploads are always private; publishing stays a decision made in YouTube Studio. */
+export type YoutubePublication =
+  | { status: 'uploading'; startedAt: string }
+  | { status: 'uploaded'; videoId: string; uploadedAt: string }
+  | { status: 'failed'; message: string; failedAt: string };
 export interface AppState {
   schemaVersion: 1;
   channels: Channel[];
@@ -258,6 +266,12 @@ export interface SocialApi {
   sync(channelId: string, platform: Platform): Promise<SocialSnapshot>;
   disconnect(channelId: string, platform: Platform): Promise<void>;
   discoverYoutube?(channelId: string, query: string): Promise<YoutubeDiscovery>;
+  uploadYoutube?(channelId: string, video: YoutubeUpload): Promise<{ videoId: string }>;
+}
+export interface YoutubeUpload {
+  path: string;
+  title: string;
+  description: string;
 }
 export interface RunnerApi {
   list(channelId: string): Promise<WebJob[]>;
@@ -273,4 +287,5 @@ export interface RunnerApi {
     file: string,
   ): Promise<{ path: string; contentType: string } | undefined>;
   engineStatus(): { available: boolean; message: string };
+  publish?(channelId: string, jobId: string): Promise<WebJob>;
 }

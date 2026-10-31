@@ -1,6 +1,6 @@
 # Redes sociais no Framechester Studio
 
-Consulta de fontes primárias e implementação: **2026-10-27**, America/Sao_Paulo. O serviço implementa chamadas reais somente de leitura, acionadas pelo operador. Nenhuma conta real foi conectada durante a implementação; testes de APIs usam respostas injetadas e não comprovam permissões de um aplicativo específico.
+Consulta de fontes primárias e implementação: **2026-10-27**, America/Sao_Paulo; envio ao YouTube em **2026-10-31**. O serviço implementa leituras reais acionadas pelo operador e um único tipo de escrita: o envio privado ao YouTube de uma versão final aprovada. Nenhuma conta real foi conectada durante a implementação; testes de APIs usam respostas injetadas e não comprovam permissões de um aplicativo específico.
 
 ## Capacidades implementadas
 
@@ -11,13 +11,21 @@ Consulta de fontes primárias e implementação: **2026-10-27**, America/Sao_Pau
 | Instagram | Token de usuário com Facebook Login; conta profissional deve aparecer como `instagram_business_account` numa Página autorizada | Seguidores da conta profissional; campos ausentes permanecem `null` | Não implementada nesta integração. Comprovantes podem ser lançados manualmente |
 | Facebook | Token da Página; `/me` deve identificar a Página esperada e permitir os campos solicitados | Seguidores e curtidas da Página; não equivalem a views ou receita de vídeo | Não implementada nesta integração. Comprovantes podem ser lançados manualmente |
 
-`publishingAvailable` é falso nas quatro redes. Não há chamada de upload, publicação, anúncios, compra ou alteração de conta. Permissões e revisão de aplicativo dependem da plataforma e da conta; possuir um token não comprova monetização.
+`publishingAvailable` é verdadeiro só no YouTube, e só para envio **privado** (ver abaixo). Não há publicação pública, anúncios, compra ou alteração de conta em nenhuma rede. Permissões e revisão de aplicativo dependem da plataforma e da conta; possuir um token não comprova monetização.
+
+## YouTube: envio privado
+
+Só a versão final com QA técnico e editorial aprovados pode ser enviada; prévias nunca saem da máquina. O envio acontece de duas formas: automaticamente ao fim da versão final, quando o canal marca **Enviar cada versão final aprovada ao YouTube como vídeo privado** (opt-in por canal, desligado por padrão), ou pelo botão **Enviar ao YouTube (privado)** no card da fila. Cada produção é enviada uma vez; um envio que falhou pode ser repetido.
+
+O upload é resumível (`videos.insert` com `uploadType=resumable`): o título vem do roteiro e a descrição de `publish/description.txt`, sem `<` e `>` e nos limites de 100 caracteres e 5.000 bytes; categoria 28 (Ciência e tecnologia), `selfDeclaredMadeForKids=false` e `privacyStatus=private`. O arquivo segue em streaming, sem carregar o vídeo na memória. A URI de sessão devolvida pelo Google só é usada se apontar para o mesmo endpoint de upload, sem outra porta, host ou credencial. O card mostra o andamento e, ao concluir, o link para revisar e publicar no YouTube Studio. Publicar continua decisão do operador.
+
+A documentação consultada em 2026-10-31 (atualizada em 2026-10-15) informa **100 chamadas/dia, 1 unidade no bucket Video Uploads**, arquivo de até 256 GB, e que vídeos de projetos não verificados **não** ficam restritos ao modo privado; o envio privado aqui é escolha do produto, não limite da plataforma. [Videos.insert](https://developers.google.com/youtube/v3/docs/videos/insert).
 
 ## YouTube: autorização e receita
 
 No Google Cloud do operador, habilitar YouTube Data API v3 e YouTube Analytics API e criar um cliente OAuth **Web application**. Registrar exatamente o callback utilizado, normalmente `http://127.0.0.1:4317/api/oauth/youtube/callback`. Porta, host, esquema e caminho devem coincidir. O Google documenta a exceção de localhost ao requisito geral de HTTPS. As credenciais são enviadas por POST protegido ao backend local e persistidas somente no cofre. [OAuth para servidores Web](https://developers.google.com/identity/protocols/oauth2/web-server).
 
-O serviço solicita `youtube.readonly`, `yt-analytics.readonly` e `yt-analytics-monetary.readonly`; não solicita `youtube.upload`. O consentimento usa navegador normal, state aleatório válido por dez minutos, uso único e PKCE S256. State vincula canal local, Channel ID esperado, cliente e callback. Reiniciar o servidor invalida autorizações pendentes. Outra tentativa para o mesmo canal invalida o state anterior. O SDK oficial do Google documenta `codeChallenge` e `codeVerifier`. [Código primário do cliente OAuth](https://github.com/googleapis/google-auth-library-nodejs/blob/main/src/auth/oauth2client.ts).
+O serviço solicita `youtube.readonly`, `yt-analytics.readonly`, `yt-analytics-monetary.readonly` e `youtube.upload`. Conexões feitas antes de 2026-10-31 não têm `youtube.upload`: o envio pede para reconectar. O consentimento usa navegador normal, state aleatório válido por dez minutos, uso único e PKCE S256. State vincula canal local, Channel ID esperado, cliente e callback. Reiniciar o servidor invalida autorizações pendentes. Outra tentativa para o mesmo canal invalida o state anterior. O SDK oficial do Google documenta `codeChallenge` e `codeVerifier`. [Código primário do cliente OAuth](https://github.com/googleapis/google-auth-library-nodejs/blob/main/src/auth/oauth2client.ts).
 
 O retorno do Google aceita GET no callback mediante validação de state/PKCE.
 O redirecionamento seguinte pode conservar `Sec-Fetch-Site: cross-site`;

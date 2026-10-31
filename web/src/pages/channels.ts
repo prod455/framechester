@@ -111,6 +111,8 @@ export function editChannel(record?: Channel): void {
   const language = input('language', record?.language || 'pt-BR');
   language.required = true;
   const youtubeChannelId = input('youtubeChannelId', record?.youtubeChannelId || '');
+  const youtubeAutoUpload = input('youtubeAutoUpload', '', 'checkbox');
+  youtubeAutoUpload.checked = record?.youtubeAutoUpload === true;
   const { form, fields } = formWithSave(
     record ? 'Salvar canal' : 'Criar canal',
     async () => {
@@ -126,6 +128,7 @@ export function editChannel(record?: Channel): void {
           audience: audience.value.trim(),
           language: language.value.trim(),
           youtubeChannelId: youtubeChannelId.value.trim() || undefined,
+          youtubeAutoUpload: youtubeAutoUpload.checked,
         },
       );
       studio.channelId = id;
@@ -152,6 +155,14 @@ export function editChannel(record?: Channel): void {
     ),
   );
   fields.append(field('Descrição e proposta editorial', description));
+  fields.append(
+    el(
+      'label',
+      { className: 'checkbox-field' },
+      youtubeAutoUpload,
+      'Enviar cada versão final aprovada ao YouTube como vídeo privado (exige o YouTube conectado com permissão de envio)',
+    ),
+  );
   body.append(form);
 }
 

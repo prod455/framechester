@@ -35,7 +35,7 @@ alimentar uma tarefa ou controle observável; nenhuma sugestão aprova conteúdo
    todas as alegações recebidas ficam `unverified`. Vínculos, IDs técnicos e
    notas manuais do operador são preservados.
 6. Revise fontes, fatos e texto e use o botão de salvar do editor. Produção e
-   publicação continuam ações distintas; publicação web permanece desativada.
+   publicação continuam ações distintas; a web só envia ao YouTube como privado a versão final aprovada.
 
 Pedidos e resultados ficam em memória apenas para a sessão, com cache de até
 12 rascunhos por contexto exato. Outro canal ou outro conteúdo não recebe o

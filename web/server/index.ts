@@ -37,16 +37,17 @@ export async function startLocalServer() {
   const runtime = runtimeConfiguration(process.env, existsSync('/.dockerenv'));
   const store = new LocalStore(home);
   await store.ready;
+  const vault = runtime.vaultKeyFile
+    ? createFileVault({ directory: join(home, 'vault'), keyFile: runtime.vaultKeyFile })
+    : createLocalVault({ directory: join(home, 'vault') });
+  const social = createSocialService({ vault });
   const runner = await createRunner({
     home,
     repositoryRoot: resolve(webRoot, '..'),
     binary: runtime.engineBinary,
     readState: () => store.read(),
+    publish: (channelId, video) => social.uploadYoutube(channelId, video),
   });
-  const vault = runtime.vaultKeyFile
-    ? createFileVault({ directory: join(home, 'vault'), keyFile: runtime.vaultKeyFile })
-    : createLocalVault({ directory: join(home, 'vault') });
-  const social = createSocialService({ vault });
   const privatePrompt = new PrivatePromptStore(runtime.privateRoot ?? resolve(webRoot, '..'));
   const usage = new AIUsageStore(join(home, 'ai-usage'));
   const creative = createCreativeService({

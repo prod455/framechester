@@ -244,7 +244,9 @@ anotados no relatório, sem pedir revisão.
 
 A versão final de um roteiro revisado e com fonte termina como **Concluído**,
 com arquivo e conteúdo aprovados. Se o motor bloquear, o card diz o motivo.
-Publicar continua manual, pelo YouTube Studio. A preparação manual
+O canal pode enviar a versão final aprovada ao YouTube como vídeo privado,
+automaticamente ou pelo botão do card (ver [redes sociais](REDES_SOCIAIS_WEB.md#youtube-envio-privado));
+publicar continua decisão do operador, no YouTube Studio. A preparação manual
 (**Produzir com IA → Controles avançados → Abrir preparação manual**)
 continua disponível para trocar visuais ou usar gravações próprias.
 

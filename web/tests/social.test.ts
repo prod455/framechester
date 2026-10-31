@@ -941,6 +941,8 @@ function metaFetch(
     pages?: Array<{ id: string; access_token: string }>;
     /** Pages without a linked Instagram professional account. */
     unlinked?: boolean;
+    /** Meta granted no Page at all. */
+    noPages?: boolean;
   } = {},
 ): SocialFetch {
   return async (raw, init) => {
@@ -973,9 +975,11 @@ function metaFetch(
       if (url.searchParams.get('fields') === 'id,access_token')
         return json({ data: options.pages ?? [{ id: PAGE, access_token: 'fixture-page-token' }] });
       return json({
-        data: options.unlinked
-          ? [{ id: PAGE }]
-          : [{ id: PAGE, instagram_business_account: { id: IG, username: 'Fixture.IG' } }],
+        data: options.noPages
+          ? []
+          : options.unlinked
+            ? [{ id: PAGE, name: 'Skills na Prática' }]
+            : [{ id: PAGE, instagram_business_account: { id: IG, username: 'Fixture.IG' } }],
       });
     }
     if (url.pathname === '/v26.0/me') {
@@ -1201,10 +1205,10 @@ test('Instagram OAuth can use a Facebook Login for Business configuration instea
 });
 
 test('Instagram can be connected by its @: the ID is found among the authorized Pages', async () => {
-  const connect = async (accountId: string, unlinked = false) => {
+  const connect = async (accountId: string, unlinked = false, noPages = false) => {
     const service = createSocialService({
       vault: new MemoryVault(),
-      fetch: metaFetch([], { unlinked }),
+      fetch: metaFetch([], { unlinked, noPages }),
       now: () => NOW,
     });
     const started = await service.startOAuth({
@@ -1228,7 +1232,14 @@ test('Instagram can be connected by its @: the ID is found among the authorized 
     connect('@outra.conta'),
     /@outra\.conta não está ligado.*Contas encontradas: @Fixture\.IG/,
   );
-  await assert.rejects(connect('@fixture.ig', true), /Nenhuma Página autorizada tem uma conta profissional/);
+  await assert.rejects(
+    connect('@fixture.ig', true),
+    /liberou a Página Skills na Prática, mas ela não tem uma conta profissional do Instagram ligada/,
+  );
+  await assert.rejects(
+    connect('@fixture.ig', false, true),
+    /não liberou nenhuma Página.*ativos Páginas e Contas do Instagram/,
+  );
   await assert.rejects(connect('@nome inválido'), /Identidade da conta/);
 });
 

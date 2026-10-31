@@ -6,8 +6,10 @@ export default {
   en: {
     'O Instagram @{username} não está ligado a nenhuma Página autorizada. Contas encontradas: {found}.':
       'Instagram @{username} is not linked to any authorized Page. Accounts found: {found}.',
-    'Nenhuma Página autorizada tem uma conta profissional do Instagram ligada. Ligue o Instagram à Página (Configurações da Página → Contas vinculadas) e autorize a Página e o Instagram ao conectar.':
-      'No authorized Page has a linked Instagram professional account. Link Instagram to the Page (Page settings → Linked accounts) and authorize both the Page and Instagram when connecting.',
+    'A Meta liberou a Página {pages}, mas ela não tem uma conta profissional do Instagram ligada. Ligue o Instagram a essa Página (perfil da Página → Configurações → Contas vinculadas → Instagram) e conecte de novo.':
+      'Meta granted the Page {pages}, but it has no linked Instagram professional account. Link Instagram to that Page (Page profile → Settings → Linked accounts → Instagram) and connect again.',
+    'A Meta não liberou nenhuma Página para o Studio. Na configuração do Facebook Login for Business, marque os ativos Páginas e Contas do Instagram; depois remova o app em Facebook → Configurações → Integrações comerciais e conecte de novo, marcando a Página e o Instagram.':
+      'Meta granted no Page to the Studio. In the Facebook Login for Business configuration, select the Pages and Instagram accounts assets; then remove the app in Facebook → Settings → Business integrations and connect again, selecting the Page and Instagram.',
     'O armazenamento privado de consumo está indisponível ou é inválido. Preserve o histórico e verifique as permissões antes de tentar novamente.':
       'Private usage storage is unavailable or invalid. Keep the history and check the permissions before trying again.',
     'O registro de consumo contém campos, tokens, custo, canal, provedor ou modelo inválidos.':
@@ -480,8 +482,10 @@ export default {
   es: {
     'O Instagram @{username} não está ligado a nenhuma Página autorizada. Contas encontradas: {found}.':
       'El Instagram @{username} no está vinculado a ninguna Página autorizada. Cuentas encontradas: {found}.',
-    'Nenhuma Página autorizada tem uma conta profissional do Instagram ligada. Ligue o Instagram à Página (Configurações da Página → Contas vinculadas) e autorize a Página e o Instagram ao conectar.':
-      'Ninguna Página autorizada tiene una cuenta profesional de Instagram vinculada. Vincula Instagram a la Página (Configuración de la Página → Cuentas vinculadas) y autoriza la Página e Instagram al conectar.',
+    'A Meta liberou a Página {pages}, mas ela não tem uma conta profissional do Instagram ligada. Ligue o Instagram a essa Página (perfil da Página → Configurações → Contas vinculadas → Instagram) e conecte de novo.':
+      'Meta autorizó la Página {pages}, pero no tiene una cuenta profesional de Instagram vinculada. Vincula Instagram a esa Página (perfil de la Página → Configuración → Cuentas vinculadas → Instagram) y conecta de nuevo.',
+    'A Meta não liberou nenhuma Página para o Studio. Na configuração do Facebook Login for Business, marque os ativos Páginas e Contas do Instagram; depois remova o app em Facebook → Configurações → Integrações comerciais e conecte de novo, marcando a Página e o Instagram.':
+      'Meta no autorizó ninguna Página para el Studio. En la configuración de Facebook Login for Business, marca los activos Páginas y Cuentas de Instagram; luego elimina la app en Facebook → Configuración → Integraciones comerciales y conecta de nuevo, marcando la Página e Instagram.',
     'O armazenamento privado de consumo está indisponível ou é inválido. Preserve o histórico e verifique as permissões antes de tentar novamente.':
       'El almacenamiento privado de consumo no está disponible o no es válido. Conserva el historial y revisa los permisos antes de volver a intentarlo.',
     'O registro de consumo contém campos, tokens, custo, canal, provedor ou modelo inválidos.':

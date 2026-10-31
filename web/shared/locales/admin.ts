@@ -311,8 +311,8 @@ export default {
       'Publish each approved vertical video on Instagram as a public Reel, with no review on the network (needs the account connected with publishing permission)',
     público: 'public',
     'ID da configuração do Facebook Login for Business': 'Facebook Login for Business configuration ID',
-    'Obrigatório no Instagram: o envio do arquivo só funciona com Facebook Login for Business.':
-      'Required for Instagram: the file upload only works with Facebook Login for Business.',
+    'Opcional. Sem ele, a Meta mostra a lista de Páginas e contas do Instagram para você marcar no login; use-o só se a sua configuração do Facebook Login for Business oferecer essa escolha.':
+      'Optional. Without it, Meta lists your Pages and Instagram accounts to select at login; use it only if your Facebook Login for Business configuration offers that choice.',
     'Opcional no Facebook; use a mesma configuração do Instagram se tiver uma.':
       'Optional for Facebook; use the same configuration as Instagram if you have one.',
     'Publicação pública direta': 'Direct public posting',
@@ -642,8 +642,8 @@ export default {
       'Publicar cada video vertical aprobado en Instagram como Reel público, sin revisión en la red (requiere la cuenta conectada con permiso de publicación)',
     público: 'público',
     'ID da configuração do Facebook Login for Business': 'ID de configuración de Facebook Login for Business',
-    'Obrigatório no Instagram: o envio do arquivo só funciona com Facebook Login for Business.':
-      'Obligatorio en Instagram: la subida del archivo solo funciona con Facebook Login for Business.',
+    'Opcional. Sem ele, a Meta mostra a lista de Páginas e contas do Instagram para você marcar no login; use-o só se a sua configuração do Facebook Login for Business oferecer essa escolha.':
+      'Opcional. Sin él, Meta muestra la lista de Páginas y cuentas de Instagram para marcar al iniciar sesión; úsalo solo si tu configuración de Facebook Login for Business ofrece esa opción.',
     'Opcional no Facebook; use a mesma configuração do Instagram se tiver uma.':
       'Opcional en Facebook; usa la misma configuración de Instagram si tienes una.',
     'Publicação pública direta': 'Publicación pública directa',

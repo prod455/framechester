@@ -156,7 +156,6 @@ export function connectionsPage(): HTMLElement {
     const configId = input('configId');
     configId.autocomplete = 'off';
     configId.pattern = '^\\d{1,32}$';
-    configId.required = platform === 'instagram';
     const result = el('div');
     const { form, fields } = formWithSave(t('Preparar autorização OAuth'), async () => {
       const secretValue = secret.value;
@@ -212,7 +211,7 @@ export function connectionsPage(): HTMLElement {
               configId,
               platform === 'instagram'
                 ? t(
-                    'Obrigatório no Instagram: o envio do arquivo só funciona com Facebook Login for Business.',
+                    'Opcional. Sem ele, a Meta mostra a lista de Páginas e contas do Instagram para você marcar no login; use-o só se a sua configuração do Facebook Login for Business oferecer essa escolha.',
                   )
                 : t('Opcional no Facebook; use a mesma configuração do Instagram se tiver uma.'),
             ),

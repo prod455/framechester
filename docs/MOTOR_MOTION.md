@@ -51,10 +51,15 @@ no QA.
 
 ## Trade-offs registrados
 
-- **Timing por palavra é estimado.** A duração de cada frase é real (um WAV por frase e
-  silêncios medidos), mas dentro da frase as palavras são distribuídas por peso. Para
-  legendas e cues isso fica dentro de ~150 ms em frases curtas; para precisão de
-  alinhador forçado, preencha `segments[].words` com `aligned = true`.
+- **Timing por palavra ancorado no áudio.** A duração de cada frase é real (um WAV por
+  frase e silêncios medidos). Dentro da frase, o motor mede as pausas do próprio áudio
+  (silêncios de 80 ms ou mais), ancora cada vírgula, ponto e vírgula, dois-pontos ou
+  travessão na pausa mais próxima de onde a contagem de sílabas a espera e distribui as
+  palavras por sílabas só no tempo com voz: nenhuma palavra cai num silêncio e o erro
+  não se acumula depois de cada pausa. A boca do personagem abre uma vez por sílaba de
+  cada palavra e descansa nas pausas, com o mesmo timing das legendas. Continua sendo
+  estimativa (`aligned = false`); para precisão de alinhador forçado, preencha
+  `segments[].words` com `aligned = true`.
 - **SVG por frame.** Simples e sem estado; custa shaping de texto a cada quadro. Em
   release, 1800 quadros 1080×1920 levam ~35 s em 4 núcleos; em `debug` é 5–8× mais
   lento — rode `cargo run --release` para produção.
@@ -76,7 +81,8 @@ no QA.
 
 ## Limitações conhecidas
 
-- Sem alinhador forçado, sem ASR no caminho motion (o `--asr` do pipeline legado
+- Sem alinhador forçado fonético (o timing por palavra vem das pausas medidas e das
+  sílabas), sem ASR no caminho motion (o `--asr` do pipeline legado
   continua disponível).
 - Sem imagens ou vídeos externos nas composições: o motor é vetorial e original por
   decisão; `resources[]` registra necessidades externas e o QA bloqueia se faltarem.

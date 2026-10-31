@@ -8,6 +8,10 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+/// Shortest silence inside a segment that counts as a pause, in 10 ms windows. Kokoro
+/// pauses 50-400 ms at commas; consonant closures stay under about 60 ms.
+const MIN_PAUSE_WINDOWS: usize = 8;
+
 /// Mono 16-bit PCM audio in memory.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Pcm {
@@ -65,18 +69,36 @@ impl Pcm {
         let first = chunks.iter().position(|value| *value > limit);
         let last = chunks.iter().rposition(|value| *value > limit);
         let duration = self.duration_secs();
+        let secs = |chunk: usize| chunk as f32 * window as f32 / self.sample_rate as f32;
         match (first, last) {
-            (Some(first), Some(last)) => SegmentAudio {
-                duration_secs: duration,
-                leading_silence_secs: first as f32 * window as f32 / self.sample_rate as f32,
-                trailing_silence_secs: ((chunks.len() - 1 - last) as f32 * window as f32
-                    / self.sample_rate as f32)
-                    .max(0.0),
-            },
+            (Some(first), Some(last)) => {
+                // Internal pauses: at least 80 ms below the threshold between voiced parts.
+                let mut pauses = Vec::new();
+                let mut quiet_from: Option<usize> = None;
+                for (index, value) in chunks.iter().enumerate().take(last + 1).skip(first) {
+                    match (*value <= limit, quiet_from) {
+                        (true, None) => quiet_from = Some(index),
+                        (false, Some(from)) => {
+                            if index - from >= MIN_PAUSE_WINDOWS {
+                                pauses.push((secs(from), secs(index)));
+                            }
+                            quiet_from = None;
+                        }
+                        _ => {}
+                    }
+                }
+                SegmentAudio {
+                    duration_secs: duration,
+                    leading_silence_secs: secs(first),
+                    trailing_silence_secs: secs(chunks.len() - 1 - last).max(0.0),
+                    pauses,
+                }
+            }
             _ => SegmentAudio {
                 duration_secs: duration,
                 leading_silence_secs: 0.0,
                 trailing_silence_secs: 0.0,
+                pauses: Vec::new(),
             },
         }
     }
@@ -386,6 +408,29 @@ mod tests {
             "{measured:?}"
         );
         assert!((measured.duration_secs - 1.5).abs() < 1e-3);
+    }
+
+    #[test]
+    fn internal_pauses_are_measured_and_short_dips_are_not() {
+        let tone = |seconds: f32| Pcm {
+            sample_rate: 24_000,
+            samples: (0..(24_000.0 * seconds) as usize)
+                .map(|index| ((index as f32 * 0.1).sin() * 12_000.0) as i16)
+                .collect(),
+        };
+        let mut pcm = Pcm::silence(24_000, 0.1);
+        pcm.append(&tone(0.5)).unwrap();
+        pcm.append(&Pcm::silence(24_000, 0.25)).unwrap(); // comma pause
+        pcm.append(&tone(0.5)).unwrap();
+        pcm.append(&Pcm::silence(24_000, 0.05)).unwrap(); // between syllables
+        pcm.append(&tone(0.5)).unwrap();
+        let measured = pcm.measure(0.01);
+        assert_eq!(measured.pauses.len(), 1, "{measured:?}");
+        let (start, end) = measured.pauses[0];
+        assert!(
+            (start - 0.6).abs() < 0.02 && (end - 0.85).abs() < 0.02,
+            "{measured:?}"
+        );
     }
 
     #[test]

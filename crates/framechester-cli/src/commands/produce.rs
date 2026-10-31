@@ -406,7 +406,7 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
         _ => (None, None),
     };
     warnings.push(format!(
-        "motor motion: {} segmentos narrados, {} do cache; timing por palavra estimado dentro de cada segmento",
+        "motor motion: {} segmentos narrados, {} do cache; timing por palavra ancorado nas pausas medidas e distribuido por silabas",
         narration.segments_synthesized, narration.segments_cached
     ));
     let stage = if technical.overall() == QaStatus::Fail {

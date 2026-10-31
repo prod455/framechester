@@ -13,6 +13,8 @@ pub const BODY: &str = "character";
 pub const EYES: &str = "character:eyes";
 pub const MOUTH: &str = "character:mouth";
 pub const ARM: &str = "character:arm";
+pub const BROWS: &str = "character:brows";
+pub const PROP: &str = "character:prop";
 pub const SPEECH: &str = "speech";
 
 const UNIT_W: f32 = 110.0;
@@ -201,6 +203,10 @@ fn figure_nodes(figure: &Figure, character: Character, pose: Pose) -> Vec<Node> 
         let (hx, hy) = points[points.len() - 1];
         nodes.push(figure.dot(object, hx, hy, 6.0, skin).with_z(1));
     }
+    // Something in the resting hand; celebrating raises both hands, so nothing is held.
+    if pose != Pose::Celebrate {
+        nodes.extend(prop(figure, character));
+    }
     // Head.
     if robot {
         nodes.push(figure.stroke(BODY, &[(55.0, 26.0), (55.0, 14.0)], 2.5, tokens::MUTED));
@@ -258,12 +264,132 @@ fn figure_nodes(figure: &Figure, character: Character, pose: Pose) -> Vec<Node> 
     for x in [44.5, 62.5] {
         nodes.push(figure.block(EYES, (x, 44.0, 4.0, 7.0), 2.0, eye).with_z(3));
     }
-    nodes.push(
-        figure
-            .block(MOUTH, (50.0, 60.0, 10.0, 3.0), 1.5, mouth)
-            .with_z(3),
-    );
+    let brow = match character {
+        Character::Robot => tokens::SECONDARY,
+        Character::Scientist => tokens::MUTED,
+        _ => HAIR,
+    };
+    for points in brows(pose) {
+        nodes.push(figure.stroke(BROWS, &points, 2.4, brow).with_z(3));
+    }
+    nodes.push(mouth_node(figure, pose, mouth));
     nodes
+}
+
+/// Brows carry the expression: friendly arches to explain, level and firm to point, one
+/// raised to think, both high to celebrate.
+fn brows(pose: Pose) -> [Vec<(f32, f32)>; 2] {
+    match pose {
+        Pose::Explain => [
+            vec![(43.0, 40.0), (46.5, 37.5), (50.0, 39.5)],
+            vec![(61.0, 39.5), (64.5, 37.5), (68.0, 40.0)],
+        ],
+        Pose::Point => [
+            vec![(43.0, 38.5), (50.0, 40.0)],
+            vec![(61.0, 40.0), (68.0, 38.5)],
+        ],
+        Pose::Think => [
+            vec![(43.0, 40.0), (50.0, 40.0)],
+            vec![(61.0, 37.0), (64.5, 34.0), (68.0, 36.5)],
+        ],
+        Pose::Celebrate => [
+            vec![(43.0, 37.0), (46.5, 33.5), (50.0, 36.0)],
+            vec![(61.0, 36.0), (64.5, 33.5), (68.0, 37.0)],
+        ],
+    }
+}
+
+/// The mouth at rest: a smile to explain or celebrate, level to point, pushed to one side
+/// to think. Talking scales it vertically from its top edge.
+fn mouth_node(figure: &Figure, pose: Pose, colour: &str) -> Node {
+    let node = match pose {
+        Pose::Explain | Pose::Celebrate => {
+            let (x0, y0) = figure.p(49.0, 59.0);
+            let (x1, _) = figure.p(61.0, 59.0);
+            let (cx, cy) = figure.p(55.0, 66.0);
+            Node::new(
+                MOUTH,
+                Shape::Path {
+                    d: format!("M{x0:.1} {y0:.1} Q{cx:.1} {cy:.1} {x1:.1} {y0:.1} Z"),
+                    stroke: colour.into(),
+                    width: 1.0 * figure.k,
+                    length: 0.0,
+                    fill: Some(colour.into()),
+                    dashed: false,
+                },
+            )
+            .with_origin(figure.p(55.0, 59.0))
+            .decorative()
+        }
+        Pose::Point => figure.block(MOUTH, (50.0, 60.0, 10.0, 3.0), 1.5, colour),
+        Pose::Think => figure.block(MOUTH, (53.0, 60.0, 8.0, 3.0), 1.5, colour),
+    };
+    node.with_z(3)
+}
+
+/// Objects held in the resting hand (at 26, 138 in the unit box).
+fn prop(figure: &Figure, character: Character) -> Vec<Node> {
+    match character {
+        // A closed laptop carried under the arm, with a lit logo.
+        Character::Developer => vec![
+            figure
+                .block(PROP, (12.0, 108.0, 9.0, 38.0), 2.5, tokens::SURFACE_STRONG)
+                .with_z(2),
+            figure
+                .dot(PROP, 16.5, 127.0, 2.2, tokens::SECONDARY)
+                .with_z(2),
+        ],
+        // An erlenmeyer flask with coloured liquid.
+        Character::Scientist => {
+            let (d, length) = figure.polyline(&[
+                (23.0, 116.0),
+                (23.0, 124.0),
+                (16.0, 140.0),
+                (36.0, 140.0),
+                (29.0, 124.0),
+                (29.0, 116.0),
+            ]);
+            let (liquid, _) =
+                figure.polyline(&[(19.5, 132.0), (16.0, 140.0), (36.0, 140.0), (32.5, 132.0)]);
+            vec![
+                Node::new(
+                    PROP,
+                    Shape::Path {
+                        d: format!("{liquid} Z"),
+                        stroke: tokens::SECONDARY.into(),
+                        width: 0.5 * figure.k,
+                        length: 0.0,
+                        fill: Some(tokens::SECONDARY.into()),
+                        dashed: false,
+                    },
+                )
+                .decorative()
+                .with_z(2),
+                Node::new(
+                    PROP,
+                    Shape::Path {
+                        d,
+                        stroke: tokens::INK_SOFT.into(),
+                        width: 2.0 * figure.k,
+                        length,
+                        fill: None,
+                        dashed: false,
+                    },
+                )
+                .decorative()
+                .with_z(2),
+            ]
+        }
+        // A handheld microphone.
+        Character::Presenter => vec![
+            figure
+                .block(PROP, (23.5, 128.0, 5.0, 16.0), 2.0, tokens::SURFACE_STRONG)
+                .with_z(2),
+            figure.dot(PROP, 26.0, 126.0, 5.0, tokens::MUTED).with_z(2),
+        ],
+        // The robot keeps its chest screen as the focal point.
+        Character::Robot => Vec::new(),
+    }
 }
 
 /// The figure alone, scaled to fit `area` and standing on its bottom edge.
@@ -385,6 +511,17 @@ pub fn animate(nodes: &mut [Node], scene: &StoryboardScene, motion_scale: f32, h
     for node in nodes.iter_mut().filter(|node| node.object == MOUTH) {
         talk(&mut node.props.sy, scene);
     }
+    // The brows lift briefly as each sentence starts, as people do when they begin a point.
+    for node in nodes.iter_mut().filter(|node| node.object == BROWS) {
+        for segment in &scene.segments {
+            let at = segment.start_secs.max(0.0);
+            node.props.dy.key(at, 0.0, Easing::Linear);
+            node.props
+                .dy
+                .key(at + 0.15, -4.0 * motion_scale, Easing::EaseOut);
+            node.props.dy.key(at + 0.45, 0.0, Easing::EaseInOut);
+        }
+    }
     for node in nodes.iter_mut().filter(|node| node.object == ARM) {
         let mut t = 0.6;
         let mut up = true;
@@ -440,5 +577,66 @@ fn talk(track: &mut Track, scene: &StoryboardScene) {
         if next - word.end_secs > 0.16 {
             track.key(word.end_secs + 0.1, 1.0, Easing::EaseOut);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn paths_of(nodes: &[Node], object: &str) -> Vec<String> {
+        nodes
+            .iter()
+            .filter(|node| node.object == object)
+            .map(|node| match &node.shape {
+                Shape::Path { d, .. } => d.clone(),
+                Shape::Rect { rect, .. } => format!("rect {:.1} {:.1}", rect.x, rect.w),
+                Shape::Circle { cx, cy, .. } => format!("dot {cx:.1} {cy:.1}"),
+                Shape::Text { .. } => String::new(),
+            })
+            .collect()
+    }
+
+    #[test]
+    fn each_pose_has_its_own_brows_and_mouth() {
+        let area = Rect::new(0.0, 0.0, 220.0, 320.0);
+        let faces: Vec<(Vec<String>, Vec<String>)> =
+            [Pose::Explain, Pose::Point, Pose::Think, Pose::Celebrate]
+                .into_iter()
+                .map(|pose| {
+                    let nodes = figure(area, Character::Presenter, pose);
+                    (paths_of(&nodes, BROWS), paths_of(&nodes, MOUTH))
+                })
+                .collect();
+        for (index, face) in faces.iter().enumerate() {
+            assert_eq!(face.0.len(), 2, "two brows");
+            for other in &faces[index + 1..] {
+                assert_ne!(face, other, "two poses share the same expression");
+            }
+        }
+    }
+
+    #[test]
+    fn props_fit_the_character_and_are_dropped_when_both_hands_are_up() {
+        let area = Rect::new(0.0, 0.0, 220.0, 320.0);
+        let props = |character, pose| paths_of(&figure(area, character, pose), PROP).len();
+        assert!(props(Character::Developer, Pose::Explain) > 0, "laptop");
+        assert!(props(Character::Scientist, Pose::Think) > 0, "flask");
+        assert!(props(Character::Presenter, Pose::Point) > 0, "microphone");
+        assert_eq!(props(Character::Robot, Pose::Explain), 0);
+        assert_eq!(props(Character::Developer, Pose::Celebrate), 0);
+    }
+
+    #[test]
+    fn the_smile_opens_from_its_top_edge_while_talking() {
+        let area = Rect::new(0.0, 0.0, 220.0, 320.0);
+        let figure_box = Figure::fit(area, false);
+        let nodes = figure(area, Character::Presenter, Pose::Explain);
+        let mouth = nodes.iter().find(|node| node.object == MOUTH).unwrap();
+        let (_, top) = figure_box.p(55.0, 59.0);
+        assert!(
+            (mouth.origin.1 - top).abs() < 0.01,
+            "scales around the lips, not the canvas origin"
+        );
     }
 }

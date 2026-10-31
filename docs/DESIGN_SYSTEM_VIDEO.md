@@ -111,12 +111,19 @@ de tela e antena `ACCENT`). Mesma pele neutra para os humanos; nenhuma é retrat
 real. No vertical o balão ocupa o terço de cima e o personagem fica abaixo; no horizontal
 e no X o personagem ocupa a coluna esquerda e o balão aponta para a cabeça.
 
+**Expressões.** A pose define o rosto: explicar tem sobrancelhas em arco e sorriso;
+apontar, sobrancelhas niveladas e boca reta; pensar, uma sobrancelha erguida e a boca de
+lado; comemorar, as duas no alto e sorriso aberto. **Objetos na mão livre:** notebook (dev),
+frasco com líquido `SECONDARY` (cientista), microfone (apresentador); o robô não segura
+nada e comemorar levanta as duas mãos, então não há objeto.
+
 | Vida | Ritmo |
 |---|---|
 | entrada | sobe 40 px com fade em 0,5 s |
 | boca | abre e fecha a cada 0,14 s, só enquanto um segmento da narração toca |
 | olhos | piscam a cada 3,1 s |
 | braço do gesto | balança 6 px a cada 0,7 s |
+| sobrancelhas | sobem 4 px no começo de cada frase |
 
 ## Thumbnail
 

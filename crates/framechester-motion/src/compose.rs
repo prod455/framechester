@@ -1022,6 +1022,16 @@ mod tests {
             eye.props.sy.eval(1.4 + 0.08) < 0.2,
             "the eyes close in a blink"
         );
+        let brow = composed
+            .graph
+            .nodes
+            .iter()
+            .find(|node| node.object == components::character::BROWS)
+            .unwrap();
+        assert!(
+            brow.props.dy.eval(segment.start_secs + 0.15) < -1.0,
+            "the brows lift as a sentence starts"
+        );
         assert!(
             composed.issues.is_empty(),
             "speech card text fits and stays in the safe area: {:?}",

@@ -248,9 +248,12 @@ anotados no relatório, sem pedir revisão.
 
 A versão final de um roteiro revisado e com fonte termina como **Concluído**,
 com arquivo e conteúdo aprovados. Se o motor bloquear, o card diz o motivo.
-O canal pode enviar a versão final aprovada ao YouTube como vídeo privado,
-automaticamente ou pelo botão do card (ver [redes sociais](REDES_SOCIAIS_WEB.md#youtube-envio-privado));
-publicar continua decisão do operador, no YouTube Studio. A preparação manual
+O canal pode enviar a versão final aprovada sem publicar: ao YouTube como
+privado, ao TikTok como "Somente eu" e ao Facebook como rascunho de Reel (só
+vídeo vertical), automaticamente (opt-in por rede no cadastro do canal) ou pelos
+botões do card (ver [redes sociais](REDES_SOCIAIS_WEB.md#envio-sem-publicar)).
+Cada descrição cita os perfis das outras redes conectadas. Publicar continua
+decisão do operador, em cada rede. A preparação manual
 (**Produzir com IA → Controles avançados → Abrir preparação manual**)
 continua disponível para trocar visuais ou usar gravações próprias.
 

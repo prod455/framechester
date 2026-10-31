@@ -12,8 +12,8 @@ export interface Channel extends Timestamped {
   audience: string;
   language: string;
   youtubeChannelId?: string;
-  /** Opt-in: send each approved final version to YouTube as a private video. */
-  youtubeAutoUpload?: boolean;
+  /** Opt-in per network: send each approved final version there without making it public. */
+  autoUpload?: Platform[];
 }
 export interface Source {
   title: string;
@@ -94,7 +94,11 @@ export interface NetworkCapability {
   connectionMethod: 'oauth' | 'token';
   metricsAvailable: boolean;
   revenueAvailable: boolean;
+  /** The API takes the video without making it public (private, SELF_ONLY or draft). */
   publishingAvailable: boolean;
+  /** What the operator types to say which account is expected, checked after authorization. */
+  accountLabel: string;
+  accountPattern: string;
   requirements: string[];
   revenueNote: string;
   docsUrl: string;
@@ -109,6 +113,12 @@ export interface SocialConnection {
   expiresAt: string | null;
   scopes: string[];
   message?: string;
+  /** Public profile, cited in the descriptions posted to the channel's other networks. */
+  profileUrl?: string;
+}
+export interface ProfileLink {
+  platform: Platform;
+  url: string;
 }
 export interface SocialSnapshot {
   id: string;
@@ -180,15 +190,15 @@ export interface WebJob {
   previewOnly?: boolean;
   automated?: boolean;
   engine?: VideoEngine;
-  youtube?: YoutubePublication;
+  publications?: Partial<Record<Platform, Publication>>;
   /** A Short cut from another job's approved final version. */
   kind?: 'short';
   sourceJobId?: string;
 }
-/** Uploads are always private; publishing stays a decision made in YouTube Studio. */
-export type YoutubePublication =
+/** Uploads never go public: publishing stays a decision the operator makes on each network. */
+export type Publication =
   | { status: 'uploading'; startedAt: string }
-  | { status: 'uploaded'; videoId: string; uploadedAt: string; thumbnail?: YoutubeThumbnail }
+  | { status: 'uploaded'; postId: string; uploadedAt: string; thumbnail?: YoutubeThumbnail }
   | { status: 'failed'; message: string; failedAt: string };
 export interface AppState {
   schemaVersion: 1;
@@ -237,8 +247,9 @@ export interface TokenConnectionInput {
   expiresAt?: string;
   scopes?: string[];
 }
-export interface YoutubeOAuthInput {
+export interface OAuthInput {
   channelId: string;
+  platform: Platform;
   accountId: string;
   clientId: string;
   clientSecret: string;
@@ -264,22 +275,27 @@ export interface SocialApi {
   capabilities(): NetworkCapability[];
   listConnections(channelId: string): Promise<SocialConnection[]>;
   connectToken(input: TokenConnectionInput): Promise<SocialConnection>;
-  startYoutubeOAuth(input: YoutubeOAuthInput): Promise<{ authorizationUrl: string; expiresAt: string }>;
-  callbackYoutubeOAuth(input: { state: string; code: string }): Promise<SocialConnection>;
+  startOAuth(input: OAuthInput): Promise<{ authorizationUrl: string; expiresAt: string }>;
+  callbackOAuth(platform: Platform, input: { state: string; code: string }): Promise<SocialConnection>;
   sync(channelId: string, platform: Platform): Promise<SocialSnapshot>;
   disconnect(channelId: string, platform: Platform): Promise<void>;
   discoverYoutube?(channelId: string, query: string): Promise<YoutubeDiscovery>;
-  uploadYoutube?(
-    channelId: string,
-    video: YoutubeUpload,
-  ): Promise<{ videoId: string; thumbnail?: YoutubeThumbnail }>;
+  publish?(channelId: string, platform: Platform, video: VideoUpload): Promise<PublishResult>;
+  /** Profiles of the connected networks; read from the vault, no network call. */
+  profiles?(channelId: string): Promise<ProfileLink[]>;
 }
-export interface YoutubeUpload {
+export interface VideoUpload {
   path: string;
   title: string;
   description: string;
-  /** PNG drawn by the motion engine; absent on the still-image path. */
+  vertical: boolean;
+  /** PNG drawn by the motion engine, YouTube only; absent on the still-image path. */
   thumbnail?: string;
+}
+/** postId: YouTube video id, TikTok publish_id or Facebook video id. */
+export interface PublishResult {
+  postId: string;
+  thumbnail?: YoutubeThumbnail;
 }
 /** `set` when YouTube accepted the thumbnail; an error keeps the video uploaded. */
 export type YoutubeThumbnail = 'set' | { error: string };
@@ -297,6 +313,6 @@ export interface RunnerApi {
     file: string,
   ): Promise<{ path: string; contentType: string } | undefined>;
   engineStatus(): { available: boolean; message: string };
-  publish?(channelId: string, jobId: string): Promise<WebJob>;
+  publish?(channelId: string, jobId: string, platform: Platform): Promise<WebJob>;
   startShort?(channelId: string, sourceJobId: string): Promise<WebJob>;
 }

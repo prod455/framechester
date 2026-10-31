@@ -106,7 +106,10 @@ export function schedulePoll(): void {
   if (studio.pollTimer) clearTimeout(studio.pollTimer);
   if (
     studio.data?.jobs.some(
-      (job) => job.status === 'queued' || job.status === 'running' || job.youtube?.status === 'uploading',
+      (job) =>
+        job.status === 'queued' ||
+        job.status === 'running' ||
+        Object.values(job.publications ?? {}).some((item) => item.status === 'uploading'),
     )
   ) {
     studio.pollTimer = setTimeout(() => {

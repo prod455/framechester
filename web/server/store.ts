@@ -15,6 +15,7 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { HttpError, writePrivateJson } from './auth.ts';
+import { publishingPlatforms } from '../shared/publishing.ts';
 
 export type Collection = 'research' | 'scripts' | 'stories' | 'receipts';
 type Resource = Research | Script | Story | RevenueEntry;
@@ -225,6 +226,7 @@ function normalizeChannel(value: unknown, previous?: Channel): Channel {
     'language',
     'youtubeChannelId',
     'youtubeAutoUpload',
+    'autoUpload',
     'createdAt',
     'updatedAt',
   ]);
@@ -237,8 +239,18 @@ function normalizeChannel(value: unknown, previous?: Channel): Channel {
     item.youtubeChannelId === undefined || item.youtubeChannelId === ''
       ? undefined
       : validId(item.youtubeChannelId);
+  // youtubeAutoUpload is the opt-in saved before every network could receive uploads.
   if (item.youtubeAutoUpload !== undefined && typeof item.youtubeAutoUpload !== 'boolean')
     throw new HttpError(400, 'O envio automático ao YouTube deve ser verdadeiro ou falso.');
+  if (item.autoUpload !== undefined && (!Array.isArray(item.autoUpload) || item.autoUpload.length > 4))
+    throw new HttpError(400, 'Envio automático inválido.');
+  const requested = [
+    ...((item.autoUpload as unknown[] | undefined) ?? []).map(platform),
+    ...(item.youtubeAutoUpload === true && item.autoUpload === undefined ? (['youtube'] as const) : []),
+  ];
+  if (requested.some((network) => !publishingPlatforms.includes(network)))
+    throw new HttpError(400, 'Esta rede não recebe envio automático.');
+  const autoUpload = publishingPlatforms.filter((network) => requested.includes(network));
   const now = new Date().toISOString();
   return {
     id,
@@ -248,7 +260,7 @@ function normalizeChannel(value: unknown, previous?: Channel): Channel {
     audience: text(item.audience, 'audience', 3000),
     language,
     ...(youtubeChannelId ? { youtubeChannelId } : {}),
-    ...(item.youtubeAutoUpload === true ? { youtubeAutoUpload: true } : {}),
+    ...(autoUpload.length ? { autoUpload } : {}),
     createdAt: previous?.createdAt ?? now,
     updatedAt: now,
   };

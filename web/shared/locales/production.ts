@@ -213,6 +213,21 @@ export default {
     'há {minutes} min': '{minutes} min ago',
     'Começar outro vídeo': 'Start another video',
     'Conectar YouTube': 'Connect YouTube',
+    'Versões finais aprovadas seguem sem publicar para: {networks}.':
+      'Approved final versions go out unpublished to: {networks}.',
+    'O envio automático às redes está desligado neste canal.':
+      'Automatic upload to the networks is off for this channel.',
+    'Revisar e publicar no Meta Business Suite': 'Review and publish in Meta Business Suite',
+    'Enviado ao TikTok como "Somente eu" em {date}. Revise e publique pelo app do TikTok.':
+      'Uploaded to TikTok as "Only me" on {date}. Review and publish in the TikTok app.',
+    'Enviado ao Facebook como rascunho de Reel em {date}.': 'Uploaded to Facebook as a Reel draft on {date}.',
+    'Enviando ao {network} sem publicar…': 'Uploading to {network} without publishing…',
+    'Envio ao {network} falhou: {message}': 'Upload to {network} failed: {message}',
+    'Enviar ao TikTok (Somente eu)': 'Send to TikTok (Only me)',
+    'Enviar ao Facebook (rascunho)': 'Send to Facebook (draft)',
+    'Tentar enviar ao {network} de novo': 'Try sending to {network} again',
+    'Envio iniciado. Nada fica público: publique pelo próprio {network}.':
+      'Upload started. Nothing goes public: publish on {network} itself.',
   },
   es: {
     // Videos page and job cards
@@ -426,5 +441,21 @@ export default {
     'há {minutes} min': 'hace {minutes} min',
     'Começar outro vídeo': 'Empezar otro video',
     'Conectar YouTube': 'Conectar YouTube',
+    'Versões finais aprovadas seguem sem publicar para: {networks}.':
+      'Las versiones finales aprobadas se envían sin publicar a: {networks}.',
+    'O envio automático às redes está desligado neste canal.':
+      'La subida automática a las redes está desactivada en este canal.',
+    'Revisar e publicar no Meta Business Suite': 'Revisar y publicar en Meta Business Suite',
+    'Enviado ao TikTok como "Somente eu" em {date}. Revise e publique pelo app do TikTok.':
+      'Subido a TikTok como "Solo yo" el {date}. Revisa y publica en la app de TikTok.',
+    'Enviado ao Facebook como rascunho de Reel em {date}.':
+      'Subido a Facebook como borrador de Reel el {date}.',
+    'Enviando ao {network} sem publicar…': 'Subiendo a {network} sin publicar…',
+    'Envio ao {network} falhou: {message}': 'La subida a {network} falló: {message}',
+    'Enviar ao TikTok (Somente eu)': 'Enviar a TikTok (Solo yo)',
+    'Enviar ao Facebook (rascunho)': 'Enviar a Facebook (borrador)',
+    'Tentar enviar ao {network} de novo': 'Intentar enviar a {network} de nuevo',
+    'Envio iniciado. Nada fica público: publique pelo próprio {network}.':
+      'Subida iniciada. Nada queda público: publica en el propio {network}.',
   },
 } satisfies AreaCatalog;

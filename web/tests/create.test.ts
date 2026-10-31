@@ -104,20 +104,20 @@ test('the four steps follow the latest video from topic to YouTube', () => {
   ]);
   assert.deepEqual(states([job()]), ['done', 'done', 'done', 'current']);
   assert.deepEqual(
-    states([job({ youtube: { status: 'uploaded', videoId: 'abcdefghijk', uploadedAt: date } })]),
+    states([
+      job({ publications: { youtube: { status: 'uploaded', postId: 'abcdefghijk', uploadedAt: date } } }),
+    ]),
     ['done', 'done', 'done', 'done'],
   );
-  assert.deepEqual(states([job({ youtube: { status: 'failed', message: 'Reconecte', failedAt: date } })]), [
-    'done',
-    'done',
-    'done',
-    'stopped',
-  ]);
+  assert.deepEqual(
+    states([job({ publications: { youtube: { status: 'failed', message: 'Reconecte', failedAt: date } } })]),
+    ['done', 'done', 'done', 'stopped'],
+  );
   // The newest job wins: a new preview after an uploaded video starts the review again.
   const older = job({
     id: 'old',
     createdAt: '2026-10-30T00:00:00Z',
-    youtube: { status: 'uploaded', videoId: 'abcdefghijk', uploadedAt: date },
+    publications: { youtube: { status: 'uploaded', postId: 'abcdefghijk', uploadedAt: date } },
   });
   assert.deepEqual(states([older, job({ status: 'needs_review', previewOnly: true })]), [
     'done',
@@ -154,7 +154,10 @@ test('each step offers only the next action', () => {
   assert.equal(calls.at(-1), 'retry:script-one');
   assert.match(stopped.textContent!, /1 de 4 passos/);
   const sent = renderCreate(
-    state([job({ youtube: { status: 'uploaded', videoId: 'abcdefghijk', uploadedAt: date } })], true),
+    state(
+      [job({ publications: { youtube: { status: 'uploaded', postId: 'abcdefghijk', uploadedAt: date } } })],
+      true,
+    ),
     'tech',
     actions,
   );

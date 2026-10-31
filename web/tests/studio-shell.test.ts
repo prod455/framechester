@@ -133,6 +133,8 @@ function bootstrap(): Bootstrap {
         metricsAvailable: true,
         revenueAvailable: false,
         publishingAvailable: false,
+        accountLabel: 'ID do canal no YouTube',
+        accountPattern: '^UC[A-Za-z0-9_-]{22}$',
         requirements: ['Conta autorizada'],
         revenueNote: 'Sem receita nesta API',
         docsUrl: 'https://developers.google.com/youtube',

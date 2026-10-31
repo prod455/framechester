@@ -1,7 +1,7 @@
 // HTTP entry point: security headers, origin checks, the public routes (health, auth,
 // OAuth return, static files) and the dispatch of authenticated API routes.
 import type { RequestListener, IncomingMessage, ServerResponse } from 'node:http';
-import type { SocialApi, RunnerApi } from '../shared/types.ts';
+import type { Platform, SocialApi, RunnerApi } from '../shared/types.ts';
 import { LocalStore, defaultHome } from './store.ts';
 import { LocalAuth, HttpError } from './auth.ts';
 import { SocialError } from './social.ts';
@@ -100,8 +100,9 @@ export async function createApp(
     const { decoded, path } = requestPath(request);
     const url = new URL(request.url ?? '/', 'http://127.0.0.1');
     const method = (request.method ?? 'GET') as Method;
-    const oauthReturn = path === '/api/oauth/youtube/callback' && method === 'GET';
-    // Redirects from Google can retain cross-site metadata through the 303.
+    const oauthReturn =
+      method === 'GET' ? /^\/api\/oauth\/(youtube|tiktok|instagram|facebook)\/callback$/.exec(path) : null;
+    // Redirects from the provider can retain cross-site metadata through the 303.
     // Only the public shell may be loaded as a top-level document; APIs stay guarded.
     const studioEntry =
       path === '/' &&
@@ -143,7 +144,7 @@ export async function createApp(
       return;
     }
     if (oauthReturn) {
-      await dependencies.social().callbackYoutubeOAuth({
+      await dependencies.social().callbackOAuth(oauthReturn[1] as Platform, {
         state: string(url.searchParams.get('state'), 'state', 300),
         code: string(url.searchParams.get('code'), 'code', 5000),
       });

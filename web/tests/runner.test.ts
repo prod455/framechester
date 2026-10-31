@@ -927,7 +927,7 @@ test('a job with no QA pending is completed, and the operator declaration covers
     const done = (await runner.list('tech')).find((item) => item.id === job.id)!;
     assert.equal(done.status, 'completed', done.message);
     assert.match(done.message, /aprovado/);
-    assert.equal(done.youtube, undefined, 'Without the channel opt-in nothing leaves the machine');
+    assert.equal(done.publications, undefined, 'Without the channel opt-in nothing leaves the machine');
     input.scripts[0].claims[0].status = 'contradicted';
     await assert.rejects(
       runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } }),
@@ -1010,7 +1010,7 @@ test('a blocked job names what the engine refused instead of a generic message',
 test('an opted-in channel sends each approved final version once, privately, and never a preview', async () => {
   const home = await mkdtemp(join(tmpdir(), 'framechester-web-youtube-'));
   const input = state();
-  input.channels[0].youtubeAutoUpload = true;
+  input.channels[0].autoUpload = ['youtube'];
   const uploads: Array<{
     channelId: string;
     title: string;
@@ -1042,7 +1042,7 @@ test('an opted-in channel sends each approved final version once, privately, and
       );
       return { exitCode: preview ? 2 : 0, stdout: '', stderr: '' };
     },
-    publish: async (channelId, video) => {
+    publish: async (channelId, _network, video) => {
       if (fail) throw new Error('Reconecte o YouTube em Contas conectadas para autorizar o envio de vídeos.');
       await gate;
       uploads.push({
@@ -1052,7 +1052,7 @@ test('an opted-in channel sends each approved final version once, privately, and
         video: await readFile(video.path, 'utf8'),
         thumbnail: await readFile(video.thumbnail!, 'utf8'),
       });
-      return { videoId: 'abcdefghijk', thumbnail: 'set' };
+      return { postId: 'abcdefghijk', thumbnail: 'set' };
     },
   });
   try {
@@ -1071,13 +1071,13 @@ test('an opted-in channel sends each approved final version once, privately, and
     });
     await runner.idle();
     assert.equal(uploads.length, 0, 'A preview never leaves the machine');
-    await assert.rejects(runner.publish('tech', preview.id), /versão final aprovada/);
+    await assert.rejects(runner.publish('tech', preview.id, 'youtube'), /versão final aprovada/);
 
     const job = await runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } });
     await runner.idle();
     const done = (await runner.list('tech')).find((item) => item.id === job.id)!;
     assert.equal(done.status, 'completed', done.message);
-    assert.equal(done.youtube?.status, 'uploaded');
+    assert.equal(done.publications?.youtube?.status, 'uploaded');
     assert.deepEqual(uploads, [
       {
         channelId: 'tech',
@@ -1087,26 +1087,28 @@ test('an opted-in channel sends each approved final version once, privately, and
         thumbnail: 'synthetic thumbnail',
       },
     ]);
-    assert.equal(done.youtube?.status === 'uploaded' && done.youtube.thumbnail, 'set');
-    await assert.rejects(runner.publish('tech', job.id), /já foi enviado/);
+    const sent = done.publications?.youtube;
+    assert.equal(sent?.status === 'uploaded' && sent.thumbnail, 'set');
+    await assert.rejects(runner.publish('tech', job.id, 'youtube'), /já foi enviado/);
 
     fail = true;
     const second = await runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } });
     await runner.idle();
     const failed = (await runner.list('tech')).find((item) => item.id === second.id)!;
     assert.equal(failed.status, 'completed', 'A failed upload does not undo an approved video');
-    assert.equal(failed.youtube?.status, 'failed');
-    assert.match(failed.youtube?.status === 'failed' ? failed.youtube.message : '', /Reconecte/);
+    const refused = failed.publications?.youtube;
+    assert.equal(refused?.status, 'failed');
+    assert.match(refused?.status === 'failed' ? refused.message : '', /Reconecte/);
     fail = false;
     let release = () => {};
     gate = new Promise((resolve) => (release = resolve));
-    const retry = await runner.publish('tech', second.id);
-    assert.equal(retry.youtube?.status, 'uploading');
-    await assert.rejects(runner.publish('tech', second.id), /em andamento/);
+    const retry = await runner.publish('tech', second.id, 'youtube');
+    assert.equal(retry.publications?.youtube?.status, 'uploading');
+    await assert.rejects(runner.publish('tech', second.id, 'youtube'), /em andamento/);
     release();
     await runner.idle();
     assert.equal(
-      (await runner.list('tech')).find((item) => item.id === second.id)!.youtube?.status,
+      (await runner.list('tech')).find((item) => item.id === second.id)!.publications?.youtube?.status,
       'uploaded',
     );
     assert.equal(uploads.length, 2);
@@ -1146,7 +1148,13 @@ test('a Short is cut from an approved motion video, inherits its review and goes
   );
   await writeFile(join(home, 'production', 'assets.json'), '[]');
   const calls: string[][] = [];
-  const uploads: Array<{ title: string; description: string; thumbnail?: string }> = [];
+  const uploads: Array<{
+    network: string;
+    title: string;
+    description: string;
+    thumbnail?: string;
+    vertical: boolean;
+  }> = [];
   const runner = await createRunner({
     home,
     repositoryRoot: resolve('..'),
@@ -1162,10 +1170,20 @@ test('a Short is cut from an approved motion video, inherits its review and goes
       );
       return { exitCode: 0, stdout: '', stderr: '' };
     },
-    publish: async (_channel, video) => {
-      uploads.push({ title: video.title, description: video.description, thumbnail: video.thumbnail });
-      return { videoId: 'abcdefghijk' };
+    publish: async (_channel, network, video) => {
+      uploads.push({
+        network,
+        title: video.title,
+        description: video.description,
+        thumbnail: video.thumbnail,
+        vertical: video.vertical,
+      });
+      return { postId: network === 'youtube' ? 'abcdefghijk' : '987654321' };
     },
+    profiles: async () => [
+      { platform: 'youtube', url: 'https://www.youtube.com/@fixture' },
+      { platform: 'facebook', url: 'https://www.facebook.com/123' },
+    ],
   });
   try {
     await assert.rejects(runner.startShort('tech', 'source-preview'), /versão final aprovada/);
@@ -1180,15 +1198,125 @@ test('a Short is cut from an approved motion video, inherits its review and goes
     assert.equal(done.status, 'completed', done.message);
     assert.equal(done.qa?.editorial, 'pass', 'the source approval covers the same words');
     await assert.rejects(runner.startShort('tech', short.id), /já é um Short/);
-    await runner.publish('tech', short.id);
+    await runner.publish('tech', short.id, 'youtube');
+    await runner.publish('tech', short.id, 'facebook');
     await runner.idle();
     assert.deepEqual(uploads, [
       {
+        network: 'youtube',
         title: `${input.scripts[0].title} #Shorts`,
-        description: 'Descrição com fontes\n\n#Shorts',
+        description:
+          'Descrição com fontes\n\nAcompanhe também:\nFacebook: https://www.facebook.com/123\n\n#Shorts',
         thumbnail: undefined,
+        vertical: true,
+      },
+      {
+        network: 'facebook',
+        title: input.scripts[0].title,
+        description: 'Descrição com fontes\n\nAcompanhe também:\nYouTube: https://www.youtube.com/@fixture',
+        thumbnail: undefined,
+        vertical: true,
       },
     ]);
+    input.scripts[0].format = 'long';
+    await assert.rejects(
+      runner.publish('tech', 'source-final', 'facebook'),
+      /só vídeo vertical/,
+      'A horizontal video does not go to a Reels-only network',
+    );
+    await assert.rejects(runner.publish('tech', short.id, 'instagram'), /não recebe envio/);
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('each opted-in network gets the approved video once, with the others cited, and old records migrate', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'framechester-web-networks-'));
+  const input = state();
+  input.scripts[0].format = 'long';
+  input.channels[0].autoUpload = ['youtube', 'tiktok', 'facebook'];
+  await mkdir(join(home, 'production'), { recursive: true });
+  await writeFile(
+    join(home, 'production', 'jobs.json'),
+    JSON.stringify([
+      {
+        id: 'legacy-upload',
+        channelId: 'tech',
+        scriptId: 'script-one',
+        status: 'completed',
+        createdAt: '2026-10-30T10:00:00Z',
+        message: 'ok',
+        videoAvailable: true,
+        youtube: { status: 'uploaded', videoId: 'abcdefghijk', uploadedAt: '2026-10-30T11:00:00Z' },
+      },
+    ]),
+  );
+  await writeFile(join(home, 'production', 'assets.json'), '[]');
+  const uploads: Array<{ network: string; description: string; vertical: boolean }> = [];
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => structuredClone(input),
+    execute: async (args) => {
+      const out = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
+      await mkdir(join(out, 'render'), { recursive: true });
+      await mkdir(join(out, 'publish'), { recursive: true });
+      await writeFile(join(out, 'render', 'final.mp4'), 'synthetic fixture');
+      await writeFile(join(out, 'publish', 'description.txt'), 'Descrição com fontes');
+      await writeFile(
+        join(out, 'pipeline_report.json'),
+        JSON.stringify({
+          stage: 'editorial_qa',
+          technical_qa: { checks: [{ status: 'pass' }] },
+          editorial_qa: { checks: [{ status: 'pass' }] },
+        }),
+      );
+      return { exitCode: 0, stdout: '', stderr: '' };
+    },
+    publish: async (_channel, network, video) => {
+      uploads.push({ network, description: video.description, vertical: video.vertical });
+      return { postId: `${network}-post` };
+    },
+    profiles: async () => [
+      { platform: 'youtube', url: 'https://www.youtube.com/@fixture' },
+      { platform: 'tiktok', url: 'https://www.tiktok.com/@fixture' },
+    ],
+  });
+  try {
+    const legacy = (await runner.list('tech')).find((item) => item.id === 'legacy-upload')!;
+    assert.deepEqual(legacy.publications, {
+      youtube: { status: 'uploaded', postId: 'abcdefghijk', uploadedAt: '2026-10-30T11:00:00Z' },
+    });
+    assert.equal('youtube' in legacy, false);
+    const asset = await runner.upload('tech', {
+      filename: 'diagram.png',
+      kind: 'image',
+      contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+      license: 'Original de teste',
+      provenance: 'Fixture local',
+      restrictions: 'Teste',
+    });
+    const job = await runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } });
+    await runner.idle();
+    const done = (await runner.list('tech')).find((item) => item.id === job.id)!;
+    assert.deepEqual(Object.keys(done.publications ?? {}).sort(), ['tiktok', 'youtube']);
+    assert.deepEqual(
+      uploads.map((item) => [item.network, item.vertical]),
+      [
+        ['youtube', false],
+        ['tiktok', false],
+      ],
+      'A horizontal video skips the Reels-only Facebook',
+    );
+    assert.equal(
+      uploads[0].description,
+      'Descrição com fontes\n\nAcompanhe também:\nTikTok: https://www.tiktok.com/@fixture',
+    );
+    assert.equal(
+      uploads[1].description,
+      'Descrição com fontes\n\nAcompanhe também:\nYouTube: https://www.youtube.com/@fixture',
+    );
   } finally {
     await runner.close();
     await rm(home, { recursive: true, force: true });

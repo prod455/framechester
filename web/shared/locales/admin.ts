@@ -266,6 +266,40 @@ export default {
       'This integration reads the professional account counters; it does not implement an Instagram payments API. Import receipts manually. Profile/Page counters are snapshots, not a 28-day performance series.',
     'Esta integração lê contadores da Página e não integra receitas ou pagamentos. Importe comprovantes manualmente. Contadores de perfil/Página são instantâneos e não uma série de desempenho de 28 dias.':
       'This integration reads Page counters and does not include revenue or payments. Import receipts manually. Profile/Page counters are snapshots, not a 28-day performance series.',
+    'Envio automático': 'Automatic upload',
+    'nunca público': 'never public',
+    'Enviar cada versão final aprovada ao TikTok como "Somente eu" (exige o TikTok conectado com permissão de envio)':
+      'Send each approved final version to TikTok as "Only me" (needs TikTok connected with upload permission)',
+    'Enviar cada vídeo vertical aprovado ao Facebook como rascunho de Reel (exige a Página conectada com permissão de envio)':
+      'Send each approved vertical video to Facebook as a Reel draft (needs the Page connected with upload permission)',
+    'Autorize a conta correta em {provider}. O vínculo só será confirmado após o retorno ao servidor local.':
+      'Authorize the right account on {provider}. The link is only confirmed after returning to the local server.',
+    'Continuar em {provider}': 'Continue on {provider}',
+    'Autorização preparada. Continue pelo link de {provider}.':
+      'Authorization ready. Continue through the {provider} link.',
+    'Callback a registrar no aplicativo: {url}': 'Callback to register in the app: {url}',
+    'Use o aplicativo OAuth configurado para esta instalação. A autorização ocorre em {provider}; senhas da sua conta não são solicitadas aqui.':
+      'Use the OAuth app configured for this installation. Authorization happens on {provider}; your account passwords are never asked for here.',
+    'Envio não público disponível': 'Non-public upload available',
+    'Nome de usuário no TikTok': 'TikTok username',
+    'ID da conta profissional do Instagram': 'Instagram professional account ID',
+    'ID da Página do Facebook': 'Facebook Page ID',
+    'Aplicativo próprio no TikTok for Developers, plataforma Desktop, com o callback local registrado exatamente.':
+      'Your own TikTok for Developers app, Desktop platform, with the local callback registered exactly.',
+    'Login Kit e Content Posting API (Direct Post): user.info.basic, user.info.profile, user.info.stats e video.publish.':
+      'Login Kit and Content Posting API (Direct Post): user.info.basic, user.info.profile, user.info.stats and video.publish.',
+    'Envio sempre como "Somente eu" (SELF_ONLY); a publicação é decisão do operador no app do TikTok.':
+      'Always uploaded as "Only me" (SELF_ONLY); publishing is the operator\'s decision in the TikTok app.',
+    'Aplicativo Meta próprio com Facebook Login e o callback local registrado; pages_show_list, pages_read_engagement e instagram_basic.':
+      'Your own Meta app with Facebook Login and the local callback registered; pages_show_list, pages_read_engagement and instagram_basic.',
+    'Sem envio: a API de publicação do Instagram não tem rascunho nem modo privado, e publicar direto é decisão do operador no app.':
+      "No upload: Instagram's publishing API has no draft or private mode, and publishing directly is the operator's decision in the app.",
+    'Aplicativo Meta próprio com Facebook Login e o callback local registrado; o token salvo é o da Página, não de um perfil pessoal.':
+      "Your own Meta app with Facebook Login and the local callback registered; the saved token is the Page's, not a personal profile's.",
+    'pages_show_list, pages_read_engagement e pages_manage_posts, com a aprovação exigida pela Meta.':
+      'pages_show_list, pages_read_engagement and pages_manage_posts, with the approval Meta requires.',
+    'Envio sempre como rascunho de Reel (vídeo vertical); a publicação é decisão do operador no Meta Business Suite.':
+      "Always uploaded as a Reel draft (vertical video); publishing is the operator's decision in Meta Business Suite.",
   },
   es: {
     'Comece pelo seu canal': 'Empieza por tu canal',
@@ -532,5 +566,39 @@ export default {
       'Esta integración lee los contadores de la cuenta profesional; no implementa una API de cobros de Instagram. Importa los comprobantes manualmente. Los contadores de perfil/Página son instantáneos, no una serie de rendimiento de 28 días.',
     'Esta integração lê contadores da Página e não integra receitas ou pagamentos. Importe comprovantes manualmente. Contadores de perfil/Página são instantâneos e não uma série de desempenho de 28 dias.':
       'Esta integración lee los contadores de la Página y no integra ingresos ni pagos. Importa los comprobantes manualmente. Los contadores de perfil/Página son instantáneos, no una serie de rendimiento de 28 días.',
+    'Envio automático': 'Envío automático',
+    'nunca público': 'nunca público',
+    'Enviar cada versão final aprovada ao TikTok como "Somente eu" (exige o TikTok conectado com permissão de envio)':
+      'Enviar cada versión final aprobada a TikTok como "Solo yo" (requiere TikTok conectado con permiso de subida)',
+    'Enviar cada vídeo vertical aprovado ao Facebook como rascunho de Reel (exige a Página conectada com permissão de envio)':
+      'Enviar cada video vertical aprobado a Facebook como borrador de Reel (requiere la Página conectada con permiso de subida)',
+    'Autorize a conta correta em {provider}. O vínculo só será confirmado após o retorno ao servidor local.':
+      'Autoriza la cuenta correcta en {provider}. El vínculo solo se confirma al volver al servidor local.',
+    'Continuar em {provider}': 'Continuar en {provider}',
+    'Autorização preparada. Continue pelo link de {provider}.':
+      'Autorización preparada. Continúa por el enlace de {provider}.',
+    'Callback a registrar no aplicativo: {url}': 'Callback que debes registrar en la app: {url}',
+    'Use o aplicativo OAuth configurado para esta instalação. A autorização ocorre em {provider}; senhas da sua conta não são solicitadas aqui.':
+      'Usa la app OAuth configurada para esta instalación. La autorización ocurre en {provider}; aquí nunca se piden las contraseñas de tu cuenta.',
+    'Envio não público disponível': 'Subida no pública disponible',
+    'Nome de usuário no TikTok': 'Nombre de usuario en TikTok',
+    'ID da conta profissional do Instagram': 'ID de la cuenta profesional de Instagram',
+    'ID da Página do Facebook': 'ID de la Página de Facebook',
+    'Aplicativo próprio no TikTok for Developers, plataforma Desktop, com o callback local registrado exatamente.':
+      'App propia en TikTok for Developers, plataforma Desktop, con el callback local registrado exactamente.',
+    'Login Kit e Content Posting API (Direct Post): user.info.basic, user.info.profile, user.info.stats e video.publish.':
+      'Login Kit y Content Posting API (Direct Post): user.info.basic, user.info.profile, user.info.stats y video.publish.',
+    'Envio sempre como "Somente eu" (SELF_ONLY); a publicação é decisão do operador no app do TikTok.':
+      'Siempre se sube como "Solo yo" (SELF_ONLY); publicar es decisión del operador en la app de TikTok.',
+    'Aplicativo Meta próprio com Facebook Login e o callback local registrado; pages_show_list, pages_read_engagement e instagram_basic.':
+      'App propia de Meta con Facebook Login y el callback local registrado; pages_show_list, pages_read_engagement e instagram_basic.',
+    'Sem envio: a API de publicação do Instagram não tem rascunho nem modo privado, e publicar direto é decisão do operador no app.':
+      'Sin subida: la API de publicación de Instagram no tiene borrador ni modo privado, y publicar directamente es decisión del operador en la app.',
+    'Aplicativo Meta próprio com Facebook Login e o callback local registrado; o token salvo é o da Página, não de um perfil pessoal.':
+      'App propia de Meta con Facebook Login y el callback local registrado; el token guardado es el de la Página, no el de un perfil personal.',
+    'pages_show_list, pages_read_engagement e pages_manage_posts, com a aprovação exigida pela Meta.':
+      'pages_show_list, pages_read_engagement y pages_manage_posts, con la aprobación que exige Meta.',
+    'Envio sempre como rascunho de Reel (vídeo vertical); a publicação é decisão do operador no Meta Business Suite.':
+      'Siempre se sube como borrador de Reel (video vertical); publicar es decisión del operador en Meta Business Suite.',
   },
 } satisfies AreaCatalog;

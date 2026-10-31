@@ -76,8 +76,7 @@ pub fn compose(
     (
         Graph {
             nodes,
-            background: None,
-            breathe: None,
+            ..Graph::default()
         },
         ctx.issues,
     )

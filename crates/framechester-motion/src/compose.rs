@@ -5,7 +5,7 @@ use crate::anim::Track;
 use crate::captions;
 use crate::components::{self, edge_id, Ctx, LayoutIssue, Severity};
 use crate::format::{Canvas, Rect};
-use crate::scene::{Anchor, Graph, Node, Shape, Z_CAPTIONS};
+use crate::scene::{Anchor, Camera, Graph, Node, Shape, Z_CAPTIONS};
 use crate::text::Typesetter;
 use crate::tokens;
 use framechester_core::error::Result;
@@ -124,7 +124,12 @@ fn heading(
     (nodes, area)
 }
 
-fn build_component(ctx: &mut Ctx<'_>, scene: &StoryboardScene, area: Rect) -> Vec<Node> {
+fn build_component(
+    ctx: &mut Ctx<'_>,
+    scene: &StoryboardScene,
+    area: Rect,
+    index: usize,
+) -> Vec<Node> {
     match &scene.composition {
         Composition::Title { text, kicker } => {
             components::title::build(ctx, area, text, kicker.as_deref())
@@ -169,7 +174,7 @@ fn build_component(ctx: &mut Ctx<'_>, scene: &StoryboardScene, area: Rect) -> Ve
             character,
             pose,
             text,
-        } => components::character::build(ctx, area, *character, *pose, text),
+        } => components::character::build(ctx, area, *character, *pose, text, index % 2 == 1),
     }
 }
 
@@ -643,7 +648,7 @@ pub fn compose_scene(
         graph.extend(nodes);
         area
     };
-    let component = build_component(&mut ctx, scene, area);
+    let component = build_component(&mut ctx, scene, area, index);
     graph.extend(centre_vertically(component, area));
     graph.extend(captions::build(&mut ctx, scene));
     let mut entries: HashMap<String, f32> = HashMap::new();
@@ -659,6 +664,12 @@ pub fn compose_scene(
     if matches!(scene.composition, Composition::Character { .. }) {
         components::character::animate(&mut graph.nodes, scene, canvas.motion_scale(), hook);
     }
+    // Every scene gets a slow camera move, cycling so consecutive scenes differ.
+    graph.camera = Some((
+        Camera::for_scene(index),
+        scene.duration_secs.max(1.0),
+        (canvas.width as f32, canvas.height as f32),
+    ));
     check_layout(&mut ctx, &graph);
     let change_times = graph.change_times();
     ComposedScene {
@@ -912,9 +923,16 @@ mod tests {
             frame_svg(&composed, 0.0, tokens::FONT_SANS).contains("scale(1.05"),
             "punch-in at frame 0"
         );
+        let max_scale = |svg: &str| {
+            svg.split("scale(")
+                .skip(1)
+                .filter_map(|rest| rest.split([' ', ')']).next()?.parse::<f32>().ok())
+                .fold(1.0f32, f32::max)
+        };
+        let settled = frame_svg(&composed, 0.6, tokens::FONT_SANS);
         assert!(
-            !frame_svg(&composed, 0.6, tokens::FONT_SANS).contains("scale(1.0"),
-            "settled after 0.5 s"
+            max_scale(&settled) < 1.02,
+            "the punch-in has settled after 0.5 s; only the slow camera remains"
         );
         let storyboard = Storyboard {
             version: SCHEMA_VERSION,
@@ -931,6 +949,31 @@ mod tests {
                 .iter()
                 .all(|check| check.status == framechester_core::domain::QaStatus::Pass),
             "{checks:?}"
+        );
+    }
+
+    #[test]
+    fn consecutive_scenes_get_different_slow_camera_moves_that_spare_the_captions() {
+        let moves: Vec<Camera> = (0..4).map(Camera::for_scene).collect();
+        for pair in moves.windows(2) {
+            assert_ne!(pair[0], pair[1]);
+        }
+        let (dx, dy, scale) = Camera::PushIn.at(1.0, 1080.0, 1920.0);
+        assert!((scale - 1.025).abs() < 1e-4);
+        assert!(
+            (dx + 1080.0 * 0.0125).abs() < 0.1 && (dy + 1920.0 * 0.0125).abs() < 0.1,
+            "zoom keeps the centre"
+        );
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Vertical);
+        let scene = narrated(
+            "#fluxo Objetivo -> Decidir -> Agir",
+            "O agente recebe o objetivo, decide e age.",
+        );
+        let composed = compose_scene(&typesetter, &canvas, &scene, 1, 3);
+        assert_eq!(
+            composed.graph.camera.map(|camera| camera.0),
+            Some(Camera::DriftLeft)
         );
     }
 

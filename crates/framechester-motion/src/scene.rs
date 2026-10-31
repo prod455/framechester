@@ -208,6 +208,48 @@ fn fmt(value: f32) -> String {
     }
 }
 
+/// Slow camera move across a whole scene; captions never move with it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Camera {
+    PushIn,
+    PullOut,
+    DriftLeft,
+    DriftRight,
+}
+
+/// How far the camera travels over a scene: small enough that content stays in the safe
+/// area, large enough to read as movement.
+const CAMERA_ZOOM: f32 = 0.025;
+const CAMERA_DRIFT: f32 = 14.0;
+
+impl Camera {
+    /// Cycle of moves so consecutive scenes never share one.
+    pub fn for_scene(index: usize) -> Self {
+        [
+            Self::PushIn,
+            Self::DriftLeft,
+            Self::PullOut,
+            Self::DriftRight,
+        ][index % 4]
+    }
+
+    /// (dx, dy, scale) around the canvas centre at `progress` (0..1) of the scene.
+    pub fn at(self, progress: f32, width: f32, height: f32) -> (f32, f32, f32) {
+        let p = progress.clamp(0.0, 1.0);
+        let (scale, shift) = match self {
+            Camera::PushIn => (1.0 + CAMERA_ZOOM * p, 0.0),
+            Camera::PullOut => (1.0 + CAMERA_ZOOM * (1.0 - p), 0.0),
+            Camera::DriftLeft => (1.0 + CAMERA_ZOOM * 0.5, CAMERA_DRIFT * (1.0 - 2.0 * p)),
+            Camera::DriftRight => (1.0 + CAMERA_ZOOM * 0.5, -CAMERA_DRIFT * (1.0 - 2.0 * p)),
+        };
+        (
+            width * (1.0 - scale) / 2.0 + shift,
+            height * (1.0 - scale) / 2.0,
+            scale,
+        )
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Graph {
     pub nodes: Vec<Node>,
@@ -215,6 +257,8 @@ pub struct Graph {
     /// Gentle vertical float (amplitude px, period s) so a still composition never
     /// freezes between animation events. Captions are excluded (`z >= 1000`).
     pub breathe: Option<(f32, f32)>,
+    /// Camera move over the scene: the move, the scene duration and the canvas size.
+    pub camera: Option<(Camera, f32, (f32, f32))>,
 }
 
 /// Caption nodes sit at or above this z and are not affected by camera motion.
@@ -332,14 +376,29 @@ impl Graph {
             dx.abs() > 1e-3 || dy.abs() > 1e-3 || (scale - 1.0).abs() > 1e-3 || opacity < 0.999;
         if outer {
             svg.push_str(&format!(
-                "<g transform='translate({} {}) scale({})' opacity='{}'>",
-                fmt(dx),
-                fmt(dy),
-                fmt(scale),
+                "<g transform='translate({dx:.2} {dy:.2}) scale({scale:.4})' opacity='{}'>",
                 fmt(opacity)
             ));
         }
+        let camera = self.camera.map(|(camera, duration, (width, height))| {
+            let (cx, cy, cs) = camera.at(t / duration.max(0.1), width, height);
+            // Four decimals: a slow zoom in 0.01 steps would visibly jump ~10 px at a time.
+            format!("<g transform='translate({cx:.2} {cy:.2}) scale({cs:.4})'>")
+        });
+        let mut in_camera = false;
         for node in order {
+            // Content moves with the camera; captions (drawn last) stay put.
+            match (&camera, node.z < Z_CAPTIONS, in_camera) {
+                (Some(open), true, false) => {
+                    svg.push_str(open);
+                    in_camera = true;
+                }
+                (_, false, true) => {
+                    svg.push_str("</g>");
+                    in_camera = false;
+                }
+                _ => {}
+            }
             let node_opacity = node.props.opacity.eval(t);
             if node_opacity <= 0.002 {
                 continue;
@@ -384,6 +443,9 @@ impl Graph {
                 node.glow_svg(svg, glow);
             }
             node.shape_svg(svg, t);
+            svg.push_str("</g>");
+        }
+        if in_camera {
             svg.push_str("</g>");
         }
         if outer {
@@ -635,6 +697,34 @@ impl Props {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_camera_moves_the_content_and_never_the_captions() {
+        let shape = || Shape::Circle {
+            cx: 10.0,
+            cy: 10.0,
+            r: 5.0,
+            fill: "#fff".into(),
+            stroke: None,
+        };
+        let graph = Graph {
+            nodes: vec![
+                Node::new("content", shape()),
+                Node::new("caption", shape()).with_z(Z_CAPTIONS),
+            ],
+            camera: Some((Camera::PushIn, 4.0, (100.0, 100.0))),
+            ..Graph::default()
+        };
+        let svg = graph.svg(4.0, 100, 100, "Inter");
+        let camera = svg.find("scale(1.0250)").expect("camera applied");
+        let content = svg.find("<circle").unwrap();
+        let caption = svg.rfind("<circle").unwrap();
+        let closed = camera + svg[camera..].find("</g></g>").unwrap();
+        assert!(
+            camera < content && content < closed && closed < caption,
+            "{svg}"
+        );
+    }
 
     #[test]
     fn svg_skips_invisible_nodes_and_escapes_text() {

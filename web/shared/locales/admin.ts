@@ -284,6 +284,8 @@ export default {
     'Nome de usuário no TikTok': 'TikTok username',
     'ID da conta profissional do Instagram': 'Instagram professional account ID',
     'ID da Página do Facebook': 'Facebook Page ID',
+    'Aplicativo próprio no TikTok for Developers, plataforma Web, com o endereço de retorno abaixo registrado exatamente.':
+      'Your own app on TikTok for Developers, Web platform, with the redirect URI below registered exactly.',
     'Aplicativo próprio no TikTok for Developers, plataforma Desktop, com o callback local registrado exatamente.':
       'Your own TikTok for Developers app, Desktop platform, with the local callback registered exactly.',
     'Login Kit e Content Posting API (Direct Post): user.info.basic, user.info.profile, user.info.stats e video.publish.':
@@ -597,6 +599,8 @@ export default {
     'Nome de usuário no TikTok': 'Nombre de usuario en TikTok',
     'ID da conta profissional do Instagram': 'ID de la cuenta profesional de Instagram',
     'ID da Página do Facebook': 'ID de la Página de Facebook',
+    'Aplicativo próprio no TikTok for Developers, plataforma Web, com o endereço de retorno abaixo registrado exatamente.':
+      'Tu propia app en TikTok for Developers, plataforma Web, con la URI de redirección de abajo registrada exactamente.',
     'Aplicativo próprio no TikTok for Developers, plataforma Desktop, com o callback local registrado exatamente.':
       'App propia en TikTok for Developers, plataforma Desktop, con el callback local registrado exactamente.',
     'Login Kit e Content Posting API (Direct Post): user.info.basic, user.info.profile, user.info.stats e video.publish.':

@@ -31,6 +31,10 @@ roteiro (diretivas) ─► planner ─► Storyboard (schema) ─► narrate (TT
   componentes, legendas karaokê, rasterização paralela, soundtrack, QA, logs e manifesto.
 - CLI: `plan`, `produce`, `run --engine motion`. O pipeline antigo (`run`, padrão
   `--engine legacy`) continua intacto; `[motion] enabled = true` troca o padrão.
+- `framechester-core::shorts` + CLI `short`: corta um storyboard narrado num Short
+  vertical de até 58 s. Mantém o gancho e o final, escolhe o meio por retenção por
+  segundo (gráfico > comparação > personagem > código > título), preserva ordem e
+  texto e renarra no formato vertical. O Studio expõe isso em **Gerar Short**.
 - Diretivas novas são aceitas pelo catálogo antigo e pelo Studio como `destaque`, então
   um roteiro escrito para o motor motion ainda renderiza no caminho legado.
 

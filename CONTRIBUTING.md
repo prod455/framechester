@@ -1,16 +1,17 @@
-# Contributing to Framechester
+# Como contribuir com o Framechester
 
-Thanks for helping. Framechester is a self-hosted, single-operator media production engine: a Rust engine (`crates/`) and a local TypeScript Studio (`web/`). Contributions are reviewed on merit and on fit with the [principles in the README](README.md#principios).
+Obrigado pela ajuda. O Framechester é um motor de produção de mídia self-hosted, para um único operador: um motor em Rust (`crates/`) e um Studio local em TypeScript (`web/`). As contribuições são avaliadas pelo mérito e pelo alinhamento com os [princípios do README](README.md#princípios).
 
-## Before you start
+## Antes de começar
 
-- Open an issue first for anything beyond a small fix, so the design can be discussed before the code.
-- Read [`CLAUDE.md`](CLAUDE.md) and [`AGENTS.md`](AGENTS.md): they hold the rules every change must respect, whether written by a person or with an AI assistant.
-- Check the [architecture notes](docs/OPEN_SOURCE_ARCHITECTURE.md) and the [operational plan](docs/PLANO_OPERACIONAL_COMPLETO.md); they are the source of truth for scope.
+- Abra uma issue antes de qualquer coisa além de uma correção pequena, para discutir o desenho antes do código.
+- Leia o [`CLAUDE.md`](CLAUDE.md) e o [`AGENTS.md`](AGENTS.md): eles trazem as regras que toda mudança precisa respeitar, seja escrita por uma pessoa ou com um assistente de IA.
+- Consulte as [notas de arquitetura](docs/OPEN_SOURCE_ARCHITECTURE.md) e o [plano operacional](docs/PLANO_OPERACIONAL_COMPLETO.md); eles são a fonte de verdade sobre o escopo.
+- Ao escrever documentação ou textos da interface, siga o [guia de escrita](docs/GUIA_DE_ESCRITA.md).
 
-## Setup
+## Preparação
 
-Requirements: Rust 1.85+, Node.js 22.12+, Python 3.11–3.13, FFmpeg/ffprobe on `PATH`.
+Requisitos: Rust 1.85+, Node.js 22.12+, Python 3.11–3.13, FFmpeg/ffprobe no `PATH`.
 
 ```bash
 git clone https://github.com/prod455/framechester
@@ -20,11 +21,11 @@ npm run voices:setup   # Kokoro PT-BR runtime and pinned commercial voices
 npm start              # http://127.0.0.1:4317
 ```
 
-`npm run dev` starts the backend in watch mode with Vite at `http://127.0.0.1:5173`. The CLI runs from the workspace: `cargo run -p framechester-cli -- doctor`.
+`npm run dev` inicia o backend em modo watch, com o Vite em `http://127.0.0.1:5173`. A CLI roda a partir do workspace: `cargo run -p framechester-cli -- doctor`.
 
-## Checks
+## Verificações
 
-Run everything a pull request runs in CI before opening it:
+Antes de abrir um pull request, rode tudo o que o CI roda:
 
 ```bash
 cargo fmt --all --check
@@ -37,35 +38,35 @@ npm --prefix web run build
 npm run infra:test             # startup/shutdown helpers
 ```
 
-`npm --prefix web run format` applies Prettier. Rust is formatted by `cargo fmt`.
+`npm --prefix web run format` aplica o Prettier. O Rust é formatado pelo `cargo fmt`.
 
-## Conventions
+## Convenções
 
-- **Tests go with the implementation.** A behavior change without a test that fails before it is not complete. Studio tests use `node:test` (`web/tests/*.test.ts`); engine tests live next to the code; cross-language contracts share fixtures under `tests/fixtures/`.
-- **One obvious way.** Do not add a second path for something that already works; replace it.
-- **Errors are explicit.** Prefer a compile error to a runtime error, and a runtime error to silent wrong output. The Studio reports what the engine said; it never guesses.
-- **Scope stays honest.** The engine never publishes, buys, or spends without an explicit operator action; `dry_run` stays `true`; the Studio stays on loopback with authentication, CSRF and the local vault. Do not weaken these to make a feature easier.
-- **No real data in the repository.** No credentials, tokens, personal data, real media, private URLs, analytics screenshots or operator profiles. Fixtures are synthetic and say so.
-- **Third-party material is registered.** A new dependency, model, voice, font or asset brings its license and origin to [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) (and `docker/THIRD_PARTY.md` when it ships in the image).
-- **Changelog.** Add a line under `## [Unreleased]` in [`CHANGELOG.md`](CHANGELOG.md), written for the operator, not for the diff.
-- **Commits** use a short imperative subject (`fix: …`, `feat: …`, `docs: …`); PRs are small and focused and follow the [template](.github/PULL_REQUEST_TEMPLATE.md).
+- **Testes vêm junto com a implementação.** Uma mudança de comportamento sem um teste que falhava antes dela não está completa. Os testes do Studio usam `node:test` (`web/tests/*.test.ts`); os testes do motor ficam junto do código; contratos entre linguagens compartilham fixtures em `tests/fixtures/`.
+- **Um jeito óbvio.** Não crie um segundo caminho para algo que já funciona; substitua o existente.
+- **Erros são explícitos.** Prefira um erro de compilação a um erro em tempo de execução, e um erro em tempo de execução a uma saída errada em silêncio. O Studio mostra o que o motor disse; ele nunca adivinha.
+- **O escopo continua honesto.** O motor nunca publica, compra ou gasta sem uma ação explícita do operador; `dry_run` continua `true`; o Studio continua em loopback, com autenticação, CSRF e o cofre local. Não enfraqueça nada disso para facilitar uma funcionalidade.
+- **Nada de dados reais no repositório.** Nada de credenciais, tokens, dados pessoais, mídia real, URLs privadas, capturas de tela de analytics ou perfis de operador. As fixtures são sintéticas e dizem isso.
+- **Material de terceiros é registrado.** Uma nova dependência, modelo, voz, fonte tipográfica ou asset entra com licença e origem no [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) (e no `docker/THIRD_PARTY.md` quando vai na imagem).
+- **Changelog.** Adicione uma linha em `## [Unreleased]` no [`CHANGELOG.md`](CHANGELOG.md), escrita para o operador, não para o diff.
+- **Commits** usam um assunto curto no imperativo (`fix: …`, `feat: …`, `docs: …`); PRs são pequenos e focados e seguem o [modelo](.github/PULL_REQUEST_TEMPLATE.md).
 
-Media and render changes include a local `run`/`qa` report in the PR description and identify synthetic versus real fixtures. Claims of better performance come with the measurement.
+Mudanças em mídia e geração de vídeo incluem um relatório local de `run`/`qa` na descrição do PR e dizem quais fixtures são sintéticas e quais são reais. Afirmações de ganho de desempenho vêm com a medição.
 
-## Not accepted
+## O que não aceitamos
 
-Viewbots, engagement manipulation, scraping against platform terms, session-cookie automation, bypasses of the publishing or cost gates, and anything that fabricates sources, eligibility or revenue.
+Viewbots, manipulação de engajamento, scraping contra os termos das plataformas, automação com cookies de sessão, desvios das travas de publicação ou de custo, e qualquer coisa que invente fontes, elegibilidade ou receita.
 
-## Releasing a version
+## Como lançar uma versão
 
-Maintainers only.
+Só para mantenedores.
 
-1. Move the `## [Unreleased]` entries in `CHANGELOG.md` to a new `## [X.Y.Z] - YYYY-MM-DD` section and bump the version in `Cargo.toml` (`[workspace.package]`), `package.json` and `web/package.json`.
-2. Run the full check list above and `cargo build --locked --release -p framechester-cli`.
-3. Review `THIRD_PARTY_NOTICES.md` against the lockfiles (`cargo audit`, `npm audit`).
-4. Merge to `main`, then tag: `git tag -a vX.Y.Z -m "Framechester X.Y.Z" && git push origin vX.Y.Z`.
-5. The `release` workflow builds the CLI for Linux, Windows and macOS, publishes the container image to `ghcr.io/prod455/framechester` and creates the GitHub Release with the changelog section as notes.
+1. Mova as entradas de `## [Unreleased]` do `CHANGELOG.md` para uma nova seção `## [X.Y.Z] - YYYY-MM-DD` e atualize a versão em `Cargo.toml` (`[workspace.package]`), `package.json` e `web/package.json`.
+2. Rode a lista completa de verificações acima e `cargo build --locked --release -p framechester-cli`.
+3. Revise o `THIRD_PARTY_NOTICES.md` contra os lockfiles (`cargo audit`, `npm audit`).
+4. Faça o merge na `main` e crie a tag: `git tag -a vX.Y.Z -m "Framechester X.Y.Z" && git push origin vX.Y.Z`.
+5. O workflow `release` compila a CLI para Linux, Windows e macOS, publica a imagem do container em `ghcr.io/prod455/framechester` e cria a GitHub Release com a seção do changelog como notas.
 
-## License
+## Licença
 
-By contributing you agree that your contribution is licensed under the [Apache License 2.0](LICENSE), like the rest of the project-owned code.
+Ao contribuir, você concorda que sua contribuição fica licenciada sob a [Apache License 2.0](LICENSE), como o restante do código próprio do projeto.

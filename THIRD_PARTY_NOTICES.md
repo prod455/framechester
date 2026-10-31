@@ -6,7 +6,7 @@
 | libx264 | dentro do build do FFmpeg | codificação H.264 na CPU | GPL-2.0+ (por causa do x264) | Igual ao build do FFmpeg |
 | h264_amf | dentro do build do FFmpeg | codificação na GPU AMD (prévia/candidato) | Segue o build do FFmpeg; valem os termos do driver em runtime | Não incluir |
 | libvmaf | dentro do build do FFmpeg | medição de qualidade | BSD-2-Clause + questões de patente | Igual ao build do FFmpeg |
-| Kokoro-82M v1.0 | hexgrad/Kokoro-82M; export ONNX model-files-v1.1 | narração PT-BR com Dora, Alex e Santa | Apache-2.0; hashes fixados do modelo e das vozes no [registro de vozes comerciais](docs/VOZES_COMERCIAIS.md) | Baixado à parte; licença e atribuição acompanham os arquivos locais |
+| Kokoro-82M v1.0 | hexgrad/Kokoro-82M; export ONNX model-files-v1.1 | narração PT-BR, EN-US e ES com as vozes do catálogo comercial | Apache-2.0; hashes fixados do modelo e das vozes no [registro de vozes comerciais](docs/VOZES_COMERCIAIS.md) | Baixado à parte; licença e atribuição acompanham os arquivos locais |
 | kokoro-onnx | 0.6.1 | Wrapper de inferência local | MIT; aviso em docker/licenses | Runtime incluído no build Docker local |
 | `pt_BR-faber-medium.onnx` | `rhasspy/piper-voices` `pt/pt_BR/faber/medium`; 63,201,294 B; SHA-256 `858555E3A064209C57088FE6BD70C4C3DC54D03EAA00C45D5ECAF43A33F95AA7` | Voz piloto local | Dataset Faber CC0, mas a origem do checkpoint Lessac tem materiais-fonte só para pesquisa. A autorização comercial deste ONNX não está estabelecida; veja a evidência abaixo. | Não incluído; não trate como liberado para uso comercial |
 | `pt_BR-faber-medium.onnx.json` | mesmo diretório da voz Piper | configuração da voz | Igual ao modelo de voz | Não incluído |

@@ -66,6 +66,7 @@ impl AnalyticsSnapshot {
         ChannelProfile {
             id: self.channel_id.clone(),
             youtube_channel_id: None,
+            language: None,
         }
         .validate()?;
         if self.channel_id != channel_id {

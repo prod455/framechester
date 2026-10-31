@@ -65,7 +65,7 @@ export function t(source: string, vars?: Record<string, string | number>): strin
   return fill(target ?? source, vars);
 }
 
-type Pattern = { regex: RegExp; names: string[]; target: string };
+type Pattern = { regex: RegExp; names: string[]; target: string; literal: number };
 const patterns = new Map<Locale, Pattern[]>();
 function compiled(value: Exclude<Locale, 'pt-BR'>): Pattern[] {
   let list = patterns.get(value);
@@ -83,8 +83,15 @@ function compiled(value: Exclude<Locale, 'pt-BR'>): Pattern[] {
             return '([\\s\\S]+?)';
           })
           .join('');
-        return { regex: new RegExp(`^${body}$`), names, target };
-      });
+        return {
+          regex: new RegExp(`^${body}$`),
+          names,
+          target,
+          literal: source.replace(/\{\w+\}/g, '').length,
+        };
+      })
+      // The most specific template wins: "{start} a {end}" also matches longer sentences.
+      .sort((left, right) => right.literal - left.literal);
     patterns.set(value, list);
   }
   return list;

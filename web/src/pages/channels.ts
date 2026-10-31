@@ -1,11 +1,12 @@
 import { request } from '../api.ts';
 import { createDialog, empty, formWithSave, heading, iconButton } from '../components.ts';
-import { button, el, field, input, textarea } from '../dom.ts';
+import { button, el, field, input, select, textarea } from '../dom.ts';
 import { currentChannel, go, refresh, render, save, state, studio } from '../studio/state.ts';
 import { toast } from '../studio/toast.ts';
 import type { Channel, Platform } from '../../shared/types.ts';
 import { platformLabels, publicPlatforms, publishingPlatforms } from '../../shared/publishing.ts';
 import { t } from '../../shared/i18n.ts';
+import { productionLanguages } from '../../shared/voices.ts';
 
 export function requiredChannel(): HTMLElement | undefined {
   if (currentChannel()) return;
@@ -133,7 +134,18 @@ export function editChannel(record?: Channel): void {
   const description = textarea('description', record?.description || '', 3);
   const niche = input('niche', record?.niche || '');
   const audience = input('audience', record?.audience || '');
-  const language = input('language', record?.language || 'pt-BR');
+  // Only languages with a reviewed voice; a channel saved with another tag keeps it visible.
+  const current = record?.language || 'pt-BR';
+  const language = select(
+    'language',
+    [
+      ...productionLanguages.map((item): [string, string] => [item.tag, item.label]),
+      ...(productionLanguages.some((item) => item.tag === current)
+        ? []
+        : [[current, t('{language} · sem voz comercial', { language: current })] as [string, string]]),
+    ],
+    current,
+  );
   language.required = true;
   const youtubeChannelId = input('youtubeChannelId', record?.youtubeChannelId || '');
   const autoUpload = publishingPlatforms.map((network) => {

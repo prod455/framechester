@@ -22,7 +22,16 @@ export function createAutomaticProduction(options: AutomaticProductionOptions) {
     if (
       Object.keys(input).some(
         (key) =>
-          !['brief', 'format', 'style', 'scriptId', 'researchId', 'quoteId', 'authorizePaid'].includes(key),
+          ![
+            'brief',
+            'format',
+            'style',
+            'scriptId',
+            'researchId',
+            'quoteId',
+            'authorizePaid',
+            'originChannelId',
+          ].includes(key),
       )
     )
       throw new HttpError(400, 'Opção de produção automática inválida.');
@@ -40,18 +49,24 @@ export function createAutomaticProduction(options: AutomaticProductionOptions) {
     const state = await options.store.read();
     const channel = state.channels.find((item) => item.id === owner);
     if (!channel) throw new HttpError(404, 'Canal não encontrado.');
+    // A language version: the same reference, read from the channel the video started in. The
+    // operator owns every channel; the script is written anew in this channel's language.
+    const origin = input.originChannelId === undefined ? owner : validId(input.originChannelId);
+    if (!state.channels.some((item) => item.id === origin))
+      throw new HttpError(400, 'Canal de origem não encontrado.');
     const script = input.scriptId
       ? state.scripts.find(
           (item) =>
-            item.id === validId(input.scriptId) && item.channelId === owner && item.status !== 'archived',
+            item.id === validId(input.scriptId) && item.channelId === origin && item.status !== 'archived',
         )
       : undefined;
     const research = input.researchId
       ? state.research.find(
           (item) =>
-            item.id === validId(input.researchId) && item.channelId === owner && item.status !== 'archived',
+            item.id === validId(input.researchId) && item.channelId === origin && item.status !== 'archived',
         )
       : undefined;
+    const sameChannel = origin === owner;
     if ((input.scriptId && !script) || (input.researchId && !research))
       throw new HttpError(400, 'A referência não pertence a este canal ou está arquivada.');
     const format = input.format as 'short' | 'long';
@@ -59,8 +74,9 @@ export function createAutomaticProduction(options: AutomaticProductionOptions) {
       task: 'script',
       values: {
         title: script?.title ?? research?.title ?? input.brief.trim().slice(0, 500),
-        researchId: script?.researchId ?? research?.id,
-        series: script?.series ?? (channel.niche.slice(0, 150) || 'principal'),
+        // A research record belongs to its own channel; a language version keeps only its content.
+        researchId: sameChannel ? (script?.researchId ?? research?.id) : undefined,
+        series: (sameChannel ? script?.series : undefined) ?? (channel.niche.slice(0, 150) || 'principal'),
         format,
         hook: script?.hook ?? '',
         scenes: script ? structuredClone(script.scenes) : [],
@@ -70,12 +86,21 @@ export function createAutomaticProduction(options: AutomaticProductionOptions) {
     };
     const generation: CreativeInput = {
       task: 'script',
-      brief: `${direction}\nOrientação do operador: ${input.brief.trim()}`,
+      brief: `${direction}${
+        sameChannel
+          ? ''
+          : `\nVersão em ${channel.language}: escreva de forma nativa nesse idioma, não como tradução literal; mantenha fatos, fontes e estrutura.`
+      }\nOrientação do operador: ${input.brief.trim()}`,
       ...(input.style !== undefined ? { style: input.style } : {}),
       includeReferences: false,
       editorContext: context,
     };
-    return { input, generation, seedId: script?.id ?? 'automatic', researchId: context.values.researchId };
+    return {
+      input,
+      generation,
+      seedId: (sameChannel ? script?.id : undefined) ?? 'automatic',
+      researchId: context.values.researchId,
+    };
   }
   return {
     async quote(owner: string, input: unknown, scope: string) {

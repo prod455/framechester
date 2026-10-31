@@ -16,7 +16,7 @@ e Python 3.11–3.13 para o Kokoro local. ASR exige seu modelo e suporte local.
 Execute `npm run voices:setup` para instalar o narrador e baixar os arquivos
 fixados. O Studio não baixa modelos quando é iniciado.
 
-Somente Dora, Alex e Santa (Kokoro-82M v1.0, Apache-2.0) podem narrar.
+Somente as vozes do [catálogo comercial](VOZES_COMERCIAIS.md) (Kokoro-82M v1.0, Apache-2.0) podem narrar: Dora, Alex e Santa em PT-BR, Heart, Bella e Michael em EN-US e Dora, Alex e Santa em ES. A voz e a transcrição seguem o idioma do canal. Em **Novo vídeo**, **Também em outros idiomas** produz o mesmo vídeo nos canais de outro idioma: a IA escreve cada roteiro direto no idioma, com as mesmas fontes, e cada canal publica pelas próprias contas.
 Configurações antigas do Piper migram para Dora; modelos e vozes fora do
 catálogo são bloqueados por nome e por SHA-256 antes da síntese.
 Veja [licenças, arquivos e instalação](VOZES_COMERCIAIS.md).

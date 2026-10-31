@@ -82,6 +82,7 @@ pub(crate) fn plan_from_args(
     args: &ProduceArgs,
     format: VideoFormat,
     channel_name: &str,
+    language: &str,
 ) -> anyhow::Result<Planned> {
     if let Some(path) = &args.storyboard {
         let text = std::fs::read_to_string(path)
@@ -111,7 +112,8 @@ pub(crate) fn plan_from_args(
     let mut script = provider.generate(&prompt, &GenerationBudget::default())?;
     script.claims = LocalEvidenceProvider.verify(&script.claims)?;
     let _ = config;
-    let (storyboard, fallbacks) = plan_script(&script, channel_name, format)?;
+    let (mut storyboard, fallbacks) = plan_script(&script, channel_name, format)?;
+    storyboard.language = language.to_string();
     Ok(Planned {
         topic: Some(topic),
         script: Some(script),
@@ -140,7 +142,10 @@ pub(crate) fn plan_command(
         .as_ref()
         .map(|channel| channel.id.clone())
         .unwrap_or_else(|| "framechester".into());
-    let planned = plan_from_args(&config, &args, format, &channel_name)?;
+    let language = channel
+        .as_ref()
+        .map_or("pt-BR", |channel| channel.language());
+    let planned = plan_from_args(&config, &args, format, &channel_name, language)?;
     let output = args
         .output
         .clone()
@@ -235,7 +240,10 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
         workdir = workdir.join("channels").join(&channel.id);
     }
     std::fs::create_dir_all(&workdir)?;
-    let planned = plan_from_args(&config, &args, format, &channel_name)?;
+    let language = channel
+        .as_ref()
+        .map_or("pt-BR", |channel| channel.language());
+    let planned = plan_from_args(&config, &args, format, &channel_name, language)?;
     // Same editorial gate as the legacy pipeline: a draft renders without the operator's
     // declaration, never with unsafe inputs or contradictions.
     let mut warnings = planned.fallbacks.clone();

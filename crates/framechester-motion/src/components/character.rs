@@ -6,6 +6,7 @@ use crate::anim::Track;
 use crate::format::Rect;
 use crate::scene::{Anchor, Node, Shape};
 use crate::tokens;
+use framechester_core::narration::syllables;
 use framechester_core::storyboard::{Character, Easing, Pose, StoryboardScene};
 
 pub const BODY: &str = "character";
@@ -390,20 +391,35 @@ fn blink(track: &mut Track, end: f32) {
     }
 }
 
-/// The mouth opens and closes about seven times a second while a segment is spoken.
+/// The mouth opens once per syllable of each timed word and rests in the pauses, so it
+/// follows the same timing as the captions.
 fn talk(track: &mut Track, scene: &StoryboardScene) {
-    for segment in &scene.segments {
-        let mut t = segment.start_secs;
-        let mut open = true;
-        let mut step = 0usize;
-        while t < segment.end_secs - 0.05 {
-            // Vary the opening so it does not read as a metronome.
-            let amount = [1.7, 1.2, 1.9, 1.4][step % 4];
-            track.key(t, if open { amount } else { 0.5 }, Easing::EaseInOut);
-            open = !open;
+    const OPENINGS: [f32; 4] = [1.7, 1.2, 1.9, 1.4];
+    let words: Vec<_> = scene
+        .segments
+        .iter()
+        .flat_map(|segment| &segment.words)
+        .collect();
+    let mut step = 0usize;
+    for (index, word) in words.iter().enumerate() {
+        let count = syllables(&word.text);
+        let beat = (word.end_secs - word.start_secs).max(0.05) / count as f32;
+        for syllable in 0..count {
+            let at = word.start_secs + syllable as f32 * beat;
+            track.key(at, 0.5, Easing::EaseInOut);
+            track.key(
+                at + beat * 0.5,
+                OPENINGS[step % OPENINGS.len()],
+                Easing::EaseInOut,
+            );
             step += 1;
-            t += 0.14;
         }
-        track.key(segment.end_secs, 1.0, Easing::EaseOut);
+        track.key(word.end_secs, 0.6, Easing::EaseInOut);
+        let next = words
+            .get(index + 1)
+            .map_or(f32::MAX, |next| next.start_secs);
+        if next - word.end_secs > 0.16 {
+            track.key(word.end_secs + 0.1, 1.0, Easing::EaseOut);
+        }
     }
 }

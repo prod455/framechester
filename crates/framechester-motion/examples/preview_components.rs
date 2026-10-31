@@ -76,6 +76,7 @@ fn main() {
                     duration_secs: t.split_whitespace().count() as f32 * 0.33,
                     leading_silence_secs: 0.05,
                     trailing_silence_secs: 0.1,
+                    pauses: Vec::new(),
                 })
                 .collect();
             let (segments, duration) = assemble_scene(&texts, &audio, &vec![false; texts.len()]);

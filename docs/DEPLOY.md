@@ -131,6 +131,61 @@ Onde ficam as coisas:
 | Modelos de voz | `models/` no seu computador, montado só para leitura |
 | Chave das credenciais | fora do repositório; o caminho está em `.framechester/docker/compose.env` |
 
+## Acessar pelo celular, de qualquer lugar
+
+Use o [Tailscale](https://tailscale.com/): ele liga o seu PC e o seu celular numa rede
+privada só sua. Nada é publicado na internet, nenhuma porta é aberta no roteador e você não
+precisa de DNS. O Studio continua escutando só no `127.0.0.1` do PC.
+
+1. **No PC:** instale e entre com a sua conta.
+
+   ```powershell
+   winget install -e --id tailscale.tailscale
+   ```
+
+2. **No celular:** instale o app **Tailscale** (Play Store ou App Store) e entre com a
+   **mesma conta**.
+3. **No painel do Tailscale** (login.tailscale.com → DNS), confira que **MagicDNS** e
+   **HTTPS Certificates** estão ligados.
+4. **No PC, descubra o nome dele na rede privada** (algo como `meu-pc.tail1234.ts.net`):
+
+   ```powershell
+   tailscale status --self --json | ConvertFrom-Json | Select-Object -ExpandProperty Self | Select-Object -ExpandProperty DNSName
+   ```
+
+   Use o nome sem o ponto final.
+5. **Libere esse nome no Studio, uma vez:**
+
+   ```powershell
+   setx FRAMECHESTER_TAILNET_HOST "meu-pc.tail1234.ts.net"
+   ```
+
+   Feche e abra o PowerShell e suba o Studio de novo com `npm.cmd start`.
+6. **Ligue a ponte do Tailscale para o Studio, uma vez** (ela volta sozinha quando o PC liga):
+
+   ```powershell
+   tailscale serve --bg 4317
+   ```
+
+7. **No celular**, com o Tailscale ligado, abra `https://meu-pc.tail1234.ts.net` e entre com
+   a sua senha local.
+
+O PC precisa estar ligado, com o Studio e o Tailscale rodando.
+
+> **Nunca use `tailscale funnel`.** Ele publica o Studio na internet aberta. O `serve`
+> atende só aparelhos da sua conta.
+
+O Studio só aceita nomes terminados em `.ts.net`, que existem apenas dentro da sua rede
+Tailscale; um domínio público é recusado ao iniciar. A senha local continua valendo no
+celular. Conecte o YouTube pelo PC: o retorno do Google está registrado para
+`127.0.0.1`.
+
+Para desligar o acesso pelo celular:
+
+```powershell
+tailscale serve reset
+```
+
 ## Se algo der errado
 
 | Você vê | O que fazer |

@@ -648,27 +648,20 @@ export class SocialService implements SocialApi {
       }
       // Some profiles get an empty /me/accounts although the person picked the Page and the
       // Instagram account at login; the token still records what was picked.
-      if (!owned) {
-        const granted = await this.grantedTargets(token);
-        owned = granted.instagram.includes(accountId);
-        for (const pageId of granted.pages.slice(0, 10)) {
-          if (owned) break;
-          const page = await this.request(
-            `${GRAPH}/${pageId}?fields=name,instagram_business_account{id}`,
-            token,
-          );
-          owned = record(page.instagram_business_account).id === accountId;
-        }
-      }
-      if (!owned)
-        throw new SocialError(
-          'account_mismatch',
-          'Conta Instagram não encontrada nas Páginas autorizadas para este token.',
-        );
+      // Without a Page listing the account (system-user tokens from a Unified login
+      // configuration, profiles whose /me/accounts comes back empty), reading the account itself
+      // is the proof: Meta only answers it for a token granted that Instagram account.
       const data = await this.request(
         `${GRAPH}/${accountId}?fields=id,username,followers_count,media_count`,
         token,
-      );
+      ).catch((error: unknown) => {
+        if (!owned && error instanceof SocialError && error.code === 'api_denied')
+          throw new SocialError(
+            'account_mismatch',
+            'Conta Instagram não encontrada nas Páginas autorizadas para este token.',
+          );
+        throw error;
+      });
       if (data.id !== accountId)
         throw new SocialError('account_mismatch', 'A resposta não corresponde à conta Instagram esperada.');
       return { displayName: label(data.username, 'Instagram'), data };
@@ -683,11 +676,15 @@ export class SocialService implements SocialApi {
   }
 
   /** Page and Instagram account IDs the person picked at login, as recorded in the token's
-   * granular scopes. Read with the token itself (the operator develops the app). */
-  private async grantedTargets(token: string): Promise<{ pages: string[]; instagram: string[] }> {
+   * granular scopes. Read with the token itself (the operator develops the app) or, for a
+   * system-user token that cannot inspect itself, with the app token. */
+  private async grantedTargets(
+    token: string,
+    inspector = token,
+  ): Promise<{ pages: string[]; instagram: string[] }> {
     const url = new URL(`${GRAPH}/debug_token`);
     url.searchParams.set('input_token', token);
-    const debug = record((await this.request(url.toString(), token)).data);
+    const debug = record((await this.request(url.toString(), inspector)).data);
     const ids = (scopes: string[]) =>
       [
         ...new Set(
@@ -706,7 +703,14 @@ export class SocialService implements SocialApi {
 
   /** Finds the professional account named `username` among those linked to the Pages this token
    * authorizes. The error names what was found, so the operator knows which link is missing. */
-  private async instagramId(username: string, token: string, granted: string[]): Promise<string> {
+  /** `appToken` (app ID|secret) reads debug_token for system-user tokens, which cannot inspect
+   * themselves. */
+  private async instagramId(
+    username: string,
+    token: string,
+    granted: string[],
+    appToken?: string,
+  ): Promise<string> {
     const found: string[] = [];
     // Page names say which Pages Meta authorized, so the error tells a Page that was never
     // granted apart from a Page without Instagram.
@@ -741,7 +745,7 @@ export class SocialService implements SocialApi {
     }
     if (!pageNames.length) {
       // /me/accounts came back empty: look at the Pages and Instagram accounts picked at login.
-      const granted = await this.grantedTargets(token);
+      const granted = await this.grantedTargets(token, appToken);
       const candidates = new Set(granted.instagram);
       for (const pageId of granted.pages) {
         const page = await this.request(
@@ -1163,7 +1167,12 @@ export class SocialService implements SocialApi {
       .map((item) => item.permission as string);
     if (pending.platform === 'instagram') {
       const accountId = pending.expected.startsWith('@')
-        ? await this.instagramId(pending.expected.slice(1), userToken, scopes)
+        ? await this.instagramId(
+            pending.expected.slice(1),
+            userToken,
+            scopes,
+            `${pending.clientId}|${clientSecret}`,
+          )
         : pending.expected;
       const identity = await this.verifyIdentity('instagram', accountId, userToken);
       const expires = numeric(long.expires_in);

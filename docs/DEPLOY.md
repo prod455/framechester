@@ -140,7 +140,7 @@ precisa de DNS. O Studio continua escutando só no `127.0.0.1` do PC.
 1. **No PC:** instale e entre com a sua conta.
 
    ```powershell
-   winget install -e --id tailscale.tailscale
+   winget install -e --id Tailscale.Tailscale
    ```
 
 2. **No celular:** instale o app **Tailscale** (Play Store ou App Store) e entre com a

@@ -79,7 +79,7 @@ export function videoProgress(state: Bootstrap, channelId: string): VideoProgres
         : final
           ? { key: 'review', title: t('Revisar'), state: 'done', detail: t('Versão final aprovada no QA.') }
           : { key: 'review', title: t('Revisar'), state: 'current', detail: translateMessage(job.message) };
-  const youtube = job?.youtube;
+  const youtube = job?.publications?.youtube;
   const publish: Step = !final
     ? {
         key: 'publish',

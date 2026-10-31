@@ -15,6 +15,7 @@ import { openFinalVersion } from '../final-version-ui.ts';
 import { date, number } from '../format.ts';
 import { openProduction } from '../production-ui.ts';
 import { render } from '../studio/state.ts';
+import { networkMark } from '../studio/platforms.ts';
 import {
   channelPath,
   currentChannel,
@@ -28,7 +29,8 @@ import {
 import { toast } from '../studio/toast.ts';
 import { requiredChannel } from './channels.ts';
 import { t, translateMessage } from '../../shared/i18n.ts';
-import type { Script, WebJob } from '../../shared/types.ts';
+import type { Platform, Script, WebJob } from '../../shared/types.ts';
+import { canPublish, platformLabels, publicPlatforms, publishingPlatforms } from '../../shared/publishing.ts';
 
 export function productionPage(): HTMLElement {
   const missing = requiredChannel();
@@ -105,7 +107,15 @@ export function productionPage(): HTMLElement {
     { className: 'section-stack' },
     heading(
       t('Vídeos'),
-      `${jobs.length === 1 ? t('{count} vídeo neste canal.', { count: jobs.length }) : t('{count} vídeos neste canal.', { count: jobs.length })} ${currentChannel()?.youtubeAutoUpload ? t('Versões finais aprovadas seguem ao YouTube como privadas.') : t('O envio automático ao YouTube está desligado neste canal.')}`,
+      `${jobs.length === 1 ? t('{count} vídeo neste canal.', { count: jobs.length }) : t('{count} vídeos neste canal.', { count: jobs.length })} ${
+        currentChannel()?.autoUpload?.length
+          ? t('Versões finais aprovadas seguem sem publicar para: {networks}.', {
+              networks: currentChannel()!
+                .autoUpload!.map((network) => platformLabels[network])
+                .join(', '),
+            })
+          : t('O envio automático às redes está desligado neste canal.')
+      }`,
       startButton,
     ),
     snapshot.engine?.available === false ? notice(translateMessage(snapshot.engine.message)) : null,
@@ -191,7 +201,6 @@ export function jobCard(job: WebJob): HTMLElement {
       stages,
       diagnostic,
       qa,
-      youtubeStatus(job),
       job.videoAvailable || retry
         ? el(
             'div',
@@ -199,46 +208,10 @@ export function jobCard(job: WebJob): HTMLElement {
             retry,
             job.videoAvailable ? button(t('Assistir'), () => viewJob(job), 'secondary', 'film') : null,
             finalVersionButton(job, script),
-            youtubeButton(job),
             shortButton(job),
           )
         : null,
-    ),
-  );
-}
-
-export function youtubeStatus(job: WebJob): HTMLElement | null {
-  const youtube = job.youtube;
-  if (!youtube) return null;
-  if (youtube.status === 'uploading')
-    return el('p', { role: 'status' }, t('Enviando ao YouTube como vídeo privado…'));
-  if (youtube.status === 'failed')
-    return el(
-      'p',
-      { className: 'field-hint', role: 'alert' },
-      t('Envio ao YouTube falhou: {message}', { message: translateMessage(youtube.message) }),
-    );
-  const studioUrl = `https://studio.youtube.com/video/${encodeURIComponent(youtube.videoId)}/edit`;
-  const thumbnail =
-    youtube.thumbnail === 'set'
-      ? `${t('Thumbnail aplicada.')} `
-      : youtube.thumbnail
-        ? `${translateMessage(youtube.thumbnail.error)} `
-        : '';
-  return el(
-    'p',
-    {},
-    `${t('Enviado ao YouTube como privado em {date}.', { date: date(youtube.uploadedAt) })} ${thumbnail}`,
-    el(
-      'a',
-      {
-        href: studioUrl,
-        target: '_blank',
-        rel: 'noopener noreferrer',
-        // Links in running text are underlined, not told apart by colour alone (WCAG 1.4.1).
-        className: 'underline underline-offset-4',
-      },
-      t('Revisar e publicar no YouTube Studio'),
+      publicationCards(job),
     ),
   );
 }
@@ -246,6 +219,19 @@ export function youtubeStatus(job: WebJob): HTMLElement | null {
 /** A Short is cut from an approved final version made by the motion engine. */
 export function shortButton(job: WebJob): HTMLElement | null {
   if (job.kind === 'short' || job.status !== 'completed' || job.previewOnly || job.engine !== 'motion')
+    return null;
+  // A vertical video already is the Short; a horizontal one gets its Short by itself, and the
+  // button only comes back when that cut stopped.
+  if (vertical(job)) return null;
+  if (
+    state().jobs.some(
+      (item) =>
+        item.kind === 'short' &&
+        item.sourceJobId === job.id &&
+        item.status !== 'failed' &&
+        item.status !== 'blocked',
+    )
+  )
     return null;
   const action = button(
     t('Gerar Short'),
@@ -269,34 +255,264 @@ export function shortButton(job: WebJob): HTMLElement | null {
   return action;
 }
 
-/** Only an approved final version goes out, once; a failed upload can be retried. */
-export function youtubeButton(job: WebJob): HTMLElement | null {
+/** Where the operator reviews and publishes what was sent; TikTok has no web page for it. */
+function reviewLink(platform: Platform, postId: string, url?: string): HTMLElement | null {
+  const permalink = url && URL.canParse(url) ? new URL(url) : undefined;
+  const target =
+    platform === 'instagram'
+      ? permalink?.protocol === 'https:' && permalink.hostname === 'www.instagram.com'
+        ? { href: permalink.href, label: t('Ver no Instagram') }
+        : null
+      : platform === 'youtube'
+        ? {
+            href: `https://studio.youtube.com/video/${encodeURIComponent(postId)}/edit`,
+            label: t('Revisar e publicar no YouTube Studio'),
+          }
+        : platform === 'facebook'
+          ? { href: 'https://business.facebook.com/', label: t('Revisar e publicar no Meta Business Suite') }
+          : null;
+  if (!target) return null;
+  return el(
+    'a',
+    {
+      href: target.href,
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      // Links in running text are underlined, not told apart by colour alone (WCAG 1.4.1).
+      className: 'underline underline-offset-4',
+    },
+    target.label,
+  );
+}
+
+function uploadedText(platform: Platform, when: string): string {
+  if (platform === 'youtube') return t('Enviado ao YouTube como privado em {date}.', { date: when });
+  if (platform === 'tiktok')
+    return t('Enviado ao TikTok como "Somente eu" em {date}. Revise e publique pelo app do TikTok.', {
+      date: when,
+    });
+  if (platform === 'instagram')
+    return t('Publicado no Instagram como Reel público em {date}.', { date: when });
+  return t('Enviado ao Facebook como rascunho de Reel em {date}.', { date: when });
+}
+
+/** One line per network the video went to; only Instagram is public, the rest wait for the operator. */
+export function publicationStatus(job: WebJob, only?: Platform): HTMLElement | null {
+  const lines = publishingPlatforms
+    .filter((platform) => !only || platform === only)
+    .map((platform) => {
+      const publication = job.publications?.[platform];
+      if (!publication) return null;
+      const network = platformLabels[platform];
+      if (publication.status === 'uploading')
+        return el(
+          'p',
+          { role: 'status' },
+          publicPlatforms.includes(platform)
+            ? t('Publicando no {network}…', { network })
+            : t('Enviando ao {network} sem publicar…', { network }),
+        );
+      if (publication.status === 'failed')
+        return el(
+          'p',
+          { className: 'field-hint', role: 'alert' },
+          t('Envio ao {network} falhou: {message}', {
+            network,
+            message: translateMessage(publication.message),
+          }),
+        );
+      const thumbnail =
+        publication.thumbnail === 'set'
+          ? `${t('Thumbnail aplicada.')} `
+          : publication.thumbnail
+            ? `${translateMessage(publication.thumbnail.error)} `
+            : '';
+      return el(
+        'p',
+        {},
+        `${uploadedText(platform, date(publication.uploadedAt))} ${thumbnail}`,
+        reviewLink(platform, publication.postId, publication.url),
+      );
+    })
+    .filter((line) => line !== null);
+  return lines.length ? el('div', { className: 'section-stack' }, ...lines) : null;
+}
+
+function vertical(job: WebJob): boolean {
+  const script = scoped(state().scripts).find((item) => item.id === job.scriptId);
+  return job.kind === 'short' || script?.format === 'short';
+}
+
+/** Only an approved final version goes out, once per network; a failed upload can be retried. */
+export function publishButton(job: WebJob, platform: Platform): HTMLElement | null {
+  const status = job.publications?.[platform]?.status;
   if (
     job.status !== 'completed' ||
     job.previewOnly ||
-    ['uploading', 'uploaded'].includes(job.youtube?.status ?? '')
+    status === 'uploading' ||
+    status === 'uploaded' ||
+    !canPublish(platform, vertical(job))
   )
     return null;
+  const network = platformLabels[platform];
+  const labels: Record<Platform, string> = {
+    youtube: t('Enviar ao YouTube (privado)'),
+    tiktok: t('Enviar ao TikTok (Somente eu)'),
+    facebook: t('Enviar ao Facebook (rascunho)'),
+    instagram: t('Publicar no Instagram (público)'),
+  };
+  const send = async () => {
+    action.disabled = true;
+    try {
+      await request(
+        channelPath(`/jobs/${encodeURIComponent(job.id)}/publish/${encodeURIComponent(platform)}`),
+        'POST',
+        {},
+      );
+      await refresh();
+      toast(
+        publicPlatforms.includes(platform)
+          ? t('Publicação iniciada. O Reel fica público assim que o {network} terminar de processar.', {
+              network,
+            })
+          : t('Envio iniciado. Nada fica público: publique pelo próprio {network}.', { network }),
+      );
+    } catch (error) {
+      action.disabled = false;
+      toast(
+        error instanceof Error ? translateMessage(error.message) : t('Não foi possível iniciar o envio.'),
+      );
+    }
+  };
   const action = button(
-    job.youtube?.status === 'failed' ? t('Tentar enviar de novo') : t('Enviar ao YouTube (privado)'),
-    async () => {
-      action.disabled = true;
-      try {
-        await request(channelPath(`/jobs/${encodeURIComponent(job.id)}/youtube`), 'POST', {});
-        await refresh();
-        toast(t('Envio iniciado. O vídeo entra no YouTube como privado; publique pelo YouTube Studio.'));
-      } catch (error) {
-        action.disabled = false;
-        toast(
-          error instanceof Error ? translateMessage(error.message) : t('Não foi possível iniciar o envio.'),
-        );
-      }
-    },
+    status === 'failed' ? t('Tentar enviar ao {network} de novo', { network }) : labels[platform],
+    () => (publicPlatforms.includes(platform) ? confirmPublic(network, send) : void send()),
     'secondary',
     'external',
   );
-  action.dataset.testid = `youtube-${job.id}`;
+  action.dataset.testid = `publish-${platform}-${job.id}`;
   return action;
+}
+
+/** A public post cannot be taken back quietly: the click is confirmed before anything is sent. */
+function confirmPublic(network: string, send: () => Promise<void>): void {
+  const { dialog, body } = createDialog(t('Publicar agora no {network}?', { network }));
+  body.append(
+    el(
+      'p',
+      { className: 'muted' },
+      t(
+        'O {network} não tem rascunho nem modo privado na API: o Reel fica público para todos assim que terminar de processar.',
+        { network },
+      ),
+    ),
+  );
+  const { form } = formWithSave(
+    t('Publicar no {network}', { network }),
+    async () => {
+      dialog.close();
+      await send();
+    },
+    () => dialog.close(),
+  );
+  body.append(form);
+}
+
+/** What each network does with the video, said before the operator sends it. */
+function networkPromise(platform: Platform): { mode: string; text: string } {
+  if (platform === 'youtube')
+    return { mode: t('Privado'), text: t('Entra como privado; você publica no YouTube Studio.') };
+  if (platform === 'tiktok')
+    return { mode: t('Somente eu'), text: t('Entra como "Somente eu"; você publica pelo app do TikTok.') };
+  if (platform === 'instagram')
+    return { mode: t('Público'), text: t('Publica direto como Reel público, sem revisão no Instagram.') };
+  return {
+    mode: t('Rascunho'),
+    text: t('Entra como rascunho de Reel; você publica no Meta Business Suite.'),
+  };
+}
+
+/** One card per network: its mark, what happens there, where the video is and the next action. */
+export function publicationCards(job: WebJob): HTMLElement | null {
+  if (job.status !== 'completed' || job.previewOnly || !job.videoAvailable) return null;
+  const connections = scoped(state().connections);
+  const automatic = currentChannel()?.autoUpload ?? [];
+  const isVertical = vertical(job);
+  return el(
+    'div',
+    {
+      className: 'mt-4 grid gap-3 sm:grid-cols-2',
+      role: 'group',
+      'aria-label': t('Redes sociais deste vídeo'),
+    },
+    ...publishingPlatforms.map((platform) => {
+      const network = platformLabels[platform];
+      const promise = networkPromise(platform);
+      const publication = job.publications?.[platform];
+      const connected = connections.some(
+        (connection) => connection.platform === platform && connection.status === 'connected',
+      );
+      let body: HTMLElement | null;
+      let action: HTMLElement | null = null;
+      if (publication) {
+        body = publicationStatus(job, platform);
+        if (publication.status === 'failed') action = publishButton(job, platform);
+      } else if (!canPublish(platform, isVertical)) {
+        body = el(
+          'p',
+          { className: 'field-hint' },
+          job.kind === 'short'
+            ? t('Recebe só vídeo vertical.')
+            : t('Recebe só vídeo vertical: vai o Short deste vídeo.'),
+        );
+      } else if (!connected) {
+        body = el(
+          'p',
+          { className: 'field-hint' },
+          t('Conecte o {network} para enviar este vídeo.', { network }),
+        );
+        action = button(
+          t('Conectar {network}', { network }),
+          () => {
+            studio.activePlatform = platform;
+            go('connections');
+          },
+          'secondary',
+          'plug',
+        );
+      } else {
+        body = el('p', { className: 'field-hint' }, promise.text);
+        action = publishButton(job, platform);
+      }
+      return el(
+        'section',
+        {
+          className: 'flex min-w-0 flex-col gap-2 rounded-lg border border-border p-3',
+          'data-testid': `network-${platform}-${job.id}`,
+        },
+        el(
+          'div',
+          { className: 'flex min-w-0 items-center gap-2' },
+          networkMark(platform),
+          el('h4', { className: 'min-w-0 truncate font-medium' }, network),
+          el('span', { className: 'spacer' }),
+          el(
+            'span',
+            {
+              className: 'badge',
+              'data-variant': publicPlatforms.includes(platform) ? 'destructive' : 'outline',
+            },
+            promise.mode,
+          ),
+        ),
+        automatic.includes(platform) && canPublish(platform, isVertical)
+          ? el('p', { className: 'field-hint' }, t('Automático neste canal.'))
+          : null,
+        body,
+        action,
+      );
+    }),
+  );
 }
 
 /** A watched preview leads straight to its final version; no menus in between. */

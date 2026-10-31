@@ -164,7 +164,7 @@ test('each step offers only the next action', () => {
     actions,
   );
   assert.ok(
-    generating.querySelector('[data-testid="step-generate"] progress'),
+    generating.querySelector('[data-testid="step-generate"] [role="progressbar"]'),
     'visible work while generating',
   );
 

@@ -14,5 +14,8 @@
 @import "basecoat-css/components/table.css";
 @import "basecoat-css/components/tabs.css";
 @import "basecoat-css/components/accordion.css";
+@import "basecoat-css/components/item.css";
+@import "basecoat-css/components/progress.css";
 @import "basecoat-css/styles/vega.css";
-@source "./*.ts";
+/* Pages and the shell use Basecoat classes and Tailwind utilities too. */
+@source "./**/*.ts";

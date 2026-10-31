@@ -115,8 +115,16 @@ function render(): void {
   // Everything beyond making a video is one click away, collapsed unless you are there.
   const advanced = el(
     'details',
-    { className: 'nav-advanced' },
-    el('summary', { className: 'nav-group-label' }, 'Avançado'),
+    { className: 'group' },
+    el(
+      'summary',
+      {
+        className:
+          'nav-group-label flex cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden',
+      },
+      icon('chevron'),
+      'Avançado',
+    ),
   );
   advanced.open = pages[page].advanced;
   for (const [key, item] of Object.entries(pages)) {

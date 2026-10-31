@@ -65,17 +65,29 @@ export function formatDuration(secs: number): string {
 export function durationInstruction(format: ScriptFormat): string {
   const target = DURATION_RULES[format];
   const middle = Math.round((target.minWords + target.maxWords) / 2);
-  return `Regra de duração (obrigatória, verificada antes de aceitar o roteiro): o vídeo ${format} precisa durar de ${formatDuration(target.minSecs)} a ${formatDuration(target.maxSecs)}. O narrador fala cerca de ${NARRATION_WPM.typical} palavras por minuto, então a soma das narrações de todas as cenas precisa ter de ${target.minWords} a ${target.maxWords} palavras; mire em ${middle}. Conte as palavras ao planejar cada cena e preencha durationHintSecs com as palavras da cena divididas por ${(NARRATION_WPM.typical / 60).toFixed(1).replace('.', ',')}. Um roteiro fora dessa faixa é recusado e reescrito; não resuma para economizar espaço.`;
+  return `Regra de duração (obrigatória, verificada antes de aceitar o roteiro): o vídeo ${format} precisa durar de ${formatDuration(target.minSecs)} a ${formatDuration(target.maxSecs)}. O narrador fala cerca de ${NARRATION_WPM.typical} palavras por minuto, então a soma das narrações de todas as cenas precisa ter de ${target.minWords} a ${target.maxWords} palavras; mire em ${middle}. Conte as palavras ao planejar cada cena e preencha durationHintSecs com as palavras da cena divididas por ${(NARRATION_WPM.typical / 60).toFixed(1).replace('.', ',')}. Um roteiro fora dessa faixa é recusado e reescrito; não resuma para economizar espaço. A duração vale mais do que preservar as cenas de referência: se elas vierem de um vídeo de outro tamanho, condense ou desenvolva o conteúdo até caber na faixa.`;
 }
-/** Instruction for a rewrite after a draft missed the range. */
-export function revisionInstruction(check: DurationCheck): string {
+/** Instruction for a rewrite after a draft missed the range. Every scene gets its own word
+ * budget, proportional to its current size, so the model has a number per scene instead of a
+ * single total it tends to miss. */
+export function revisionInstruction(
+  check: DurationCheck,
+  scenes: Pick<ScriptScene, 'id' | 'narration'>[],
+): string {
   const { rule: target, words } = check;
   const short = words < target.minWords;
   const delta = short ? target.minWords - words : words - target.maxWords;
   const goal = Math.round((target.minWords + target.maxWords) / 2);
+  const budgets = scenes
+    .map((scene) => {
+      const current = narrationWords([scene]);
+      const budget = Math.max(3, Math.round((current * goal) / Math.max(words, 1)));
+      return `cena ${scene.id}: ${current} → ${budget}`;
+    })
+    .join('; ');
   return `Revisão obrigatória de duração: o rascunho anterior (previousDraft) tem ${words} palavras de narração, cerca de ${formatDuration(check.estimatedSecs)}. ${
     short
       ? `Faltam pelo menos ${delta} palavras. Reescreva o roteiro completo com cerca de ${goal} palavras: aprofunde cada cena com explicação, exemplo hipotético identificado ou analogia, e acrescente cenas se preciso (até 20). Não repita frases nem encha com introduções genéricas.`
-      : `Sobram pelo menos ${delta} palavras. Reescreva o roteiro completo com cerca de ${goal} palavras, cortando repetição e detalhes secundários sem perder a progressão.`
-  } Mantenha título, assunto, formato, gancho, fontes e claims. Devolva o roteiro inteiro, não só as mudanças.`;
+      : `Sobram pelo menos ${delta} palavras. Reescreva o roteiro completo com cerca de ${goal} palavras, cortando repetição e detalhes secundários sem perder a progressão; junte ou remova cenas se preciso.`
+  } Palavras de narração por cena, atual → alvo: ${budgets}. Conte as palavras de cada cena antes de responder. Mantenha título, assunto, formato, gancho, fontes e claims. Devolva o roteiro inteiro, não só as mudanças.`;
 }

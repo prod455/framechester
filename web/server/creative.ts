@@ -769,7 +769,7 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
             // Business rule: never deliver a script that cannot fill its format. Rewrite it with
             // the exact word gap, sending the rejected draft back as data.
             last = check;
-            system = `${p.system}\n\n${revisionInstruction(check)}`;
+            system = `${p.system}\n\n${revisionInstruction(check, fields && 'scenes' in fields ? fields.scenes : [])}`;
             prompt = JSON.stringify({ ...p.payload, previousDraft: fields });
             continue;
           }
@@ -809,7 +809,7 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
         const target = last!.rule;
         throw new HttpError(
           422,
-          `A IA entregou ${last!.words} palavras de narração (cerca de ${formatDuration(last!.estimatedSecs)}) depois de ${p.attempts} tentativas, e o formato ${target.format} exige de ${formatDuration(target.minSecs)} a ${formatDuration(target.maxSecs)} (${target.minWords} a ${target.maxWords} palavras). Nenhum roteiro foi salvo. Gere de novo ou escolha um modelo maior.`,
+          `A IA entregou ${last!.words} palavras de narração (cerca de ${formatDuration(last!.estimatedSecs)}) depois de ${p.attempts} tentativas, e o formato ${target.format} exige de ${formatDuration(target.minSecs)} a ${formatDuration(target.maxSecs)} (${target.minWords} a ${target.maxWords} palavras). Nenhum roteiro foi salvo. Gere de novo ou escolha um modelo maior; para um Short de um vídeo longo já pronto, use Gerar Short no vídeo.`,
         );
       } finally {
         generating = false;

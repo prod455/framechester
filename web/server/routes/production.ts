@@ -1,7 +1,7 @@
 // Production jobs, visuals and the channel's media library.
 import type { StartJobInput, UploadAssetInput } from '../../shared/types.ts';
 import { HttpError } from '../auth.ts';
-import { object, validId } from '../store.ts';
+import { object, platform, validId } from '../store.ts';
 import { allowedKeys, json, ownerBody, readJson, sendFile, string } from '../http.ts';
 import type { Route } from './router.ts';
 import { requireChannel } from './router.ts';
@@ -126,12 +126,13 @@ export const productionRoutes: Route[] = [
   },
   {
     method: 'POST',
-    pattern: '/api/channels/:id/jobs/:jobId/youtube',
+    pattern: '/api/channels/:id/jobs/:jobId/publish/:platform',
     async handle(context) {
       const id = await requireChannel(context);
+      const network = platform(context.params.platform);
       const runner = context.runner();
-      if (!runner.publish) throw new HttpError(503, 'O envio ao YouTube não está disponível.');
-      json(context.response, 202, await runner.publish(id, validId(context.params.jobId)));
+      if (!runner.publish) throw new HttpError(503, 'O envio às redes não está disponível.');
+      json(context.response, 202, await runner.publish(id, validId(context.params.jobId), network));
     },
   },
   {

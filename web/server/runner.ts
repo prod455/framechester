@@ -7,8 +7,11 @@ import { mkdir, readFile, writeFile, rename, copyFile, realpath, stat } from 'no
 import { basename, extname, join, relative, resolve, sep, delimiter, isAbsolute } from 'node:path';
 import type {
   AppState,
-  YoutubeThumbnail,
-  YoutubeUpload,
+  Platform,
+  ProfileLink,
+  Publication,
+  PublishResult,
+  VideoUpload,
   RunnerApi,
   Script,
   StartJobInput,
@@ -19,6 +22,13 @@ import type {
   QaStatus,
   PreparedVisuals,
 } from '../shared/types.ts';
+import {
+  canPublish,
+  crossReferences,
+  platformLabels,
+  postDescription,
+  publishingPlatforms,
+} from '../shared/publishing.ts';
 
 interface StoredAsset extends WebAsset {
   diskName: string;
@@ -46,10 +56,9 @@ export interface RunnerOptions {
   binary?: string;
   timeoutMs?: number;
   execute?: (args: string[], cwd: string, signal: AbortSignal) => Promise<EngineResult>;
-  publish?: (
-    channelId: string,
-    video: YoutubeUpload,
-  ) => Promise<{ videoId: string; thumbnail?: YoutubeThumbnail }>;
+  publish?: (channelId: string, platform: Platform, video: VideoUpload) => Promise<PublishResult>;
+  /** Connected profiles, cited in each description as the channel's other networks. */
+  profiles?: (channelId: string) => Promise<ProfileLink[]>;
 }
 export function localEngineEnvironment(environment: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return Object.fromEntries(
@@ -296,13 +305,26 @@ export class LocalRunner implements RunnerApi {
         job.status = 'blocked';
         job.message =
           'Execução interrompida pelo encerramento do servidor. Crie um novo trabalho para retomar.';
-      } else if (job.youtube?.status === 'uploading') {
-        job.youtube = {
-          status: 'failed',
-          message: 'Envio interrompido pelo encerramento do servidor. Envie novamente.',
-          failedAt: new Date().toISOString(),
+      }
+    for (const job of this.jobs) {
+      // Jobs saved when only YouTube received uploads kept a single `youtube` record.
+      const legacy = (job as WebJob & { youtube?: Record<string, unknown> }).youtube;
+      if (legacy) {
+        delete (job as WebJob & { youtube?: unknown }).youtube;
+        const { videoId, ...rest } = legacy;
+        job.publications = {
+          youtube: (videoId === undefined ? rest : { ...rest, postId: videoId }) as Publication,
+          ...job.publications,
         };
       }
+      for (const [network, publication] of Object.entries(job.publications ?? {}))
+        if (publication.status === 'uploading')
+          job.publications![network as Platform] = {
+            status: 'failed',
+            message: 'Envio interrompido pelo encerramento do servidor. Envie novamente.',
+            failedAt: new Date().toISOString(),
+          };
+    }
     await this.persist();
     return this;
   }
@@ -991,9 +1013,17 @@ export class LocalRunner implements RunnerApi {
     }
     if (job.status === 'completed' && !job.previewOnly) {
       const state = await this.options.readState();
-      // A failed start is recorded on the job; the operator retries from the card.
-      if (state.channels.find((channel) => channel.id === job.channelId)?.youtubeAutoUpload)
-        await this.publish(job.channelId, job.id).catch(() => {});
+      const channel = state.channels.find((item) => item.id === job.channelId);
+      const script = state.scripts.find((item) => item.id === job.scriptId);
+      const vertical = job.kind === 'short' || script?.format === 'short';
+      // A failed upload is recorded on the job; the operator retries from the card. A horizontal
+      // video is not offered to a vertical-only network: its Short goes there instead.
+      for (const network of channel?.autoUpload ?? [])
+        if (canPublish(network, vertical)) await this.publish(job.channelId, job.id, network).catch(() => {});
+      // A horizontal video gets its Short at once, so the vertical networks receive it too; the
+      // Short publishes itself when it finishes. A refused cut leaves the card's button.
+      if (!vertical && job.kind !== 'short' && job.engine === 'motion')
+        await this.startShort(job.channelId, job.id).catch(() => {});
     }
   }
   /** Narrated storyboard of a finished job, the source a Short is cut from. */
@@ -1029,6 +1059,19 @@ export class LocalRunner implements RunnerApi {
       throw new RunnerError('O storyboard deste vídeo não foi encontrado; gere a versão final novamente.');
     const script = state.scripts.find((item) => item.id === source.scriptId && item.channelId === channelId);
     if (!script) throw new RunnerError('Roteiro do vídeo de origem não encontrado.');
+    if (script.format === 'short')
+      throw new RunnerError('Este vídeo já é vertical: ele mesmo segue como Short.');
+    // One Short per video; only a Short that stopped can be cut again.
+    if (
+      this.jobs.some(
+        (item) =>
+          item.kind === 'short' &&
+          item.sourceJobId === sourceJobId &&
+          item.status !== 'failed' &&
+          item.status !== 'blocked',
+      )
+    )
+      throw new RunnerError('Este vídeo já tem um Short.');
     const config = productionConfig(
       Object.hasOwn(state.channelConfigs, channelId) ? state.channelConfigs[channelId] : state.config,
       this.options.repositoryRoot,
@@ -1051,52 +1094,78 @@ export class LocalRunner implements RunnerApi {
     this.queue = this.queue.then(work, work);
     return structuredClone(job);
   }
-  /** Starts the private upload of an approved final version; it continues in the background. */
-  async publish(channelId: string, jobId: string): Promise<WebJob> {
+  /** Starts a non-public upload of an approved final version; it continues in the background. */
+  async publish(channelId: string, jobId: string, platform: Platform): Promise<WebJob> {
     const state = await this.channel(channelId);
     id(jobId);
     const job = this.jobs.find((item) => item.channelId === channelId && item.id === jobId);
     if (!job) throw new RunnerError('Produção não encontrada neste canal.');
-    if (!this.options.publish) throw new RunnerError('O envio ao YouTube não está disponível.', 503);
+    const label = platformLabels[platform];
+    if (!this.options.publish) throw new RunnerError('O envio às redes não está disponível.', 503);
+    if (!publishingPlatforms.includes(platform))
+      throw new RunnerError(`O ${label} não recebe envio pelo Studio.`);
+    const channel = state.channels.find((item) => item.id === channelId);
     const script = state.scripts.find((item) => item.id === job.scriptId && item.channelId === channelId);
     const short = job.kind === 'short';
+    const vertical = short || script?.format === 'short';
+    if (!canPublish(platform, vertical))
+      throw new RunnerError(`O ${label} recebe só vídeo vertical, como Reel; envie o Short deste vídeo.`);
     const video = await this.file(channelId, jobId, 'video');
     // A Short reuses the source's description; YouTube picks a Short's frame, not a thumbnail.
     const description = await this.file(channelId, short ? job.sourceJobId! : jobId, 'description');
-    const thumbnail = short ? undefined : await this.file(channelId, jobId, 'thumbnail');
+    const thumbnail =
+      platform === 'youtube' && !short ? await this.file(channelId, jobId, 'thumbnail') : undefined;
     // No await between these checks and the state change: two clicks cannot start two uploads.
+    const current = job.publications?.[platform];
     if (job.status !== 'completed' || job.previewOnly || !job.videoAvailable)
-      throw new RunnerError('Só a versão final aprovada no QA pode ser enviada ao YouTube.');
-    if (job.youtube?.status === 'uploading')
-      throw new RunnerError('O envio deste vídeo já está em andamento.');
-    if (job.youtube?.status === 'uploaded') throw new RunnerError('Este vídeo já foi enviado ao YouTube.');
+      throw new RunnerError(`Só a versão final aprovada no QA pode ser enviada ao ${label}.`);
+    if (current?.status === 'uploading') throw new RunnerError('O envio deste vídeo já está em andamento.');
+    if (current?.status === 'uploaded') throw new RunnerError(`Este vídeo já foi enviado ao ${label}.`);
     if (!script || !video || !description)
       throw new RunnerError('Roteiro ou pacote de publicação ausente; gere a versão final novamente.');
-    job.youtube = { status: 'uploading', startedAt: new Date().toISOString() };
+    job.publications = {
+      ...job.publications,
+      [platform]: { status: 'uploading', startedAt: new Date().toISOString() },
+    };
     await this.persist();
     const upload = this.options.publish;
+    const profiles = this.options.profiles;
     const task = (async () => {
+      let result: Publication;
       try {
         const text = await readFile(description.path, 'utf8');
-        const result = await upload(channelId, {
+        // Links only to the networks connected right now: a disconnected profile is never cited.
+        const references = crossReferences(
+          platform,
+          (await profiles?.(channelId)) ?? [],
+          channel?.language ?? 'pt-BR',
+        );
+        const sent = await upload(channelId, platform, {
           path: video.path,
-          title: short ? shortTitle(script.title) : script.title,
-          description: short ? `${text.trimEnd()}\n\n#Shorts` : text,
+          title: short && platform === 'youtube' ? shortTitle(script.title) : script.title,
+          description: postDescription(
+            text,
+            references,
+            short && platform === 'youtube' ? '#Shorts' : undefined,
+          ),
+          vertical,
           ...(thumbnail ? { thumbnail: thumbnail.path } : {}),
         });
-        job.youtube = {
+        result = {
           status: 'uploaded',
-          videoId: result.videoId,
+          postId: sent.postId,
           uploadedAt: new Date().toISOString(),
-          ...(result.thumbnail ? { thumbnail: result.thumbnail } : {}),
+          ...(sent.thumbnail ? { thumbnail: sent.thumbnail } : {}),
+          ...(sent.url ? { url: sent.url } : {}),
         };
       } catch (error) {
-        job.youtube = {
+        result = {
           status: 'failed',
-          message: (error instanceof Error ? error.message : 'Falha no envio ao YouTube.').slice(0, 300),
+          message: (error instanceof Error ? error.message : `Falha no envio ao ${label}.`).slice(0, 300),
           failedAt: new Date().toISOString(),
         };
       }
+      job.publications = { ...job.publications, [platform]: result };
       await this.persist();
     })();
     this.uploads = this.uploads.then(() => task);

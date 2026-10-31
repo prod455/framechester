@@ -75,14 +75,15 @@ function youtubeFetch(
   };
 }
 
-test('capabilities cover four networks honestly and only YouTube accepts private uploads', () => {
+test('capabilities cover four networks honestly and every one of them receives the approved video', () => {
   const service = createSocialService({ vault: new MemoryVault(), fetch: youtubeFetch(), now: () => NOW });
   const capabilities = service.capabilities();
   assert.equal(capabilities.length, 4);
   assert.deepEqual(
     capabilities.filter((item) => item.publishingAvailable).map((item) => item.platform),
-    ['youtube'],
+    ['youtube', 'tiktok', 'instagram', 'facebook'],
   );
+  assert.ok(capabilities.every((item) => item.connectionMethod === 'oauth'));
   assert.deepEqual(
     capabilities.filter((item) => item.revenueAvailable).map((item) => item.platform),
     ['youtube'],
@@ -175,7 +176,8 @@ test('OAuth uses PKCE, binds account and channel, and consumes state only once',
       return upstream(url, init);
     },
   });
-  const result = await service.startYoutubeOAuth({
+  const result = await service.startOAuth({
+    platform: 'youtube',
     channelId: 'tech',
     accountId: ACCOUNT,
     clientId: 'fixture.apps.googleusercontent.com',
@@ -187,14 +189,14 @@ test('OAuth uses PKCE, binds account and channel, and consumes state only once',
   assert.ok(url.searchParams.get('scope')?.includes(MONEY));
   assert.ok(!result.authorizationUrl.includes('fixture-client-secret'));
   const state = url.searchParams.get('state')!;
-  const connection = await service.callbackYoutubeOAuth({ state, code: 'fixture-code' });
+  const connection = await service.callbackOAuth('youtube', { state, code: 'fixture-code' });
   assert.equal(connection.channelId, 'tech');
   assert.equal(connection.accountId, ACCOUNT);
   assert.equal(
     createHash('sha256').update(verifier).digest('base64url'),
     url.searchParams.get('code_challenge'),
   );
-  await assert.rejects(service.callbackYoutubeOAuth({ state, code: 'fixture-code' }));
+  await assert.rejects(service.callbackOAuth('youtube', { state, code: 'fixture-code' }));
   assert.ok(!JSON.stringify(connection).includes('fixture-client-secret'));
   await service.disconnect('tech', 'youtube');
   assert.equal(vault.values.size, 0);
@@ -214,7 +216,8 @@ test('OAuth rejects unsafe callback destinations before saving credentials or fe
     'http://localhost.evil.test:4317/api/oauth/youtube/callback',
   ]) {
     await assert.rejects(
-      service.startYoutubeOAuth({
+      service.startOAuth({
+        platform: 'youtube',
         channelId: 'tech',
         accountId: ACCOUNT,
         clientId: 'fixture-client',
@@ -278,7 +281,8 @@ test('expired OAuth state is rejected without contacting the token endpoint', as
       throw Error('No network expected');
     },
   });
-  const result = await service.startYoutubeOAuth({
+  const result = await service.startOAuth({
+    platform: 'youtube',
     channelId: 'tech',
     accountId: ACCOUNT,
     clientId: 'fixture.apps.googleusercontent.com',
@@ -287,7 +291,7 @@ test('expired OAuth state is rejected without contacting the token endpoint', as
   });
   now += 11 * 60 * 1000;
   await assert.rejects(
-    service.callbackYoutubeOAuth({
+    service.callbackOAuth('youtube', {
       state: new URL(result.authorizationUrl).searchParams.get('state')!,
       code: 'fixture-code',
     }),
@@ -298,7 +302,8 @@ test('expired OAuth state is rejected without contacting the token endpoint', as
 test('OAuth callback account mismatch and cross-channel credential copies fail closed', async () => {
   const vault = new MemoryVault();
   const service = createSocialService({ vault, fetch: youtubeFetch({ account: OTHER }), now: () => NOW });
-  const result = await service.startYoutubeOAuth({
+  const result = await service.startOAuth({
+    platform: 'youtube',
     channelId: 'tech',
     accountId: ACCOUNT,
     clientId: 'fixture.apps.googleusercontent.com',
@@ -306,7 +311,7 @@ test('OAuth callback account mismatch and cross-channel credential copies fail c
     redirectUri: 'http://127.0.0.1:4317/api/oauth/youtube/callback',
   });
   await assert.rejects(
-    service.callbackYoutubeOAuth({
+    service.callbackOAuth('youtube', {
       state: new URL(result.authorizationUrl).searchParams.get('state')!,
       code: 'fixture-code',
     }),
@@ -332,14 +337,15 @@ test('failed identity verification after refresh preserves the previous protecte
     now: () => now,
     fetch: (url, init) => youtubeFetch({ account })(url, init),
   });
-  const result = await service.startYoutubeOAuth({
+  const result = await service.startOAuth({
+    platform: 'youtube',
     channelId: 'tech',
     accountId: ACCOUNT,
     clientId: 'fixture.apps.googleusercontent.com',
     clientSecret: 'fixture-client-secret',
     redirectUri: 'http://127.0.0.1:4317/api/oauth/youtube/callback',
   });
-  await service.callbackYoutubeOAuth({
+  await service.callbackOAuth('youtube', {
     state: new URL(result.authorizationUrl).searchParams.get('state')!,
     code: 'fixture-code',
   });
@@ -421,7 +427,8 @@ test('oversized upstream response and malformed protected client config expose n
   );
   const vault = new MemoryVault();
   const service = createSocialService({ vault, fetch: youtubeFetch(), now: () => NOW });
-  const result = await service.startYoutubeOAuth({
+  const result = await service.startOAuth({
+    platform: 'youtube',
     channelId: 'tech',
     accountId: ACCOUNT,
     clientId: 'fixture.apps.googleusercontent.com',
@@ -430,7 +437,7 @@ test('oversized upstream response and malformed protected client config expose n
   });
   await vault.set('tech', 'youtube-client', 'fixture-client-secret');
   await assert.rejects(
-    service.callbackYoutubeOAuth({
+    service.callbackOAuth('youtube', {
       state: new URL(result.authorizationUrl).searchParams.get('state')!,
       code: 'fixture-code',
     }),
@@ -452,14 +459,15 @@ test('refresh does not invent scopes or expiration when the provider omits them'
       return fallback(raw, init);
     },
   });
-  const result = await service.startYoutubeOAuth({
+  const result = await service.startOAuth({
+    platform: 'youtube',
     channelId: 'tech',
     accountId: ACCOUNT,
     clientId: 'fixture.apps.googleusercontent.com',
     clientSecret: 'fixture-client-secret',
     redirectUri: 'http://127.0.0.1:4317/api/oauth/youtube/callback',
   });
-  await service.callbackYoutubeOAuth({
+  await service.callbackOAuth('youtube', {
     state: new URL(result.authorizationUrl).searchParams.get('state')!,
     code: 'fixture-code',
   });
@@ -562,12 +570,13 @@ async function uploadFixture(
 test('YouTube upload is resumable, private, streams the file and returns the video id', async () => {
   const { service, calls, video, cleanup } = await uploadFixture();
   try {
-    const result = await service.uploadYoutube('tech', {
+    const result = await service.publish('tech', 'youtube', {
+      vertical: false,
       path: video,
       title: `Skills <vs> agentes ${'x'.repeat(200)}`,
       description: 'Fontes revisadas <script>',
     });
-    assert.deepEqual(result, { videoId: 'abcdefghijk' });
+    assert.deepEqual(result, { postId: 'abcdefghijk' });
     assert.equal(calls.length, 2);
     const start = new URL(calls[0].url);
     assert.equal(start.searchParams.get('uploadType'), 'resumable');
@@ -590,7 +599,12 @@ test('an old connection without the upload scope asks to reconnect and sends not
   const { service, calls, video, cleanup } = await uploadFixture({ scopes: [READ, ANALYTICS, MONEY] });
   try {
     await assert.rejects(
-      service.uploadYoutube('tech', { path: video, title: 'Vídeo', description: '' }),
+      service.publish('tech', 'youtube', {
+        vertical: false,
+        path: video,
+        title: 'Vídeo',
+        description: '',
+      }),
       (error: Error & { code?: string }) =>
         error.code === 'missing_scope' && /Reconecte o YouTube/.test(error.message),
     );
@@ -609,7 +623,14 @@ test('a session URI outside the YouTube upload endpoint never receives the video
   ]) {
     const { service, calls, video, cleanup } = await uploadFixture({ location });
     try {
-      await assert.rejects(service.uploadYoutube('tech', { path: video, title: 'Vídeo', description: '' }));
+      await assert.rejects(
+        service.publish('tech', 'youtube', {
+          vertical: false,
+          path: video,
+          title: 'Vídeo',
+          description: '',
+        }),
+      );
       assert.equal(calls.length, 1, location);
     } finally {
       await cleanup();
@@ -621,7 +642,8 @@ test('a missing video file fails before any network call', async () => {
   const { service, calls, cleanup } = await uploadFixture();
   try {
     await assert.rejects(
-      service.uploadYoutube('tech', {
+      service.publish('tech', 'youtube', {
+        vertical: false,
         path: join(tmpdir(), 'absent-final.mp4'),
         title: 'Vídeo',
         description: '',
@@ -643,13 +665,14 @@ test('the engine thumbnail is set after the upload and a refusal keeps the video
     try {
       const thumbnail = video.replace('final.mp4', 'thumbnail.png');
       await writeFile(thumbnail, 'synthetic png');
-      const result = await service.uploadYoutube('tech', {
+      const result = await service.publish('tech', 'youtube', {
+        vertical: false,
         path: video,
         title: 'Vídeo',
         description: '',
         thumbnail,
       });
-      assert.equal(result.videoId, 'abcdefghijk');
+      assert.equal(result.postId, 'abcdefghijk');
       const set = calls[2];
       assert.equal(new URL(set.url).searchParams.get('videoId'), 'abcdefghijk');
       assert.equal(new Headers(set.init!.headers).get('content-type'), 'image/png');
@@ -665,10 +688,561 @@ test('the engine thumbnail is set after the upload and a refusal keeps the video
 test('without a thumbnail file only the video is sent', async () => {
   const { service, calls, video, cleanup } = await uploadFixture();
   try {
-    const result = await service.uploadYoutube('tech', { path: video, title: 'Vídeo', description: '' });
-    assert.deepEqual(result, { videoId: 'abcdefghijk' });
+    const result = await service.publish('tech', 'youtube', {
+      vertical: false,
+      path: video,
+      title: 'Vídeo',
+      description: '',
+    });
+    assert.deepEqual(result, { postId: 'abcdefghijk' });
     assert.equal(calls.length, 2);
   } finally {
     await cleanup();
+  }
+});
+
+const TIKTOK_OPEN_ID = 'fixture-open-id';
+const PAGE = '1234567890';
+const IG = '17841400000000000';
+
+function tiktokFetch(
+  calls: Array<{ url: string; init?: RequestInit; body?: string }>,
+  options: { username?: string; privacy?: readonly string[]; uploadUrl?: string } = {},
+): SocialFetch {
+  return async (raw, init) => {
+    const url = new URL(raw);
+    assert.equal(init?.redirect, 'error');
+    if (url.pathname === '/v2/oauth/token/') {
+      calls.push({ url: raw, init, body: String(init!.body) });
+      return json({
+        open_id: TIKTOK_OPEN_ID,
+        access_token: 'fixture-tiktok-token',
+        refresh_token: 'fixture-tiktok-refresh',
+        expires_in: 86400,
+        scope: 'user.info.basic,user.info.profile,user.info.stats,video.publish',
+      });
+    }
+    if (url.pathname === '/v2/user/info/')
+      return json({
+        data: {
+          user: {
+            open_id: TIKTOK_OPEN_ID,
+            display_name: 'Fixture',
+            username: options.username ?? 'fixture.channel',
+            follower_count: 10,
+          },
+        },
+        error: { code: 'ok' },
+      });
+    if (url.pathname === '/v2/post/publish/creator_info/query/') {
+      calls.push({ url: raw, init });
+      return json({
+        data: { privacy_level_options: options.privacy ?? ['PUBLIC_TO_EVERYONE', 'SELF_ONLY'] },
+        error: { code: 'ok' },
+      });
+    }
+    if (url.pathname === '/v2/post/publish/video/init/') {
+      calls.push({ url: raw, init, body: String(init!.body) });
+      return json({
+        data: {
+          publish_id: 'v_pub_file~v2.123',
+          upload_url:
+            options.uploadUrl ?? 'https://open-upload.tiktokapis.com/video/?upload_id=1&upload_token=x',
+        },
+        error: { code: 'ok' },
+      });
+    }
+    if (url.hostname === 'open-upload.tiktokapis.com' && init?.method === 'PUT') {
+      calls.push({ url: raw, init, body: await new Response(init.body as ReadableStream).text() });
+      return new Response(null, { status: 201 });
+    }
+    throw Error(`Unexpected API endpoint ${raw}`);
+  };
+}
+
+async function connectTiktok(service: ReturnType<typeof createSocialService>, username = '@Fixture.Channel') {
+  const started = await service.startOAuth({
+    platform: 'tiktok',
+    channelId: 'tech',
+    accountId: username,
+    clientId: 'fixture-client-key',
+    clientSecret: 'fixture-client-secret',
+    redirectUri: 'http://127.0.0.1:4317/api/oauth/tiktok/callback',
+  });
+  return { started, state: new URL(started.authorizationUrl).searchParams.get('state')! };
+}
+
+test('TikTok OAuth uses the hex PKCE digest, binds the expected username and saves the open_id', async () => {
+  const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+  const vault = new MemoryVault();
+  const service = createSocialService({ vault, fetch: tiktokFetch(calls), now: () => NOW });
+  const { started, state } = await connectTiktok(service);
+  const authorize = new URL(started.authorizationUrl);
+  assert.equal(authorize.origin + authorize.pathname, 'https://www.tiktok.com/v2/auth/authorize/');
+  assert.equal(authorize.searchParams.get('client_key'), 'fixture-client-key');
+  assert.equal(
+    authorize.searchParams.get('scope'),
+    'user.info.basic,user.info.profile,user.info.stats,video.publish',
+  );
+  assert.match(authorize.searchParams.get('code_challenge')!, /^[0-9a-f]{64}$/);
+  await assert.rejects(service.callbackOAuth('youtube', { state, code: 'fixture-code' }), /OAuth ausente/);
+  const connection = await service.callbackOAuth('tiktok', { state, code: 'fixture-code' });
+  assert.equal(connection.accountId, TIKTOK_OPEN_ID);
+  assert.equal(connection.profileUrl, 'https://www.tiktok.com/@fixture.channel');
+  const exchange = new URLSearchParams(calls[0].body);
+  assert.equal(exchange.get('grant_type'), 'authorization_code');
+  assert.equal(
+    createHash('sha256').update(exchange.get('code_verifier')!).digest('hex'),
+    authorize.searchParams.get('code_challenge'),
+  );
+  assert.doesNotMatch(JSON.stringify(connection), /fixture-tiktok-token|fixture-client-secret/);
+  assert.deepEqual(await service.profiles('tech'), [
+    { platform: 'tiktok', url: 'https://www.tiktok.com/@fixture.channel' },
+  ]);
+  await service.disconnect('tech', 'tiktok');
+  assert.equal(vault.values.size, 0);
+});
+
+test('a TikTok authorization from another account is refused and saves nothing', async () => {
+  const vault = new MemoryVault();
+  const service = createSocialService({
+    vault,
+    fetch: tiktokFetch([], { username: 'someone.else' }),
+    now: () => NOW,
+  });
+  const { state } = await connectTiktok(service);
+  await assert.rejects(
+    service.callbackOAuth('tiktok', { state, code: 'fixture-code' }),
+    /conta TikTok esperada/,
+  );
+  assert.equal(await vault.get('tech', 'tiktok'), null);
+});
+
+test('TikTok upload is a SELF_ONLY Direct Post with the caption, sent in ranged chunks', async () => {
+  const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+  const directory = await mkdtemp(join(tmpdir(), 'fc-tiktok-upload-'));
+  try {
+    const video = join(directory, 'final.mp4');
+    await writeFile(video, 'synthetic mp4 fixture');
+    const service = createSocialService({
+      vault: new MemoryVault(),
+      fetch: tiktokFetch(calls),
+      now: () => NOW,
+    });
+    const { state } = await connectTiktok(service);
+    await service.callbackOAuth('tiktok', { state, code: 'fixture-code' });
+    calls.length = 0;
+    const result = await service.publish('tech', 'tiktok', {
+      path: video,
+      title: 'Skills vs agentes',
+      description: 'Fontes revisadas\n\nAcompanhe também:\nYouTube: https://www.youtube.com/@fixture',
+      vertical: true,
+    });
+    assert.deepEqual(result, { postId: 'v_pub_file~v2.123' });
+    const init = JSON.parse(calls[1].body!);
+    assert.equal(init.post_info.privacy_level, 'SELF_ONLY');
+    assert.equal(init.post_info.is_aigc, true);
+    assert.match(
+      init.post_info.title,
+      /^Skills vs agentes\n\nFontes revisadas[\s\S]*youtube\.com\/@fixture$/,
+    );
+    const size = 'synthetic mp4 fixture'.length;
+    assert.deepEqual(init.source_info, {
+      source: 'FILE_UPLOAD',
+      video_size: size,
+      chunk_size: size,
+      total_chunk_count: 1,
+    });
+    const put = new Headers(calls[2].init!.headers);
+    assert.equal(put.get('content-range'), `bytes 0-${size - 1}/${size}`);
+    assert.equal(put.get('authorization'), null, 'The upload URL is signed; the token never goes there');
+    assert.equal(calls[2].body, 'synthetic mp4 fixture');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('TikTok sends nothing when SELF_ONLY is not offered or the upload URL leaves its host', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'fc-tiktok-refuse-'));
+  try {
+    const video = join(directory, 'final.mp4');
+    await writeFile(video, 'synthetic mp4 fixture');
+    for (const [options, pattern] of [
+      [{ privacy: ['PUBLIC_TO_EVERYONE'] }, /Somente eu/],
+      [{ uploadUrl: 'https://evil.example/video/?upload_id=1' }, /fora do endpoint/],
+    ] as const) {
+      const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+      const service = createSocialService({
+        vault: new MemoryVault(),
+        fetch: tiktokFetch(calls, options),
+        now: () => NOW,
+      });
+      const { state } = await connectTiktok(service);
+      await service.callbackOAuth('tiktok', { state, code: 'fixture-code' });
+      await assert.rejects(
+        service.publish('tech', 'tiktok', { path: video, title: 'Vídeo', description: '', vertical: true }),
+        pattern,
+      );
+      assert.equal(
+        calls.some((call) => call.init?.method === 'PUT'),
+        false,
+      );
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+function metaFetch(
+  calls: Array<{ url: string; init?: RequestInit; body?: string }>,
+  options: { permissions?: string[]; pages?: Array<{ id: string; access_token: string }> } = {},
+): SocialFetch {
+  return async (raw, init) => {
+    const url = new URL(raw);
+    assert.equal(init?.redirect, 'error');
+    assert.equal(url.searchParams.has('client_secret'), false, 'The app secret travels in the body only');
+    const auth = new Headers(init?.headers).get('authorization');
+    if (url.pathname === '/v26.0/oauth/access_token') {
+      const body = new URLSearchParams(String(init!.body));
+      calls.push({ url: raw, init, body: String(init!.body) });
+      return json({
+        access_token:
+          body.get('grant_type') === 'fb_exchange_token' ? 'fixture-long-user' : 'fixture-short-user',
+        expires_in: 5183944,
+      });
+    }
+    if (url.pathname === '/v26.0/me/permissions')
+      return json({
+        data: (
+          options.permissions ?? [
+            'pages_show_list',
+            'pages_read_engagement',
+            'pages_manage_posts',
+            'instagram_basic',
+          ]
+        ).map((permission) => ({ permission, status: 'granted' })),
+      });
+    if (url.pathname === '/v26.0/me/accounts') {
+      assert.equal(auth, 'Bearer fixture-long-user');
+      if (url.searchParams.get('fields') === 'id,access_token')
+        return json({ data: options.pages ?? [{ id: PAGE, access_token: 'fixture-page-token' }] });
+      return json({ data: [{ id: PAGE, instagram_business_account: { id: IG } }] });
+    }
+    if (url.pathname === '/v26.0/me') {
+      assert.equal(auth, 'Bearer fixture-page-token');
+      return json({ id: PAGE, name: 'Fixture Page', followers_count: 5 });
+    }
+    if (url.pathname === `/v26.0/${IG}`) return json({ id: IG, username: 'fixture.ig' });
+    if (url.pathname === `/v26.0/${PAGE}/video_reels`) {
+      assert.equal(auth, 'Bearer fixture-page-token');
+      const body = new URLSearchParams(String(init!.body));
+      calls.push({ url: raw, init, body: String(init!.body) });
+      if (body.get('upload_phase') === 'start')
+        return json({ video_id: '555', upload_url: 'https://rupload.facebook.com/video-upload/v26.0/555' });
+      return json({ success: true });
+    }
+    if (raw === 'https://rupload.facebook.com/video-upload/v26.0/555') {
+      calls.push({ url: raw, init, body: await new Response(init!.body as ReadableStream).text() });
+      return json({ success: true });
+    }
+    throw Error(`Unexpected API endpoint ${raw}`);
+  };
+}
+
+async function connectMeta(
+  service: ReturnType<typeof createSocialService>,
+  platform: 'facebook' | 'instagram',
+) {
+  const started = await service.startOAuth({
+    platform,
+    channelId: 'tech',
+    accountId: platform === 'facebook' ? PAGE : IG,
+    clientId: '1122334455',
+    clientSecret: 'fixture-app-secret',
+    redirectUri: `http://127.0.0.1:4317/api/oauth/${platform}/callback`,
+  });
+  const authorize = new URL(started.authorizationUrl);
+  assert.equal(authorize.origin + authorize.pathname, 'https://www.facebook.com/v26.0/dialog/oauth');
+  return service.callbackOAuth(platform, {
+    state: authorize.searchParams.get('state')!,
+    code: 'fixture-code',
+  });
+}
+
+test('Facebook OAuth keeps the Page token of the expected Page with the permissions Meta granted', async () => {
+  const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+  const vault = new MemoryVault();
+  const service = createSocialService({ vault, fetch: metaFetch(calls), now: () => NOW });
+  const connection = await connectMeta(service, 'facebook');
+  assert.equal(connection.accountId, PAGE);
+  assert.equal(connection.expiresAt, null);
+  assert.ok(connection.scopes.includes('pages_manage_posts'));
+  assert.equal(JSON.parse((await vault.get('tech', 'facebook'))!).accessToken, 'fixture-page-token');
+  assert.equal(new URLSearchParams(calls[1].body).get('fb_exchange_token'), 'fixture-short-user');
+  const refused = createSocialService({
+    vault: new MemoryVault(),
+    fetch: metaFetch([], { pages: [{ id: '999', access_token: 'other-page' }] }),
+    now: () => NOW,
+  });
+  await assert.rejects(connectMeta(refused, 'facebook'), /Páginas autorizadas/);
+});
+
+test('a Facebook Reel goes up as a DRAFT through rupload; horizontal video sends nothing', async () => {
+  const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+  const directory = await mkdtemp(join(tmpdir(), 'fc-reel-upload-'));
+  try {
+    const video = join(directory, 'final.mp4');
+    await writeFile(video, 'synthetic mp4 fixture');
+    const service = createSocialService({
+      vault: new MemoryVault(),
+      fetch: metaFetch(calls),
+      now: () => NOW,
+    });
+    await connectMeta(service, 'facebook');
+    await connectMeta(service, 'instagram');
+    calls.length = 0;
+    await assert.rejects(
+      service.publish('tech', 'facebook', { path: video, title: 'Vídeo', description: '', vertical: false }),
+      /só vídeo vertical/,
+    );
+    await assert.rejects(
+      service.publish('tech', 'instagram', { path: video, title: 'Vídeo', description: '', vertical: false }),
+      /Instagram recebe só vídeo vertical/,
+    );
+    assert.equal(calls.length, 0);
+    const result = await service.publish('tech', 'facebook', {
+      path: video,
+      title: 'Skills vs agentes',
+      description: 'Fontes\n\nAcompanhe também:\nInstagram: https://www.instagram.com/fixture.ig/',
+      vertical: true,
+    });
+    assert.deepEqual(result, { postId: '555' });
+    const upload = new Headers(calls[1].init!.headers);
+    assert.equal(upload.get('authorization'), 'OAuth fixture-page-token');
+    assert.equal(upload.get('offset'), '0');
+    assert.equal(upload.get('file_size'), String('synthetic mp4 fixture'.length));
+    assert.equal(calls[1].body, 'synthetic mp4 fixture');
+    const finish = new URLSearchParams(calls[2].body);
+    assert.equal(finish.get('upload_phase'), 'finish');
+    assert.equal(finish.get('video_state'), 'DRAFT');
+    assert.match(finish.get('description')!, /instagram\.com\/fixture\.ig/);
+    assert.deepEqual(
+      (await service.profiles('tech')).map((item) => item.url),
+      ['https://www.instagram.com/fixture.ig/', 'https://www.facebook.com/1234567890'],
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('a Page connected without pages_manage_posts asks to reconnect before sending', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'fc-reel-scope-'));
+  try {
+    const video = join(directory, 'final.mp4');
+    await writeFile(video, 'synthetic mp4 fixture');
+    const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+    const service = createSocialService({
+      vault: new MemoryVault(),
+      fetch: metaFetch(calls, { permissions: ['pages_show_list', 'pages_read_engagement'] }),
+      now: () => NOW,
+    });
+    await connectMeta(service, 'facebook');
+    calls.length = 0;
+    await assert.rejects(
+      service.publish('tech', 'facebook', { path: video, title: 'Vídeo', description: '', vertical: true }),
+      /Reconecte o Facebook/,
+    );
+    assert.equal(calls.length, 0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('a TikTok file above 5 MB goes in 10 MiB chunks and the last one absorbs the remainder', async () => {
+  const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+  const directory = await mkdtemp(join(tmpdir(), 'fc-tiktok-chunks-'));
+  try {
+    const video = join(directory, 'final.mp4');
+    const size = 25 * 1024 * 1024 + 7;
+    await writeFile(video, Buffer.alloc(size));
+    const service = createSocialService({
+      vault: new MemoryVault(),
+      fetch: tiktokFetch(calls),
+      now: () => NOW,
+    });
+    const { state } = await connectTiktok(service);
+    await service.callbackOAuth('tiktok', { state, code: 'fixture-code' });
+    calls.length = 0;
+    await service.publish('tech', 'tiktok', {
+      path: video,
+      title: 'Vídeo',
+      description: '',
+      vertical: false,
+    });
+    const chunk = 10 * 1024 * 1024;
+    assert.deepEqual(JSON.parse(calls[1].body!).source_info, {
+      source: 'FILE_UPLOAD',
+      video_size: size,
+      chunk_size: chunk,
+      total_chunk_count: 2,
+    });
+    const puts = calls.filter((call) => call.init?.method === 'PUT');
+    assert.deepEqual(
+      puts.map((call) => new Headers(call.init!.headers).get('content-range')),
+      [`bytes 0-${chunk - 1}/${size}`, `bytes ${chunk}-${size - 1}/${size}`],
+    );
+    assert.deepEqual(
+      puts.map((call) => call.body!.length),
+      [chunk, size - chunk],
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+function instagramFetch(
+  calls: Array<{ url: string; init?: RequestInit; body?: string }>,
+  statuses: string[],
+): SocialFetch {
+  const meta = metaFetch(calls, {
+    permissions: ['pages_show_list', 'pages_read_engagement', 'instagram_basic', 'instagram_content_publish'],
+  });
+  return async (raw, init) => {
+    const url = new URL(raw);
+    const auth = new Headers(init?.headers).get('authorization');
+    if (url.pathname === `/v26.0/${IG}/media`) {
+      assert.equal(auth, 'Bearer fixture-long-user');
+      calls.push({ url: raw, init, body: String(init!.body) });
+      return json({ id: '777', uri: 'https://rupload.facebook.com/ig-api-upload/v26.0/777' });
+    }
+    if (raw === 'https://rupload.facebook.com/ig-api-upload/v26.0/777') {
+      calls.push({ url: raw, init, body: await new Response(init!.body as ReadableStream).text() });
+      return json({ success: true, message: 'Upload successful.' });
+    }
+    if (url.pathname === '/v26.0/777') {
+      calls.push({ url: raw, init });
+      return json({ status_code: statuses.shift() ?? 'IN_PROGRESS', id: '777' });
+    }
+    if (url.pathname === `/v26.0/${IG}/media_publish`) {
+      calls.push({ url: raw, init, body: String(init!.body) });
+      return json({ id: '888' });
+    }
+    if (url.pathname === '/v26.0/888') return json({ permalink: 'https://www.instagram.com/reel/AbC_12-x/' });
+    return meta(raw, init);
+  };
+}
+
+test('Instagram OAuth can use a Facebook Login for Business configuration instead of scopes', async () => {
+  const service = createSocialService({ vault: new MemoryVault(), fetch: metaFetch([]), now: () => NOW });
+  const input = {
+    platform: 'instagram' as const,
+    channelId: 'tech',
+    accountId: IG,
+    clientId: '1122334455',
+    clientSecret: 'fixture-app-secret',
+    redirectUri: 'http://127.0.0.1:4317/api/oauth/instagram/callback',
+  };
+  const url = new URL((await service.startOAuth({ ...input, configId: '998877' })).authorizationUrl);
+  assert.equal(url.searchParams.get('config_id'), '998877');
+  assert.equal(url.searchParams.has('scope'), false);
+  await assert.rejects(service.startOAuth({ ...input, configId: 'abc' }), /configuração/);
+  await assert.rejects(service.startOAuth({ ...input, platform: 'youtube', configId: '1' } as never));
+});
+
+test('an Instagram Reel is published only after processing finishes, with caption and permalink', async () => {
+  const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+  const waits: number[] = [];
+  const directory = await mkdtemp(join(tmpdir(), 'fc-instagram-publish-'));
+  try {
+    const video = join(directory, 'final.mp4');
+    await writeFile(video, 'synthetic mp4 fixture');
+    const service = createSocialService({
+      vault: new MemoryVault(),
+      fetch: instagramFetch(calls, ['IN_PROGRESS', 'FINISHED']),
+      now: () => NOW,
+      wait: async (ms) => {
+        waits.push(ms);
+      },
+    });
+    await connectMeta(service, 'instagram');
+    calls.length = 0;
+    const result = await service.publish('tech', 'instagram', {
+      path: video,
+      title: 'Skills vs agentes',
+      description: 'Fontes\n\nAcompanhe também:\nYouTube: https://www.youtube.com/@fixture',
+      vertical: true,
+    });
+    assert.deepEqual(result, { postId: '888', url: 'https://www.instagram.com/reel/AbC_12-x/' });
+    const container = new URLSearchParams(calls[0].body);
+    assert.equal(container.get('media_type'), 'REELS');
+    assert.equal(container.get('upload_type'), 'resumable');
+    assert.match(container.get('caption')!, /^Skills vs agentes\n\nFontes[\s\S]*youtube\.com\/@fixture$/);
+    const upload = new Headers(calls[1].init!.headers);
+    assert.equal(upload.get('authorization'), 'OAuth fixture-long-user');
+    assert.equal(upload.get('file_size'), String('synthetic mp4 fixture'.length));
+    assert.equal(calls[1].body, 'synthetic mp4 fixture');
+    assert.deepEqual(waits, [30_000, 30_000], 'Two checks at the documented pace');
+    assert.equal(new URLSearchParams(calls.at(-1)!.body).get('creation_id'), '777');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('a container that fails or never finishes processing is never published', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'fc-instagram-refuse-'));
+  try {
+    const video = join(directory, 'final.mp4');
+    await writeFile(video, 'synthetic mp4 fixture');
+    for (const [statuses, pattern] of [
+      [['IN_PROGRESS', 'ERROR'], /nada foi publicado/],
+      [[], /5 minutos/],
+    ] as const) {
+      const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+      const service = createSocialService({
+        vault: new MemoryVault(),
+        fetch: instagramFetch(calls, [...statuses]),
+        now: () => NOW,
+        wait: async () => {},
+      });
+      await connectMeta(service, 'instagram');
+      await assert.rejects(
+        service.publish('tech', 'instagram', {
+          path: video,
+          title: 'Vídeo',
+          description: '',
+          vertical: true,
+        }),
+        pattern,
+      );
+      assert.equal(
+        calls.some((call) => call.url.endsWith('/media_publish')),
+        false,
+      );
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('an Instagram connection without instagram_content_publish asks to reconnect and sends nothing', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'fc-instagram-scope-'));
+  try {
+    const video = join(directory, 'final.mp4');
+    await writeFile(video, 'synthetic mp4 fixture');
+    const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+    const service = createSocialService({
+      vault: new MemoryVault(),
+      fetch: metaFetch(calls),
+      now: () => NOW,
+    });
+    await connectMeta(service, 'instagram');
+    calls.length = 0;
+    await assert.rejects(
+      service.publish('tech', 'instagram', { path: video, title: 'Vídeo', description: '', vertical: true }),
+      /Reconecte o Instagram/,
+    );
+    assert.equal(calls.length, 0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
   }
 });

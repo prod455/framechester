@@ -404,6 +404,55 @@ export default {
       'Invalid channel or network identity for the vault.',
     'Cofre indisponível neste sistema. Configure um gerenciador de segredos suportado; não há fallback em texto puro.':
       'Vault unavailable on this system. Set up a supported secret manager; there is no plain-text fallback.',
+    'O envio às redes não está disponível.': 'Uploading to the networks is not available.',
+    'Envio automático inválido.': 'Invalid automatic upload.',
+    'Esta rede não recebe envio automático.': 'This network does not take automatic uploads.',
+    'Reconecte o {network} em Contas conectadas para autorizar o envio de vídeos.':
+      'Reconnect {network} in Connected accounts to authorize video uploads.',
+    'Não foi possível concluir o envio ao {network}. Nenhum token ou detalhe privado foi registrado.':
+      'Could not finish the upload to {network}. No token or private detail was logged.',
+    'Só a versão final aprovada no QA pode ser enviada ao {network}.':
+      'Only the final version approved in QA can be sent to {network}.',
+    'Este vídeo já foi enviado ao {network}.': 'This video was already uploaded to {network}.',
+    'O {network} não recebe envio pelo Studio.': '{network} does not take uploads from the Studio.',
+    'Falha no envio ao {network}.': 'Upload to {network} failed.',
+    'A API do Instagram só publica direto, sem rascunho ou modo privado; envie pelo app do Instagram.':
+      "Instagram's API only publishes directly, with no draft or private mode; post from the Instagram app.",
+    'O Facebook recebe só vídeo vertical, como Reel; envie o Short deste vídeo.':
+      "Facebook only takes vertical video, as a Reel; send this video's Short.",
+    'O TikTok não oferece "Somente eu" para esta conta; nada foi enviado.':
+      'TikTok does not offer "Only me" for this account; nothing was sent.',
+    'Vídeo grande demais para o TikTok.': 'Video too large for TikTok.',
+    'O TikTok não retornou o ID do envio.': 'TikTok did not return the upload ID.',
+    'O TikTok recusou o arquivo (HTTP {status}).': 'TikTok rejected the file (HTTP {status}).',
+    'O Facebook não retornou o ID do vídeo.': 'Facebook did not return the video ID.',
+    'O Facebook recusou o arquivo (HTTP {status}).': 'Facebook rejected the file (HTTP {status}).',
+    'O Facebook não confirmou o recebimento do arquivo.': 'Facebook did not confirm it received the file.',
+    'O Facebook não confirmou o rascunho do Reel.': 'Facebook did not confirm the Reel draft.',
+    'A plataforma não abriu a sessão de envio.': 'The platform did not open the upload session.',
+    'Sessão de envio fora do endpoint da plataforma.': 'Upload session outside the platform endpoint.',
+    'O TikTok não retornou um token válido.': 'TikTok did not return a valid token.',
+    'A Meta não retornou um token válido.': 'Meta did not return a valid token.',
+    'A Página Facebook esperada não está entre as Páginas autorizadas.':
+      'The expected Facebook Page is not among the authorized Pages.',
+    'OAuth exige callback de loopback local registrado exatamente no aplicativo do provedor.':
+      "OAuth needs a local loopback callback registered exactly in the provider's app.",
+    'O {network} recebe só vídeo vertical, como Reel; envie o Short deste vídeo.':
+      "{network} only takes vertical video, as a Reel; send this video's Short.",
+    'ID de configuração do Facebook Login for Business inválido.':
+      'Invalid Facebook Login for Business configuration ID.',
+    'O Instagram aceita Reels de até 300 MB.': 'Instagram takes Reels up to 300 MB.',
+    'O Instagram não retornou o contêiner do Reel.': 'Instagram did not return the Reel container.',
+    'O Instagram recusou o arquivo (HTTP {status}).': 'Instagram rejected the file (HTTP {status}).',
+    'O Instagram não confirmou o recebimento do arquivo.': 'Instagram did not confirm it received the file.',
+    'O Instagram recusou o vídeo ao processar; nada foi publicado.':
+      'Instagram rejected the video while processing; nothing was published.',
+    'O Instagram não terminou de processar o vídeo em 5 minutos; nada foi publicado. Tente de novo.':
+      'Instagram did not finish processing the video within 5 minutes; nothing was published. Try again.',
+    'O Instagram não retornou o ID da publicação.': 'Instagram did not return the post ID.',
+    'Este vídeo já é vertical: ele mesmo segue como Short.':
+      'This video is already vertical: it goes out as the Short itself.',
+    'Este vídeo já tem um Short.': 'This video already has a Short.',
   },
   es: {
     'O armazenamento privado de consumo está indisponível ou é inválido. Preserve o histórico e verifique as permissões antes de tentar novamente.':
@@ -809,5 +858,55 @@ export default {
       'Identidad de canal o red no válida para la bóveda.',
     'Cofre indisponível neste sistema. Configure um gerenciador de segredos suportado; não há fallback em texto puro.':
       'Bóveda no disponible en este sistema. Configura un gestor de secretos compatible; no hay alternativa en texto plano.',
+    'O envio às redes não está disponível.': 'La subida a las redes no está disponible.',
+    'Envio automático inválido.': 'Subida automática no válida.',
+    'Esta rede não recebe envio automático.': 'Esta red no recibe subidas automáticas.',
+    'Reconecte o {network} em Contas conectadas para autorizar o envio de vídeos.':
+      'Vuelve a conectar {network} en Cuentas conectadas para autorizar la subida de videos.',
+    'Não foi possível concluir o envio ao {network}. Nenhum token ou detalhe privado foi registrado.':
+      'No se pudo completar la subida a {network}. No se registró ningún token ni detalle privado.',
+    'Só a versão final aprovada no QA pode ser enviada ao {network}.':
+      'Solo la versión final aprobada en el QA puede enviarse a {network}.',
+    'Este vídeo já foi enviado ao {network}.': 'Este video ya se subió a {network}.',
+    'O {network} não recebe envio pelo Studio.': '{network} no recibe subidas desde el Studio.',
+    'Falha no envio ao {network}.': 'Falló la subida a {network}.',
+    'A API do Instagram só publica direto, sem rascunho ou modo privado; envie pelo app do Instagram.':
+      'La API de Instagram solo publica directamente, sin borrador ni modo privado; publica desde la app de Instagram.',
+    'O Facebook recebe só vídeo vertical, como Reel; envie o Short deste vídeo.':
+      'Facebook solo recibe video vertical, como Reel; envía el Short de este video.',
+    'O TikTok não oferece "Somente eu" para esta conta; nada foi enviado.':
+      'TikTok no ofrece "Solo yo" para esta cuenta; no se envió nada.',
+    'Vídeo grande demais para o TikTok.': 'Video demasiado grande para TikTok.',
+    'O TikTok não retornou o ID do envio.': 'TikTok no devolvió el ID de la subida.',
+    'O TikTok recusou o arquivo (HTTP {status}).': 'TikTok rechazó el archivo (HTTP {status}).',
+    'O Facebook não retornou o ID do vídeo.': 'Facebook no devolvió el ID del video.',
+    'O Facebook recusou o arquivo (HTTP {status}).': 'Facebook rechazó el archivo (HTTP {status}).',
+    'O Facebook não confirmou o recebimento do arquivo.': 'Facebook no confirmó la recepción del archivo.',
+    'O Facebook não confirmou o rascunho do Reel.': 'Facebook no confirmó el borrador del Reel.',
+    'A plataforma não abriu a sessão de envio.': 'La plataforma no abrió la sesión de subida.',
+    'Sessão de envio fora do endpoint da plataforma.':
+      'Sesión de subida fuera del endpoint de la plataforma.',
+    'O TikTok não retornou um token válido.': 'TikTok no devolvió un token válido.',
+    'A Meta não retornou um token válido.': 'Meta no devolvió un token válido.',
+    'A Página Facebook esperada não está entre as Páginas autorizadas.':
+      'La Página de Facebook esperada no está entre las Páginas autorizadas.',
+    'OAuth exige callback de loopback local registrado exatamente no aplicativo do provedor.':
+      'OAuth exige un callback de loopback local registrado exactamente en la app del proveedor.',
+    'O {network} recebe só vídeo vertical, como Reel; envie o Short deste vídeo.':
+      '{network} solo recibe video vertical, como Reel; envía el Short de este video.',
+    'ID de configuração do Facebook Login for Business inválido.':
+      'ID de configuración de Facebook Login for Business no válido.',
+    'O Instagram aceita Reels de até 300 MB.': 'Instagram acepta Reels de hasta 300 MB.',
+    'O Instagram não retornou o contêiner do Reel.': 'Instagram no devolvió el contenedor del Reel.',
+    'O Instagram recusou o arquivo (HTTP {status}).': 'Instagram rechazó el archivo (HTTP {status}).',
+    'O Instagram não confirmou o recebimento do arquivo.': 'Instagram no confirmó la recepción del archivo.',
+    'O Instagram recusou o vídeo ao processar; nada foi publicado.':
+      'Instagram rechazó el video al procesarlo; no se publicó nada.',
+    'O Instagram não terminou de processar o vídeo em 5 minutos; nada foi publicado. Tente de novo.':
+      'Instagram no terminó de procesar el video en 5 minutos; no se publicó nada. Inténtalo de nuevo.',
+    'O Instagram não retornou o ID da publicação.': 'Instagram no devolvió el ID de la publicación.',
+    'Este vídeo já é vertical: ele mesmo segue como Short.':
+      'Este video ya es vertical: él mismo sale como Short.',
+    'Este vídeo já tem um Short.': 'Este video ya tiene un Short.',
   },
 } satisfies AreaCatalog;

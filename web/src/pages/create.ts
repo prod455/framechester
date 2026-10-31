@@ -5,9 +5,9 @@ import {
   generateFinal,
   shortButton,
   startProduction,
+  publicationStatus,
+  publishButton,
   viewJob,
-  youtubeButton,
-  youtubeStatus,
 } from './production.ts';
 
 /** The default page: the four steps of the channel's current video. */
@@ -22,9 +22,9 @@ export function createPage(): HTMLElement {
       studio.activeScriptId = script.id;
       startProduction();
     },
-    sendButton: youtubeButton,
+    sendButton: (job) => publishButton(job, 'youtube'),
     shortButton,
-    youtubeStatus,
+    youtubeStatus: (job) => publicationStatus(job, 'youtube'),
     allVideos: () => go('production'),
   });
 }

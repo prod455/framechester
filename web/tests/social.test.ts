@@ -1257,7 +1257,16 @@ test('Instagram can be connected by its @: the ID is found among the authorized 
   );
   await assert.rejects(
     connect('@fixture.ig', false, true),
-    /não liberou nenhuma Página para o Studio, embora tenha concedido pages_show_list, pages_read_engagement, pages_manage_posts, instagram_basic\. .*Editar acesso/,
+    /não liberou nenhuma Página para o Studio e não concedeu business_management/,
+  );
+  await assert.rejects(
+    connect('@fixture.ig', false, true, [
+      'pages_show_list',
+      'pages_read_engagement',
+      'business_management',
+      'instagram_basic',
+    ]),
+    /não liberou nenhuma Página para o Studio, embora tenha concedido pages_show_list, pages_read_engagement, business_management, instagram_basic\. .*Editar acesso/,
   );
   await assert.rejects(
     connect('@fixture.ig', false, true, ['instagram_basic']),

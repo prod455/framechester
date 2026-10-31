@@ -7,6 +7,7 @@ pub mod error;
 pub mod finance;
 pub mod narration;
 pub mod package;
+pub mod persona;
 pub mod pipeline;
 pub mod planner;
 pub mod ports;

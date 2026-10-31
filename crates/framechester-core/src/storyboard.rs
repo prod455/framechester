@@ -349,6 +349,9 @@ pub enum Composition {
         character: Character,
         pose: Pose,
         text: String,
+        /// Drawn from the script's description instead of the preset `character`.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        persona: Option<crate::persona::Persona>,
     },
 }
 
@@ -838,12 +841,24 @@ impl StoryboardScene {
                     return Err(invalid(id, "titulo vazio ou acima de 140 caracteres"));
                 }
             }
-            Composition::Character { text, .. } => {
+            Composition::Character { text, persona, .. } => {
                 if text.trim().is_empty() || text.chars().count() > 140 {
                     return Err(invalid(
                         id,
                         "fala do personagem vazia ou acima de 140 caracteres",
                     ));
+                }
+                if let Some(persona) = persona {
+                    let name = persona.name.trim();
+                    if name.is_empty() || name.chars().count() > crate::persona::MAX_NAME_CHARS {
+                        return Err(invalid(id, "nome do personagem vazio ou longo demais"));
+                    }
+                    if persona
+                        .number
+                        .is_some_and(|number| !(1..=99).contains(&number))
+                    {
+                        return Err(invalid(id, "numero do uniforme fora de 1 a 99"));
+                    }
                 }
             }
             Composition::FlowDiagram {

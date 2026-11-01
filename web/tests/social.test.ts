@@ -522,7 +522,12 @@ const SESSION =
   'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&upload_id=fixture-session';
 
 async function uploadFixture(
-  options: { scopes?: string[]; location?: string; thumbnailStatus?: number } = {},
+  options: {
+    scopes?: string[];
+    location?: string;
+    thumbnailStatus?: number;
+    refusal?: { status: number; body: unknown };
+  } = {},
 ): Promise<{
   service: ReturnType<typeof createSocialService>;
   calls: Array<{ url: string; init?: RequestInit; body?: string }>;
@@ -548,6 +553,8 @@ async function uploadFixture(
         return json({ items: [{ id: ACCOUNT, snippet: { title: 'Fixture' } }] });
       if (url.pathname === '/upload/youtube/v3/videos' && init?.method === 'POST') {
         calls.push({ url: raw, init, body: String(init.body) });
+        if (options.refusal)
+          return new Response(JSON.stringify(options.refusal.body), { status: options.refusal.status });
         return new Response(null, { status: 200, headers: { location: options.location ?? SESSION } });
       }
       if (url.pathname === '/upload/youtube/v3/thumbnails/set') {
@@ -1648,5 +1655,77 @@ test('a video outside the network limits is refused before the upload starts', a
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('a refused Instagram upload names the provider error type, never its message, and publishes nothing', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'fc-instagram-rupload-'));
+  try {
+    const video = join(directory, 'final.mp4');
+    await writeFile(video, MP4);
+    const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+    const meta = instagramFetch(calls, ['FINISHED']);
+    for (const [body, pattern] of [
+      [
+        { debug_info: { retriable: false, type: 'ProcessingFailedError', message: 'segredo do provedor' } },
+        /^O Instagram recusou o arquivo \(HTTP 400, código ProcessingFailedError\)\.$/,
+      ],
+      [{ error: { code: 100, error_subcode: 2207026, message: 'segredo' } }, /código 100\/2207026\)/],
+      ['<html>falha</html>', /^O Instagram recusou o arquivo \(HTTP 400\)\.$/],
+    ] as const) {
+      calls.length = 0;
+      const service = createSocialService({
+        vault: new MemoryVault(),
+        fetch: async (raw, init) =>
+          raw.startsWith('https://rupload.facebook.com/')
+            ? new Response(typeof body === 'string' ? body : JSON.stringify(body), { status: 400 })
+            : meta(raw, init),
+        now: () => NOW,
+        wait: async () => {},
+      });
+      await connectMeta(service, 'instagram');
+      const error = await service
+        .publish('tech', 'instagram', { path: video, title: 'Vídeo', description: '', vertical: true })
+        .catch((failure: Error) => failure);
+      assert.match(String((error as Error).message), pattern);
+      assert.doesNotMatch(String((error as Error).message), /segredo/);
+      assert.equal(
+        calls.some((call) => call.url.endsWith('/media_publish')),
+        false,
+      );
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('a refused YouTube upload says why: channel upload limit, project quota or metadata', async () => {
+  const google = (status: number, reason: string) => ({
+    status,
+    body: {
+      error: { code: status, message: 'segredo do Google', errors: [{ reason, domain: 'youtube.video' }] },
+    },
+  });
+  for (const [refusal, pattern] of [
+    [google(400, 'uploadLimitExceeded'), /^O canal atingiu o limite de envios do YouTube.*24 horas/],
+    [google(403, 'quotaExceeded'), /^A quota diária da YouTube Data API do projeto acabou/],
+    [
+      google(400, 'invalidTitle'),
+      /^O YouTube recusou o título ou a descrição \(HTTP 400, código invalidTitle\)\.$/,
+    ],
+    [google(400, 'badRequest'), /^O YouTube recusou o envio \(HTTP 400, código badRequest\)\.$/],
+    [{ status: 400, body: 'sem json' }, /^O YouTube recusou o envio \(HTTP 400\)\.$/],
+  ] as const) {
+    const { service, calls, video, cleanup } = await uploadFixture({ refusal });
+    try {
+      const error = await service
+        .publish('tech', 'youtube', { vertical: false, path: video, title: 'Vídeo', description: '' })
+        .catch((failure: Error) => failure);
+      assert.match((error as Error).message, pattern);
+      assert.doesNotMatch((error as Error).message, /segredo/);
+      assert.equal(calls.length, 1, 'the file is never sent after a refused session');
+    } finally {
+      await cleanup();
+    }
   }
 });

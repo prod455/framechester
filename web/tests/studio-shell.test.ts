@@ -289,6 +289,10 @@ test('a finished video shows one card per network with its own state and action'
     [...folded.querySelectorAll('h3')].map((item) => item.textContent),
     ['Short 1 de 2', 'Short 2 de 2'],
   );
+  // A stopped Short offers its own part again, not a new production of the script.
+  const stoppedShort = { ...data.jobs[1], status: 'failed' as const, videoAvailable: false };
+  const stoppedCard = jobCard(stoppedShort, true);
+  assert.ok(stoppedCard.querySelector(`[data-testid="retry-${stoppedShort.id}"]`));
   // Once per video: the button does not come back when the Shorts are gone.
   data.jobs = [{ ...job, shortsAt: now }];
   assert.equal(

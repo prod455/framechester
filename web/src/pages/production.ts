@@ -285,8 +285,15 @@ function reviewLink(platform: Platform, postId: string, url?: string): HTMLEleme
   );
 }
 
-function uploadedText(platform: Platform, when: string): string {
+function uploadedText(platform: Platform, when: string, draft = false): string {
   if (platform === 'youtube') return t('Enviado ao YouTube como privado em {date}.', { date: when });
+  if (platform === 'tiktok' && draft)
+    return t(
+      'Enviado como rascunho para a caixa de entrada do TikTok em {date}. Abra o app do TikTok para editar e publicar.',
+      {
+        date: when,
+      },
+    );
   if (platform === 'tiktok')
     return t('Enviado ao TikTok como "Somente eu" em {date}. Revise e publique pelo app do TikTok.', {
       date: when,
@@ -330,7 +337,7 @@ export function publicationStatus(job: WebJob, only?: Platform): HTMLElement | n
       return el(
         'p',
         {},
-        `${uploadedText(platform, date(publication.uploadedAt))} ${thumbnail}`,
+        `${uploadedText(platform, date(publication.uploadedAt), publication.draft === true)} ${thumbnail}`,
         reviewLink(platform, publication.postId, publication.url),
       );
     })

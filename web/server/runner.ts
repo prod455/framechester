@@ -1158,6 +1158,7 @@ export class LocalRunner implements RunnerApi {
           uploadedAt: new Date().toISOString(),
           ...(sent.thumbnail ? { thumbnail: sent.thumbnail } : {}),
           ...(sent.url ? { url: sent.url } : {}),
+          ...(sent.draft ? { draft: true } : {}),
         };
       } catch (error) {
         result = {

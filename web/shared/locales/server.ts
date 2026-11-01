@@ -4,6 +4,10 @@ import type { AreaCatalog } from './index.ts';
 
 export default {
   en: {
+    'A Página {page} não está entre as Páginas liberadas: {pages}. Use o ID de uma delas e conecte de novo.':
+      'Page {page} is not among the granted Pages: {pages}. Use the ID of one of them and connect again.',
+    'A Meta não liberou nenhuma Página para o Studio (concedidas: {granted}). Conecte de novo aceitando todas as permissões e marque a Página na tela da Meta.':
+      'Meta granted no Page to the Studio (granted: {granted}). Connect again accepting every permission and select the Page on the Meta screen.',
     'A Meta não liberou nenhuma Página para o Studio e não concedeu business_management, sem a qual Páginas de um portfólio de empresa não aparecem (concedidas: {granted}). Conecte de novo aceitando todas as permissões; se usar o ID da configuração, inclua business_management nela.':
       'Meta granted no Page to the Studio and did not grant business_management, without which Pages of a business portfolio do not appear (granted: {granted}). Connect again accepting every permission; if you use the configuration ID, add business_management to it.',
     'O Instagram @{username} não está ligado a nenhuma Página autorizada. Contas encontradas: {found}.':
@@ -488,6 +492,10 @@ export default {
       'Voice without commercial approval in this installation. Choose a Kokoro voice from the catalog (PT-BR, EN-US or ES) in Settings. Legacy Piper voices are blocked.',
   },
   es: {
+    'A Página {page} não está entre as Páginas liberadas: {pages}. Use o ID de uma delas e conecte de novo.':
+      'La Página {page} no está entre las Páginas autorizadas: {pages}. Usa el ID de una de ellas y conecta de nuevo.',
+    'A Meta não liberou nenhuma Página para o Studio (concedidas: {granted}). Conecte de novo aceitando todas as permissões e marque a Página na tela da Meta.':
+      'Meta no autorizó ninguna Página para el Studio (concedidos: {granted}). Conecta de nuevo aceptando todos los permisos y marca la Página en la pantalla de Meta.',
     'A Meta não liberou nenhuma Página para o Studio e não concedeu business_management, sem a qual Páginas de um portfólio de empresa não aparecem (concedidas: {granted}). Conecte de novo aceitando todas as permissões; se usar o ID da configuração, inclua business_management nela.':
       'Meta no autorizó ninguna Página para el Studio y no concedió business_management, sin la cual no aparecen las Páginas de un portafolio comercial (concedidos: {granted}). Conecta de nuevo aceptando todos los permisos; si usas el ID de configuración, incluye business_management en ella.',
     'O Instagram @{username} não está ligado a nenhuma Página autorizada. Contas encontradas: {found}.':

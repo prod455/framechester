@@ -1195,12 +1195,26 @@ export class SocialService implements SocialApi {
     }
     let pageToken: string | undefined;
     let cursor: string | undefined;
+    // "Name (ID)" of each Page Meta granted, so a wrong ID can be corrected from the error.
+    const seen: string[] = [];
+    const describe = (item: Record<string, unknown>) =>
+      `${
+        typeof item.name === 'string'
+          ? item.name
+              .trim()
+              .replace(/[\u0000-\u001f]/g, '')
+              .slice(0, 60)
+          : 'Página'
+      } (${String(item.id).slice(0, 32)})`;
     for (let page = 0; page < 10 && !pageToken; page++) {
       const url = new URL(`${GRAPH}/me/accounts`);
-      url.searchParams.set('fields', 'id,access_token');
+      url.searchParams.set('fields', 'id,name,access_token');
       url.searchParams.set('limit', '100');
       if (cursor) url.searchParams.set('after', cursor);
       const pages = await this.request(url.toString(), userToken);
+      for (const item of array(pages.data).map(record))
+        if (typeof item.id === 'string' && /^\d{1,32}$/.test(item.id) && seen.length < 5)
+          seen.push(describe(item));
       const match = array(pages.data)
         .map(record)
         .find((item) => item.id === pending.expected);
@@ -1209,10 +1223,29 @@ export class SocialService implements SocialApi {
       if (!record(pages.paging).next || typeof after !== 'string' || after.length > 2048) break;
       cursor = after;
     }
+    if (!pageToken && !seen.length) {
+      // /me/accounts came back empty: ask for the Page picked at login directly.
+      const granted = await this.grantedTargets(userToken, `${pending.clientId}|${clientSecret}`).catch(
+        () => ({ pages: [] as string[], instagram: [] as string[] }),
+      );
+      for (const pageId of [...new Set([pending.expected, ...granted.pages])].slice(0, 10)) {
+        const item = await this.request(`${GRAPH}/${pageId}?fields=id,name,access_token`, userToken).catch(
+          () => undefined,
+        );
+        if (!item || typeof item.id !== 'string') continue;
+        if (item.id === pending.expected && typeof item.access_token === 'string') {
+          pageToken = item.access_token;
+          break;
+        }
+        if (seen.length < 5) seen.push(describe(item));
+      }
+    }
     if (!pageToken)
       throw new SocialError(
         'account_mismatch',
-        'A Página Facebook esperada não está entre as Páginas autorizadas.',
+        seen.length
+          ? `A Página ${pending.expected} não está entre as Páginas liberadas: ${seen.join(', ')}. Use o ID de uma delas e conecte de novo.`
+          : `A Meta não liberou nenhuma Página para o Studio (concedidas: ${scopes.join(', ') || 'nenhuma'}). Conecte de novo aceitando todas as permissões e marque a Página na tela da Meta.`,
       );
     secret(pageToken);
     const identity = await this.verifyIdentity('facebook', pending.expected, pageToken);

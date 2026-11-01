@@ -75,6 +75,79 @@ fn clean(word: &str) -> String {
 /// Caption nodes for one scene. Chunks are laid out in the caption band, one or two
 /// lines, centred; each word has a base node and an accent copy that appears while the
 /// word is spoken. Emphasis words stay in the accent colour.
+/// Width of a caption line as it is drawn: word by word in bold, each word with its own
+/// side bearings, joined by one space. Measuring the joined string instead counts the side
+/// bearings once and lets the last words of a full line spill out of the band.
+fn placed_width(ts: &crate::text::Typesetter, line: &str, size: f32, family: &'static str) -> f32 {
+    let words: Vec<&str> = line.split_whitespace().collect();
+    let widths: f32 = words
+        .iter()
+        .map(|word| ts.measure(word, size, tokens::WEIGHT_BOLD, family))
+        .sum();
+    widths + space_width(ts, size, family) * words.len().saturating_sub(1) as f32
+}
+
+fn space_width(ts: &crate::text::Typesetter, size: f32, family: &'static str) -> f32 {
+    ts.measure("a a", size, tokens::WEIGHT_BOLD, family)
+        - ts.measure("aa", size, tokens::WEIGHT_BOLD, family)
+}
+
+/// Greedy lines no wider than `max_width` as drawn; a single word wider than that stays on
+/// its own line (the caller reports it).
+fn wrap_placed(
+    ts: &crate::text::Typesetter,
+    text: &str,
+    size: f32,
+    family: &'static str,
+    max_width: f32,
+) -> Vec<String> {
+    let mut lines: Vec<String> = Vec::new();
+    let mut current = String::new();
+    for word in text.split_whitespace() {
+        let candidate = if current.is_empty() {
+            word.to_string()
+        } else {
+            format!("{current} {word}")
+        };
+        if current.is_empty() || placed_width(ts, &candidate, size, family) <= max_width {
+            current = candidate;
+        } else {
+            lines.push(std::mem::replace(&mut current, word.to_string()));
+        }
+    }
+    if !current.is_empty() {
+        lines.push(current);
+    }
+    lines
+}
+
+/// The largest size from `max_size` down to `min_size` whose drawn lines fit the box.
+fn fit_placed(
+    ts: &crate::text::Typesetter,
+    text: &str,
+    max_size: f32,
+    min_size: f32,
+    max_width: f32,
+    max_height: f32,
+    family: &'static str,
+) -> Option<(f32, Vec<String>)> {
+    let mut size = max_size;
+    loop {
+        let lines = wrap_placed(ts, text, size, family, max_width);
+        let fits = lines.len() as f32 * size * tokens::LINE_HEIGHT <= max_height
+            && lines
+                .iter()
+                .all(|line| placed_width(ts, line, size, family) <= max_width);
+        if fits {
+            return Some((size, lines));
+        }
+        if size <= min_size {
+            return None;
+        }
+        size = (size - 2.0).max(min_size);
+    }
+}
+
 pub fn build(ctx: &mut Ctx<'_>, scene: &StoryboardScene) -> Vec<Node> {
     if scene.captions.hidden {
         return Vec::new();
@@ -99,13 +172,13 @@ pub fn build(ctx: &mut Ctx<'_>, scene: &StoryboardScene) -> Vec<Node> {
             .map(|word| word.text.as_str())
             .collect::<Vec<_>>()
             .join(" ");
-        let fitted = ctx.ts.fit(
+        let fitted = fit_placed(
+            ctx.ts,
             &text,
             size,
             size * 0.72,
             band.w - canvas.gap,
             band.h,
-            tokens::WEIGHT_SEMIBOLD,
             family,
         );
         let (size, lines) = match fitted {
@@ -118,13 +191,7 @@ pub fn build(ctx: &mut Ctx<'_>, scene: &StoryboardScene) -> Vec<Node> {
                 );
                 (
                     size * 0.72,
-                    ctx.ts.wrap(
-                        &text,
-                        size * 0.72,
-                        tokens::WEIGHT_SEMIBOLD,
-                        family,
-                        band.w - canvas.gap,
-                    ),
+                    wrap_placed(ctx.ts, &text, size * 0.72, family, band.w - canvas.gap),
                 )
             }
         };
@@ -134,7 +201,7 @@ pub fn build(ctx: &mut Ctx<'_>, scene: &StoryboardScene) -> Vec<Node> {
         let pad = size * 0.4;
         let widest = lines
             .iter()
-            .map(|line| ctx.ts.measure(line, size, tokens::WEIGHT_BOLD, family))
+            .map(|line| placed_width(ctx.ts, line, size, family))
             .fold(0.0f32, f32::max);
         let box_rect = Rect::new(
             band.cx() - widest / 2.0 - pad,
@@ -168,11 +235,10 @@ pub fn build(ctx: &mut Ctx<'_>, scene: &StoryboardScene) -> Vec<Node> {
         let mut word_cursor = 0usize;
         for (line_index, line) in lines.iter().enumerate() {
             let line_words: Vec<&str> = line.split_whitespace().collect();
-            let line_width = ctx.ts.measure(line, size, tokens::WEIGHT_BOLD, family);
+            let line_width = placed_width(ctx.ts, line, size, family);
             let mut x = band.cx() - line_width / 2.0;
             let baseline = top + line_index as f32 * line_h + size * 0.85;
-            let space = ctx.ts.measure("a a", size, tokens::WEIGHT_BOLD, family)
-                - ctx.ts.measure("aa", size, tokens::WEIGHT_BOLD, family);
+            let space = space_width(ctx.ts, size, family);
             for word_text in line_words {
                 let timed = chunk.words.get(word_cursor);
                 word_cursor += 1;
@@ -286,7 +352,12 @@ mod tests {
     use framechester_core::storyboard::*;
 
     fn scene() -> StoryboardScene {
-        let narration = "Um agente decide o proximo passo, usa uma ferramenta e observa o resultado. Depois repete tudo.";
+        scene_saying(
+            "Um agente decide o proximo passo, usa uma ferramenta e observa o resultado. Depois repete tudo.",
+        )
+    }
+
+    fn scene_saying(narration: &str) -> StoryboardScene {
         let texts = segment_narration(narration);
         let audio: Vec<SegmentAudio> = texts
             .iter()
@@ -302,7 +373,7 @@ mod tests {
             id: 1,
             concept: "c".into(),
             learning_goal: "g".into(),
-            narration: narration.into(),
+            narration: narration.to_string(),
             segments,
             duration_secs: duration,
             start_secs: 10.0,
@@ -367,5 +438,47 @@ mod tests {
             .filter(|node| node.z == Z_CAPTIONS + 2 && node.props.opacity.eval(mid) > 0.9)
             .count();
         assert_eq!(lit, 1, "exactly one accent word while speaking");
+    }
+
+    #[test]
+    fn long_bold_lines_stay_inside_the_caption_band_in_every_format() {
+        // Wide words fill a 7-word chunk to the edge of the band: the line is measured with
+        // the weight it is drawn with, so the last word ('cores.') does not spill out.
+        let typesetter = crate::text::Typesetter::new().unwrap();
+        let words = [
+            "modelos", "aprendem", "padroes", "em", "milhoes", "de", "imagens", "com", "pixels",
+            "e", "camadas", "que", "separam", "formas", "texturas", "luzes",
+        ];
+        for format in [
+            VideoFormat::Horizontal,
+            VideoFormat::Vertical,
+            VideoFormat::X,
+        ] {
+            let canvas = crate::format::Canvas::for_format(format);
+            for start in 0..words.len() {
+                for count in 3..=6 {
+                    let mut chosen: Vec<&str> = words
+                        .iter()
+                        .cycle()
+                        .skip(start)
+                        .take(count)
+                        .copied()
+                        .collect();
+                    chosen.push("cores.");
+                    let narration = chosen.join(" ");
+                    let mut ctx = Ctx::new(&canvas, &typesetter, 1);
+                    let nodes = build(&mut ctx, &scene_saying(&narration));
+                    let band = canvas.captions.inset(-6.0);
+                    for node in nodes.iter().filter(|node| node.readable && node.is_text()) {
+                        assert!(
+                            band.contains(&node.bbox()),
+                            "{format:?} '{narration}': {:?} outside {:?}",
+                            node.bbox(),
+                            canvas.captions
+                        );
+                    }
+                }
+            }
+        }
     }
 }

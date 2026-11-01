@@ -291,6 +291,40 @@ export interface YoutubeDiscovery {
   note: string;
 }
 
+/**
+ * The provider's error identifiers from a refused response, never its message or body:
+ * Graph and TikTok `error.code`/`error_subcode`, and the rupload `debug_info.type`
+ * (ProcessingFailedError, ...). Anything that is not a plain number or identifier is
+ * dropped, so nothing private reaches the screen.
+ */
+async function failureCode(response: Response): Promise<string> {
+  try {
+    const parsed = record(JSON.parse((await response.text()).slice(0, 4096)));
+    const failure = record(parsed.error);
+    return [failure.code, failure.error_subcode, record(parsed.debug_info).type]
+      .filter(
+        (part) =>
+          (typeof part === 'number' && Number.isSafeInteger(part)) ||
+          (typeof part === 'string' && part !== 'ok' && /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(part)),
+      )
+      .join('/');
+  } catch {
+    return '';
+  }
+}
+
+/** A refused upload, named with the provider's error identifiers when it sent any. */
+async function uploadRefused(network: string, response: Response): Promise<SocialError> {
+  const code = await failureCode(response);
+  return new SocialError(
+    'api_denied',
+    code
+      ? `O ${network} recusou o arquivo (HTTP ${response.status}, código ${code}).`
+      : `O ${network} recusou o arquivo (HTTP ${response.status}).`,
+    code || undefined,
+  );
+}
+
 const record = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 const array = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
@@ -518,19 +552,7 @@ export class SocialService implements SocialApi {
         // Name the call and the provider's numeric error code, never its message or body: the
         // operator can tell which step failed without anything private reaching the screen.
         const endpoint = `${url.hostname}${url.pathname.replace(/\d{3,}/g, '{id}')}`;
-        let code = '';
-        try {
-          const text = (await response.text()).slice(0, 4096);
-          const failure = record(record(JSON.parse(text)).error);
-          const parts = [failure.code, failure.error_subcode].filter(
-            (part) =>
-              (typeof part === 'number' && Number.isSafeInteger(part)) ||
-              (typeof part === 'string' && part !== 'ok' && /^[a-z][a-z0-9_]{0,63}$/.test(part)),
-          );
-          code = parts.join('/');
-        } catch {
-          code = '';
-        }
+        const code = await failureCode(response);
         throw new SocialError(
           'api_denied',
           code
@@ -1622,10 +1644,7 @@ export class SocialService implements SocialApi {
       redirect: 'error',
       signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
     } as RequestInit);
-    if (!sent.ok) {
-      await sent.body?.cancel();
-      throw new SocialError('api_denied', `O YouTube recusou o arquivo (HTTP ${sent.status}).`);
-    }
+    if (!sent.ok) throw await uploadRefused('YouTube', sent);
     const videoId = (await this.readJson(sent)).id;
     if (typeof videoId !== 'string' || !/^[A-Za-z0-9_-]{11}$/.test(videoId))
       throw new SocialError('invalid_response', 'O YouTube não retornou o ID do vídeo enviado.');
@@ -1719,8 +1738,8 @@ export class SocialService implements SocialApi {
         redirect: 'error',
         signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
       } as RequestInit);
+      if (!sent.ok) throw await uploadRefused('TikTok', sent);
       await sent.body?.cancel();
-      if (!sent.ok) throw new SocialError('api_denied', `O TikTok recusou o arquivo (HTTP ${sent.status}).`);
     }
     return { postId: publishId, ...(draft ? { draft: true } : {}) };
   }
@@ -1764,10 +1783,7 @@ export class SocialService implements SocialApi {
       redirect: 'error',
       signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
     } as RequestInit);
-    if (!sent.ok) {
-      await sent.body?.cancel();
-      throw new SocialError('api_denied', `O Instagram recusou o arquivo (HTTP ${sent.status}).`);
-    }
+    if (!sent.ok) throw await uploadRefused('Instagram', sent);
     if ((await this.readJson(sent)).success !== true)
       throw new SocialError('invalid_response', 'O Instagram não confirmou o recebimento do arquivo.');
     // Publishing an unfinished container fails; nothing goes public until processing finished.
@@ -1836,10 +1852,7 @@ export class SocialService implements SocialApi {
       redirect: 'error',
       signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
     } as RequestInit);
-    if (!sent.ok) {
-      await sent.body?.cancel();
-      throw new SocialError('api_denied', `O Facebook recusou o arquivo (HTTP ${sent.status}).`);
-    }
+    if (!sent.ok) throw await uploadRefused('Facebook', sent);
     if ((await this.readJson(sent)).success !== true)
       throw new SocialError('invalid_response', 'O Facebook não confirmou o recebimento do arquivo.');
     const finish = await this.request(

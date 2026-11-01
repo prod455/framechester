@@ -191,7 +191,7 @@ export function renderCreate(state: Bootstrap, channelId: string, actions: Creat
       el(
         'li',
         {
-          className: `item${step.state === 'stopped' ? ' border-destructive/60' : ''}`,
+          className: `item ${step.state === 'stopped' ? 'border-destructive/60' : ''}`,
           // Waiting steps recede by surface, not opacity, so text keeps AA contrast.
           'data-variant': step.state === 'waiting' ? 'muted' : 'outline',
           'data-state': step.state,

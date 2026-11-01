@@ -85,7 +85,7 @@ export function analyticsPage(): HTMLElement {
   );
   const snapshotTable = el(
     'table',
-    { className: 'table' },
+    { className: 'table stack-table' },
     el(
       'thead',
       {},
@@ -104,13 +104,21 @@ export function analyticsPage(): HTMLElement {
         el(
           'tr',
           {},
-          el('td', {}, date(entry.fetchedAt)),
-          el('td', {}, t('{start} a {end}', { start: entry.periodStart, end: entry.periodEnd })),
-          el('td', {}, number(entry.stats.views)),
-          el('td', {}, number(entry.stats.followers)),
+          el('td', { 'data-label': t('Consulta') }, date(entry.fetchedAt)),
           el(
             'td',
-            { className: 'amount', title: translateMessage(entry.revenue.reason) },
+            { 'data-label': t('Período') },
+            t('{start} a {end}', { start: entry.periodStart, end: entry.periodEnd }),
+          ),
+          el('td', { 'data-label': t('Views') }, number(entry.stats.views)),
+          el('td', { 'data-label': t('Seguidores') }, number(entry.stats.followers)),
+          el(
+            'td',
+            {
+              className: 'amount',
+              title: translateMessage(entry.revenue.reason),
+              'data-label': t('Receita estimada'),
+            },
             money(entry.revenue.estimatedCents, entry.revenue.currency),
           ),
         ),
@@ -119,7 +127,7 @@ export function analyticsPage(): HTMLElement {
   );
   const receiptTable = el(
     'table',
-    { className: 'table' },
+    { className: 'table stack-table' },
     el(
       'thead',
       {},
@@ -140,10 +148,10 @@ export function analyticsPage(): HTMLElement {
           el(
             'tr',
             {},
-            el('td', {}, entry.date),
+            el('td', { 'data-label': t('Data') }, entry.date),
             el(
               'td',
-              {},
+              { 'data-label': t('Natureza') },
               el(
                 'span',
                 // Payments stand out a little; costs and estimates stay outlined.
@@ -155,11 +163,15 @@ export function analyticsPage(): HTMLElement {
                     : t('Estimativa manual'),
               ),
             ),
-            el('td', { className: 'amount' }, money(entry.amountCents, entry.currency)),
-            el('td', {}, entry.note),
             el(
               'td',
-              {},
+              { className: 'amount', 'data-label': t('Valor') },
+              money(entry.amountCents, entry.currency),
+            ),
+            el('td', { 'data-label': t('Observação') }, entry.note),
+            el(
+              'td',
+              { className: 'stack-table-actions' },
               iconButton(t('Editar registro financeiro'), 'edit', () => editReceipt(entry)),
               iconButton(t('Excluir registro financeiro'), 'trash', () =>
                 deleteRecord('receipts', entry.id, entry.note || t('Registro financeiro')),

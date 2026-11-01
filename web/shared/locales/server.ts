@@ -4,6 +4,8 @@ import type { AreaCatalog } from './index.ts';
 
 export default {
   en: {
+    'O TikTok só aceita post direto de app não auditado em conta privada. Reconecte o TikTok (o Studio passa a pedir video.upload) para enviar como rascunho, ou deixe a conta privada.':
+      'TikTok only accepts direct posts from an unaudited app to a private account. Reconnect TikTok (the Studio now asks for video.upload) to send it as a draft, or make the account private.',
     'A Página {page} não está entre as Páginas liberadas: {pages}. Use o ID de uma delas e conecte de novo.':
       'Page {page} is not among the granted Pages: {pages}. Use the ID of one of them and connect again.',
     'A Meta não liberou nenhuma Página para o Studio (concedidas: {granted}). Conecte de novo aceitando todas as permissões e marque a Página na tela da Meta.':
@@ -492,6 +494,8 @@ export default {
       'Voice without commercial approval in this installation. Choose a Kokoro voice from the catalog (PT-BR, EN-US or ES) in Settings. Legacy Piper voices are blocked.',
   },
   es: {
+    'O TikTok só aceita post direto de app não auditado em conta privada. Reconecte o TikTok (o Studio passa a pedir video.upload) para enviar como rascunho, ou deixe a conta privada.':
+      'TikTok solo acepta publicaciones directas de una app no auditada en una cuenta privada. Vuelve a conectar TikTok (el Studio ahora pide video.upload) para enviarlo como borrador, o haz la cuenta privada.',
     'A Página {page} não está entre as Páginas liberadas: {pages}. Use o ID de uma delas e conecte de novo.':
       'La Página {page} no está entre las Páginas autorizadas: {pages}. Usa el ID de una de ellas y conecta de nuevo.',
     'A Meta não liberou nenhuma Página para o Studio (concedidas: {granted}). Conecte de novo aceitando todas as permissões e marque a Página na tela da Meta.':

@@ -36,6 +36,8 @@ export class SocialError extends Error {
   constructor(
     public readonly code: string,
     message: string,
+    /** The provider's own error code, when it gave one (Meta numbers, TikTok words). */
+    public readonly providerCode?: string,
   ) {
     super(message);
     this.name = 'SocialError';
@@ -57,7 +59,15 @@ const PLATFORMS: Platform[] = ['youtube', 'tiktok', 'instagram', 'facebook'];
 const GRAPH = 'https://graph.facebook.com/v26.0';
 const TIKTOK = 'https://open.tiktokapis.com/v2';
 const TIKTOK_PUBLISH = 'video.publish';
-const TIKTOK_SCOPES = ['user.info.basic', 'user.info.profile', 'user.info.stats', TIKTOK_PUBLISH];
+/** Inbox draft: the fallback when an unaudited app cannot Direct Post to a public account. */
+const TIKTOK_DRAFT = 'video.upload';
+const TIKTOK_SCOPES = [
+  'user.info.basic',
+  'user.info.profile',
+  'user.info.stats',
+  TIKTOK_PUBLISH,
+  TIKTOK_DRAFT,
+];
 const PAGE_PUBLISH = 'pages_manage_posts';
 /** Pages owned by a business portfolio only reach /me/accounts with business_management. */
 const BUSINESS = 'business_management';
@@ -150,7 +160,7 @@ const ENDPOINTS: Array<{ host: string; path: RegExp; body: Array<'none' | 'form'
   { host: 'open.tiktokapis.com', path: /^\/v2\/oauth\/token\/$/, body: ['form'] },
   {
     host: 'open.tiktokapis.com',
-    path: /^\/v2\/post\/publish\/(creator_info\/query|video\/init)\/$/,
+    path: /^\/v2\/post\/publish\/(creator_info\/query|video\/init|inbox\/video\/init)\/$/,
     body: ['json'],
   },
 ];
@@ -187,7 +197,7 @@ const CAPABILITIES: NetworkCapability[] = [
     accountPattern: '^@?[A-Za-z0-9._]{2,24}$',
     requirements: [
       'Aplicativo próprio no TikTok for Developers, plataforma Desktop, com o callback local registrado exatamente.',
-      'Login Kit e Content Posting API (Direct Post): user.info.basic, user.info.profile, user.info.stats e video.publish.',
+      'Login Kit e Content Posting API (Direct Post): user.info.basic, user.info.profile, user.info.stats, video.publish e video.upload.',
       'Envio sempre como "Somente eu" (SELF_ONLY); a publicação é decisão do operador no app do TikTok.',
     ],
     revenueNote:
@@ -509,7 +519,9 @@ export class SocialService implements SocialApi {
           const text = (await response.text()).slice(0, 4096);
           const failure = record(record(JSON.parse(text)).error);
           const parts = [failure.code, failure.error_subcode].filter(
-            (part) => typeof part === 'number' && Number.isSafeInteger(part),
+            (part) =>
+              (typeof part === 'number' && Number.isSafeInteger(part)) ||
+              (typeof part === 'string' && part !== 'ok' && /^[a-z][a-z0-9_]{0,63}$/.test(part)),
           );
           code = parts.join('/');
         } catch {
@@ -520,6 +532,7 @@ export class SocialService implements SocialApi {
           code
             ? `Consulta recusada ou indisponível na API (HTTP ${response.status} em ${endpoint}, código ${code}).`
             : `Consulta recusada ou indisponível na API (HTTP ${response.status} em ${endpoint}).`,
+          code || undefined,
         );
       }
       if (Number(response.headers.get('content-length') ?? 0) > MAX_RESPONSE) {
@@ -1642,29 +1655,45 @@ export class SocialService implements SocialApi {
     const chunk = size < TIKTOK_MIN_CHUNK ? size : Math.min(TIKTOK_CHUNK, size);
     const chunks = Math.floor(size / chunk);
     if (chunks > 1000) throw new SocialError('invalid_video', 'Vídeo grande demais para o TikTok.');
-    const init = record(
-      (
-        await this.request(`${TIKTOK}/post/publish/video/init/`, credential.accessToken, {
-          json: {
-            post_info: {
-              title: video.description,
-              privacy_level: 'SELF_ONLY',
-              disable_duet: false,
-              disable_comment: false,
-              disable_stitch: false,
-              // Synthetic narration and generated visuals: TikTok asks for the AI-generated label.
-              is_aigc: true,
-            },
-            source_info: {
-              source: 'FILE_UPLOAD',
-              video_size: size,
-              chunk_size: chunk,
-              total_chunk_count: chunks,
-            },
-          },
-        })
-      ).data,
-    );
+    const source = {
+      source: 'FILE_UPLOAD',
+      video_size: size,
+      chunk_size: chunk,
+      total_chunk_count: chunks,
+    };
+    let draft = false;
+    const direct = this.request(`${TIKTOK}/post/publish/video/init/`, credential.accessToken, {
+      json: {
+        post_info: {
+          title: video.description,
+          privacy_level: 'SELF_ONLY',
+          disable_duet: false,
+          disable_comment: false,
+          disable_stitch: false,
+          // Synthetic narration and generated visuals: TikTok asks for the AI-generated label.
+          is_aigc: true,
+        },
+        source_info: source,
+      },
+    }).catch(async (error: unknown) => {
+      // An unaudited app can Direct Post only to a private account. The inbox upload has no such
+      // rule: the video waits in the creator's TikTok inbox, to be edited and posted in the app.
+      if (
+        !(error instanceof SocialError) ||
+        error.providerCode !== 'unaudited_client_can_only_post_to_private_accounts'
+      )
+        throw error;
+      if (!credential.scopes.includes(TIKTOK_DRAFT))
+        throw new SocialError(
+          'reconnect_required',
+          'O TikTok só aceita post direto de app não auditado em conta privada. Reconecte o TikTok (o Studio passa a pedir video.upload) para enviar como rascunho, ou deixe a conta privada.',
+        );
+      draft = true;
+      return this.request(`${TIKTOK}/post/publish/inbox/video/init/`, credential.accessToken, {
+        json: { source_info: source },
+      });
+    });
+    const init = record((await direct).data);
     const publishId = init.publish_id;
     if (typeof publishId !== 'string' || !/^[A-Za-z0-9._~-]{1,64}$/.test(publishId))
       throw new SocialError('invalid_response', 'O TikTok não retornou o ID do envio.');
@@ -1687,7 +1716,7 @@ export class SocialService implements SocialApi {
       await sent.body?.cancel();
       if (!sent.ok) throw new SocialError('api_denied', `O TikTok recusou o arquivo (HTTP ${sent.status}).`);
     }
-    return { postId: publishId };
+    return { postId: publishId, ...(draft ? { draft: true } : {}) };
   }
 
   /** Instagram Reel, published publicly: container, rupload, processing check, media_publish. */

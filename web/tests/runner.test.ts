@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, writeFile, mkdir, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, mkdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { AppState, Script } from '../shared/types.ts';
@@ -1402,6 +1402,98 @@ test('an English channel narrates with an English voice, checks speech in Englis
       runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } }),
       /de-DE deste canal não tem voz comercial/,
     );
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('only a video that never reached a network is deleted, with its files, and channel files go too', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'framechester-web-delete-'));
+  const base = { channelId: 'tech', scriptId: 'script-one', createdAt: date, message: 'ok' };
+  const failed = { status: 'failed', message: 'recusado', failedAt: date };
+  const sent = { status: 'uploaded', postId: 'post', uploadedAt: date };
+  await mkdir(join(home, 'production', 'jobs', 'tech', 'draft', 'output'), { recursive: true });
+  await writeFile(join(home, 'production', 'jobs', 'tech', 'draft', 'output', 'final.mp4'), 'mp4');
+  await writeFile(
+    join(home, 'production', 'jobs.json'),
+    JSON.stringify([
+      { ...base, id: 'draft', status: 'completed', videoAvailable: true, publications: { tiktok: failed } },
+      { ...base, id: 'review', status: 'needs_review', videoAvailable: false },
+      { ...base, id: 'sent', status: 'completed', videoAvailable: true, publications: { youtube: sent } },
+      {
+        ...base,
+        id: 'sending',
+        status: 'completed',
+        videoAvailable: true,
+        publications: { youtube: { status: 'uploading', startedAt: date } },
+      },
+      { ...base, id: 'source', status: 'completed', videoAvailable: true },
+      { ...base, id: 'cut', status: 'failed', videoAvailable: false, kind: 'short', sourceJobId: 'source' },
+    ]),
+  );
+  let runner = await createRunner({ home, repositoryRoot: resolve('..'), readState: async () => state() });
+  try {
+    await assert.rejects(runner.remove('tech', 'sent'), /já foi enviado/);
+    // A restart turns an interrupted upload into a failure, so it no longer counts as sent.
+    await runner.remove('tech', 'sending');
+    await assert.rejects(runner.remove('tech', 'source'), /exclua o Short antes/);
+    await assert.rejects(runner.remove('science', 'draft'), /não encontrada|Canal/);
+    await runner.remove('tech', 'draft');
+    await assert.rejects(stat(join(home, 'production', 'jobs', 'tech', 'draft')), /ENOENT/);
+    await runner.remove('tech', 'cut');
+    await runner.remove('tech', 'source');
+    await runner.remove('tech', 'review');
+    await assert.rejects(runner.remove('tech', 'draft'), /não encontrada/);
+    assert.deepEqual(
+      (await runner.list('tech')).map((job) => job.id),
+      ['sent'],
+    );
+    const asset = await runner.upload('tech', {
+      filename: 'foto.png',
+      kind: 'image',
+      contentBase64: visualPng.toString('base64'),
+      license: 'Original',
+      provenance: 'Fixture',
+      restrictions: 'Nenhuma',
+    });
+    const file = (await runner.assetFile('tech', asset.id))!.path;
+    await assert.rejects(runner.removeAsset('science', asset.id), /não encontrado|Canal/);
+    await runner.removeAsset('tech', asset.id);
+    assert.deepEqual(await runner.assets('tech'), []);
+    await assert.rejects(stat(file), /ENOENT/);
+    await assert.rejects(runner.removeAsset('tech', asset.id), /não encontrado/);
+    await runner.close();
+    runner = await createRunner({ home, repositoryRoot: resolve('..'), readState: async () => state() });
+    assert.deepEqual(
+      (await runner.list('tech')).map((job) => job.id),
+      ['sent'],
+    );
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('a video still in production keeps itself and the files it is about to copy', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'framechester-web-delete-active-'));
+  const runner = await createRunner({ home, repositoryRoot: resolve('..'), readState: async () => state() });
+  try {
+    const asset = await runner.upload('tech', {
+      filename: 'foto.png',
+      kind: 'image',
+      contentBase64: visualPng.toString('base64'),
+      license: 'Original',
+      provenance: 'Fixture',
+      restrictions: 'Nenhuma',
+    });
+    const jobs = Reflect.get(runner, 'jobs') as { id: string; channelId: string; status: string }[];
+    jobs.push({ id: 'busy', channelId: 'tech', status: 'running' });
+    await assert.rejects(runner.remove('tech', 'busy'), /sendo produzido/);
+    await assert.rejects(runner.removeAsset('tech', asset.id), /sendo produzido/);
+    jobs[0].status = 'queued';
+    await assert.rejects(runner.remove('tech', 'busy'), /sendo produzido/);
+    jobs.length = 0;
   } finally {
     await runner.close();
     await rm(home, { recursive: true, force: true });

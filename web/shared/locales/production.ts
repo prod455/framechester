@@ -2,6 +2,16 @@ import type { AreaCatalog } from './index.ts';
 
 export default {
   en: {
+    'Excluir vídeo': 'Delete video',
+    'Excluir este item?': 'Delete this item?',
+    Excluir: 'Delete',
+    'Excluindo…': 'Deleting…',
+    'O vídeo e todos os arquivos dele são apagados. Ele não foi enviado a nenhuma rede.':
+      'The video and all its files are erased. It was not sent to any network.',
+    'Vídeo excluído.': 'Video deleted.',
+    'O arquivo sai da biblioteca do canal. Vídeos já produzidos guardam a própria cópia.':
+      "The file leaves the channel's library. Videos already made keep their own copy.",
+    'Arquivo excluído.': 'File deleted.',
     'Enviado como rascunho para a caixa de entrada do TikTok em {date}. Abra o app do TikTok para editar e publicar.':
       'Sent as a draft to the TikTok inbox on {date}. Open the TikTok app to edit and post it.',
     // Videos page and job cards
@@ -260,6 +270,16 @@ export default {
     'Automático neste canal.': 'Automatic on this channel.',
   },
   es: {
+    'Excluir vídeo': 'Eliminar video',
+    'Excluir este item?': '¿Eliminar este elemento?',
+    Excluir: 'Eliminar',
+    'Excluindo…': 'Eliminando…',
+    'O vídeo e todos os arquivos dele são apagados. Ele não foi enviado a nenhuma rede.':
+      'El video y todos sus archivos se borran. No se envió a ninguna red.',
+    'Vídeo excluído.': 'Video eliminado.',
+    'O arquivo sai da biblioteca do canal. Vídeos já produzidos guardam a própria cópia.':
+      'El archivo sale de la biblioteca del canal. Los videos ya producidos guardan su propia copia.',
+    'Arquivo excluído.': 'Archivo eliminado.',
     'Enviado como rascunho para a caixa de entrada do TikTok em {date}. Abra o app do TikTok para editar e publicar.':
       'Enviado como borrador a la bandeja de entrada de TikTok el {date}. Abre la app de TikTok para editarlo y publicarlo.',
     // Videos page and job cards

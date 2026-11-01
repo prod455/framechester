@@ -3,7 +3,7 @@ import { commercialVoiceError, productionLanguage, voiceFor } from '../shared/vo
 import { HttpError } from './auth.ts';
 import { randomUUID, createHash } from 'node:crypto';
 import { existsSync, statSync } from 'node:fs';
-import { mkdir, readFile, writeFile, rename, copyFile, realpath, stat } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rename, copyFile, realpath, rm, stat } from 'node:fs/promises';
 import { basename, extname, join, relative, resolve, sep, delimiter, isAbsolute } from 'node:path';
 import type {
   AppState,
@@ -1078,6 +1078,8 @@ export class LocalRunner implements RunnerApi {
       )
     )
       throw new RunnerError('Este vídeo já tem um Short.');
+    // The source may have been deleted while the storyboard was checked.
+    if (!this.jobs.includes(source)) throw new RunnerError('Produção não encontrada neste canal.');
     const config = jobConfig(state, channelId, this.options.repositoryRoot);
     const job: WebJob = {
       id: randomUUID(),
@@ -1096,6 +1098,50 @@ export class LocalRunner implements RunnerApi {
       this.run(job, structuredClone(script), config, [], { scriptId: script.id, assetIds: {} });
     this.queue = this.queue.then(work, work);
     return structuredClone(job);
+  }
+  /**
+   * Deletes a video that never reached a network, with its files. A video that is still being
+   * made, that went out (or is going out) to a network, or that a Short was cut from stays.
+   */
+  async remove(channelId: string, jobId: string): Promise<void> {
+    await this.channel(channelId);
+    id(jobId);
+    // No await between these checks and the removal: a click cannot race a new upload or cut.
+    const index = this.jobs.findIndex((item) => item.channelId === channelId && item.id === jobId);
+    if (index < 0) throw new RunnerError('Produção não encontrada neste canal.');
+    const job = this.jobs[index];
+    if (job.status === 'queued' || job.status === 'running')
+      throw new RunnerError('Este vídeo ainda está sendo produzido; espere terminar para excluir.');
+    if (Object.values(job.publications ?? {}).some((item) => item.status !== 'failed'))
+      throw new RunnerError('Este vídeo já foi enviado a uma rede e fica no histórico.');
+    if (this.jobs.some((item) => item.kind === 'short' && item.sourceJobId === jobId))
+      throw new RunnerError('Este vídeo tem um Short; exclua o Short antes.');
+    this.jobs.splice(index, 1);
+    await this.persist();
+    // The record is gone; leftover files cannot be reached anymore, so a failed cleanup is moot.
+    await rm(join(this.root, 'jobs', channelId, jobId), {
+      recursive: true,
+      force: true,
+      maxRetries: 3,
+    }).catch(() => {});
+  }
+  /** Deletes a channel file. Videos already made keep their own copy of every file they used. */
+  async removeAsset(channelId: string, assetId: string): Promise<void> {
+    await this.channel(channelId);
+    id(assetId);
+    const index = this.media.findIndex((item) => item.channelId === channelId && item.id === assetId);
+    if (index < 0) throw new RunnerError('Arquivo não encontrado neste canal.');
+    // A queued job copies its files only when it starts.
+    if (this.jobs.some((item) => item.channelId === channelId && ['queued', 'running'].includes(item.status)))
+      throw new RunnerError(
+        'Há um vídeo sendo produzido neste canal; espere terminar para excluir arquivos.',
+      );
+    const [asset] = this.media.splice(index, 1);
+    await this.persist();
+    if (asset.diskName)
+      await rm(join(this.root, 'media', channelId, asset.diskName), { force: true, maxRetries: 3 }).catch(
+        () => {},
+      );
   }
   /** Starts a non-public upload of an approved final version; it continues in the background. */
   async publish(channelId: string, jobId: string, platform: Platform): Promise<WebJob> {
@@ -1119,6 +1165,7 @@ export class LocalRunner implements RunnerApi {
     const thumbnail =
       platform === 'youtube' && !short ? await this.file(channelId, jobId, 'thumbnail') : undefined;
     // No await between these checks and the state change: two clicks cannot start two uploads.
+    if (!this.jobs.includes(job)) throw new RunnerError('Produção não encontrada neste canal.');
     const current = job.publications?.[platform];
     if (job.status !== 'completed' || job.previewOnly || !job.videoAvailable)
       throw new RunnerError(`Só a versão final aprovada no QA pode ser enviada ao ${label}.`);

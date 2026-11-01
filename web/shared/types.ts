@@ -207,6 +207,8 @@ export type Publication =
       thumbnail?: YoutubeThumbnail;
       /** Public permalink, Instagram only: the post is already public. */
       url?: string;
+      /** Sent to the TikTok inbox as a draft instead of a SELF_ONLY post. */
+      draft?: boolean;
     }
   | { status: 'failed'; message: string; failedAt: string };
 export interface AppState {
@@ -311,6 +313,8 @@ export interface VideoUpload {
 /** postId: YouTube video id, TikTok publish_id or Facebook video id. */
 export interface PublishResult {
   postId: string;
+  /** TikTok inbox draft: the creator finishes and posts it in the app. */
+  draft?: boolean;
   thumbnail?: YoutubeThumbnail;
   url?: string;
 }

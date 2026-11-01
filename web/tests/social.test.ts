@@ -708,7 +708,16 @@ const IG = '17841400000000000';
 
 function tiktokFetch(
   calls: Array<{ url: string; init?: RequestInit; body?: string }>,
-  options: { username?: string; privacy?: readonly string[]; uploadUrl?: string; maxSeconds?: number } = {},
+  options: {
+    username?: string;
+    privacy?: readonly string[];
+    uploadUrl?: string;
+    maxSeconds?: number;
+    /** An unaudited app posting to a public account: Direct Post refused with 403. */
+    unaudited?: boolean;
+    /** Scopes granted at login. */
+    scope?: string;
+  } = {},
 ): SocialFetch {
   return async (raw, init) => {
     const url = new URL(raw);
@@ -720,7 +729,8 @@ function tiktokFetch(
         access_token: 'fixture-tiktok-token',
         refresh_token: 'fixture-tiktok-refresh',
         expires_in: 86400,
-        scope: 'user.info.basic,user.info.profile,user.info.stats,video.publish',
+        scope:
+          options.scope ?? 'user.info.basic,user.info.profile,user.info.stats,video.publish,video.upload',
       });
     }
     if (url.pathname === '/v2/user/info/')
@@ -741,6 +751,25 @@ function tiktokFetch(
         data: {
           privacy_level_options: options.privacy ?? ['PUBLIC_TO_EVERYONE', 'SELF_ONLY'],
           max_video_post_duration_sec: options.maxSeconds ?? 600,
+        },
+        error: { code: 'ok' },
+      });
+    }
+    if (url.pathname === '/v2/post/publish/video/init/' && options.unaudited) {
+      calls.push({ url: raw, init, body: String(init!.body) });
+      return new Response(
+        JSON.stringify({
+          error: { code: 'unaudited_client_can_only_post_to_private_accounts', message: 'private detail' },
+        }),
+        { status: 403, headers: { 'content-type': 'application/json' } },
+      );
+    }
+    if (url.pathname === '/v2/post/publish/inbox/video/init/') {
+      calls.push({ url: raw, init, body: String(init!.body) });
+      return json({
+        data: {
+          publish_id: 'v_inbox_file~v2.456',
+          upload_url: 'https://open-upload.tiktokapis.com/video/?upload_id=2',
         },
         error: { code: 'ok' },
       });
@@ -786,7 +815,7 @@ test('TikTok OAuth uses the hex PKCE digest, binds the expected username and sav
   assert.equal(authorize.searchParams.get('client_key'), 'fixture-client-key');
   assert.equal(
     authorize.searchParams.get('scope'),
-    'user.info.basic,user.info.profile,user.info.stats,video.publish',
+    'user.info.basic,user.info.profile,user.info.stats,video.publish,video.upload',
   );
   assert.match(authorize.searchParams.get('code_challenge')!, /^[0-9a-f]{64}$/);
   await assert.rejects(service.callbackOAuth('youtube', { state, code: 'fixture-code' }), /OAuth ausente/);
@@ -898,6 +927,43 @@ test('TikTok upload is a SELF_ONLY Direct Post with the caption, sent in ranged 
     assert.equal(put.get('content-range'), `bytes 0-${size - 1}/${size}`);
     assert.equal(put.get('authorization'), null, 'The upload URL is signed; the token never goes there');
     assert.equal(calls[2].body, MP4_TEXT);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('an unaudited app on a public TikTok account sends the video to the inbox as a draft', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'fc-tiktok-draft-'));
+  try {
+    const video = join(directory, 'final.mp4');
+    await writeFile(video, MP4);
+    const send = async (scope?: string) => {
+      const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+      const service = createSocialService({
+        vault: new MemoryVault(),
+        fetch: tiktokFetch(calls, { unaudited: true, ...(scope ? { scope } : {}) }),
+        now: () => NOW,
+      });
+      const { state } = await connectTiktok(service);
+      await service.callbackOAuth('tiktok', { state, code: 'fixture-code' });
+      calls.length = 0;
+      const result = await service.publish('tech', 'tiktok', {
+        path: video,
+        title: 'Skills vs agentes',
+        description: 'Fontes revisadas',
+        vertical: true,
+      });
+      return { result, calls };
+    };
+    const { result, calls } = await send();
+    assert.deepEqual(result, { postId: 'v_inbox_file~v2.456', draft: true });
+    const inbox = calls.find((call) => call.url.includes('/inbox/video/init/'))!;
+    assert.deepEqual(Object.keys(JSON.parse(inbox.body!)), ['source_info'], 'a draft has no post_info');
+    assert.ok(calls.some((call) => call.url.startsWith('https://open-upload.tiktokapis.com/')));
+    await assert.rejects(
+      send('user.info.basic,user.info.profile,user.info.stats,video.publish'),
+      /conta privada\. Reconecte o TikTok/,
+    );
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

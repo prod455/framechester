@@ -2,6 +2,8 @@ import type { AreaCatalog } from './index.ts';
 
 export default {
   en: {
+    'Enviado como rascunho para a caixa de entrada do TikTok em {date}. Abra o app do TikTok para editar e publicar.':
+      'Sent as a draft to the TikTok inbox on {date}. Open the TikTok app to edit and post it.',
     // Videos page and job cards
     'Novo vídeo': 'New video',
     'Nenhum vídeo ainda': 'No videos yet',
@@ -258,6 +260,8 @@ export default {
     'Automático neste canal.': 'Automatic on this channel.',
   },
   es: {
+    'Enviado como rascunho para a caixa de entrada do TikTok em {date}. Abra o app do TikTok para editar e publicar.':
+      'Enviado como borrador a la bandeja de entrada de TikTok el {date}. Abre la app de TikTok para editarlo y publicarlo.',
     // Videos page and job cards
     'Novo vídeo': 'Nuevo video',
     'Nenhum vídeo ainda': 'Aún no hay videos',

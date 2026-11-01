@@ -289,8 +289,8 @@ export default {
       'Your own app on TikTok for Developers, Web platform, with the redirect URI below registered exactly.',
     'Aplicativo próprio no TikTok for Developers, plataforma Desktop, com o callback local registrado exatamente.':
       'Your own TikTok for Developers app, Desktop platform, with the local callback registered exactly.',
-    'Login Kit e Content Posting API (Direct Post): user.info.basic, user.info.profile, user.info.stats e video.publish.':
-      'Login Kit and Content Posting API (Direct Post): user.info.basic, user.info.profile, user.info.stats and video.publish.',
+    'Login Kit e Content Posting API (Direct Post): user.info.basic, user.info.profile, user.info.stats, video.publish e video.upload.':
+      'Login Kit and Content Posting API (Direct Post): user.info.basic, user.info.profile, user.info.stats, video.publish and video.upload.',
     'Envio sempre como "Somente eu" (SELF_ONLY); a publicação é decisão do operador no app do TikTok.':
       'Always uploaded as "Only me" (SELF_ONLY); publishing is the operator\'s decision in the TikTok app.',
     'Aplicativo Meta próprio com Facebook Login e o callback local registrado; pages_show_list, pages_read_engagement e instagram_basic.':
@@ -620,8 +620,8 @@ export default {
       'Tu propia app en TikTok for Developers, plataforma Web, con la URI de redirección de abajo registrada exactamente.',
     'Aplicativo próprio no TikTok for Developers, plataforma Desktop, com o callback local registrado exatamente.':
       'App propia en TikTok for Developers, plataforma Desktop, con el callback local registrado exactamente.',
-    'Login Kit e Content Posting API (Direct Post): user.info.basic, user.info.profile, user.info.stats e video.publish.':
-      'Login Kit y Content Posting API (Direct Post): user.info.basic, user.info.profile, user.info.stats y video.publish.',
+    'Login Kit e Content Posting API (Direct Post): user.info.basic, user.info.profile, user.info.stats, video.publish e video.upload.':
+      'Login Kit y Content Posting API (Direct Post): user.info.basic, user.info.profile, user.info.stats, video.publish y video.upload.',
     'Envio sempre como "Somente eu" (SELF_ONLY); a publicação é decisão do operador no app do TikTok.':
       'Siempre se sube como "Solo yo" (SELF_ONLY); publicar es decisión del operador en la app de TikTok.',
     'Aplicativo Meta próprio com Facebook Login e o callback local registrado; pages_show_list, pages_read_engagement e instagram_basic.':

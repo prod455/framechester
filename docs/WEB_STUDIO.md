@@ -382,10 +382,14 @@ Shorts sejam excluídos. Se o motor recusar a divisão, o botão continua lá. A
 divisão:
 
 - **Partes seguidas.** O vídeo é cortado em partes, na ordem original, até 5
-  Shorts. Uma última parte com menos de 15 s de conteúdo novo fica de fora, assim
-  como uma cena que sozinha não cabe num Short.
-- **Gancho no primeiro quadro.** Toda parte abre com a cena de abertura do vídeo,
-  sem transição, para quem vê só aquele Short entender a pergunta.
+  Shorts. Uma cena mais longa que um Short é partida entre as frases, com o mesmo
+  visual; as animações que já tinham acontecido valem desde o início do pedaço.
+  Uma última parte com menos de 15 s de conteúdo novo fica de fora, assim como uma
+  frase que sozinha não cabe num Short.
+- **Gancho no primeiro quadro.** A partir da segunda, toda parte abre com as
+  primeiras frases do vídeo, até um terço do Short (cerca de 19 s), sem transição,
+  para quem vê só aquele Short entender a pergunta. A primeira parte já começa por
+  elas. A voz das frases sai do cache: nada é narrado de novo.
 - **Até 58 s.** Cada parte cabe em menos de um minuto, a faixa em que Shorts têm o
   ciclo de repetição mais curto.
 - **Mesma ordem, mesmas palavras.** Nada é reescrito; a narração é refeita no

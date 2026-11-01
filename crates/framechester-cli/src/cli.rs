@@ -66,7 +66,7 @@ pub(crate) enum Commands {
     )]
     Produce(ProduceArgs),
     #[command(
-        about = "corta um video ja narrado em um Short vertical: abertura, fechamento e as cenas que mais prendem, ate o limite"
+        about = "divide um video ja narrado em Shorts verticais: partes seguidas ate o limite, cada uma aberta pelo gancho"
     )]
     Short(ShortArgs),
     #[command(about = "prepara visuais explicativos locais; nao usa API nem chaves")]
@@ -242,6 +242,13 @@ pub(crate) struct ShortArgs {
     pub(crate) from: PathBuf,
     #[arg(long, default_value_t = framechester_core::shorts::DEFAULT_MAX_SECS, help = "duracao maxima em segundos")]
     pub(crate) max_secs: f32,
+    #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u32).range(1..), help = "qual parte produzir, a partir de 1")]
+    pub(crate) part: u32,
+    #[arg(
+        long,
+        help = "so lista as partes (cenas e duracao), sem narrar nem renderizar"
+    )]
+    pub(crate) list: bool,
     #[arg(
         long,
         help = "id local cadastrado em [[channels]]; obrigatorio quando ha canais"

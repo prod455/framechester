@@ -244,7 +244,10 @@ test('a finished video shows one card per network with its own state and action'
       youtube: { status: 'uploaded' as const, postId: 'abcdefghijk', uploadedAt: now },
     },
   };
-  data.jobs = [job, { ...job, id: 'short-1', kind: 'short', sourceJobId: 'job-1', publications: {} }];
+  data.jobs = [
+    job,
+    { ...job, id: 'short-1', kind: 'short', sourceJobId: 'job-1', part: 1, parts: 1, publications: {} },
+  ];
   studio.data = data;
   studio.channelId = 'tech';
   const card = jobCard(job);
@@ -252,11 +255,11 @@ test('a finished video shows one card per network with its own state and action'
   assert.match(network('youtube').textContent!, /Enviado ao YouTube como privado/);
   assert.ok(network('youtube').querySelector('a[href^="https://studio.youtube.com/video/abcdefghijk"]'));
   assert.ok(network('tiktok').querySelector('[data-testid="publish-tiktok-job-1"]'), 'Connected and ready');
-  assert.match(network('instagram').textContent!, /vai o Short deste vídeo/);
+  assert.match(network('instagram').textContent!, /vão os Shorts deste vídeo/);
   assert.equal(network('instagram').querySelector('button'), null);
-  assert.match(network('facebook').textContent!, /vai o Short deste vídeo/);
+  assert.match(network('facebook').textContent!, /vão os Shorts deste vídeo/);
   assert.equal(
-    [...card.querySelectorAll('button')].some((item) => item.textContent?.includes('Gerar Short')),
+    [...card.querySelectorAll('button')].some((item) => item.textContent?.includes('Gerar Shorts')),
     false,
     'The Short already exists',
   );
@@ -264,4 +267,40 @@ test('a finished video shows one card per network with its own state and action'
   const instagram = shortCard.querySelector('[data-testid="network-instagram-short-1"]')!;
   assert.match(instagram.textContent!, /Conecte o Instagram/);
   assert.match(instagram.textContent!, /Público/);
+  // The Shorts fold under their video instead of getting cards of their own.
+  const { productionPage } = await import('../src/pages/production.ts');
+  data.jobs = [
+    job,
+    ...[2, 1].map((part) => ({
+      ...job,
+      id: `short-${part}`,
+      kind: 'short' as const,
+      sourceJobId: 'job-1',
+      part,
+      parts: 2,
+      publications: {},
+    })),
+  ];
+  const page = productionPage();
+  assert.equal(page.querySelectorAll('article.job-card:not(.job-card-nested)').length, 1);
+  const folded = page.querySelector('[data-testid="shorts-job-1"]')!;
+  assert.match(folded.querySelector('summary')!.textContent!, /2 de 2 prontos/);
+  assert.deepEqual(
+    [...folded.querySelectorAll('h3')].map((item) => item.textContent),
+    ['Short 1 de 2', 'Short 2 de 2'],
+  );
+  // Once per video: the button does not come back when the Shorts are gone.
+  data.jobs = [{ ...job, shortsAt: now }];
+  assert.equal(
+    [...jobCard(data.jobs[0]).querySelectorAll('button')].some((item) =>
+      item.textContent?.includes('Gerar Shorts'),
+    ),
+    false,
+  );
+  data.jobs = [{ ...job, publications: {} }];
+  assert.ok(
+    [...jobCard(data.jobs[0]).querySelectorAll('button')].some((item) =>
+      item.textContent?.includes('Gerar Shorts'),
+    ),
+  );
 });

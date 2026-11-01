@@ -1650,3 +1650,44 @@ test('a video outside the network limits is refused before the upload starts', a
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test('a refused Instagram upload names the provider error type, never its message, and publishes nothing', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'fc-instagram-rupload-'));
+  try {
+    const video = join(directory, 'final.mp4');
+    await writeFile(video, MP4);
+    const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+    const meta = instagramFetch(calls, ['FINISHED']);
+    for (const [body, pattern] of [
+      [
+        { debug_info: { retriable: false, type: 'ProcessingFailedError', message: 'segredo do provedor' } },
+        /^O Instagram recusou o arquivo \(HTTP 400, código ProcessingFailedError\)\.$/,
+      ],
+      [{ error: { code: 100, error_subcode: 2207026, message: 'segredo' } }, /código 100\/2207026\)/],
+      ['<html>falha</html>', /^O Instagram recusou o arquivo \(HTTP 400\)\.$/],
+    ] as const) {
+      calls.length = 0;
+      const service = createSocialService({
+        vault: new MemoryVault(),
+        fetch: async (raw, init) =>
+          raw.startsWith('https://rupload.facebook.com/')
+            ? new Response(typeof body === 'string' ? body : JSON.stringify(body), { status: 400 })
+            : meta(raw, init),
+        now: () => NOW,
+        wait: async () => {},
+      });
+      await connectMeta(service, 'instagram');
+      const error = await service
+        .publish('tech', 'instagram', { path: video, title: 'Vídeo', description: '', vertical: true })
+        .catch((failure: Error) => failure);
+      assert.match(String((error as Error).message), pattern);
+      assert.doesNotMatch(String((error as Error).message), /segredo/);
+      assert.equal(
+        calls.some((call) => call.url.endsWith('/media_publish')),
+        false,
+      );
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

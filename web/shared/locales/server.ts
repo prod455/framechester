@@ -4,6 +4,8 @@ import type { AreaCatalog } from './index.ts';
 
 export default {
   en: {
+    'O {network} recusou o arquivo (HTTP {status}, código {code}).':
+      '{network} rejected the file (HTTP {status}, code {code}).',
     'Só um Short que parou pode ser refeito por aqui.': 'Only a Short that stopped can be redone here.',
     'Os Shorts deste vídeo já foram gerados.': "This video's Shorts were already generated.",
     'Na fila: corte do Short {part} de {count}.': 'Queued: cutting Short {part} of {count}.',
@@ -512,6 +514,8 @@ export default {
       'Voice without commercial approval in this installation. Choose a Kokoro voice from the catalog (PT-BR, EN-US or ES) in Settings. Legacy Piper voices are blocked.',
   },
   es: {
+    'O {network} recusou o arquivo (HTTP {status}, código {code}).':
+      '{network} rechazó el archivo (HTTP {status}, código {code}).',
     'Só um Short que parou pode ser refeito por aqui.': 'Solo un Short que se detuvo puede rehacerse aquí.',
     'Os Shorts deste vídeo já foram gerados.': 'Los Shorts de este video ya se generaron.',
     'Na fila: corte do Short {part} de {count}.': 'En cola: corte del Short {part} de {count}.',

@@ -194,26 +194,26 @@ export function jobCard(job: WebJob, nested = false): HTMLElement {
           )
         : null;
   // Thumbnail in one column, everything about the video in the title's column, so messages
-  // and actions line up with the title instead of the thumbnail's edge.
+  // and actions line up with the title instead of the thumbnail's edge. On a phone the
+  // thumbnail sits beside the title and the rest takes the full width (workspace.css).
   const title = nested
     ? job.parts && job.parts > 1
       ? t('Short {part} de {parts}', { part: job.part ?? 1, parts: job.parts })
       : t('Short vertical')
     : script?.title || t('Vídeo do canal');
-  return el(
+  const card = el(
     'article',
-    {
-      className: `job-card flex gap-4 max-sm:flex-col${nested ? ' job-card-nested' : ''}`,
-      'data-testid': `job-${job.id}`,
-    },
+    // Whole class names only: Tailwind reads classes from the source, and a class glued to
+    // a template expression is never generated.
+    { className: 'job-card', 'data-testid': `job-${job.id}` },
     mediaThumbnail(job),
     el(
       'div',
-      { className: 'min-w-0 flex-1' },
+      { className: 'job-body' },
       // The state sits with the title it describes (law of proximity).
       el(
         'div',
-        { className: 'flex min-w-0 items-center gap-3 [&>h3]:min-w-0 [&>h3]:truncate' },
+        { className: 'job-head' },
         el('h3', { title }, title),
         badge(job.status),
         deletable(job)
@@ -229,7 +229,7 @@ export function jobCard(job: WebJob, nested = false): HTMLElement {
       ),
       el(
         'p',
-        {},
+        { className: 'job-meta' },
         `${job.kind === 'short' ? t('Short vertical') : job.previewOnly ? t('Prévia') : t('Versão final')} · ${date(job.createdAt)}${job.engine ? ` · ${job.engine === 'motion' ? t('Motor motion') : t('Imagens por cena')}` : ''}`,
       ),
       stages,
@@ -249,6 +249,8 @@ export function jobCard(job: WebJob, nested = false): HTMLElement {
       nested ? null : shortsOf(job),
     ),
   );
+  if (nested) card.classList.add('job-card-nested');
+  return card;
 }
 
 /** Sources whose Shorts list the operator opened; a poll re-render keeps it open. */

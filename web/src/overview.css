@@ -189,7 +189,8 @@
   }
 }
 @media (pointer: coarse) {
-  .production-row > .button {
+  .production-row > .button,
+  .production-title {
     min-height: 44px;
   }
   .draft-row {

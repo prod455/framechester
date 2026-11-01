@@ -148,6 +148,16 @@ export const productionRoutes: Route[] = [
   },
   {
     method: 'POST',
+    pattern: '/api/channels/:id/jobs/:jobId/retry',
+    async handle(context) {
+      const id = await requireChannel(context);
+      const runner = context.runner();
+      if (!runner.retryShort) throw new HttpError(503, 'O corte de Shorts não está disponível.');
+      json(context.response, 202, await runner.retryShort(id, validId(context.params.jobId)));
+    },
+  },
+  {
+    method: 'POST',
     pattern: '/api/channels/:id/jobs/:jobId/publish/:platform',
     async handle(context) {
       const id = await requireChannel(context);

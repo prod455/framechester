@@ -51,6 +51,7 @@ podem quebrar a compatibilidade e avisam isso aqui.
 - Um briefing visual que pede uma gravação não bloqueia mais a versão final: toda cena recebe a composição explicativa (renderizador `framechester-editorial-v3`), um arquivo próprio continua opcional por cena e o assistente de roteiro é orientado a não pedir gravações. `requires_capture`, `PreparedVisuals.pending` e o atalho de adaptar roteiro foram removidos.
 
 ### Corrigido
+- **Legendas dentro da faixa segura**: a linha da legenda era centralizada pela largura da frase inteira, mas desenhada palavra a palavra em negrito (mais larga, com folga lateral por palavra); numa linha cheia a última palavra vazava da área segura e o QA bloqueava a entrega. Agora a quebra, o ajuste de tamanho e a centralização usam a largura desenhada.
 - **Produção no Docker**: o motor gravava o cache de narração em `artifacts/`, relativo à raiz somente leitura do contêiner, e falhava com `Read-only file system`. O Studio agora passa `[app] workdir` dentro do volume de dados.
 - O botão de repetir diz **Tentar de novo** em todas as telas.
 

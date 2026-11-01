@@ -96,6 +96,7 @@ const REELS_UPLOAD = 'https://rupload.facebook.com/video-upload/v26.0';
 // TikTok Media Transfer Guide: chunks of 5-64 MB, the last one absorbs the remainder (up to 128 MB),
 // count = floor(size / chunk), at most 1000; a file under 5 MB goes in a single chunk.
 const TIKTOK_MIN_CHUNK = 5 * 1024 * 1024;
+const TIKTOK_UPLOAD_HOST = /^open-upload(?:-[a-z0-9]{1,16}){0,3}\.tiktokapis\.com$/;
 const TIKTOK_CHUNK = 10 * 1024 * 1024;
 const MAX_RESPONSE = 512 * 1024;
 interface OAuthProvider {
@@ -374,7 +375,7 @@ function storedProfile(credential: Credential): string | undefined {
   );
 }
 /** Upload URLs come from the provider: HTTPS on the expected host, no credentials or port. */
-function providerUrl(raw: unknown, host: string, path: (pathname: string) => boolean): string {
+function providerUrl(raw: unknown, host: string | RegExp, path: (pathname: string) => boolean): string {
   let url: URL;
   try {
     url = new URL(typeof raw === 'string' ? raw : '');
@@ -383,14 +384,17 @@ function providerUrl(raw: unknown, host: string, path: (pathname: string) => boo
   }
   if (
     url.protocol !== 'https:' ||
-    url.hostname !== host ||
+    !(typeof host === 'string' ? url.hostname === host : host.test(url.hostname)) ||
     url.port ||
     url.username ||
     url.password ||
     url.hash ||
     !path(url.pathname)
   )
-    throw new SocialError('blocked_endpoint', 'Sessão de envio fora do endpoint da plataforma.');
+    throw new SocialError(
+      'blocked_endpoint',
+      `Sessão de envio fora do endpoint da plataforma (${url.hostname.slice(0, 80)}).`,
+    );
   return url.toString();
 }
 /** The session URI comes from the provider: it must point back at the same upload endpoint. */
@@ -1697,7 +1701,9 @@ export class SocialService implements SocialApi {
     const publishId = init.publish_id;
     if (typeof publishId !== 'string' || !/^[A-Za-z0-9._~-]{1,64}$/.test(publishId))
       throw new SocialError('invalid_response', 'O TikTok não retornou o ID do envio.');
-    const target = providerUrl(init.upload_url, 'open-upload.tiktokapis.com', () => true);
+    // The upload host varies by region and by endpoint (open-upload, open-upload-i18n,
+    // open-upload-va...); it is always a TikTok open-upload host.
+    const target = providerUrl(init.upload_url, TIKTOK_UPLOAD_HOST, () => true);
     for (let index = 0; index < chunks; index++) {
       const start = index * chunk;
       const end = index === chunks - 1 ? size - 1 : start + chunk - 1;

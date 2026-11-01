@@ -785,7 +785,7 @@ function tiktokFetch(
         error: { code: 'ok' },
       });
     }
-    if (url.hostname === 'open-upload.tiktokapis.com' && init?.method === 'PUT') {
+    if (/^open-upload(-[a-z0-9]+)*\.tiktokapis\.com$/.test(url.hostname) && init?.method === 'PUT') {
       calls.push({ url: raw, init, body: await new Response(init.body as ReadableStream).text() });
       return new Response(null, { status: 201 });
     }
@@ -969,6 +969,26 @@ test('an unaudited app on a public TikTok account sends the video to the inbox a
   }
 });
 
+test('TikTok uploads to its regional open-upload hosts', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'fc-tiktok-region-'));
+  try {
+    const video = join(directory, 'final.mp4');
+    await writeFile(video, MP4);
+    const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+    const service = createSocialService({
+      vault: new MemoryVault(),
+      fetch: tiktokFetch(calls, { uploadUrl: 'https://open-upload-i18n.tiktokapis.com/upload?upload_id=7' }),
+      now: () => NOW,
+    });
+    const { state } = await connectTiktok(service);
+    await service.callbackOAuth('tiktok', { state, code: 'fixture-code' });
+    await service.publish('tech', 'tiktok', { path: video, title: 'Vídeo', description: '', vertical: true });
+    assert.ok(calls.some((call) => call.url.startsWith('https://open-upload-i18n.tiktokapis.com/')));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('TikTok sends nothing when SELF_ONLY is not offered or the upload URL leaves its host', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'fc-tiktok-refuse-'));
   try {
@@ -976,7 +996,12 @@ test('TikTok sends nothing when SELF_ONLY is not offered or the upload URL leave
     await writeFile(video, MP4);
     for (const [options, pattern] of [
       [{ privacy: ['PUBLIC_TO_EVERYONE'] }, /Somente eu/],
-      [{ uploadUrl: 'https://evil.example/video/?upload_id=1' }, /fora do endpoint/],
+      [
+        { uploadUrl: 'https://evil.example/video/?upload_id=1' },
+        /fora do endpoint da plataforma \(evil\.example\)/,
+      ],
+      [{ uploadUrl: 'https://open-upload.tiktokapis.com.evil.example/video/' }, /fora do endpoint/],
+      [{ uploadUrl: 'http://open-upload.tiktokapis.com/video/' }, /fora do endpoint/],
     ] as const) {
       const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
       const service = createSocialService({

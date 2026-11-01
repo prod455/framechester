@@ -1114,6 +1114,41 @@ export class LocalRunner implements RunnerApi {
     }
     return structuredClone(jobs);
   }
+  /**
+   * Runs a Short that stopped again, the same part of the same split. It finishes the one
+   * split of the video; it never splits again.
+   */
+  async retryShort(channelId: string, jobId: string): Promise<WebJob> {
+    const state = await this.channel(channelId);
+    id(jobId);
+    if (this.stopped) throw new RunnerError('Servidor encerrando.');
+    if (!this.engineStatus().available) throw new RunnerError(this.engineStatus().message, 503);
+    const job = this.jobs.find((item) => item.channelId === channelId && item.id === jobId);
+    if (!job) throw new RunnerError('Produção não encontrada neste canal.');
+    if (job.kind !== 'short') throw new RunnerError('Só um Short que parou pode ser refeito por aqui.');
+    if (job.status !== 'failed' && job.status !== 'blocked')
+      throw new RunnerError('Só um Short que parou pode ser refeito por aqui.');
+    const script = state.scripts.find((item) => item.id === job.scriptId && item.channelId === channelId);
+    if (!script) throw new RunnerError('Roteiro do vídeo de origem não encontrado.');
+    // Claimed before any await, so two clicks queue it once.
+    job.status = 'queued';
+    job.message =
+      job.parts && job.parts > 1
+        ? `Na fila: corte do Short ${job.part} de ${job.parts}.`
+        : 'Na fila: corte do Short.';
+    job.videoAvailable = false;
+    delete job.startedAt;
+    delete job.finishedAt;
+    delete job.qa;
+    const config = jobConfig(state, channelId, this.options.repositoryRoot);
+    // A report left by the stopped run must not pass for this one's.
+    await rm(join(this.root, 'jobs', channelId, jobId, 'output'), { recursive: true, force: true });
+    await this.persist();
+    const work = () =>
+      this.run(job, structuredClone(script), config, [], { scriptId: script.id, assetIds: {} });
+    this.queue = this.queue.then(work, work);
+    return structuredClone(job);
+  }
   /** Asks the engine how many Shorts the narrated storyboard splits into, without rendering. */
   private async countParts(channelId: string, sourceJobId: string): Promise<number> {
     const storyboard = this.storyboardOf(channelId, sourceJobId);

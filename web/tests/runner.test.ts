@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { existsSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, writeFile, mkdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -1525,6 +1526,81 @@ test('a video still in production keeps itself and the files it is about to copy
     jobs[0].status = 'queued';
     await assert.rejects(runner.remove('tech', 'busy'), /sendo produzido/);
     jobs.length = 0;
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('a Short that stopped runs its own part again, without splitting the video twice', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'framechester-web-retry-short-'));
+  const input = state();
+  input.scripts[0].format = 'long';
+  const sourceOutput = join(home, 'production', 'jobs', 'tech', 'source', 'output', 'channels', 'tech');
+  await mkdir(sourceOutput, { recursive: true });
+  await writeFile(join(sourceOutput, 'storyboard.json'), '{}');
+  const stale = join(home, 'production', 'jobs', 'tech', 'part-4', 'output', 'channels', 'tech');
+  await mkdir(stale, { recursive: true });
+  await writeFile(join(stale, 'pipeline_report.json'), '{"stage":"editorial_qa"}');
+  const base = { channelId: 'tech', scriptId: 'script-one', createdAt: date };
+  await writeFile(
+    join(home, 'production', 'jobs.json'),
+    JSON.stringify([
+      {
+        ...base,
+        id: 'source',
+        status: 'completed',
+        message: 'ok',
+        videoAvailable: true,
+        engine: 'motion',
+        shortsAt: date,
+      },
+      {
+        ...base,
+        id: 'part-4',
+        status: 'failed',
+        message: 'termo',
+        videoAvailable: false,
+        kind: 'short',
+        sourceJobId: 'source',
+        part: 4,
+        parts: 5,
+      },
+    ]),
+  );
+  const calls: string[][] = [];
+  let stalePresent = true;
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => structuredClone(input),
+    execute: async (args) => {
+      calls.push(args);
+      const out = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
+      stalePresent = existsSync(join(out, 'pipeline_report.json'));
+      await mkdir(join(out, 'render'), { recursive: true });
+      await writeFile(join(out, 'render', 'final.mp4'), 'synthetic short');
+      await writeFile(
+        join(out, 'pipeline_report.json'),
+        JSON.stringify({ stage: 'editorial_qa', technical_qa: { checks: [{ status: 'pass' }] } }),
+      );
+      return { exitCode: 0, stdout: '', stderr: '' };
+    },
+  });
+  try {
+    await assert.rejects(runner.retryShort('tech', 'source'), /Só um Short que parou/);
+    const queued = await runner.retryShort('tech', 'part-4');
+    assert.equal(queued.status, 'queued');
+    await assert.rejects(runner.retryShort('tech', 'part-4'), /Só um Short que parou/, 'two clicks, one run');
+    await runner.idle();
+    assert.equal(calls.length, 1, 'no new split: only the part runs');
+    assert.equal(calls[0][calls[0].indexOf('--part') + 1], '4');
+    assert.equal(stalePresent, false, 'the stopped run left no report behind');
+    const done = (await runner.list('tech')).find((item) => item.id === 'part-4')!;
+    assert.equal(done.status, 'completed', done.message);
+    assert.equal(done.part, 4);
+    await assert.rejects(runner.retryShort('tech', 'part-4'), /Só um Short que parou/);
+    await assert.rejects(runner.startShorts('tech', 'source'), /já foram gerados/);
   } finally {
     await runner.close();
     await rm(home, { recursive: true, force: true });

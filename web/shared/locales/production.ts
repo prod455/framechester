@@ -2,6 +2,8 @@ import type { AreaCatalog } from './index.ts';
 
 export default {
   en: {
+    'Short na fila de novo, com a mesma parte do vídeo.':
+      'Short queued again, with the same part of the video.',
     'Short {part} de {parts}': 'Short {part} of {parts}',
     'Shorts deste vídeo: {ready} de {count} prontos': "This video's Shorts: {ready} of {count} ready",
     'Short na fila: o vídeo inteiro cabe em um, em vertical.':
@@ -274,6 +276,8 @@ export default {
     'Automático neste canal.': 'Automatic on this channel.',
   },
   es: {
+    'Short na fila de novo, com a mesma parte do vídeo.':
+      'Short en cola de nuevo, con la misma parte del video.',
     'Short {part} de {parts}': 'Short {part} de {parts}',
     'Shorts deste vídeo: {ready} de {count} prontos': 'Shorts de este video: {ready} de {count} listos',
     'Short na fila: o vídeo inteiro cabe em um, em vertical.':

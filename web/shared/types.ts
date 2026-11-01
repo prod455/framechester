@@ -341,6 +341,7 @@ export interface RunnerApi {
   engineStatus(): { available: boolean; message: string };
   publish?(channelId: string, jobId: string, platform: Platform): Promise<WebJob>;
   startShorts?(channelId: string, sourceJobId: string): Promise<WebJob[]>;
+  retryShort?(channelId: string, jobId: string): Promise<WebJob>;
   remove?(channelId: string, jobId: string): Promise<void>;
   removeAsset?(channelId: string, assetId: string): Promise<void>;
 }

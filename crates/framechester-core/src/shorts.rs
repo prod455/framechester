@@ -6,7 +6,10 @@
 //! the editorial review of the source video still covers every Short, and the narration of
 //! every sentence comes back from the TTS cache.
 use crate::error::{FramechesterError, Result};
-use crate::storyboard::{Cue, Motion, Storyboard, StoryboardScene, Transition, VideoFormat};
+use crate::storyboard::{
+    contains_phrase, narration_words, Cue, Motion, Storyboard, StoryboardScene, Transition,
+    VideoFormat,
+};
 
 /// Under a minute keeps the Short in the format's tightest loop; a few seconds of margin
 /// absorb the re-narration of cached sentences.
@@ -102,7 +105,31 @@ fn piece(scene: &StoryboardScene, from: usize, to: usize) -> StoryboardScene {
         // Same picture as the piece before it: a continuation cuts straight in.
         piece.transition = Transition::Cut;
     }
+    // Terms the scene promised to say stay only where this piece says them.
+    let words = narration_words(&piece.narration);
     piece
+        .captions
+        .emphasis
+        .retain(|term| contains_phrase(&words, term));
+    piece
+        .validation
+        .spoken_terms
+        .retain(|term| contains_phrase(&words, term));
+    piece
+}
+
+/// The longest piece `from..to` with `to` in `from + 1..=last` that is a valid scene. A
+/// number on screen must be said in the scene, so a cut that leaves its sentence out of
+/// the piece is not one.
+fn valid_piece(
+    scene: &StoryboardScene,
+    from: usize,
+    last: usize,
+) -> Option<(usize, StoryboardScene)> {
+    (from + 1..=last)
+        .rev()
+        .map(|to| (to, piece(scene, from, to)))
+        .find(|(_, piece)| piece.validate().is_ok())
 }
 
 /// `scene` as pieces of at most `max_secs`, cut between sentences. A single sentence
@@ -123,13 +150,17 @@ fn pieces(scene: &StoryboardScene, max_secs: f32) -> (Vec<StoryboardScene>, bool
         while to < scene.segments.len() && bounds[to + 1] - bounds[from] <= max_secs {
             to += 1;
         }
-        if to == from {
-            complete = false;
-            from += 1;
-            continue;
+        match valid_piece(scene, from, to) {
+            Some((end, piece)) => {
+                pieces.push(piece);
+                from = end;
+            }
+            // A sentence longer than the budget, or no cut here makes a valid scene.
+            None => {
+                complete = false;
+                from += 1;
+            }
         }
-        pieces.push(piece(scene, from, to));
-        from = to;
     }
     (pieces, complete)
 }
@@ -141,10 +172,10 @@ fn hook(scene: &StoryboardScene, max_secs: f32) -> Option<StoryboardScene> {
         return Some(scene.clone());
     }
     let bounds = bounds(scene);
-    let to = (1..=scene.segments.len())
+    let last = (1..=scene.segments.len())
         .take_while(|to| bounds[*to] <= max_secs / 3.0)
         .last()?;
-    Some(piece(scene, 0, to))
+    valid_piece(scene, 0, last).map(|(_, piece)| piece)
 }
 
 /// Splits `source` (already narrated: scenes carry real durations) into parts of at most
@@ -217,7 +248,8 @@ pub fn parts(source: &Storyboard, max_secs: f32) -> Result<ShortParts> {
             }
             // The opening cuts straight in; timing is rebuilt when the cut is narrated again.
             storyboard.scenes[0].transition = Transition::Cut;
-            ShortCut {
+            storyboard.validate()?;
+            Ok(ShortCut {
                 duration_secs: storyboard
                     .scenes
                     .iter()
@@ -225,9 +257,9 @@ pub fn parts(source: &Storyboard, max_secs: f32) -> Result<ShortParts> {
                     .sum(),
                 kept: kept.iter().map(|(id, _)| *id).collect(),
                 storyboard,
-            }
+            })
         })
-        .collect();
+        .collect::<Result<_>>()?;
     let mut dropped: Vec<u32> = incomplete;
     for (id, _) in left_out {
         if !parts.iter().any(|part| part.kept.contains(&id)) {
@@ -249,7 +281,7 @@ mod tests {
             id,
             concept: format!("Cena {id}"),
             learning_goal: "Entender a cena.".into(),
-            narration: format!("Fala da cena {id}."),
+            narration: format!("Fala da cena {id}, com 3 e 5."),
             segments: Vec::new(),
             duration_secs: secs,
             start_secs: 0.0,
@@ -270,7 +302,7 @@ mod tests {
     fn chart() -> Composition {
         Composition::Chart {
             title: "Dados".into(),
-            objects: Vec::new(),
+            objects: vec![bar("a", 3.0), bar("b", 5.0)],
             max_value: None,
         }
     }
@@ -459,5 +491,58 @@ mod tests {
         assert_eq!(split.parts.len(), 1);
         assert_eq!(split.parts[0].kept, vec![0, 1, 2]);
         assert!(split.dropped.is_empty());
+    }
+
+    fn bar(id: &str, value: f64) -> crate::storyboard::VisualObject {
+        crate::storyboard::VisualObject {
+            id: id.into(),
+            label: id.to_uppercase(),
+            detail: None,
+            role: Default::default(),
+            icon: None,
+            value: Some(value),
+            unit: None,
+            group: None,
+            parent: None,
+        }
+    }
+
+    #[test]
+    fn every_piece_says_the_terms_it_keeps_and_the_numbers_it_shows() {
+        // The reported case: a term said in one sentence only, and a chart whose numbers
+        // are said in another; every part must be a valid storyboard.
+        let mut long = spoken(0, 8, 7.5);
+        long.composition = Composition::Chart {
+            title: "Dados".into(),
+            objects: vec![bar("a", 42.0), bar("b", 17.0)],
+            max_value: None,
+        };
+        long.segments[1].text = "Os valores sao 42 e 17.".into();
+        long.segments[5].text = "Os dados descrevem a curva.".into();
+        long.narration = long
+            .segments
+            .iter()
+            .map(|segment| segment.text.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+        long.validation.spoken_terms = vec!["descrevem".into()];
+        long.captions.emphasis = vec!["descrevem".into()];
+        long.validate().unwrap();
+        let source = storyboard(vec![long, spoken(1, 6, 9.0)]);
+        let split = parts(&source, 58.0).unwrap();
+        let chart_pieces: Vec<&StoryboardScene> = split
+            .parts
+            .iter()
+            .flat_map(|part| part.storyboard.scenes.iter())
+            .filter(|scene| matches!(scene.composition, Composition::Chart { .. }))
+            .collect();
+        assert!(!chart_pieces.is_empty());
+        for piece in chart_pieces {
+            piece.validate().unwrap();
+            assert!(piece.narration.contains("42 e 17"), "{}", piece.narration);
+            let says = piece.narration.contains("descrevem");
+            assert_eq!(piece.validation.spoken_terms.is_empty(), !says);
+            assert_eq!(piece.captions.emphasis.is_empty(), !says);
+        }
     }
 }

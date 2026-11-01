@@ -957,6 +957,11 @@ function metaFetch(
     if (url.pathname === '/v26.0/oauth/access_token') {
       const body = new URLSearchParams(String(init!.body));
       calls.push({ url: raw, init, body: String(init!.body) });
+      if (options.systemUser && body.has('redirect_uri'))
+        return new Response(JSON.stringify({ error: { code: 1 } }), {
+          status: 400,
+          headers: { 'content-type': 'application/json' },
+        });
       if (options.systemUser && body.get('grant_type') === 'fb_exchange_token')
         return new Response(
           JSON.stringify({

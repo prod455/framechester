@@ -1149,7 +1149,12 @@ export class SocialService implements SocialApi {
       secret(token.access_token);
       return token;
     };
-    const short = await exchange({ code, redirect_uri: pending.redirectUri });
+    // A Facebook Login for Business configuration that issues a system-user token exchanges the
+    // code without redirect_uri (Meta answers code 1 when it is present); user tokens need it.
+    const short = await exchange({ code, redirect_uri: pending.redirectUri }).catch((error: unknown) => {
+      if (error instanceof SocialError && error.code === 'api_denied') return exchange({ code });
+      throw error;
+    });
     // A system-user token (Unified login configurations) never expires and refuses the
     // long-lived exchange; keep it as it came.
     const long = await exchange({

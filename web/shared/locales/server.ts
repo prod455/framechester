@@ -4,6 +4,12 @@ import type { AreaCatalog } from './index.ts';
 
 export default {
   en: {
+    'O Instagram recusou o arquivo (ProcessingFailedError) e não processou o vídeo; nada foi publicado. Publique este vídeo pelo app do Instagram.':
+      'Instagram rejected the file (ProcessingFailedError) and did not process the video; nothing was published. Publish this video from the Instagram app.',
+    'O Instagram recusou o arquivo (ProcessingFailedError) e não terminou de processar o vídeo em 5 minutos; nada foi publicado. Publique este vídeo pelo app do Instagram.':
+      'Instagram rejected the file (ProcessingFailedError) and did not finish processing the video in 5 minutes; nothing was published. Publish this video from the Instagram app.',
+    'O Instagram recusou o arquivo (ProcessingFailedError) e não confirmou ter recebido o arquivo inteiro; nada foi publicado. Publique este vídeo pelo app do Instagram.':
+      'Instagram rejected the file (ProcessingFailedError) and did not confirm it received the whole file; nothing was published. Publish this video from the Instagram app.',
     'O canal atingiu o limite de envios do YouTube por enquanto; nada foi enviado. Tente de novo em 24 horas. Um canal verificado em youtube.com/verify tem limite maior.':
       "The channel reached YouTube's upload limit for now; nothing was sent. Try again in 24 hours. A channel verified at youtube.com/verify has a higher limit.",
     'A quota diária da YouTube Data API do projeto acabou; nada foi enviado. Ela renova à meia-noite do horário do Pacífico, ou peça mais quota no Google Cloud.':
@@ -521,6 +527,12 @@ export default {
       'Voice without commercial approval in this installation. Choose a Kokoro voice from the catalog (PT-BR, EN-US or ES) in Settings. Legacy Piper voices are blocked.',
   },
   es: {
+    'O Instagram recusou o arquivo (ProcessingFailedError) e não processou o vídeo; nada foi publicado. Publique este vídeo pelo app do Instagram.':
+      'Instagram rechazó el archivo (ProcessingFailedError) y no procesó el video; no se publicó nada. Publica este video desde la app de Instagram.',
+    'O Instagram recusou o arquivo (ProcessingFailedError) e não terminou de processar o vídeo em 5 minutos; nada foi publicado. Publique este vídeo pelo app do Instagram.':
+      'Instagram rechazó el archivo (ProcessingFailedError) y no terminó de procesar el video en 5 minutos; no se publicó nada. Publica este video desde la app de Instagram.',
+    'O Instagram recusou o arquivo (ProcessingFailedError) e não confirmou ter recebido o arquivo inteiro; nada foi publicado. Publique este vídeo pelo app do Instagram.':
+      'Instagram rechazó el archivo (ProcessingFailedError) y no confirmó haber recibido el archivo completo; no se publicó nada. Publica este video desde la app de Instagram.',
     'O canal atingiu o limite de envios do YouTube por enquanto; nada foi enviado. Tente de novo em 24 horas. Um canal verificado em youtube.com/verify tem limite maior.':
       'El canal alcanzó el límite de subidas de YouTube por ahora; no se envió nada. Inténtalo de nuevo en 24 horas. Un canal verificado en youtube.com/verify tiene un límite mayor.',
     'A quota diária da YouTube Data API do projeto acabou; nada foi enviado. Ela renova à meia-noite do horário do Pacífico, ou peça mais quota no Google Cloud.':

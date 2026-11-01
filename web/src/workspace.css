@@ -1052,3 +1052,10 @@
     justify-self: stretch;
   }
 }
+
+/* Shorts folded under the video they were cut from */
+.job-shorts > .job-card-nested {
+  padding: 16px 0 16px 16px;
+  border-left: 2px solid var(--border);
+  border-bottom: 0;
+}

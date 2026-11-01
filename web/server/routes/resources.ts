@@ -60,11 +60,15 @@ export const resourceRoutes: Route[] = [
     pattern: `/api/:kind(${kinds})/:resourceId`,
     async handle(context) {
       const id = validId(context.params.resourceId);
-      await context.store.deleteResource(
-        kindOf(context),
-        id,
-        channelId(context.url.searchParams.get('channel_id')),
-      );
+      const owner = channelId(context.url.searchParams.get('channel_id'));
+      // A video names its script; deleting the script would leave the video without a title.
+      if (
+        kindOf(context) === 'scripts' &&
+        context.optional.runner &&
+        (await context.optional.runner.list(owner)).some((job) => job.scriptId === id)
+      )
+        throw new HttpError(409, 'Este roteiro tem vídeos; exclua os vídeos que não foram enviados antes.');
+      await context.store.deleteResource(kindOf(context), id, owner);
       json(context.response, 200, { ok: true });
     },
   },

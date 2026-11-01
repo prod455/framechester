@@ -196,6 +196,11 @@ export interface WebJob {
   /** A Short cut from another job's approved final version. */
   kind?: 'short';
   sourceJobId?: string;
+  /** Which consecutive part of the source this Short is, from 1, out of `parts`. */
+  part?: number;
+  parts?: number;
+  /** When this video's Shorts were generated; it happens once per video. */
+  shortsAt?: string;
 }
 /** YouTube, TikTok and Facebook uploads are non-public; Instagram publishes publicly. */
 export type Publication =
@@ -335,5 +340,7 @@ export interface RunnerApi {
   ): Promise<{ path: string; contentType: string } | undefined>;
   engineStatus(): { available: boolean; message: string };
   publish?(channelId: string, jobId: string, platform: Platform): Promise<WebJob>;
-  startShort?(channelId: string, sourceJobId: string): Promise<WebJob>;
+  startShorts?(channelId: string, sourceJobId: string): Promise<WebJob[]>;
+  remove?(channelId: string, jobId: string): Promise<void>;
+  removeAsset?(channelId: string, assetId: string): Promise<void>;
 }

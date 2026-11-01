@@ -830,7 +830,7 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
         const target = last!.rule;
         throw new HttpError(
           422,
-          `A IA entregou ${last!.words} palavras de narração (cerca de ${formatDuration(last!.estimatedSecs)}) depois de ${p.attempts} tentativas, e o formato ${target.format} exige de ${formatDuration(target.minSecs)} a ${formatDuration(target.maxSecs)} (${target.minWords} a ${target.maxWords} palavras). Nenhum roteiro foi salvo. Gere de novo ou escolha um modelo maior; para um Short de um vídeo longo já pronto, use Gerar Short no vídeo.`,
+          `A IA entregou ${last!.words} palavras de narração (cerca de ${formatDuration(last!.estimatedSecs)}) depois de ${p.attempts} tentativas, e o formato ${target.format} exige de ${formatDuration(target.minSecs)} a ${formatDuration(target.maxSecs)} (${target.minWords} a ${target.maxWords} palavras). Nenhum roteiro foi salvo. Gere de novo ou escolha um modelo maior; para um Short de um vídeo longo já pronto, use Gerar Shorts no vídeo.`,
         );
       } finally {
         generating = false;

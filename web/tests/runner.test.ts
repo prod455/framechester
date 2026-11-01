@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, writeFile, mkdir, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, mkdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { AppState, Script } from '../shared/types.ts';
@@ -1150,6 +1150,7 @@ test('a Short is cut from an approved motion video, inherits its review and goes
   );
   await writeFile(join(home, 'production', 'assets.json'), '[]');
   const calls: string[][] = [];
+  let listing = false;
   const uploads: Array<{
     network: string;
     title: string;
@@ -1163,6 +1164,10 @@ test('a Short is cut from an approved motion video, inherits its review and goes
     readState: async () => structuredClone(input),
     execute: async (args) => {
       calls.push(args);
+      if (args.includes('--list'))
+        return listing
+          ? { exitCode: 0, stdout: JSON.stringify({ parts: [{ part: 1 }, { part: 2 }] }), stderr: '' }
+          : { exitCode: 1, stdout: '', stderr: `sem cenas narradas em ${home}` };
       const out = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
       await mkdir(join(out, 'render'), { recursive: true });
       await writeFile(join(out, 'render', 'final.mp4'), 'synthetic short');
@@ -1193,21 +1198,45 @@ test('a Short is cut from an approved motion video, inherits its review and goes
     ],
   });
   try {
-    await assert.rejects(runner.startShort('tech', 'source-preview'), /versão final aprovada/);
-    await assert.rejects(runner.startShort('tech', 'source-legacy'), /motor motion/);
-    const short = await runner.startShort('tech', 'source-final');
-    assert.equal(short.kind, 'short');
+    await assert.rejects(runner.startShorts('tech', 'source-preview'), /versão final aprovada/);
+    await assert.rejects(runner.startShorts('tech', 'source-legacy'), /motor motion/);
+    // A split the engine refused does not use up the video's one turn.
+    const refused = await runner.startShorts('tech', 'source-final').catch((error: Error) => error);
+    assert.match(String(refused), /dividir o vídeo em Shorts: sem cenas narradas em \[dados locais\]/);
+    listing = true;
+    const shorts = await runner.startShorts('tech', 'source-final');
+    assert.deepEqual(
+      shorts.map((item) => [item.kind, item.part, item.parts]),
+      [
+        ['short', 1, 2],
+        ['short', 2, 2],
+      ],
+    );
     await runner.idle();
-    const args = calls[0];
-    assert.equal(args[args.indexOf('--config') + 2], 'short');
-    assert.equal(args[args.indexOf('--from') + 1], join(sourceOutput, 'storyboard.json'));
-    const done = (await runner.list('tech')).find((item) => item.id === short.id)!;
-    assert.equal(done.status, 'completed', done.message);
-    assert.equal(done.qa?.editorial, 'pass', 'the source approval covers the same words');
-    await assert.rejects(runner.startShort('tech', short.id), /já é um Short/);
-    await assert.rejects(runner.startShort('tech', 'source-final'), /já tem um Short/);
+    const list = calls[1];
+    assert.deepEqual(list.slice(0, 2), ['short', '--from']);
+    assert.equal(list[list.indexOf('--from') + 1], join(sourceOutput, 'storyboard.json'));
+    const parts = calls.slice(2).map((args) => args[args.indexOf('--part') + 1]);
+    assert.deepEqual(parts, ['1', '2'], 'one engine run per part, in order');
+    assert.equal(calls[2][calls[2].indexOf('--config') + 2], 'short');
+    const jobs = await runner.list('tech');
+    const short = jobs.find((item) => item.id === shorts[0].id)!;
+    for (const item of shorts) {
+      const done = jobs.find((job) => job.id === item.id)!;
+      assert.equal(done.status, 'completed', done.message);
+      assert.equal(done.qa?.editorial, 'pass', 'the source approval covers the same words');
+    }
+    assert.ok(jobs.find((item) => item.id === 'source-final')!.shortsAt);
+    await assert.rejects(runner.startShorts('tech', short.id), /já é um Short/);
+    await assert.rejects(runner.startShorts('tech', 'source-final'), /já foram gerados/);
+    await runner.remove('tech', shorts[1].id);
+    await assert.rejects(
+      runner.startShorts('tech', 'source-final'),
+      /já foram gerados/,
+      'Once per video, even after its Shorts are deleted',
+    );
     input.scripts[0].format = 'short';
-    await assert.rejects(runner.startShort('tech', 'source-final'), /já é vertical/);
+    await assert.rejects(runner.startShorts('tech', 'source-final'), /já é vertical/);
     input.scripts[0].format = 'long';
     await runner.publish('tech', short.id, 'youtube');
     await runner.publish('tech', short.id, 'facebook');
@@ -1215,7 +1244,7 @@ test('a Short is cut from an approved motion video, inherits its review and goes
     assert.deepEqual(uploads, [
       {
         network: 'youtube',
-        title: `${input.scripts[0].title} #Shorts`,
+        title: `${input.scripts[0].title} (1/2) #Shorts`,
         description:
           'Descrição com fontes\n\nAcompanhe também:\nFacebook: https://www.facebook.com/123\n\n#Shorts',
         thumbnail: undefined,
@@ -1223,7 +1252,7 @@ test('a Short is cut from an approved motion video, inherits its review and goes
       },
       {
         network: 'facebook',
-        title: input.scripts[0].title,
+        title: `${input.scripts[0].title} (1/2)`,
         description: 'Descrição com fontes\n\nAcompanhe também:\nYouTube: https://www.youtube.com/@fixture',
         thumbnail: undefined,
         vertical: true,
@@ -1286,6 +1315,8 @@ test('each opted-in network gets the approved video once, its Short follows by i
           stderr: '',
         };
       }
+      if (args.includes('--list'))
+        return { exitCode: 0, stdout: JSON.stringify({ parts: [{ part: 1 }], dropped: [] }), stderr: '' };
       const out = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
       await mkdir(join(out, 'render'), { recursive: true });
       await mkdir(join(out, 'publish'), { recursive: true });
@@ -1402,6 +1433,98 @@ test('an English channel narrates with an English voice, checks speech in Englis
       runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } }),
       /de-DE deste canal não tem voz comercial/,
     );
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('only a video that never reached a network is deleted, with its files, and channel files go too', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'framechester-web-delete-'));
+  const base = { channelId: 'tech', scriptId: 'script-one', createdAt: date, message: 'ok' };
+  const failed = { status: 'failed', message: 'recusado', failedAt: date };
+  const sent = { status: 'uploaded', postId: 'post', uploadedAt: date };
+  await mkdir(join(home, 'production', 'jobs', 'tech', 'draft', 'output'), { recursive: true });
+  await writeFile(join(home, 'production', 'jobs', 'tech', 'draft', 'output', 'final.mp4'), 'mp4');
+  await writeFile(
+    join(home, 'production', 'jobs.json'),
+    JSON.stringify([
+      { ...base, id: 'draft', status: 'completed', videoAvailable: true, publications: { tiktok: failed } },
+      { ...base, id: 'review', status: 'needs_review', videoAvailable: false },
+      { ...base, id: 'sent', status: 'completed', videoAvailable: true, publications: { youtube: sent } },
+      {
+        ...base,
+        id: 'sending',
+        status: 'completed',
+        videoAvailable: true,
+        publications: { youtube: { status: 'uploading', startedAt: date } },
+      },
+      { ...base, id: 'source', status: 'completed', videoAvailable: true },
+      { ...base, id: 'cut', status: 'failed', videoAvailable: false, kind: 'short', sourceJobId: 'source' },
+    ]),
+  );
+  let runner = await createRunner({ home, repositoryRoot: resolve('..'), readState: async () => state() });
+  try {
+    await assert.rejects(runner.remove('tech', 'sent'), /já foi enviado/);
+    // A restart turns an interrupted upload into a failure, so it no longer counts as sent.
+    await runner.remove('tech', 'sending');
+    await assert.rejects(runner.remove('tech', 'source'), /exclua o Short antes/);
+    await assert.rejects(runner.remove('science', 'draft'), /não encontrada|Canal/);
+    await runner.remove('tech', 'draft');
+    await assert.rejects(stat(join(home, 'production', 'jobs', 'tech', 'draft')), /ENOENT/);
+    await runner.remove('tech', 'cut');
+    await runner.remove('tech', 'source');
+    await runner.remove('tech', 'review');
+    await assert.rejects(runner.remove('tech', 'draft'), /não encontrada/);
+    assert.deepEqual(
+      (await runner.list('tech')).map((job) => job.id),
+      ['sent'],
+    );
+    const asset = await runner.upload('tech', {
+      filename: 'foto.png',
+      kind: 'image',
+      contentBase64: visualPng.toString('base64'),
+      license: 'Original',
+      provenance: 'Fixture',
+      restrictions: 'Nenhuma',
+    });
+    const file = (await runner.assetFile('tech', asset.id))!.path;
+    await assert.rejects(runner.removeAsset('science', asset.id), /não encontrado|Canal/);
+    await runner.removeAsset('tech', asset.id);
+    assert.deepEqual(await runner.assets('tech'), []);
+    await assert.rejects(stat(file), /ENOENT/);
+    await assert.rejects(runner.removeAsset('tech', asset.id), /não encontrado/);
+    await runner.close();
+    runner = await createRunner({ home, repositoryRoot: resolve('..'), readState: async () => state() });
+    assert.deepEqual(
+      (await runner.list('tech')).map((job) => job.id),
+      ['sent'],
+    );
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('a video still in production keeps itself and the files it is about to copy', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'framechester-web-delete-active-'));
+  const runner = await createRunner({ home, repositoryRoot: resolve('..'), readState: async () => state() });
+  try {
+    const asset = await runner.upload('tech', {
+      filename: 'foto.png',
+      kind: 'image',
+      contentBase64: visualPng.toString('base64'),
+      license: 'Original',
+      provenance: 'Fixture',
+      restrictions: 'Nenhuma',
+    });
+    const jobs = Reflect.get(runner, 'jobs') as { id: string; channelId: string; status: string }[];
+    jobs.push({ id: 'busy', channelId: 'tech', status: 'running' });
+    await assert.rejects(runner.remove('tech', 'busy'), /sendo produzido/);
+    await assert.rejects(runner.removeAsset('tech', asset.id), /sendo produzido/);
+    jobs[0].status = 'queued';
+    await assert.rejects(runner.remove('tech', 'busy'), /sendo produzido/);
+    jobs.length = 0;
   } finally {
     await runner.close();
     await rm(home, { recursive: true, force: true });

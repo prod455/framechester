@@ -4,6 +4,18 @@ import type { AreaCatalog } from './index.ts';
 
 export default {
   en: {
+    'Este vídeo ainda está sendo produzido; espere terminar para excluir.':
+      'This video is still being made; wait for it to finish to delete it.',
+    'Este vídeo já foi enviado a uma rede e fica no histórico.':
+      'This video was already sent to a network and stays in the history.',
+    'Este vídeo tem um Short; exclua o Short antes.': 'This video has a Short; delete the Short first.',
+    'Arquivo não encontrado neste canal.': 'File not found on this channel.',
+    'Há um vídeo sendo produzido neste canal; espere terminar para excluir arquivos.':
+      'A video is being made on this channel; wait for it to finish to delete files.',
+    'A exclusão de vídeos não está disponível.': 'Deleting videos is not available.',
+    'A exclusão de arquivos não está disponível.': 'Deleting files is not available.',
+    'Este roteiro tem vídeos; exclua os vídeos que não foram enviados antes.':
+      'This script has videos; delete the videos that were not sent first.',
     'Sessão de envio fora do endpoint da plataforma ({host}).':
       'Upload session outside the platform endpoint ({host}).',
     'O TikTok só aceita post direto de app não auditado em conta privada. Reconecte o TikTok (o Studio passa a pedir video.upload) para enviar como rascunho, ou deixe a conta privada.':
@@ -496,6 +508,18 @@ export default {
       'Voice without commercial approval in this installation. Choose a Kokoro voice from the catalog (PT-BR, EN-US or ES) in Settings. Legacy Piper voices are blocked.',
   },
   es: {
+    'Este vídeo ainda está sendo produzido; espere terminar para excluir.':
+      'Este video todavía se está produciendo; espera a que termine para eliminarlo.',
+    'Este vídeo já foi enviado a uma rede e fica no histórico.':
+      'Este video ya se envió a una red y queda en el historial.',
+    'Este vídeo tem um Short; exclua o Short antes.': 'Este video tiene un Short; elimina el Short primero.',
+    'Arquivo não encontrado neste canal.': 'Archivo no encontrado en este canal.',
+    'Há um vídeo sendo produzido neste canal; espere terminar para excluir arquivos.':
+      'Hay un video produciéndose en este canal; espera a que termine para eliminar archivos.',
+    'A exclusão de vídeos não está disponível.': 'La eliminación de videos no está disponible.',
+    'A exclusão de arquivos não está disponível.': 'La eliminación de archivos no está disponible.',
+    'Este roteiro tem vídeos; exclua os vídeos que não foram enviados antes.':
+      'Este guion tiene videos; elimina primero los videos que no se enviaron.',
     'Sessão de envio fora do endpoint da plataforma ({host}).':
       'Sesión de subida fuera del endpoint de la plataforma ({host}).',
     'O TikTok só aceita post direto de app não auditado em conta privada. Reconecte o TikTok (o Studio passa a pedir video.upload) para enviar como rascunho, ou deixe a conta privada.':

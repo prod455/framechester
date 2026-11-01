@@ -6,6 +6,7 @@ import {
   empty,
   formWithSave,
   heading,
+  iconButton,
   mediaThumbnail,
   notice,
   statusLabels,
@@ -73,6 +74,14 @@ export function productionPage(): HTMLElement {
               'span',
               { className: 'badge mono', 'data-variant': 'outline', title: asset.checksum },
               asset.checksum.slice(0, 8),
+            ),
+            iconButton(t('Excluir {name}', { name: asset.name }), 'trash', () =>
+              confirmDelete(
+                asset.name,
+                t('O arquivo sai da biblioteca do canal. Vídeos já produzidos guardam a própria cópia.'),
+                `/assets/${encodeURIComponent(asset.id)}`,
+                t('Arquivo excluído.'),
+              ),
             ),
           ),
         ),
@@ -192,6 +201,16 @@ export function jobCard(job: WebJob): HTMLElement {
         { className: 'flex min-w-0 items-center gap-3 [&>h3]:min-w-0 [&>h3]:truncate' },
         el('h3', { title: script?.title || t('Vídeo do canal') }, script?.title || t('Vídeo do canal')),
         badge(job.status),
+        deletable(job)
+          ? iconButton(t('Excluir vídeo'), 'trash', () =>
+              confirmDelete(
+                script?.title || t('Vídeo do canal'),
+                t('O vídeo e todos os arquivos dele são apagados. Ele não foi enviado a nenhuma rede.'),
+                `/jobs/${encodeURIComponent(job.id)}`,
+                t('Vídeo excluído.'),
+              ),
+            )
+          : null,
       ),
       el(
         'p',
@@ -214,6 +233,34 @@ export function jobCard(job: WebJob): HTMLElement {
       publicationCards(job),
     ),
   );
+}
+
+/** Mirrors the server: only a finished video that never reached a network and has no Short. */
+export function deletable(job: WebJob): boolean {
+  return (
+    job.status !== 'queued' &&
+    job.status !== 'running' &&
+    Object.values(job.publications ?? {}).every((item) => item.status === 'failed') &&
+    !state().jobs.some((item) => item.kind === 'short' && item.sourceJobId === job.id)
+  );
+}
+
+/** Deleting cannot be undone: the click is confirmed, and the server has the last word. */
+function confirmDelete(title: string, text: string, path: string, done: string): void {
+  const { dialog, body } = createDialog(t('Excluir este item?'), title);
+  body.append(el('p', { className: 'muted' }, text));
+  const { form } = formWithSave(
+    t('Excluir'),
+    async () => {
+      await request(channelPath(path), 'DELETE');
+      dialog.close();
+      await refresh();
+      toast(done);
+    },
+    () => dialog.close(),
+    t('Excluindo…'),
+  );
+  body.append(form);
 }
 
 /** A Short is cut from an approved final version made by the motion engine. */

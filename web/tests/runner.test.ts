@@ -1150,6 +1150,7 @@ test('a Short is cut from an approved motion video, inherits its review and goes
   );
   await writeFile(join(home, 'production', 'assets.json'), '[]');
   const calls: string[][] = [];
+  let listing = false;
   const uploads: Array<{
     network: string;
     title: string;
@@ -1163,6 +1164,10 @@ test('a Short is cut from an approved motion video, inherits its review and goes
     readState: async () => structuredClone(input),
     execute: async (args) => {
       calls.push(args);
+      if (args.includes('--list'))
+        return listing
+          ? { exitCode: 0, stdout: JSON.stringify({ parts: [{ part: 1 }, { part: 2 }] }), stderr: '' }
+          : { exitCode: 1, stdout: '', stderr: `sem cenas narradas em ${home}` };
       const out = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
       await mkdir(join(out, 'render'), { recursive: true });
       await writeFile(join(out, 'render', 'final.mp4'), 'synthetic short');
@@ -1193,21 +1198,45 @@ test('a Short is cut from an approved motion video, inherits its review and goes
     ],
   });
   try {
-    await assert.rejects(runner.startShort('tech', 'source-preview'), /versão final aprovada/);
-    await assert.rejects(runner.startShort('tech', 'source-legacy'), /motor motion/);
-    const short = await runner.startShort('tech', 'source-final');
-    assert.equal(short.kind, 'short');
+    await assert.rejects(runner.startShorts('tech', 'source-preview'), /versão final aprovada/);
+    await assert.rejects(runner.startShorts('tech', 'source-legacy'), /motor motion/);
+    // A split the engine refused does not use up the video's one turn.
+    const refused = await runner.startShorts('tech', 'source-final').catch((error: Error) => error);
+    assert.match(String(refused), /dividir o vídeo em Shorts: sem cenas narradas em \[dados locais\]/);
+    listing = true;
+    const shorts = await runner.startShorts('tech', 'source-final');
+    assert.deepEqual(
+      shorts.map((item) => [item.kind, item.part, item.parts]),
+      [
+        ['short', 1, 2],
+        ['short', 2, 2],
+      ],
+    );
     await runner.idle();
-    const args = calls[0];
-    assert.equal(args[args.indexOf('--config') + 2], 'short');
-    assert.equal(args[args.indexOf('--from') + 1], join(sourceOutput, 'storyboard.json'));
-    const done = (await runner.list('tech')).find((item) => item.id === short.id)!;
-    assert.equal(done.status, 'completed', done.message);
-    assert.equal(done.qa?.editorial, 'pass', 'the source approval covers the same words');
-    await assert.rejects(runner.startShort('tech', short.id), /já é um Short/);
-    await assert.rejects(runner.startShort('tech', 'source-final'), /já tem um Short/);
+    const list = calls[1];
+    assert.deepEqual(list.slice(0, 2), ['short', '--from']);
+    assert.equal(list[list.indexOf('--from') + 1], join(sourceOutput, 'storyboard.json'));
+    const parts = calls.slice(2).map((args) => args[args.indexOf('--part') + 1]);
+    assert.deepEqual(parts, ['1', '2'], 'one engine run per part, in order');
+    assert.equal(calls[2][calls[2].indexOf('--config') + 2], 'short');
+    const jobs = await runner.list('tech');
+    const short = jobs.find((item) => item.id === shorts[0].id)!;
+    for (const item of shorts) {
+      const done = jobs.find((job) => job.id === item.id)!;
+      assert.equal(done.status, 'completed', done.message);
+      assert.equal(done.qa?.editorial, 'pass', 'the source approval covers the same words');
+    }
+    assert.ok(jobs.find((item) => item.id === 'source-final')!.shortsAt);
+    await assert.rejects(runner.startShorts('tech', short.id), /já é um Short/);
+    await assert.rejects(runner.startShorts('tech', 'source-final'), /já foram gerados/);
+    await runner.remove('tech', shorts[1].id);
+    await assert.rejects(
+      runner.startShorts('tech', 'source-final'),
+      /já foram gerados/,
+      'Once per video, even after its Shorts are deleted',
+    );
     input.scripts[0].format = 'short';
-    await assert.rejects(runner.startShort('tech', 'source-final'), /já é vertical/);
+    await assert.rejects(runner.startShorts('tech', 'source-final'), /já é vertical/);
     input.scripts[0].format = 'long';
     await runner.publish('tech', short.id, 'youtube');
     await runner.publish('tech', short.id, 'facebook');
@@ -1215,7 +1244,7 @@ test('a Short is cut from an approved motion video, inherits its review and goes
     assert.deepEqual(uploads, [
       {
         network: 'youtube',
-        title: `${input.scripts[0].title} #Shorts`,
+        title: `${input.scripts[0].title} (1/2) #Shorts`,
         description:
           'Descrição com fontes\n\nAcompanhe também:\nFacebook: https://www.facebook.com/123\n\n#Shorts',
         thumbnail: undefined,
@@ -1223,7 +1252,7 @@ test('a Short is cut from an approved motion video, inherits its review and goes
       },
       {
         network: 'facebook',
-        title: input.scripts[0].title,
+        title: `${input.scripts[0].title} (1/2)`,
         description: 'Descrição com fontes\n\nAcompanhe também:\nYouTube: https://www.youtube.com/@fixture',
         thumbnail: undefined,
         vertical: true,
@@ -1286,6 +1315,8 @@ test('each opted-in network gets the approved video once, its Short follows by i
           stderr: '',
         };
       }
+      if (args.includes('--list'))
+        return { exitCode: 0, stdout: JSON.stringify({ parts: [{ part: 1 }], dropped: [] }), stderr: '' };
       const out = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
       await mkdir(join(out, 'render'), { recursive: true });
       await mkdir(join(out, 'publish'), { recursive: true });

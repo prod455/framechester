@@ -2,6 +2,12 @@ import type { AreaCatalog } from './index.ts';
 
 export default {
   en: {
+    'Short {part} de {parts}': 'Short {part} of {parts}',
+    'Shorts deste vídeo: {ready} de {count} prontos': "This video's Shorts: {ready} of {count} ready",
+    'Short na fila: o vídeo inteiro cabe em um, em vertical.':
+      'Short queued: the whole video fits in one, vertical.',
+    '{count} Shorts na fila: partes seguidas do vídeo, cada uma aberta pelo gancho.':
+      '{count} Shorts queued: consecutive parts of the video, each opened by the hook.',
     'Excluir vídeo': 'Delete video',
     'Excluir este item?': 'Delete this item?',
     Excluir: 'Delete',
@@ -54,9 +60,7 @@ export default {
     'Thumbnail aplicada.': 'Thumbnail applied.',
     'Enviado ao YouTube como privado em {date}.': 'Uploaded to YouTube as private on {date}.',
     'Revisar e publicar no YouTube Studio': 'Review and publish in YouTube Studio',
-    'Gerar Short': 'Generate Short',
-    'Short na fila: abertura, fechamento e as cenas que mais prendem, em vertical.':
-      'Short queued: opening, closing and the most gripping scenes, in vertical.',
+    'Gerar Shorts': 'Generate Shorts',
     'Não foi possível gerar o Short.': "Couldn't generate the Short.",
     'Tentar enviar de novo': 'Try uploading again',
     'Enviar ao YouTube (privado)': 'Upload to YouTube (private)',
@@ -263,13 +267,19 @@ export default {
       'Goes in as a Reel draft; you publish it in Meta Business Suite.',
     'Redes sociais deste vídeo': "This video's social networks",
     'Recebe só vídeo vertical.': 'Takes vertical video only.',
-    'Recebe só vídeo vertical: vai o Short deste vídeo.':
-      "Takes vertical video only: this video's Short goes there.",
+    'Recebe só vídeo vertical: vão os Shorts deste vídeo.':
+      "Takes vertical video only: this video's Shorts go there.",
     'Conecte o {network} para enviar este vídeo.': 'Connect {network} to send this video.',
     'Conectar {network}': 'Connect {network}',
     'Automático neste canal.': 'Automatic on this channel.',
   },
   es: {
+    'Short {part} de {parts}': 'Short {part} de {parts}',
+    'Shorts deste vídeo: {ready} de {count} prontos': 'Shorts de este video: {ready} de {count} listos',
+    'Short na fila: o vídeo inteiro cabe em um, em vertical.':
+      'Short en cola: el video entero cabe en uno, en vertical.',
+    '{count} Shorts na fila: partes seguidas do vídeo, cada uma aberta pelo gancho.':
+      '{count} Shorts en cola: partes seguidas del video, cada una abierta por el gancho.',
     'Excluir vídeo': 'Eliminar video',
     'Excluir este item?': '¿Eliminar este elemento?',
     Excluir: 'Eliminar',
@@ -322,9 +332,7 @@ export default {
     'Thumbnail aplicada.': 'Miniatura aplicada.',
     'Enviado ao YouTube como privado em {date}.': 'Subido a YouTube como privado el {date}.',
     'Revisar e publicar no YouTube Studio': 'Revisar y publicar en YouTube Studio',
-    'Gerar Short': 'Generar Short',
-    'Short na fila: abertura, fechamento e as cenas que mais prendem, em vertical.':
-      'Short en cola: apertura, cierre y las escenas que más enganchan, en vertical.',
+    'Gerar Shorts': 'Generar Shorts',
     'Não foi possível gerar o Short.': 'No se pudo generar el Short.',
     'Tentar enviar de novo': 'Intentar subir de nuevo',
     'Enviar ao YouTube (privado)': 'Subir a YouTube (privado)',
@@ -532,8 +540,8 @@ export default {
       'Entra como borrador de Reel; tú lo publicas en Meta Business Suite.',
     'Redes sociais deste vídeo': 'Redes sociales de este video',
     'Recebe só vídeo vertical.': 'Solo recibe video vertical.',
-    'Recebe só vídeo vertical: vai o Short deste vídeo.':
-      'Solo recibe video vertical: va el Short de este video.',
+    'Recebe só vídeo vertical: vão os Shorts deste vídeo.':
+      'Solo recibe video vertical: van los Shorts de este video.',
     'Conecte o {network} para enviar este vídeo.': 'Conecta {network} para enviar este video.',
     'Conectar {network}': 'Conectar {network}',
     'Automático neste canal.': 'Automático en este canal.',

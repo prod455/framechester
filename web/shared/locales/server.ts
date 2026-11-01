@@ -4,6 +4,10 @@ import type { AreaCatalog } from './index.ts';
 
 export default {
   en: {
+    'Os Shorts deste vídeo já foram gerados.': "This video's Shorts were already generated.",
+    'Na fila: corte do Short {part} de {count}.': 'Queued: cutting Short {part} of {count}.',
+    'Não foi possível dividir o vídeo em Shorts.': "Couldn't split the video into Shorts.",
+    'Não foi possível dividir o vídeo em Shorts: {detail}': "Couldn't split the video into Shorts: {detail}",
     'Este vídeo ainda está sendo produzido; espere terminar para excluir.':
       'This video is still being made; wait for it to finish to delete it.',
     'Este vídeo já foi enviado a uma rede e fica no histórico.':
@@ -141,7 +145,7 @@ export default {
       'In Settings, choose a GGUF model installed in local Ollama. Cloud models are not accepted.',
     'O modelo selecionado não comprovou execução local. Escolha um modelo GGUF sem encaminhamento remoto.':
       'The selected model did not prove it runs locally. Choose a GGUF model without remote routing.',
-    'A IA entregou {words} palavras de narração (cerca de {duration}) depois de {attempts} tentativas, e o formato {format} exige de {minDuration} a {maxDuration} ({minWords} a {maxWords} palavras). Nenhum roteiro foi salvo. Gere de novo ou escolha um modelo maior; para um Short de um vídeo longo já pronto, use Gerar Short no vídeo.':
+    'A IA entregou {words} palavras de narração (cerca de {duration}) depois de {attempts} tentativas, e o formato {format} exige de {minDuration} a {maxDuration} ({minWords} a {maxWords} palavras). Nenhum roteiro foi salvo. Gere de novo ou escolha um modelo maior; para um Short de um vídeo longo já pronto, use Gerar Shorts no vídeo.':
       'The AI delivered {words} words of narration (about {duration}) after {attempts} attempts, and the {format} format needs {minDuration} to {maxDuration} ({minWords} to {maxWords} words). No script was saved. Generate again or choose a larger model; for a Short from a finished long video, use Generate Short on that video.',
     'Cofre criptografado indisponível ou inválido. Preserve os dados e confira a chave externa e as permissões; nenhum segredo foi salvo em texto puro.':
       'Encrypted vault unavailable or invalid. Keep the data and check the external key and permissions; no secret was saved in plain text.',
@@ -486,7 +490,6 @@ export default {
     'O Instagram não retornou o ID da publicação.': 'Instagram did not return the post ID.',
     'Este vídeo já é vertical: ele mesmo segue como Short.':
       'This video is already vertical: it goes out as the Short itself.',
-    'Este vídeo já tem um Short.': 'This video already has a Short.',
     'O {network} aceita até {max} MB; este vídeo tem {size} MB.':
       '{network} takes up to {max} MB; this video is {size} MB.',
     'O {network} aceita de {min} a {max} s; este vídeo tem {seconds} s.':
@@ -508,6 +511,10 @@ export default {
       'Voice without commercial approval in this installation. Choose a Kokoro voice from the catalog (PT-BR, EN-US or ES) in Settings. Legacy Piper voices are blocked.',
   },
   es: {
+    'Os Shorts deste vídeo já foram gerados.': 'Los Shorts de este video ya se generaron.',
+    'Na fila: corte do Short {part} de {count}.': 'En cola: corte del Short {part} de {count}.',
+    'Não foi possível dividir o vídeo em Shorts.': 'No se pudo dividir el video en Shorts.',
+    'Não foi possível dividir o vídeo em Shorts: {detail}': 'No se pudo dividir el video en Shorts: {detail}',
     'Este vídeo ainda está sendo produzido; espere terminar para excluir.':
       'Este video todavía se está produciendo; espera a que termine para eliminarlo.',
     'Este vídeo já foi enviado a uma rede e fica no histórico.':
@@ -647,7 +654,7 @@ export default {
       'En Configuración, elige un modelo GGUF instalado en Ollama local. No se aceptan modelos en la nube.',
     'O modelo selecionado não comprovou execução local. Escolha um modelo GGUF sem encaminhamento remoto.':
       'El modelo seleccionado no comprobó que se ejecuta localmente. Elige un modelo GGUF sin enrutamiento remoto.',
-    'A IA entregou {words} palavras de narração (cerca de {duration}) depois de {attempts} tentativas, e o formato {format} exige de {minDuration} a {maxDuration} ({minWords} a {maxWords} palavras). Nenhum roteiro foi salvo. Gere de novo ou escolha um modelo maior; para um Short de um vídeo longo já pronto, use Gerar Short no vídeo.':
+    'A IA entregou {words} palavras de narração (cerca de {duration}) depois de {attempts} tentativas, e o formato {format} exige de {minDuration} a {maxDuration} ({minWords} a {maxWords} palavras). Nenhum roteiro foi salvo. Gere de novo ou escolha um modelo maior; para um Short de um vídeo longo já pronto, use Gerar Shorts no vídeo.':
       'La IA entregó {words} palabras de narración (cerca de {duration}) tras {attempts} intentos, y el formato {format} requiere de {minDuration} a {maxDuration} ({minWords} a {maxWords} palabras). No se guardó ningún guion. Genera de nuevo o elige un modelo más grande; para un Short de un video largo ya listo, usa Generar Short en ese video.',
     'Cofre criptografado indisponível ou inválido. Preserve os dados e confira a chave externa e as permissões; nenhum segredo foi salvo em texto puro.':
       'Bóveda cifrada no disponible o no válida. Conserva los datos y revisa la clave externa y los permisos; no se guardó ningún secreto en texto plano.',
@@ -994,7 +1001,6 @@ export default {
     'O Instagram não retornou o ID da publicação.': 'Instagram no devolvió el ID de la publicación.',
     'Este vídeo já é vertical: ele mesmo segue como Short.':
       'Este video ya es vertical: él mismo sale como Short.',
-    'Este vídeo já tem um Short.': 'Este video ya tiene un Short.',
     'O {network} aceita até {max} MB; este vídeo tem {size} MB.':
       '{network} acepta hasta {max} MB; este video tiene {size} MB.',
     'O {network} aceita de {min} a {max} s; este vídeo tem {seconds} s.':

@@ -945,6 +945,8 @@ function metaFetch(
     noPages?: boolean;
     /** A system-user token: the long-lived exchange is refused with Meta's error body. */
     systemUser?: boolean;
+    /** GET /{page}?fields=id,name,access_token answers with the Page token. */
+    pageDirect?: boolean;
     /** Granular scopes recorded in the token (debug_token). */
     granted?: Array<{ scope: string; target_ids?: string[] }>;
   } = {},
@@ -990,7 +992,7 @@ function metaFetch(
       });
     if (url.pathname === '/v26.0/me/accounts') {
       assert.equal(auth, 'Bearer fixture-long-user');
-      if (url.searchParams.get('fields') === 'id,access_token')
+      if (url.searchParams.get('fields') === 'id,name,access_token')
         return json({ data: options.pages ?? [{ id: PAGE, access_token: 'fixture-page-token' }] });
       return json({
         data: options.noPages
@@ -1009,6 +1011,10 @@ function metaFetch(
           headers: { 'content-type': 'application/json' },
         });
       return json({ data: { granular_scopes: options.granted ?? [] } });
+    }
+    if (url.pathname === `/v26.0/${PAGE}` && url.searchParams.get('fields') === 'id,name,access_token') {
+      if (!options.pageDirect) return new Response(JSON.stringify({ error: { code: 100 } }), { status: 400 });
+      return json({ id: PAGE, name: 'Skills na Prática', access_token: 'fixture-page-token' });
     }
     if (url.pathname === `/v26.0/${PAGE}` && url.searchParams.get('fields')?.startsWith('name,'))
       return json({ id: PAGE, name: 'Skills na Prática', instagram_business_account: { id: IG } });
@@ -1068,7 +1074,26 @@ test('Facebook OAuth keeps the Page token of the expected Page with the permissi
     fetch: metaFetch([], { pages: [{ id: '999', access_token: 'other-page' }] }),
     now: () => NOW,
   });
-  await assert.rejects(connectMeta(refused, 'facebook'), /Páginas autorizadas/);
+  await assert.rejects(
+    connectMeta(refused, 'facebook'),
+    /A Página 1234567890 não está entre as Páginas liberadas: Página \(999\)\. Use o ID de uma delas/,
+  );
+  // An empty /me/accounts asks for the expected Page directly, with the user token.
+  const direct = createSocialService({
+    vault: new MemoryVault(),
+    fetch: metaFetch([], { pages: [], pageDirect: true }),
+    now: () => NOW,
+  });
+  assert.equal((await connectMeta(direct, 'facebook')).accountId, PAGE);
+  const none = createSocialService({
+    vault: new MemoryVault(),
+    fetch: metaFetch([], { pages: [] }),
+    now: () => NOW,
+  });
+  await assert.rejects(
+    connectMeta(none, 'facebook'),
+    /A Meta não liberou nenhuma Página para o Studio \(concedidas: /,
+  );
 });
 
 test('a Facebook Reel goes up as a DRAFT through rupload; horizontal video sends nothing', async () => {

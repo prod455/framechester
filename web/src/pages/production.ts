@@ -6,6 +6,7 @@ import {
   empty,
   formWithSave,
   heading,
+  iconButton,
   mediaThumbnail,
   notice,
   statusLabels,
@@ -41,8 +42,12 @@ export function productionPage(): HTMLElement {
   // One primary action, named as on Criar vídeo (law of similarity, Von Restorff).
   const startButton = button(t('Novo vídeo'), () => startProduction(), 'primary', 'spark');
   startButton.disabled = snapshot.engine?.available === false;
-  const jobsBody = jobs.length
-    ? el('div', {}, ...jobs.map(jobCard))
+  // Shorts live inside the card of the video they were cut from; only an orphan has its own.
+  const cards = jobs.filter(
+    (job) => !(job.kind === 'short' && jobs.some((source) => source.id === job.sourceJobId)),
+  );
+  const jobsBody = cards.length
+    ? el('div', {}, ...cards.map((job) => jobCard(job)))
     : empty(
         t('Nenhum vídeo ainda'),
         t('Mande a pauta: a IA escreve o roteiro e o motor monta as cenas, a voz e o QA.'),
@@ -73,6 +78,14 @@ export function productionPage(): HTMLElement {
               'span',
               { className: 'badge mono', 'data-variant': 'outline', title: asset.checksum },
               asset.checksum.slice(0, 8),
+            ),
+            iconButton(t('Excluir {name}', { name: asset.name }), 'trash', () =>
+              confirmDelete(
+                asset.name,
+                t('O arquivo sai da biblioteca do canal. Vídeos já produzidos guardam a própria cópia.'),
+                `/assets/${encodeURIComponent(asset.id)}`,
+                t('Arquivo excluído.'),
+              ),
             ),
           ),
         ),
@@ -124,7 +137,7 @@ export function productionPage(): HTMLElement {
   );
 }
 
-export function jobCard(job: WebJob): HTMLElement {
+export function jobCard(job: WebJob, nested = false): HTMLElement {
   const script = state().scripts.find(
     (entry) => entry.channelId === studio.channelId && entry.id === job.scriptId,
   );
@@ -164,8 +177,9 @@ export function jobCard(job: WebJob): HTMLElement {
       )
     : el('p', {}, translateMessage(job.message));
   // A stop ends with a way forward, not only a log (peak-end rule, feedback loop).
+  // A Short is never produced again from its script: the split happens once per video.
   const retry =
-    stopped && script && script.status !== 'archived'
+    stopped && script && script.status !== 'archived' && job.kind !== 'short'
       ? button(
           t('Tentar de novo'),
           () => {
@@ -179,9 +193,17 @@ export function jobCard(job: WebJob): HTMLElement {
       : null;
   // Thumbnail in one column, everything about the video in the title's column, so messages
   // and actions line up with the title instead of the thumbnail's edge.
+  const title = nested
+    ? job.parts && job.parts > 1
+      ? t('Short {part} de {parts}', { part: job.part ?? 1, parts: job.parts })
+      : t('Short vertical')
+    : script?.title || t('Vídeo do canal');
   return el(
     'article',
-    { className: 'job-card flex gap-4 max-sm:flex-col', 'data-testid': `job-${job.id}` },
+    {
+      className: `job-card flex gap-4 max-sm:flex-col${nested ? ' job-card-nested' : ''}`,
+      'data-testid': `job-${job.id}`,
+    },
     mediaThumbnail(job),
     el(
       'div',
@@ -190,8 +212,18 @@ export function jobCard(job: WebJob): HTMLElement {
       el(
         'div',
         { className: 'flex min-w-0 items-center gap-3 [&>h3]:min-w-0 [&>h3]:truncate' },
-        el('h3', { title: script?.title || t('Vídeo do canal') }, script?.title || t('Vídeo do canal')),
+        el('h3', { title }, title),
         badge(job.status),
+        deletable(job)
+          ? iconButton(t('Excluir vídeo'), 'trash', () =>
+              confirmDelete(
+                title,
+                t('O vídeo e todos os arquivos dele são apagados. Ele não foi enviado a nenhuma rede.'),
+                `/jobs/${encodeURIComponent(job.id)}`,
+                t('Vídeo excluído.'),
+              ),
+            )
+          : null,
       ),
       el(
         'p',
@@ -212,35 +244,88 @@ export function jobCard(job: WebJob): HTMLElement {
           )
         : null,
       publicationCards(job),
+      nested ? null : shortsOf(job),
     ),
   );
 }
 
-/** A Short is cut from an approved final version made by the motion engine. */
+/** Sources whose Shorts list the operator opened; a poll re-render keeps it open. */
+const openShorts = new Set<string>();
+
+/** The Shorts cut from this video, in part order, folded under its card. */
+function shortsOf(job: WebJob): HTMLElement | null {
+  const shorts = scoped(state().jobs)
+    .filter((item) => item.kind === 'short' && item.sourceJobId === job.id)
+    .sort((a, b) => (a.part ?? 1) - (b.part ?? 1));
+  if (!shorts.length) return null;
+  const ready = shorts.filter((item) => item.status === 'completed').length;
+  const list = el(
+    'details',
+    { className: 'job-shorts', 'data-testid': `shorts-${job.id}` },
+    el('summary', {}, t('Shorts deste vídeo: {ready} de {count} prontos', { ready, count: shorts.length })),
+    ...shorts.map((item) => jobCard(item, true)),
+  );
+  list.open = openShorts.has(job.id);
+  list.addEventListener('toggle', () => (list.open ? openShorts.add(job.id) : openShorts.delete(job.id)));
+  return list;
+}
+
+/** Mirrors the server: only a finished video that never reached a network and has no Short. */
+export function deletable(job: WebJob): boolean {
+  return (
+    job.status !== 'queued' &&
+    job.status !== 'running' &&
+    Object.values(job.publications ?? {}).every((item) => item.status === 'failed') &&
+    !state().jobs.some((item) => item.kind === 'short' && item.sourceJobId === job.id)
+  );
+}
+
+/** Deleting cannot be undone: the click is confirmed, and the server has the last word. */
+function confirmDelete(title: string, text: string, path: string, done: string): void {
+  const { dialog, body } = createDialog(t('Excluir este item?'), title);
+  body.append(el('p', { className: 'muted' }, text));
+  const { form } = formWithSave(
+    t('Excluir'),
+    async () => {
+      await request(channelPath(path), 'DELETE');
+      dialog.close();
+      await refresh();
+      toast(done);
+    },
+    () => dialog.close(),
+    t('Excluindo…'),
+  );
+  body.append(form);
+}
+
+/** Shorts are cut from an approved final version made by the motion engine, once per video. */
 export function shortButton(job: WebJob): HTMLElement | null {
   if (job.kind === 'short' || job.status !== 'completed' || job.previewOnly || job.engine !== 'motion')
     return null;
-  // A vertical video already is the Short; a horizontal one gets its Short by itself, and the
-  // button only comes back when that cut stopped.
+  // A vertical video already is the Short; a horizontal one gets its Shorts by itself, and the
+  // button only shows when that never happened.
   if (vertical(job)) return null;
-  if (
-    state().jobs.some(
-      (item) =>
-        item.kind === 'short' &&
-        item.sourceJobId === job.id &&
-        item.status !== 'failed' &&
-        item.status !== 'blocked',
-    )
-  )
+  if (job.shortsAt || state().jobs.some((item) => item.kind === 'short' && item.sourceJobId === job.id))
     return null;
   const action = button(
-    t('Gerar Short'),
+    t('Gerar Shorts'),
     async () => {
       action.disabled = true;
       try {
-        await request(channelPath(`/jobs/${encodeURIComponent(job.id)}/short`), 'POST', {});
+        const shorts = await request<WebJob[]>(
+          channelPath(`/jobs/${encodeURIComponent(job.id)}/shorts`),
+          'POST',
+          {},
+        );
+        openShorts.add(job.id);
         await refresh();
-        toast(t('Short na fila: abertura, fechamento e as cenas que mais prendem, em vertical.'));
+        toast(
+          shorts.length === 1
+            ? t('Short na fila: o vídeo inteiro cabe em um, em vertical.')
+            : t('{count} Shorts na fila: partes seguidas do vídeo, cada uma aberta pelo gancho.', {
+                count: shorts.length,
+              }),
+        );
       } catch (error) {
         action.disabled = false;
         toast(
@@ -470,7 +555,7 @@ export function publicationCards(job: WebJob): HTMLElement | null {
           { className: 'field-hint' },
           job.kind === 'short'
             ? t('Recebe só vídeo vertical.')
-            : t('Recebe só vídeo vertical: vai o Short deste vídeo.'),
+            : t('Recebe só vídeo vertical: vão os Shorts deste vídeo.'),
         );
       } else if (!connected) {
         body = el(

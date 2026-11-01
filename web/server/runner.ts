@@ -3,7 +3,7 @@ import { commercialVoiceError, productionLanguage, voiceFor } from '../shared/vo
 import { HttpError } from './auth.ts';
 import { randomUUID, createHash } from 'node:crypto';
 import { existsSync, statSync } from 'node:fs';
-import { mkdir, readFile, writeFile, rename, copyFile, realpath, stat } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rename, copyFile, realpath, rm, stat } from 'node:fs/promises';
 import { basename, extname, join, relative, resolve, sep, delimiter, isAbsolute } from 'node:path';
 import type {
   AppState,
@@ -157,6 +157,10 @@ function visualFingerprint(state: AppState, channelId: string, script: Script): 
   );
 }
 /** A Short's title carries #Shorts when it fits YouTube's 100 characters. */
+/** A video split into several Shorts numbers them, so the same title is told apart. */
+function partTitle(title: string, job: WebJob): string {
+  return job.parts && job.parts > 1 ? `${title} (${job.part}/${job.parts})` : title;
+}
 function shortTitle(title: string): string {
   const tagged = `${title} #Shorts`;
   return tagged.length <= 100 ? tagged : title;
@@ -842,6 +846,8 @@ export class LocalRunner implements RunnerApi {
           'short',
           '--from',
           this.storyboardOf(job.channelId, job.sourceJobId!),
+          '--part',
+          String(job.part ?? 1),
           '--channel',
           job.channelId,
           '--workdir',
@@ -1026,10 +1032,10 @@ export class LocalRunner implements RunnerApi {
       // video is not offered to a vertical-only network: its Short goes there instead.
       for (const network of channel?.autoUpload ?? [])
         if (canPublish(network, vertical)) await this.publish(job.channelId, job.id, network).catch(() => {});
-      // A horizontal video gets its Short at once, so the vertical networks receive it too; the
-      // Short publishes itself when it finishes. A refused cut leaves the card's button.
+      // A horizontal video gets its Shorts at once, so the vertical networks receive them too;
+      // each Short publishes itself when it finishes. A refused split leaves the card's button.
       if (!vertical && job.kind !== 'short' && job.engine === 'motion')
-        await this.startShort(job.channelId, job.id).catch(() => {});
+        await this.startShorts(job.channelId, job.id).catch(() => {});
     }
   }
   /** Narrated storyboard of a finished job, the source a Short is cut from. */
@@ -1045,8 +1051,11 @@ export class LocalRunner implements RunnerApi {
       'storyboard.json',
     );
   }
-  /** Queues a vertical Short cut from an approved final version of this channel. */
-  async startShort(channelId: string, sourceJobId: string): Promise<WebJob> {
+  /**
+   * Splits an approved final version of this channel into consecutive Shorts and queues one
+   * job per part. It happens once per video: the split is recorded on the source.
+   */
+  async startShorts(channelId: string, sourceJobId: string): Promise<WebJob[]> {
     const state = await this.channel(channelId);
     id(sourceJobId);
     if (this.stopped) throw new RunnerError('Servidor encerrando.');
@@ -1061,41 +1070,122 @@ export class LocalRunner implements RunnerApi {
       source.engine !== 'motion'
     )
       throw new RunnerError('O Short sai de uma versão final aprovada feita pelo motor motion.');
-    if (!(await stat(this.storyboardOf(channelId, sourceJobId)).catch(() => undefined))?.isFile())
-      throw new RunnerError('O storyboard deste vídeo não foi encontrado; gere a versão final novamente.');
     const script = state.scripts.find((item) => item.id === source.scriptId && item.channelId === channelId);
     if (!script) throw new RunnerError('Roteiro do vídeo de origem não encontrado.');
     if (script.format === 'short')
       throw new RunnerError('Este vídeo já é vertical: ele mesmo segue como Short.');
-    // One Short per video; only a Short that stopped can be cut again.
+    // Records from before the split was recorded count too: a video that has a Short had its turn.
     if (
-      this.jobs.some(
-        (item) =>
-          item.kind === 'short' &&
-          item.sourceJobId === sourceJobId &&
-          item.status !== 'failed' &&
-          item.status !== 'blocked',
-      )
+      source.shortsAt ||
+      this.jobs.some((item) => item.kind === 'short' && item.sourceJobId === sourceJobId)
     )
-      throw new RunnerError('Este vídeo já tem um Short.');
+      throw new RunnerError('Os Shorts deste vídeo já foram gerados.');
+    // Claimed before any await, so two clicks cannot split twice; released if the split fails.
+    source.shortsAt = new Date().toISOString();
+    let count: number;
+    try {
+      count = await this.countParts(channelId, sourceJobId);
+      if (!this.jobs.includes(source)) throw new RunnerError('Produção não encontrada neste canal.');
+    } catch (error) {
+      delete source.shortsAt;
+      throw error;
+    }
     const config = jobConfig(state, channelId, this.options.repositoryRoot);
-    const job: WebJob = {
+    const createdAt = new Date().toISOString();
+    const jobs: WebJob[] = Array.from({ length: count }, (_, index) => ({
       id: randomUUID(),
       channelId,
       scriptId: source.scriptId,
       status: 'queued',
-      createdAt: new Date().toISOString(),
-      message: 'Na fila: corte do Short.',
+      createdAt,
+      message: count > 1 ? `Na fila: corte do Short ${index + 1} de ${count}.` : 'Na fila: corte do Short.',
       videoAvailable: false,
       kind: 'short',
       sourceJobId,
-    };
-    this.jobs.unshift(job);
+      part: index + 1,
+      parts: count,
+    }));
+    this.jobs.unshift(...jobs);
     await this.persist();
-    const work = () =>
-      this.run(job, structuredClone(script), config, [], { scriptId: script.id, assetIds: {} });
-    this.queue = this.queue.then(work, work);
-    return structuredClone(job);
+    for (const job of jobs) {
+      const work = () =>
+        this.run(job, structuredClone(script), config, [], { scriptId: script.id, assetIds: {} });
+      this.queue = this.queue.then(work, work);
+    }
+    return structuredClone(jobs);
+  }
+  /** Asks the engine how many Shorts the narrated storyboard splits into, without rendering. */
+  private async countParts(channelId: string, sourceJobId: string): Promise<number> {
+    const storyboard = this.storyboardOf(channelId, sourceJobId);
+    if (!(await stat(storyboard).catch(() => undefined))?.isFile())
+      throw new RunnerError('O storyboard deste vídeo não foi encontrado; gere a versão final novamente.');
+    const controller = new AbortController();
+    this.visualControllers.add(controller);
+    const timer = setTimeout(() => controller.abort(), 60_000);
+    try {
+      const result = await (this.options.execute ?? this.execute.bind(this))(
+        ['short', '--from', storyboard, '--list', '--json'],
+        resolve(this.options.repositoryRoot),
+        controller.signal,
+      );
+      let parts: unknown;
+      try {
+        parts = (JSON.parse(result.stdout) as { parts?: unknown }).parts;
+      } catch {
+        parts = undefined;
+      }
+      const detail = result.stderr.replaceAll(this.options.home, '[dados locais]').trim().slice(0, 300);
+      if (result.exitCode !== 0 || !Array.isArray(parts) || parts.length < 1 || parts.length > 10)
+        throw new RunnerError(`Não foi possível dividir o vídeo em Shorts${detail ? ': ' + detail : '.'}`);
+      return parts.length;
+    } finally {
+      clearTimeout(timer);
+      this.visualControllers.delete(controller);
+    }
+  }
+  /**
+   * Deletes a video that never reached a network, with its files. A video that is still being
+   * made, that went out (or is going out) to a network, or that a Short was cut from stays.
+   */
+  async remove(channelId: string, jobId: string): Promise<void> {
+    await this.channel(channelId);
+    id(jobId);
+    // No await between these checks and the removal: a click cannot race a new upload or cut.
+    const index = this.jobs.findIndex((item) => item.channelId === channelId && item.id === jobId);
+    if (index < 0) throw new RunnerError('Produção não encontrada neste canal.');
+    const job = this.jobs[index];
+    if (job.status === 'queued' || job.status === 'running')
+      throw new RunnerError('Este vídeo ainda está sendo produzido; espere terminar para excluir.');
+    if (Object.values(job.publications ?? {}).some((item) => item.status !== 'failed'))
+      throw new RunnerError('Este vídeo já foi enviado a uma rede e fica no histórico.');
+    if (this.jobs.some((item) => item.kind === 'short' && item.sourceJobId === jobId))
+      throw new RunnerError('Este vídeo tem um Short; exclua o Short antes.');
+    this.jobs.splice(index, 1);
+    await this.persist();
+    // The record is gone; leftover files cannot be reached anymore, so a failed cleanup is moot.
+    await rm(join(this.root, 'jobs', channelId, jobId), {
+      recursive: true,
+      force: true,
+      maxRetries: 3,
+    }).catch(() => {});
+  }
+  /** Deletes a channel file. Videos already made keep their own copy of every file they used. */
+  async removeAsset(channelId: string, assetId: string): Promise<void> {
+    await this.channel(channelId);
+    id(assetId);
+    const index = this.media.findIndex((item) => item.channelId === channelId && item.id === assetId);
+    if (index < 0) throw new RunnerError('Arquivo não encontrado neste canal.');
+    // A queued job copies its files only when it starts.
+    if (this.jobs.some((item) => item.channelId === channelId && ['queued', 'running'].includes(item.status)))
+      throw new RunnerError(
+        'Há um vídeo sendo produzido neste canal; espere terminar para excluir arquivos.',
+      );
+    const [asset] = this.media.splice(index, 1);
+    await this.persist();
+    if (asset.diskName)
+      await rm(join(this.root, 'media', channelId, asset.diskName), { force: true, maxRetries: 3 }).catch(
+        () => {},
+      );
   }
   /** Starts a non-public upload of an approved final version; it continues in the background. */
   async publish(channelId: string, jobId: string, platform: Platform): Promise<WebJob> {
@@ -1119,6 +1209,7 @@ export class LocalRunner implements RunnerApi {
     const thumbnail =
       platform === 'youtube' && !short ? await this.file(channelId, jobId, 'thumbnail') : undefined;
     // No await between these checks and the state change: two clicks cannot start two uploads.
+    if (!this.jobs.includes(job)) throw new RunnerError('Produção não encontrada neste canal.');
     const current = job.publications?.[platform];
     if (job.status !== 'completed' || job.previewOnly || !job.videoAvailable)
       throw new RunnerError(`Só a versão final aprovada no QA pode ser enviada ao ${label}.`);
@@ -1145,7 +1236,10 @@ export class LocalRunner implements RunnerApi {
         );
         const sent = await upload(channelId, platform, {
           path: video.path,
-          title: short && platform === 'youtube' ? shortTitle(script.title) : script.title,
+          title:
+            short && platform === 'youtube'
+              ? shortTitle(partTitle(script.title, job))
+              : partTitle(script.title, job),
           description: text,
           references,
           ...(short && platform === 'youtube' ? { tag: '#Shorts' } : {}),

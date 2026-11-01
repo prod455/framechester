@@ -465,15 +465,50 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
     Ok(if stage == Stage::Blocked { 2 } else { 0 })
 }
 
-/// Cuts a narrated storyboard into a Short and produces it vertically. The narration comes
-/// back from the TTS cache, so a Short of an existing video costs little more than a render.
+/// Splits a narrated storyboard into Shorts and produces one part vertically, or only lists
+/// the parts. The narration comes back from the TTS cache, so a Short of an existing video
+/// costs little more than a render.
 pub(crate) fn short(config_path: &Option<PathBuf>, args: ShortArgs) -> anyhow::Result<i32> {
     let text = std::fs::read_to_string(&args.from)
         .with_context(|| format!("ler storyboard {}", args.from.display()))?;
     let source: Storyboard =
         serde_json::from_str(&text).with_context(|| "storyboard JSON invalido")?;
     source.validate()?;
-    let cut = framechester_core::shorts::cut(&source, args.max_secs)?;
+    let split = framechester_core::shorts::parts(&source, args.max_secs)?;
+    if args.list {
+        let parts: Vec<_> = split
+            .parts
+            .iter()
+            .enumerate()
+            .map(|(index, part)| {
+                serde_json::json!({
+                    "part": index + 1,
+                    "scenes": part.kept,
+                    "duration_secs": part.duration_secs,
+                })
+            })
+            .collect();
+        if args.json {
+            println!(
+                "{}",
+                serde_json::json!({ "parts": parts, "dropped": split.dropped })
+            );
+        } else {
+            for part in &parts {
+                println!("{part}");
+            }
+            println!("cortadas: {:?}", split.dropped);
+        }
+        return Ok(0);
+    }
+    let count = split.parts.len();
+    let cut = split
+        .parts
+        .into_iter()
+        .nth(args.part as usize - 1)
+        .ok_or_else(|| {
+            anyhow::anyhow!("o video tem {count} parte(s); nao ha a parte {}", args.part)
+        })?;
     let workdir = args
         .workdir
         .clone()
@@ -482,12 +517,12 @@ pub(crate) fn short(config_path: &Option<PathBuf>, args: ShortArgs) -> anyhow::R
     let plan = workdir.join("short.storyboard.json");
     std::fs::write(&plan, serde_json::to_string_pretty(&cut.storyboard)?)?;
     eprintln!(
-        "short: {} de {} cenas, cerca de {:.0} s (mantidas {:?}; cortadas {:?})",
+        "short: parte {} de {count}, {} de {} cenas, cerca de {:.0} s (mantidas {:?})",
+        args.part,
         cut.kept.len(),
         source.scenes.len(),
         cut.duration_secs,
         cut.kept,
-        cut.dropped
     );
     produce(
         config_path,

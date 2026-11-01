@@ -115,13 +115,35 @@ export const productionRoutes: Route[] = [
     },
   },
   {
-    method: 'POST',
-    pattern: '/api/channels/:id/jobs/:jobId/short',
+    method: 'DELETE',
+    pattern: '/api/channels/:id/jobs/:jobId',
     async handle(context) {
       const id = await requireChannel(context);
       const runner = context.runner();
-      if (!runner.startShort) throw new HttpError(503, 'O corte de Shorts não está disponível.');
-      json(context.response, 202, await runner.startShort(id, validId(context.params.jobId)));
+      if (!runner.remove) throw new HttpError(503, 'A exclusão de vídeos não está disponível.');
+      await runner.remove(id, validId(context.params.jobId));
+      json(context.response, 200, { ok: true });
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: '/api/channels/:id/assets/:assetId',
+    async handle(context) {
+      const id = await requireChannel(context);
+      const runner = context.runner();
+      if (!runner.removeAsset) throw new HttpError(503, 'A exclusão de arquivos não está disponível.');
+      await runner.removeAsset(id, validId(context.params.assetId));
+      json(context.response, 200, { ok: true });
+    },
+  },
+  {
+    method: 'POST',
+    pattern: '/api/channels/:id/jobs/:jobId/shorts',
+    async handle(context) {
+      const id = await requireChannel(context);
+      const runner = context.runner();
+      if (!runner.startShorts) throw new HttpError(503, 'O corte de Shorts não está disponível.');
+      json(context.response, 202, await runner.startShorts(id, validId(context.params.jobId)));
     },
   },
   {

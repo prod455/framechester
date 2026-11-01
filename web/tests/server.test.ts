@@ -884,3 +884,77 @@ test('the per-network opt-in is validated, the legacy YouTube flag migrates, and
     await context.close();
   }
 });
+
+test('deleting videos and channel files keeps CSRF, channel scope, and a script with videos', async () => {
+  const removed: string[] = [];
+  let jobs = [{ id: 'job-one', channelId: 'tech', scriptId: 'script-one' }];
+  const runner: RunnerApi = {
+    list: async (owner) => (owner === 'tech' ? (jobs as never) : []),
+    assets: async () => [],
+    upload: async () => {
+      throw new Error('not used');
+    },
+    start: async () => {
+      throw new Error('not used');
+    },
+    file: async () => undefined,
+    engineStatus: () => ({ available: true, message: 'Synthetic engine' }),
+    prepareVisuals: async () => {
+      throw new Error('not used');
+    },
+    assetFile: async () => undefined,
+    remove: async (owner, job) => {
+      removed.push(`${owner}/job/${job}`);
+      jobs = [];
+    },
+    removeAsset: async (owner, asset) => {
+      removed.push(`${owner}/asset/${asset}`);
+    },
+  };
+  const context = await fixture({ runner });
+  try {
+    await context.app.store.update((state) => {
+      const date = '2026-10-28T00:00:00Z';
+      state.channels = ['tech', 'science'].map((id) => ({
+        id,
+        name: id,
+        niche: '',
+        audience: '',
+        description: '',
+        language: 'pt-BR',
+        createdAt: date,
+        updatedAt: date,
+      }));
+      state.scripts.push({
+        id: 'script-one',
+        channelId: 'tech',
+        topicId: 'topic-one',
+        title: 'Demo',
+        series: 'tecnologia',
+        format: 'long',
+        hook: 'Pergunta',
+        crossChecked: false,
+        status: 'draft',
+        createdAt: date,
+        updatedAt: date,
+        sources: [],
+        claims: [],
+        scenes: [],
+      });
+    });
+    assert.equal(
+      (await context.call('/api/channels/tech/jobs/job-one', 'DELETE', undefined, { 'X-CSRF-Token': '' }))
+        .status,
+      403,
+    );
+    assert.equal((await context.call('/api/channels/nowhere/jobs/job-one', 'DELETE')).status, 404);
+    assert.deepEqual(removed, []);
+    assert.equal((await context.call('/api/scripts/script-one?channel_id=tech', 'DELETE')).status, 409);
+    assert.equal((await context.call('/api/channels/tech/jobs/job-one', 'DELETE')).status, 200);
+    assert.equal((await context.call('/api/channels/tech/assets/asset-one', 'DELETE')).status, 200);
+    assert.deepEqual(removed, ['tech/job/job-one', 'tech/asset/asset-one']);
+    assert.equal((await context.call('/api/scripts/script-one?channel_id=tech', 'DELETE')).status, 200);
+  } finally {
+    await context.close();
+  }
+});

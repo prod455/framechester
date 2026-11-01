@@ -366,39 +366,50 @@ em Configurações seja menor. Com Claude ou OpenAI, a estimativa de custo cobre
 todas as gerações; se passar do limite de custo, aumente-o em **Avançado →
 Configurações → Assistente de criação**. Você só paga o que for de fato gerado.
 
-## Short a partir de um vídeo pronto
+## Shorts a partir de um vídeo pronto
 
 Quando a versão final **horizontal** de um vídeo feito pelo motor motion fica
-pronta e aprovada, o Studio coloca na fila, sozinho, um corte vertical do mesmo
-vídeo; quando o Short termina, ele segue para as redes com envio automático
+pronta e aprovada, o Studio divide o vídeo em Shorts verticais e coloca todos na
+fila, sozinho; cada Short que termina segue para as redes com envio automático
 ligado, inclusive Instagram e Facebook, que só recebem vertical. Um vídeo que já
-nasce vertical (roteiro short) é o próprio Short e não ganha outro. Cada vídeo
-tem um Short só; **Gerar Short**, no card e em **Criar vídeo**, só volta a
-aparecer se o corte automático parar. O corte:
+nasce vertical (roteiro short) é o próprio Short e não ganha outros.
 
-- **Gancho no primeiro quadro.** A cena de abertura fica sempre, começando sem
-  transição.
-- **Até 58 s.** O corte cabe em menos de um minuto, a faixa em que Shorts têm o
+Os Shorts aparecem dentro do card do vídeo de origem, em **Shorts deste vídeo**,
+cada um com o próprio status, envio às redes e exclusão; eles não ganham cards
+próprios. A divisão acontece **uma vez por vídeo**: **Gerar Shorts**, no card e em
+**Criar vídeo**, só aparece se ela nunca aconteceu, e não volta mesmo que os
+Shorts sejam excluídos. Se o motor recusar a divisão, o botão continua lá. A
+divisão:
+
+- **Partes seguidas.** O vídeo é cortado em partes, na ordem original, até 5
+  Shorts. Uma última parte com menos de 15 s de conteúdo novo fica de fora, assim
+  como uma cena que sozinha não cabe num Short.
+- **Gancho no primeiro quadro.** Toda parte abre com a cena de abertura do vídeo,
+  sem transição, para quem vê só aquele Short entender a pergunta.
+- **Até 58 s.** Cada parte cabe em menos de um minuto, a faixa em que Shorts têm o
   ciclo de repetição mais curto.
-- **O que mais segura a atenção.** O final fica quando cabe (é onde estão a
-  conclusão e a chamada). No meio entram primeiro as cenas com mais informação
-  por segundo: gráficos e infográficos, depois comparações e transformações,
-  personagens, código e linhas do tempo, e por último títulos.
 - **Mesma ordem, mesmas palavras.** Nada é reescrito; a narração é refeita no
   formato vertical, com legendas por palavra.
-- **Revisão herdada.** Como o texto é o mesmo, o Short herda a revisão editorial
-  do vídeo de origem e passa só pelo QA técnico.
-- **No YouTube**, ele vai como vídeo privado com `#Shorts` no título e na
-  descrição, sem miniatura personalizada (o YouTube não usa miniatura em Shorts).
+- **Revisão herdada.** Como o texto é o mesmo, cada Short herda a revisão
+  editorial do vídeo de origem e passa só pelo QA técnico.
+- **Título numerado.** Com mais de um Short, o título leva `(1/3)`, `(2/3)`…; no
+  YouTube vai como vídeo privado com `#Shorts` no título e na descrição, sem
+  miniatura personalizada (o YouTube não usa miniatura em Shorts).
 
-O corte só sai de versões finais horizontais do motor motion. Prévias, vídeos
-do caminho antigo, vídeos verticais e o próprio Short não oferecem o corte. Essas regras seguem as
-boas práticas de retenção; elas não garantem uma taxa de cliques específica.
+Os Shorts só saem de versões finais horizontais do motor motion. Prévias, vídeos
+do caminho antigo, vídeos verticais e os próprios Shorts não oferecem a divisão.
+Essas regras seguem as boas práticas de retenção; elas não garantem uma taxa de
+cliques específica.
 
-Pela linha de comando, o mesmo corte sai de qualquer storyboard já narrado:
+Pela linha de comando, a mesma divisão sai de qualquer storyboard já narrado
+(`--list` mostra as partes; `--part N` produz a parte N):
 
 ```bash
-cargo run --release -p framechester-cli -- short --from artifacts/motion-horizontal/channels/<canal>/storyboard.json --workdir artifacts/short
+cargo run --release -p framechester-cli -- short --from artifacts/motion-horizontal/channels/<canal>/storyboard.json --list
+```
+
+```bash
+cargo run --release -p framechester-cli -- short --from artifacts/motion-horizontal/channels/<canal>/storyboard.json --part 2 --workdir artifacts/short-2
 ```
 
 Use `--max-secs` para outro limite e `--json` para ler o resultado num script.

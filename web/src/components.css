@@ -354,6 +354,52 @@
   font-weight: 600;
   white-space: nowrap;
 }
+/* On a phone a record reads top to bottom, each value beside its column name: squeezed
+   columns broke dates into four lines and cut the note off. */
+@media (max-width: 640px) {
+  .stack-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .stack-table,
+  .stack-table tbody,
+  .stack-table tr {
+    display: block;
+    width: 100%;
+  }
+  .stack-table tr {
+    padding-block: var(--space-3);
+    border-bottom: 1px solid var(--border);
+  }
+  .stack-table td {
+    display: grid;
+    grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr);
+    gap: var(--space-3);
+    padding: var(--space-1) 0;
+    border: 0;
+  }
+  .stack-table td::before {
+    content: attr(data-label);
+    color: var(--muted-foreground);
+    font-size: var(--font-xs);
+    font-weight: 400;
+  }
+  .stack-table td > .badge {
+    justify-self: start;
+  }
+  .stack-table td.stack-table-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+  .stack-table td.stack-table-actions::before {
+    content: none;
+  }
+}
 /* Usage records keep dates, states and prices intact inside their horizontal scroller. */
 .ai-usage-table {
   width: 100%;
@@ -435,5 +481,21 @@
   .dialog-close {
     min-width: 44px;
     min-height: 44px;
+  }
+  /* A disclosure is a control too: a finger needs the same 44px as a button. */
+  summary {
+    min-height: var(--control-height);
+    padding-block: calc((var(--control-height) - var(--line-ui)) / 2);
+    line-height: var(--line-ui);
+  }
+  /* The whole label toggles its checkbox: padding gives one line 44px and keeps the box
+     on the first line of a longer label. */
+  .checkbox-field {
+    padding-block: calc((var(--control-height) - var(--line-ui)) / 2);
+  }
+  .form-actions > a {
+    display: inline-flex;
+    min-height: var(--control-height);
+    align-items: center;
   }
 }

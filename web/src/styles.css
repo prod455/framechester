@@ -267,11 +267,25 @@
   .topbar > .button {
     flex: 0 0 var(--control-height);
   }
-  .topbar > .field-hint {
+  .engine-status {
+    display: inline-flex;
+    align-items: center;
     min-width: 0;
+    color: var(--muted-foreground);
+    font-size: var(--font-xs);
+  }
+  .engine-status > .icon {
+    display: none;
   }
   .mobile-menu {
     display: none;
+  }
+  .studio-scrim {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    background: #17212c33;
   }
   .content {
     width: 100%;
@@ -342,6 +356,9 @@
       visibility: visible;
       box-shadow: 14px 0 35px #17212c20;
     }
+    .studio-sidebar.open + .studio-scrim {
+      display: block;
+    }
     .mobile-menu {
       display: inline-grid;
     }
@@ -356,6 +373,21 @@
       width: 100%;
       min-width: 0;
       max-width: none;
+      /* Form values on a phone are 16px: smaller text zooms the page on focus in iOS. */
+      font-size: 16px;
+    }
+    /* Notches and gesture bars: in landscape the insets reach the sides. */
+    .topbar,
+    .content {
+      padding-left: max(var(--page-inset), env(safe-area-inset-left));
+      padding-right: max(var(--page-inset), env(safe-area-inset-right));
+    }
+    .studio-sidebar {
+      padding-left: max(var(--space-3), env(safe-area-inset-left));
+      padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+    }
+    .content {
+      padding-bottom: max(var(--space-10), env(safe-area-inset-bottom));
     }
     .channel-picker > span {
       display: none;
@@ -364,13 +396,27 @@
       display: none;
     }
     .content {
-      padding-block: var(--space-6) var(--space-10);
+      padding-top: var(--space-6);
     }
     .nav-item {
       min-height: 44px;
     }
   }
   @media (max-width: 560px) {
+    .engine-status > .icon {
+      display: block;
+      width: var(--icon-size);
+      height: var(--icon-size);
+      color: var(--warning);
+    }
+    .engine-status-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
     .page-heading {
       display: grid;
       grid-template-columns: minmax(0, 1fr);

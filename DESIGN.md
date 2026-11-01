@@ -116,6 +116,32 @@ desalinhamentos estruturais com transforms por elemento ou margens negativas.
 Ajustes ópticos exigem evidência visual e um escopo explícito. Preserve reticências,
 foco, áreas de toque, proteção de edição, autenticação e isolamento entre canais.
 
+## Celular
+
+O Studio é usado no Chrome do celular pelo `tailscale serve` (ver `docs/DEPLOY.md`):
+toque, retrato, 360–412 px. Adaptar é repensar a tela, não encolher a do desktop.
+
+- O card de vídeo vira grid abaixo de 640 px: thumbnail de 96×54 ao lado do título
+  e da linha de dados; título até 2 linhas; status abaixo do título; lixeira à
+  direita; mensagens, ações, redes e Shorts com a largura toda. As partes têm nome
+  (`.job-body`, `.job-head`, `.job-meta`); o layout fica em `workspace.css`, não em
+  utilitários no elemento, porque a camada `utilities` venceria o grid.
+- Em `className`, classes são palavras inteiras com espaço antes de cada `${}`: o
+  Tailwind lê a fonte como texto e não gera uma classe colada numa expressão
+  (`tests/tailwind-sources.test.ts`).
+- Tabelas de registros (`.stack-table`) viram blocos com rótulo e valor abaixo de
+  640 px; cada célula leva `data-label`. Tabelas de dados densos, como uso de IA,
+  continuam rolando no próprio contêiner.
+- No cabeçalho, o canal tem prioridade: abaixo de 560 px o estado do motor vira só
+  o ícone, com o texto no DOM e no `title`. Valores de formulário usam 16 px.
+- A gaveta tem fundo escurecido; tocar nele fecha a gaveta como o Escape e devolve
+  o foco ao botão de menu.
+- Com ponteiro grosso, `summary`, rótulos de checkbox e links ao lado das ações têm
+  44 px. Áreas seguras (`viewport-fit=cover`, `env(safe-area-inset-*)`) protegem
+  cabeçalho, conteúdo e gaveta do entalhe e da barra de gestos.
+- Verifique em 360 e 390 px com toque emulado: meça antes de tirar screenshot de
+  página inteira, que desliga a emulação de toque no Playwright.
+
 ## Piso funcional
 
 Preserve o canal selecionado, a autenticação, o CSRF, o armazenamento local de

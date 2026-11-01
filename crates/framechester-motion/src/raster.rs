@@ -100,6 +100,9 @@ pub fn encode_frames(
             &profile.crf.to_string(),
             "-pix_fmt",
             "yuv420p",
+            // Reels refuse edit lists ('no edit lists' in the Instagram video spec).
+            "-use_editlist",
+            "0",
             "-movflags",
             "+faststart",
         ])

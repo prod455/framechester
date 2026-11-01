@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createSocialService } from '../server/social.ts';
@@ -1727,5 +1727,37 @@ test('a refused YouTube upload says why: channel upload limit, project quota or 
     } finally {
       await cleanup();
     }
+  }
+});
+
+test('Instagram receives the video without edit lists, and the temporary copy is removed', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'fc-instagram-edts-'));
+  try {
+    const video = join(directory, 'final.mp4');
+    const original = mp4Fixture({ editList: true });
+    await writeFile(video, original);
+    const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+    const service = createSocialService({
+      vault: new MemoryVault(),
+      fetch: instagramFetch(calls, ['FINISHED']),
+      now: () => NOW,
+      wait: async () => {},
+    });
+    await connectMeta(service, 'instagram');
+    calls.length = 0;
+    await service.publish('tech', 'instagram', {
+      path: video,
+      title: 'Vídeo',
+      description: '',
+      vertical: true,
+    });
+    const upload = calls.find((call) => call.url.startsWith('https://rupload.facebook.com/'))!;
+    assert.equal(upload.body!.includes('edts'), false);
+    assert.equal(upload.body!.includes('CHUNK'), true, 'the media itself goes as it was');
+    assert.equal(new Headers(upload.init!.headers).get('file_size'), String(original.length - 36));
+    assert.deepEqual(await readdir(directory), ['final.mp4'], 'the source stays, the copy is gone');
+    assert.deepEqual(await readFile(video), original);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
   }
 });

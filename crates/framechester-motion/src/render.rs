@@ -271,6 +271,10 @@ pub fn render(storyboard: &Storyboard, request: &RenderRequest) -> Result<Render
                     "-ac",
                     "2",
                     "-shortest",
+                    // Reels refuse edit lists ('no edit lists' in the Instagram video spec);
+                    // FFmpeg writes one for the AAC priming and the B-frame delay.
+                    "-use_editlist",
+                    "0",
                     "-movflags",
                     "+faststart",
                 ])

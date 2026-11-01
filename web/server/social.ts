@@ -293,15 +293,22 @@ export interface YoutubeDiscovery {
 
 /**
  * The provider's error identifiers from a refused response, never its message or body:
- * Graph and TikTok `error.code`/`error_subcode`, and the rupload `debug_info.type`
- * (ProcessingFailedError, ...). Anything that is not a plain number or identifier is
- * dropped, so nothing private reaches the screen.
+ * Graph and TikTok `error.code`/`error_subcode`, Google's `error.errors[].reason`
+ * (uploadLimitExceeded, ...) and the rupload `debug_info.type` (ProcessingFailedError, ...).
+ * A code that only repeats the HTTP status is left out. Anything that is not a plain number
+ * or identifier is dropped, so nothing private reaches the screen.
  */
 async function failureCode(response: Response): Promise<string> {
   try {
     const parsed = record(JSON.parse((await response.text()).slice(0, 4096)));
     const failure = record(parsed.error);
-    return [failure.code, failure.error_subcode, record(parsed.debug_info).type]
+    const reasons = array(failure.errors).map((item) => record(item).reason);
+    return [
+      failure.code === response.status ? undefined : failure.code,
+      failure.error_subcode,
+      ...reasons,
+      record(parsed.debug_info).type,
+    ]
       .filter(
         (part) =>
           (typeof part === 'number' && Number.isSafeInteger(part)) ||
@@ -311,6 +318,25 @@ async function failureCode(response: Response): Promise<string> {
   } catch {
     return '';
   }
+}
+
+/**
+ * A refused videos.insert, said by its reason: the channel's upload limit (HTTP 400), the
+ * project's daily quota (HTTP 403), or the metadata; anything else names the identifiers.
+ */
+async function youtubeRefused(response: Response): Promise<SocialError> {
+  const code = await failureCode(response);
+  const reasons = code.split('/');
+  const message = reasons.includes('uploadLimitExceeded')
+    ? 'O canal atingiu o limite de envios do YouTube por enquanto; nada foi enviado. Tente de novo em 24 horas. Um canal verificado em youtube.com/verify tem limite maior.'
+    : reasons.includes('quotaExceeded') || reasons.includes('dailyLimitExceeded')
+      ? 'A quota diária da YouTube Data API do projeto acabou; nada foi enviado. Ela renova à meia-noite do horário do Pacífico, ou peça mais quota no Google Cloud.'
+      : reasons.some((reason) => /^invalid(Title|Description|Tags|CategoryId)$/.test(reason))
+        ? `O YouTube recusou o título ou a descrição (HTTP ${response.status}, código ${code}).`
+        : code
+          ? `O YouTube recusou o envio (HTTP ${response.status}, código ${code}).`
+          : `O YouTube recusou o envio (HTTP ${response.status}).`;
+  return new SocialError('api_denied', message, code || undefined);
 }
 
 /** A refused upload, named with the provider's error identifiers when it sent any. */
@@ -1629,12 +1655,8 @@ export class SocialService implements SocialApi {
       redirect: 'error',
       signal: AbortSignal.timeout(this.timeoutMs),
     });
+    if (!session.ok) throw await youtubeRefused(session);
     await session.body?.cancel();
-    if (!session.ok)
-      throw new SocialError(
-        'api_denied',
-        `O YouTube recusou o envio (HTTP ${session.status}); confira a quota e as permissões do projeto.`,
-      );
     const location = uploadSession(session.headers.get('location'));
     const sent = await this.fetcher(location, {
       method: 'PUT',

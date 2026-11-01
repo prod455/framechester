@@ -4,6 +4,15 @@ import type { AreaCatalog } from './index.ts';
 
 export default {
   en: {
+    'O canal atingiu o limite de envios do YouTube por enquanto; nada foi enviado. Tente de novo em 24 horas. Um canal verificado em youtube.com/verify tem limite maior.':
+      "The channel reached YouTube's upload limit for now; nothing was sent. Try again in 24 hours. A channel verified at youtube.com/verify has a higher limit.",
+    'A quota diária da YouTube Data API do projeto acabou; nada foi enviado. Ela renova à meia-noite do horário do Pacífico, ou peça mais quota no Google Cloud.':
+      "The project's daily YouTube Data API quota ran out; nothing was sent. It resets at midnight Pacific time, or request more quota in Google Cloud.",
+    'O YouTube recusou o título ou a descrição (HTTP {status}, código {code}).':
+      'YouTube rejected the title or the description (HTTP {status}, code {code}).',
+    'O YouTube recusou o envio (HTTP {status}, código {code}).':
+      'YouTube rejected the upload (HTTP {status}, code {code}).',
+    'O YouTube recusou o envio (HTTP {status}).': 'YouTube rejected the upload (HTTP {status}).',
     'O {network} recusou o arquivo (HTTP {status}, código {code}).':
       '{network} rejected the file (HTTP {status}, code {code}).',
     'Só um Short que parou pode ser refeito por aqui.': 'Only a Short that stopped can be redone here.',
@@ -390,8 +399,6 @@ export default {
       'Video file missing; generate the final version again.',
     'Reconecte o YouTube em Contas conectadas para autorizar o envio de vídeos.':
       'Reconnect YouTube in Connected accounts to authorize video uploads.',
-    'O YouTube recusou o envio (HTTP {status}); confira a quota e as permissões do projeto.':
-      "YouTube rejected the upload (HTTP {status}); check the project's quota and permissions.",
     'O YouTube recusou o arquivo (HTTP {status}).': 'YouTube rejected the file (HTTP {status}).',
     'O YouTube não retornou o ID do vídeo enviado.': "YouTube did not return the uploaded video's ID.",
     'Não foi possível concluir o envio ao YouTube. Nenhum token ou detalhe privado foi registrado.':
@@ -514,6 +521,15 @@ export default {
       'Voice without commercial approval in this installation. Choose a Kokoro voice from the catalog (PT-BR, EN-US or ES) in Settings. Legacy Piper voices are blocked.',
   },
   es: {
+    'O canal atingiu o limite de envios do YouTube por enquanto; nada foi enviado. Tente de novo em 24 horas. Um canal verificado em youtube.com/verify tem limite maior.':
+      'El canal alcanzó el límite de subidas de YouTube por ahora; no se envió nada. Inténtalo de nuevo en 24 horas. Un canal verificado en youtube.com/verify tiene un límite mayor.',
+    'A quota diária da YouTube Data API do projeto acabou; nada foi enviado. Ela renova à meia-noite do horário do Pacífico, ou peça mais quota no Google Cloud.':
+      'La cuota diaria de la YouTube Data API del proyecto se agotó; no se envió nada. Se renueva a medianoche, hora del Pacífico, o pide más cuota en Google Cloud.',
+    'O YouTube recusou o título ou a descrição (HTTP {status}, código {code}).':
+      'YouTube rechazó el título o la descripción (HTTP {status}, código {code}).',
+    'O YouTube recusou o envio (HTTP {status}, código {code}).':
+      'YouTube rechazó la subida (HTTP {status}, código {code}).',
+    'O YouTube recusou o envio (HTTP {status}).': 'YouTube rechazó la subida (HTTP {status}).',
     'O {network} recusou o arquivo (HTTP {status}, código {code}).':
       '{network} rechazó el archivo (HTTP {status}, código {code}).',
     'Só um Short que parou pode ser refeito por aqui.': 'Solo un Short que se detuvo puede rehacerse aquí.',
@@ -902,8 +918,6 @@ export default {
       'Falta el archivo de video; genera la versión final de nuevo.',
     'Reconecte o YouTube em Contas conectadas para autorizar o envio de vídeos.':
       'Vuelve a conectar YouTube en Cuentas conectadas para autorizar la subida de videos.',
-    'O YouTube recusou o envio (HTTP {status}); confira a quota e as permissões do projeto.':
-      'YouTube rechazó la subida (HTTP {status}); revisa la cuota y los permisos del proyecto.',
     'O YouTube recusou o arquivo (HTTP {status}).': 'YouTube rechazó el archivo (HTTP {status}).',
     'O YouTube não retornou o ID do vídeo enviado.': 'YouTube no devolvió el ID del video subido.',
     'Não foi possível concluir o envio ao YouTube. Nenhum token ou detalhe privado foi registrado.':

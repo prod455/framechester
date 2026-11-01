@@ -378,14 +378,18 @@ Os Shorts aparecem dentro do card do vídeo de origem, em **Shorts deste vídeo*
 cada um com o próprio status, envio às redes e exclusão; eles não ganham cards
 próprios. A divisão acontece **uma vez por vídeo**: **Gerar Shorts**, no card e em
 **Criar vídeo**, só aparece se ela nunca aconteceu, e não volta mesmo que os
-Shorts sejam excluídos. Se o motor recusar a divisão, o botão continua lá. A
-divisão:
+Shorts sejam excluídos. Se o motor recusar a divisão, o botão continua lá. Um
+Short que parar ganha **Tentar de novo**, que roda de novo só aquela parte, sem
+dividir o vídeo outra vez. A divisão:
 
 - **Partes seguidas.** O vídeo é cortado em partes, na ordem original, até 5
   Shorts. Uma cena mais longa que um Short é partida entre as frases, com o mesmo
   visual; as animações que já tinham acontecido valem desde o início do pedaço.
-  Uma última parte com menos de 15 s de conteúdo novo fica de fora, assim como uma
-  frase que sozinha não cabe num Short.
+  Cada pedaço fica só com os termos que ele de fato diz e sempre inclui a frase que
+  diz os números mostrados na tela; um corte que deixaria um número sem a fala fica
+  de fora. Uma última parte com menos de 15 s de conteúdo novo fica de fora, assim
+  como uma frase que sozinha não cabe num Short. Toda parte é validada já na
+  divisão, antes de qualquer render.
 - **Gancho no primeiro quadro.** A partir da segunda, toda parte abre com as
   primeiras frases do vídeo, até um terço do Short (cerca de 19 s), sem transição,
   para quem vê só aquele Short entender a pergunta. A primeira parte já começa por

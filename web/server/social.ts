@@ -1822,22 +1822,49 @@ export class SocialService implements SocialApi {
       redirect: 'error',
       signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
     } as RequestInit);
-    if (!sent.ok) throw await uploadRefused('Instagram', sent);
-    if ((await this.readJson(sent)).success !== true)
+    // Since late 2026 rupload answers 400 ProcessingFailedError for longer Reels while the
+    // container still receives the file and finishes processing. That answer is not final:
+    // the container decides, and only a container that holds every byte is published.
+    let refused: SocialError | undefined;
+    if (!sent.ok) {
+      refused = await uploadRefused('Instagram', sent);
+      if (refused.providerCode?.split('/').includes('ProcessingFailedError') !== true) throw refused;
+    } else if ((await this.readJson(sent)).success !== true)
       throw new SocialError('invalid_response', 'O Instagram não confirmou o recebimento do arquivo.');
+    const gaveUp = (message: string) => new SocialError('api_denied', message, refused!.providerCode);
     // Publishing an unfinished container fails; nothing goes public until processing finished.
     let status: unknown;
+    let received: unknown;
     for (let poll = 0; poll < INSTAGRAM_POLLS && status !== 'FINISHED'; poll++) {
       await this.wait(INSTAGRAM_POLL_MS);
-      status = (await this.request(`${GRAPH}/${containerId}?fields=status_code`, credential.accessToken))
-        .status_code;
-      if (status === 'ERROR' || status === 'EXPIRED')
+      const container = await this.request(
+        `${GRAPH}/${containerId}?fields=${refused ? 'status_code,video_status' : 'status_code'}`,
+        credential.accessToken,
+      );
+      status = container.status_code;
+      received = record(record(container.video_status).uploading_phase).bytes_transferred;
+      if (status === 'ERROR' || status === 'EXPIRED') {
+        if (refused)
+          throw gaveUp(
+            'O Instagram recusou o arquivo (ProcessingFailedError) e não processou o vídeo; nada foi publicado. Publique este vídeo pelo app do Instagram.',
+          );
         throw new SocialError('api_denied', 'O Instagram recusou o vídeo ao processar; nada foi publicado.');
+      }
     }
-    if (status !== 'FINISHED')
+    if (status !== 'FINISHED') {
+      if (refused)
+        throw gaveUp(
+          'O Instagram recusou o arquivo (ProcessingFailedError) e não terminou de processar o vídeo em 5 minutos; nada foi publicado. Publique este vídeo pelo app do Instagram.',
+        );
       throw new SocialError(
         'api_unavailable',
         'O Instagram não terminou de processar o vídeo em 5 minutos; nada foi publicado. Tente de novo.',
+      );
+    }
+    // A public post of a partial file cannot be taken back quietly.
+    if (refused && Number(received) !== size)
+      throw gaveUp(
+        'O Instagram recusou o arquivo (ProcessingFailedError) e não confirmou ter recebido o arquivo inteiro; nada foi publicado. Publique este vídeo pelo app do Instagram.',
       );
     const media = (
       await this.request(

@@ -1311,6 +1311,8 @@ test('a TikTok file above 5 MB goes in 10 MiB chunks and the last one absorbs th
 function instagramFetch(
   calls: Array<{ url: string; init?: RequestInit; body?: string }>,
   statuses: string[],
+  /** Bytes the container reports in video_status, when asked for it. */
+  received?: number,
 ): SocialFetch {
   const meta = metaFetch(calls, {
     permissions: ['pages_show_list', 'pages_read_engagement', 'instagram_basic', 'instagram_content_publish'],
@@ -1329,7 +1331,13 @@ function instagramFetch(
     }
     if (url.pathname === '/v26.0/777') {
       calls.push({ url: raw, init });
-      return json({ status_code: statuses.shift() ?? 'IN_PROGRESS', id: '777' });
+      return json({
+        status_code: statuses.shift() ?? 'IN_PROGRESS',
+        id: '777',
+        ...(url.searchParams.get('fields')?.includes('video_status') && received !== undefined
+          ? { video_status: { uploading_phase: { status: 'complete', bytes_transferred: received } } }
+          : {}),
+      });
     }
     if (url.pathname === `/v26.0/${IG}/media_publish`) {
       calls.push({ url: raw, init, body: String(init!.body) });
@@ -1658,22 +1666,17 @@ test('a video outside the network limits is refused before the upload starts', a
   }
 });
 
-test('a refused Instagram upload names the provider error type, never its message, and publishes nothing', async () => {
+test('a refused Instagram upload names the provider error code, never its message, and publishes nothing', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'fc-instagram-rupload-'));
   try {
     const video = join(directory, 'final.mp4');
     await writeFile(video, MP4);
-    const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
-    const meta = instagramFetch(calls, ['FINISHED']);
     for (const [body, pattern] of [
-      [
-        { debug_info: { retriable: false, type: 'ProcessingFailedError', message: 'segredo do provedor' } },
-        /^O Instagram recusou o arquivo \(HTTP 400, código ProcessingFailedError\)\.$/,
-      ],
       [{ error: { code: 100, error_subcode: 2207026, message: 'segredo' } }, /código 100\/2207026\)/],
       ['<html>falha</html>', /^O Instagram recusou o arquivo \(HTTP 400\)\.$/],
     ] as const) {
-      calls.length = 0;
+      const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+      const meta = instagramFetch(calls, ['FINISHED']);
       const service = createSocialService({
         vault: new MemoryVault(),
         fetch: async (raw, init) =>
@@ -1684,15 +1687,68 @@ test('a refused Instagram upload names the provider error type, never its messag
         wait: async () => {},
       });
       await connectMeta(service, 'instagram');
+      calls.length = 0;
       const error = await service
         .publish('tech', 'instagram', { path: video, title: 'Vídeo', description: '', vertical: true })
         .catch((failure: Error) => failure);
       assert.match(String((error as Error).message), pattern);
       assert.doesNotMatch(String((error as Error).message), /segredo/);
       assert.equal(
-        calls.some((call) => call.url.endsWith('/media_publish')),
+        calls.some((call) => call.url.includes('/v26.0/777')),
         false,
+        'any other refusal is final',
       );
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('after a ProcessingFailedError the container decides, and only a container holding every byte is published', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'fc-instagram-spurious-'));
+  try {
+    const video = join(directory, 'final.mp4');
+    await writeFile(video, MP4);
+    const refusal = {
+      debug_info: { retriable: false, type: 'ProcessingFailedError', message: 'segredo do provedor' },
+    };
+    for (const [statuses, received, outcome] of [
+      [['IN_PROGRESS', 'FINISHED'], MP4.length, 'published'],
+      [['FINISHED'], MP4.length - 1, /não confirmou ter recebido o arquivo inteiro; nada foi publicado/],
+      [['FINISHED'], undefined, /não confirmou ter recebido o arquivo inteiro/],
+      [['IN_PROGRESS', 'ERROR'], MP4.length, /não processou o vídeo; nada foi publicado/],
+      [[], MP4.length, /não terminou de processar o vídeo em 5 minutos/],
+    ] as const) {
+      const calls: Array<{ url: string; init?: RequestInit; body?: string }> = [];
+      const meta = instagramFetch(calls, [...statuses], received);
+      const service = createSocialService({
+        vault: new MemoryVault(),
+        fetch: async (raw, init) => {
+          if (!raw.startsWith('https://rupload.facebook.com/')) return meta(raw, init);
+          await new Response(init!.body as ReadableStream).arrayBuffer();
+          return new Response(JSON.stringify(refusal), { status: 400 });
+        },
+        now: () => NOW,
+        wait: async () => {},
+      });
+      await connectMeta(service, 'instagram');
+      calls.length = 0;
+      const result = await service
+        .publish('tech', 'instagram', { path: video, title: 'Vídeo', description: '', vertical: true })
+        .catch((failure: Error) => failure);
+      const published = calls.some((call) => call.url.endsWith('/media_publish'));
+      if (outcome === 'published') {
+        assert.deepEqual(result, { postId: '888', url: 'https://www.instagram.com/reel/AbC_12-x/' });
+        assert.equal(published, true);
+        assert.ok(
+          calls.some((call) => new URL(call.url).searchParams.get('fields') === 'status_code,video_status'),
+        );
+      } else {
+        assert.match((result as Error).message, outcome);
+        assert.match((result as Error).message, /Publique este vídeo pelo app do Instagram/);
+        assert.doesNotMatch((result as Error).message, /segredo/);
+        assert.equal(published, false);
+      }
     }
   } finally {
     await rm(directory, { recursive: true, force: true });

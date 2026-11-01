@@ -404,6 +404,8 @@ impl FfmpegRenderer {
                 "concat.txt".to_string(),
                 "-c".to_string(),
                 "copy".to_string(),
+                "-use_editlist".to_string(),
+                "0".to_string(),
                 "-movflags".to_string(),
                 "+faststart".to_string(),
                 output_abs.to_string_lossy().to_string(),
@@ -440,6 +442,9 @@ impl FfmpegRenderer {
             "aac".to_string(),
             "-b:a".to_string(),
             format!("{}k", profile.audio_bitrate_kbps),
+            // Reels refuse edit lists ('no edit lists' in the Instagram video spec).
+            "-use_editlist".to_string(),
+            "0".to_string(),
             "-movflags".to_string(),
             "+faststart".to_string(),
             output_abs.to_string_lossy().to_string(),

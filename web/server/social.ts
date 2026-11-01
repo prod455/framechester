@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { readFile, stat } from 'node:fs/promises';
+import { readFile, rm, stat } from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import type {
   NetworkCapability,
@@ -16,7 +16,7 @@ import type {
   YoutubeThumbnail,
 } from '../shared/types.ts';
 import { canPublish, mediaProblem, platformLabels, postText } from '../shared/publishing.ts';
-import { probeMp4, type VideoProbe } from './mp4.ts';
+import { probeMp4, withoutEditLists, type VideoProbe } from './mp4.ts';
 import type { SecretVault } from './vault.ts';
 
 export type SocialFetch = (url: string, init?: RequestInit) => Promise<Response>;
@@ -1768,6 +1768,23 @@ export class SocialService implements SocialApi {
 
   /** Instagram Reel, published publicly: container, rupload, processing check, media_publish. */
   private async publishInstagram(
+    credential: Credential,
+    video: VideoUpload,
+    size: number,
+  ): Promise<PublishResult> {
+    // Instagram's video spec says "no edit lists" and rupload answers ProcessingFailedError;
+    // FFmpeg writes them. A copy without them goes instead, the samples untouched.
+    const clean = `${video.path}.${randomUUID()}.instagram.mp4`;
+    try {
+      if (!(await withoutEditLists(video.path, clean)))
+        return await this.publishInstagramFile(credential, video, size);
+      return await this.publishInstagramFile(credential, { ...video, path: clean }, (await stat(clean)).size);
+    } finally {
+      await rm(clean, { force: true });
+    }
+  }
+
+  private async publishInstagramFile(
     credential: Credential,
     video: VideoUpload,
     size: number,

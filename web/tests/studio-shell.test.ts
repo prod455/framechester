@@ -221,6 +221,58 @@ test('after login every page renders from the shared state with its own navigati
   );
 });
 
+test('on a phone the open menu closes with a tap outside it, and wide content has named parts', async () => {
+  browser.location.hash = 'production';
+  studio.data!.engine = { available: false, message: 'Motor ausente' };
+  render();
+  const menu = browser.document.querySelector('.mobile-menu') as unknown as HTMLButtonElement;
+  const sidebar = browser.document.querySelector('.studio-sidebar')!;
+  menu.click();
+  assert.ok(sidebar.classList.contains('open'));
+  assert.equal(menu.getAttribute('aria-expanded'), 'true');
+  const scrim = sidebar.nextElementSibling as unknown as HTMLElement;
+  assert.ok(scrim.classList.contains('studio-scrim'), 'the scrim follows the menu, as the CSS expects');
+  assert.equal(scrim.getAttribute('aria-hidden'), 'true');
+  scrim.click();
+  assert.equal(sidebar.classList.contains('open'), false);
+  assert.equal(menu.getAttribute('aria-expanded'), 'false');
+  assert.equal(browser.document.activeElement, menu as unknown, 'focus returns to the menu button');
+  // The engine state keeps its words for screen readers when a phone shows only its icon.
+  const engine = browser.document.querySelector('.engine-status')!;
+  assert.equal(engine.getAttribute('title'), 'Produção indisponível');
+  assert.equal(engine.querySelector('.engine-status-label')?.textContent, 'Produção indisponível');
+  // The phone layout places the card's parts by name, not by Tailwind classes on the element.
+  const card = browser.document.querySelector('[data-testid="job-job-1"]')!;
+  assert.equal(card.className, 'job-card');
+  assert.ok(card.querySelector(':scope > .media-thumbnail + .job-body > .job-head > h3'));
+  assert.ok(card.querySelector(':scope > .job-body > .job-meta'));
+  // Financial records stack on a phone, each value under its column name.
+  studio.data!.receipts = [
+    {
+      id: 'receipt-1',
+      channelId: 'tech',
+      platform: 'youtube',
+      kind: 'cost',
+      amountCents: 1990,
+      currency: 'BRL',
+      date: '2026-10-15',
+      note: 'Banco de imagens',
+      source: 'manual',
+      createdAt: now,
+      updatedAt: now,
+    },
+  ] as never;
+  browser.location.hash = 'analytics';
+  render();
+  const row = browser.document.querySelector('.stack-table tbody tr')!;
+  assert.deepEqual(
+    [...row.querySelectorAll('td')].map((cell) => cell.getAttribute('data-label')),
+    ['Data', 'Natureza', 'Valor', 'Observação', null],
+  );
+  assert.ok(row.querySelector('td.stack-table-actions button'));
+  studio.data!.engine = { available: true, message: 'Motor disponível' };
+});
+
 test('a finished video shows one card per network with its own state and action', async () => {
   const { jobCard } = await import('../src/pages/production.ts');
   const data = bootstrap();

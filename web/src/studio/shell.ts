@@ -233,6 +233,14 @@ function render(): void {
     if (opened) sidebar.querySelector<HTMLAnchorElement>('a[aria-current="page"]')?.focus();
   });
   mobile.classList.add('mobile-menu');
+  const closeMenu = () => {
+    sidebar.classList.remove('open');
+    mobile.setAttribute('aria-expanded', 'false');
+    mobile.focus();
+  };
+  // On a phone the open menu covers the page: a tap outside it closes it, as Escape does.
+  const scrim = el('div', { className: 'studio-scrim', 'aria-hidden': 'true' });
+  scrim.addEventListener('click', closeMenu);
   sidebar.id = 'primary-navigation';
   mobile.setAttribute('aria-controls', sidebar.id);
   mobile.setAttribute('aria-expanded', 'false');
@@ -243,7 +251,16 @@ function render(): void {
     mobile,
     el('label', { className: 'channel-picker' }, el('span', {}, t('Canal')), picker),
     el('div', { className: 'spacer' }),
-    engine?.available === false ? el('span', { className: 'field-hint' }, t('Produção indisponível')) : null,
+    // A phone keeps the width for the channel: the state shrinks to its icon, the words stay
+    // in the DOM for screen readers and in the title for a long press.
+    engine?.available === false
+      ? el(
+          'span',
+          { className: 'engine-status', title: t('Produção indisponível') },
+          icon('circle'),
+          el('span', { className: 'engine-status-label' }, t('Produção indisponível')),
+        )
+      : null,
     iconButton(t('Atualizar dados do estúdio'), 'refresh', () =>
       protectEdits(() => {
         void action(async () => undefined, t('Dados atualizados.'));
@@ -261,14 +278,11 @@ function render(): void {
     'div',
     { className: 'shell' },
     sidebar,
+    scrim,
     el('div', { className: 'workspace' }, topbar, content),
   );
   shell.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && sidebar.classList.contains('open')) {
-      sidebar.classList.remove('open');
-      mobile.setAttribute('aria-expanded', 'false');
-      mobile.focus();
-    }
+    if (event.key === 'Escape' && sidebar.classList.contains('open')) closeMenu();
   });
   replace(root, skip, shell);
   studio.renderedHash = location.hash;

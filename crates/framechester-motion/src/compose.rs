@@ -170,6 +170,7 @@ fn build_component(
             components::infographic::build(ctx, area, title, objects)
         }
         Composition::CauseEffect { objects } => components::cause_effect::build(ctx, area, objects),
+        Composition::Steps { objects } => components::steps::build(ctx, area, objects),
         Composition::Character {
             character,
             pose,
@@ -222,7 +223,7 @@ fn resolve_times(scene: &StoryboardScene, hook: bool) -> Vec<(f32, &Animation)> 
             match last_entry {
                 Some(previous) if (*time - previous).abs() < 0.05 => {
                     stagger += 1;
-                    *time += stagger as f32 * tokens::STAGGER;
+                    *time += stagger as f32 * framechester_core::presets::REVEAL.stagger_secs;
                 }
                 _ => {
                     stagger = 0;
@@ -270,9 +271,20 @@ fn apply_animation(
             } else {
                 (-offset, 0.0)
             };
+            // Text lines of one target cascade in 70 ms steps (titles read as
+            // a build-up); shapes keep the shared entry time.
+            let mut text_index = 0usize;
             for node in nodes_of(graph, &animation.target) {
-                node.props
-                    .reveal(time, duration, direction, animation.easing);
+                let at = if node.is_text() {
+                    let staggered = time
+                        + text_index as f32
+                            * framechester_core::presets::TITLE_CASCADE.stagger_secs;
+                    text_index += 1;
+                    staggered
+                } else {
+                    time
+                };
+                node.props.reveal(at, duration, direction, animation.easing);
             }
             entries.entry(animation.target.clone()).or_insert(time);
         }
@@ -736,8 +748,8 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
     let (width, height) = (canvas.width, canvas.height);
     let mut svg = String::with_capacity(32 * 1024);
     svg.push_str(&format!(
-        "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'><rect width='100%' height='100%' fill='{}'/><g font-family='{}'>",
-        tokens::BACKGROUND,
+        "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>{}<g font-family='{}'>",
+        Graph::background_svg(width, height, None),
         font_family
     ));
     let index = composed
@@ -800,6 +812,27 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
                     scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, eased);
                 }
                 Transition::Cut => scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, 1.0),
+                Transition::WhipPan => {
+                    // Fast sideways slide; mid-whip both frames stretch
+                    // horizontally and dip in opacity (simulated motion blur:
+                    // geometric stretch, not a true blur - see scene.rs).
+                    let bell = (progress * std::f32::consts::PI).sin();
+                    let stretch = 1.0 + 0.10 * bell;
+                    let dip = 1.0 - 0.25 * bell;
+                    let shift = width as f32 * eased;
+                    previous
+                        .graph
+                        .svg_inner_ex(&mut svg, previous_t, -shift, 0.0, stretch, 1.0, dip);
+                    scene.graph.svg_inner_ex(
+                        &mut svg,
+                        local,
+                        width as f32 - shift,
+                        0.0,
+                        stretch,
+                        1.0,
+                        dip,
+                    );
+                }
             }
         } else if index == 0 && local < HOOK_PUNCH_SECS {
             let scale = 1.0
@@ -811,6 +844,15 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
             scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, 1.0);
         }
     }
+    // Episode progress: a quiet top bar so long vertical videos always show
+    // how far along they are. Decorative, above content, below nothing else.
+    let total = composed.total_duration_secs().max(0.1);
+    let done = (t / total).clamp(0.0, 1.0) * width as f32;
+    svg.push_str(&format!(
+        "<g id='fc-progress'><rect x='0' y='0' width='{width}' height='6' fill='#FFFFFF' opacity='0.10'/><rect x='0' y='0' width='{done:.1}' height='6' fill='{}'/><circle cx='{done:.1}' cy='3' r='5' fill='{}'/></g>",
+        tokens::ACCENT,
+        tokens::ACCENT,
+    ));
     svg.push_str("</g></svg>");
     svg
 }
@@ -859,16 +901,128 @@ mod tests {
             ("#linha-do-tempo 2022: prompts soltos; 2024: agentes com ferramentas; 2025: skills empacotadas", "Em 2022 eram prompts soltos. Em 2024 vieram agentes com ferramentas. Em 2025, skills empacotadas."),
             ("#grafico Tokens no contexto | Sem skill=100%; Com skill=40%", "Sem skill, 100% das instrucoes entram no contexto. Com skill, cerca de 40%."),
             ("#arquitetura Agente/Planejador; Agente/Executor; Skills/SKILL.md; Skills/scripts; Planejador -> SKILL.md; Executor -> scripts", "O planejador le o SKILL.md e o executor roda os scripts."),
+            ("#arquitetura Your request; Claude Code; Skill file: name, description, instructions; Your request -> Claude Code; Skill file -> Claude Code", "The first step is the file itself: a skill is written instructions in a file."),
             ("#codigo markdown | SKILL.md\n---\nname: revisar-pr\ndescription: Revisa PRs\n---\n1. Leia o diff\n2. Rode os testes", "O arquivo tem nome, descricao e os passos."),
             ("#transformacao Prompt gigante; Regras soltas => Skill versionada [skill]", "Um prompt gigante e regras soltas viram uma skill versionada."),
             ("#anotacao revisar-pr/SKILL.md: instrucoes e metadados; revisar-pr/scripts/check.py: codigo opcional; revisar-pr/exemplos: casos reais", "A pasta tem o SKILL.md com instrucoes, scripts opcionais e exemplos."),
             ("#infografico O que muda | Tokens=40%: do contexto [chart]; Passos=3: etapas fixas [check]; Erros [shield]: menos retrabalho", "Caem para 40% os tokens, sao 3 passos fixos e menos erros."),
             ("#causa Sem skill => O agente improvisa => Resultados variam => Mais retrabalho", "Sem skill, o agente improvisa, os resultados variam e ha mais retrabalho."),
+            ("#passos Confira a amostra; Leia o intervalo; Veja as condicoes", "Confira a amostra, leia o intervalo e veja as condicoes."),
             ("#personagem apresentador | explicar | Uma skill é uma receita que o agente segue", "Uma skill e uma receita. O agente segue os passos dela."),
             ("#personagem dev | apontar", "O arquivo fica na pasta do projeto, versionado com o codigo."),
             ("#personagem cientista | pensar | Dá para medir a diferença?", "Da para medir a diferenca? Vamos testar duas vezes."),
             ("#personagem robo | comemorar | Mesma tarefa, metade dos tokens", "Mesma tarefa, com menos tokens no contexto."),
         ]
+    }
+
+    #[test]
+    fn steps_draw_a_spine_with_numbered_badges() {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Vertical);
+        let scene = narrated(
+            "#passos Confira a amostra; Leia o intervalo; Veja as condicoes",
+            "Confira a amostra, leia o intervalo e veja as condicoes.",
+        );
+        let composed = compose_scene(&typesetter, &canvas, &scene, 0, 1);
+        assert!(
+            composed
+                .graph
+                .nodes
+                .iter()
+                .any(|node| node.object == "steps-spine"),
+            "spine present"
+        );
+        let badges = composed
+            .graph
+            .nodes
+            .iter()
+            .filter(|node| matches!(node.shape, Shape::Circle { .. }))
+            .count();
+        assert_eq!(badges, 3, "one numbered badge per step");
+        assert!(composed.issues.is_empty(), "{:?}", composed.issues);
+    }
+
+    #[test]
+    fn title_text_lines_cascade_instead_of_entering_together() {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Vertical);
+        let scene = narrated(
+            "#citacao Uma frase longa o bastante para ocupar mais de uma linha no quadro vertical | Autora",
+            "Uma frase longa o bastante para ocupar mais de uma linha no quadro vertical.",
+        );
+        // Index 1: not the hook scene, whose entries have already happened.
+        let composed = compose_scene(&typesetter, &canvas, &scene, 1, 2);
+        let texts: Vec<f32> = composed
+            .graph
+            .nodes
+            .iter()
+            .filter(|node| node.object == "title" && node.is_text())
+            .map(|node| node.props.opacity.eval(0.10))
+            .collect();
+        assert!(texts.len() >= 2, "title wrapped into lines: {texts:?}");
+        assert!(
+            texts[0] > texts[texts.len() - 1],
+            "first line leads the cascade: {texts:?}"
+        );
+    }
+
+    #[test]
+    fn whip_pan_stretches_both_frames_mid_transition() {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Vertical);
+        let first = narrated("#pergunta Agente ou skill?", "Agente ou skill?");
+        let mut second = narrated("#pergunta E agora?", "E agora?");
+        second.start_secs = first.duration_secs;
+        second.transition = Transition::WhipPan;
+        let composed = Composed {
+            canvas,
+            scenes: vec![
+                compose_scene(&typesetter, &canvas, &first, 0, 2),
+                compose_scene(&typesetter, &canvas, &second, 1, 2),
+            ],
+        };
+        // Middle of the 0.42 s transition window: bell = 1, stretch = 1.10.
+        let mid = first.duration_secs + TRANSITION_SECS / 2.0;
+        let svg = frame_svg(&composed, mid, "Inter");
+        assert!(svg.contains("scale(1.1000 1.0000)"), "{svg}");
+    }
+
+    #[test]
+    fn title_words_reveal_one_after_another() {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Vertical);
+        let scene = narrated(
+            "#citacao Uma frase longa o bastante para ocupar mais de uma linha no quadro vertical | Autora",
+            "Uma frase longa o bastante para ocupar mais de uma linha no quadro vertical.",
+        );
+        // Index 1: not the hook scene, whose entries have already happened.
+        let composed = compose_scene(&typesetter, &canvas, &scene, 1, 2);
+        let words: Vec<f32> = composed
+            .graph
+            .nodes
+            .iter()
+            .filter(|node| node.object == "title" && node.is_text())
+            .map(|node| node.props.opacity.eval(0.12))
+            .collect();
+        assert!(words.len() >= 4, "one node per word: {words:?}");
+        assert!(
+            words[0] > words[words.len() - 1],
+            "first word leads the reveal: {words:?}"
+        );
+    }
+
+    #[test]
+    fn every_frame_carries_the_episode_progress_bar() {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Vertical);
+        let scene = narrated("#pergunta Agente ou skill?", "Agente ou skill?");
+        let composed = Composed {
+            canvas,
+            scenes: vec![compose_scene(&typesetter, &canvas, &scene, 0, 1)],
+        };
+        let svg = frame_svg(&composed, 0.0, "Inter");
+        assert!(svg.contains("id='fc-progress'"), "{svg}");
+        assert!(svg.contains("id='fc-bg'"), "{svg}");
     }
 
     #[test]

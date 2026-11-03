@@ -22,15 +22,17 @@
 //! | `#anotacao pasta/arquivo: nota; …` | annotation |
 //! | `#infografico TITULO \| rotulo=valor: detalhe; …` | infographic |
 //! | `#causa A => B => C` / `#lista A; B; C` | cause_effect |
+//! | `#passos A; B; C` | steps |
 //!
 //! Every label may carry an icon (`[agent]`) and a role (`{primary}`) suffix.
 use crate::domain::{Scene, Script};
 use crate::error::{FramechesterError, Result};
 use crate::narration::segment_narration;
+use crate::presets;
 use crate::storyboard::{
-    narration_words, Animation, CaptionPlan, Character, Composition, Cue, Easing, Icon, Motion,
-    Pose, Relation, RelationKind, Role, Storyboard, StoryboardScene, Transition,
-    ValidationCriteria, VideoFormat, VisualObject, SCHEMA_VERSION,
+    narration_words, Animation, CaptionPlan, Character, Composition, Cue, Icon, Motion, Pose,
+    Relation, RelationKind, Role, Storyboard, StoryboardScene, Transition, ValidationCriteria,
+    VideoFormat, VisualObject, SCHEMA_VERSION,
 };
 
 const MAX_FIELD: usize = 160;
@@ -694,6 +696,19 @@ pub fn parse_composition(scene: &Scene) -> Result<Composition> {
                 persona,
             }
         }
+        "passos" => {
+            let items: Vec<&str> = args.split(';').map(str::trim).filter(|s| !s.is_empty()).collect();
+            if items.len() < 2 || items.len() > 6 {
+                return Err(invalid(id, "informe de 2 a 6 itens separados por ';'"));
+            }
+            let mut objects = items
+                .iter()
+                .enumerate()
+                .map(|(index, item)| parse_object(id, item, index))
+                .collect::<Result<Vec<_>>>()?;
+            unique_ids(&mut objects);
+            Composition::Steps { objects }
+        }
         "causa" | "lista" => {
             let separator = if name == "causa" { "=>" } else { ";" };
             let items: Vec<&str> = args.split(separator).map(str::trim).filter(|s| !s.is_empty()).collect();
@@ -711,7 +726,7 @@ pub fn parse_composition(scene: &Scene) -> Result<Composition> {
         other => {
             return Err(invalid(
                 id,
-                format!("'#{other}' nao existe; use pergunta, destaque, citacao, numero, fluxo, comparacao, linha-do-tempo, grafico, arquitetura, codigo, transformacao, anotacao, infografico, causa, lista ou personagem"),
+                format!("'#{other}' nao existe; use pergunta, destaque, citacao, numero, fluxo, comparacao, linha-do-tempo, grafico, arquitetura, codigo, transformacao, anotacao, infografico, causa, lista, passos ou personagem"),
             ))
         }
     };
@@ -834,7 +849,8 @@ pub fn plan_animations(composition: &Composition, narration: &str) -> Vec<Animat
         | Composition::Architecture { objects, .. }
         | Composition::Annotation { objects, .. }
         | Composition::Infographic { objects, .. }
-        | Composition::CauseEffect { objects } => objects
+        | Composition::CauseEffect { objects }
+        | Composition::Steps { objects } => objects
             .iter()
             .map(|object| (object.id.clone(), object.label.clone()))
             .collect(),
@@ -853,6 +869,7 @@ pub fn plan_animations(composition: &Composition, narration: &str) -> Vec<Animat
         Composition::FlowDiagram { .. }
             | Composition::Timeline { .. }
             | Composition::CauseEffect { .. }
+            | Composition::Steps { .. }
             | Composition::Annotation { .. }
             | Composition::Architecture { .. }
     );
@@ -871,7 +888,9 @@ pub fn plan_animations(composition: &Composition, narration: &str) -> Vec<Animat
         let motion = match composition {
             Composition::Chart { .. } => Motion::Grow,
             Composition::Code { .. } => Motion::Type,
-            Composition::FlowDiagram { .. } | Composition::Architecture { .. } => Motion::Pop,
+            Composition::FlowDiagram { .. }
+            | Composition::Architecture { .. }
+            | Composition::Steps { .. } => Motion::Pop,
             _ => Motion::Reveal,
         };
         let spread = Cue::Segment {
@@ -908,16 +927,13 @@ pub fn plan_animations(composition: &Composition, narration: &str) -> Vec<Animat
                 None => spread,
             }
         };
+        let entry = presets::preset_for(motion);
         animations.push(Animation {
             target: id.clone(),
             motion,
             at: at.clone(),
-            duration_secs: 0.55,
-            easing: if motion == Motion::Pop {
-                Easing::Back
-            } else {
-                Easing::EaseOut
-            },
+            duration_secs: entry.duration_secs,
+            easing: entry.easing,
             destination: None,
         });
         if matches!(at, Cue::Word { .. }) && !is_transformation {
@@ -925,8 +941,8 @@ pub fn plan_animations(composition: &Composition, narration: &str) -> Vec<Animat
                 target: id.clone(),
                 motion: Motion::Highlight,
                 at,
-                duration_secs: 1.2,
-                easing: Easing::EaseOut,
+                duration_secs: presets::HIGHLIGHT.duration_secs,
+                easing: presets::HIGHLIGHT.easing,
                 destination: None,
             });
         }
@@ -948,8 +964,8 @@ pub fn plan_animations(composition: &Composition, narration: &str) -> Vec<Animat
                     target: (*from).to_string(),
                     motion: Motion::MoveTo,
                     at: Cue::Fraction { fraction: 0.42 },
-                    duration_secs: 0.9,
-                    easing: Easing::EaseInOut,
+                    duration_secs: presets::MOVE_TO.duration_secs,
+                    easing: presets::MOVE_TO.easing,
                     destination: Some((*to).to_string()),
                 });
             }
@@ -959,8 +975,8 @@ pub fn plan_animations(composition: &Composition, narration: &str) -> Vec<Animat
         target: "*".into(),
         motion: Motion::Breathe,
         at: Cue::Start,
-        duration_secs: 4.0,
-        easing: Easing::EaseInOut,
+        duration_secs: presets::BREATHE.duration_secs,
+        easing: presets::BREATHE.easing,
         destination: None,
     });
     animations
@@ -982,7 +998,8 @@ fn plan_emphasis(composition: &Composition, narration: &str) -> Vec<String> {
         | Composition::Architecture { objects, .. }
         | Composition::Annotation { objects, .. }
         | Composition::Infographic { objects, .. }
-        | Composition::CauseEffect { objects } => {
+        | Composition::CauseEffect { objects }
+        | Composition::Steps { objects } => {
             objects.iter().map(|object| object.label.clone()).collect()
         }
         Composition::Transformation { before, after, .. } => before
@@ -1418,6 +1435,36 @@ mod tests {
         assert_eq!(objects[0].icon, Some(Icon::Folder));
         assert_eq!(objects[1].icon, Some(Icon::File));
         assert_eq!(objects[1].parent.as_deref(), Some(objects[0].id.as_str()));
+    }
+
+    #[test]
+    fn passos_directive_builds_a_numbered_checklist() {
+        let steps = parse_composition(&scene(
+            "#passos Confira a amostra; Leia o intervalo; Veja as condicoes",
+            "n",
+        ))
+        .unwrap();
+        let Composition::Steps { objects } = steps else {
+            panic!("expected steps, got {steps:?}")
+        };
+        assert_eq!(objects.len(), 3);
+        assert!(parse_composition(&scene("#passos So um", "n")).is_err());
+        let planned = plan_scene(
+            &scene(
+                "#passos Confira a amostra; Leia o intervalo; Veja as condicoes",
+                "Confira a amostra, leia o intervalo e veja as condicoes.",
+            ),
+            0,
+        )
+        .unwrap();
+        assert!(
+            planned
+                .animations
+                .iter()
+                .any(|animation| animation.motion == Motion::Pop),
+            "steps pop in: {:?}",
+            planned.animations
+        );
     }
 
     #[test]

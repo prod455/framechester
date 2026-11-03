@@ -189,6 +189,9 @@ test('OAuth uses PKCE, binds account and channel, and consumes state only once',
     redirectUri: 'http://127.0.0.1:4317/api/oauth/youtube/callback',
   });
   const url = new URL(result.authorizationUrl);
+  // Several channels/Brand Accounts on one Google account: the chooser must
+  // appear every time, or Google silently authorizes the default channel.
+  assert.equal(url.searchParams.get('prompt'), 'consent select_account');
   assert.equal(url.searchParams.get('code_challenge_method'), 'S256');
   assert.ok(url.searchParams.get('scope')?.includes(MONEY));
   assert.ok(!result.authorizationUrl.includes('fixture-client-secret'));

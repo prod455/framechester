@@ -49,6 +49,7 @@ For detailed alignment work, apply `precise-ui-alignment` when installed and mea
 ## Testing
 - Tests must be added with implementation (TDD) when slices start.
 
+Uploads from the Studio stay non-public (YouTube private, TikTok SELF_ONLY, Facebook Reel draft); the one exception, decided by the operator on 2026-10-31, is Instagram, whose API has no non-public mode: it publishes publicly only a QA-approved final version, by a confirmed click or the channel’s per-network opt-in.
 ---
 
 

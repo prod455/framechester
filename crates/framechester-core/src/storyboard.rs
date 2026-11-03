@@ -98,7 +98,7 @@ pub enum Cue {
     Fraction { fraction: f32 },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum Easing {
     Linear,
@@ -109,6 +109,37 @@ pub enum Easing {
     /// Overshoots slightly before settling; for pops and arrivals.
     Back,
     Spring,
+    /// CSS-style cubic Bezier with control points `(x1, y1)` and `(x2, y2)`;
+    /// the endpoints are fixed at `(0, 0)` and `(1, 1)`. Serializes as
+    /// `{"cubic_bezier":{"x1":…,"y1":…,"x2":…,"y2":…}}`, so the existing
+    /// string forms of the other variants are unchanged. `x1`/`x2` must stay
+    /// in `0..=1` (validated in [`StoryboardScene::validate`]) so the curve's
+    /// x is monotonic and the easing stays seekable; `y1`/`y2` may overshoot.
+    CubicBezier {
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+    },
+}
+
+impl Easing {
+    /// A cubic Bezier easing; see [`Easing::CubicBezier`].
+    pub const fn cubic_bezier(x1: f32, y1: f32, x2: f32, y2: f32) -> Self {
+        Self::CubicBezier { x1, y1, x2, y2 }
+    }
+
+    /// True when every control point is finite and `x1`/`x2` lie in `0..=1`.
+    pub fn is_valid(self) -> bool {
+        match self {
+            Self::CubicBezier { x1, y1, x2, y2 } => {
+                [x1, y1, x2, y2].iter().all(|v| v.is_finite())
+                    && (0.0..=1.0).contains(&x1)
+                    && (0.0..=1.0).contains(&x2)
+            }
+            _ => true,
+        }
+    }
 }
 
 /// What an animation does to its target.
@@ -344,6 +375,8 @@ pub enum Composition {
     },
     /// Cause and consequence chain.
     CauseEffect { objects: Vec<VisualObject> },
+    /// Numbered vertical checklist: steps ticked off in order.
+    Steps { objects: Vec<VisualObject> },
     /// A character who talks while the narration plays, next to a speech card.
     Character {
         character: Character,
@@ -369,11 +402,12 @@ impl Composition {
             Composition::Annotation { .. } => "annotation",
             Composition::Infographic { .. } => "infographic",
             Composition::CauseEffect { .. } => "cause_effect",
+            Composition::Steps { .. } => "steps",
             Composition::Character { .. } => "character",
         }
     }
 
-    pub const KINDS: [&'static str; 12] = [
+    pub const KINDS: [&'static str; 13] = [
         "title",
         "flow_diagram",
         "comparison",
@@ -385,6 +419,7 @@ impl Composition {
         "annotation",
         "infographic",
         "cause_effect",
+        "steps",
         "character",
     ];
 
@@ -400,7 +435,8 @@ impl Composition {
             | Composition::Architecture { objects, .. }
             | Composition::Annotation { objects, .. }
             | Composition::Infographic { objects, .. }
-            | Composition::CauseEffect { objects } => {
+            | Composition::CauseEffect { objects }
+            | Composition::Steps { objects } => {
                 objects.iter().map(|object| object.id.as_str()).collect()
             }
             Composition::Code { lines, .. } => (0..lines.len()).map(|_| "line").collect(),
@@ -410,6 +446,23 @@ impl Composition {
                 .map(|object| object.id.as_str())
                 .collect(),
         }
+    }
+
+    /// Named sub-compositions: group name → object ids belonging to it, in
+    /// composition order. An animation may target `group:<name>` to animate
+    /// every member as one unit; this is the reusable-sub-composition
+    /// mechanism, so no separate group object type is needed.
+    pub fn groups(&self) -> std::collections::BTreeMap<String, Vec<String>> {
+        let mut groups: std::collections::BTreeMap<String, Vec<String>> = Default::default();
+        for object in self.objects() {
+            if let Some(group) = &object.group {
+                groups
+                    .entry(group.clone())
+                    .or_default()
+                    .push(object.id.clone());
+            }
+        }
+        groups
     }
 
     fn objects(&self) -> Vec<&VisualObject> {
@@ -424,7 +477,8 @@ impl Composition {
             | Composition::Architecture { objects, .. }
             | Composition::Annotation { objects, .. }
             | Composition::Infographic { objects, .. }
-            | Composition::CauseEffect { objects } => objects.iter().collect(),
+            | Composition::CauseEffect { objects }
+            | Composition::Steps { objects } => objects.iter().collect(),
             Composition::Transformation { before, after, .. } => {
                 before.iter().chain(after.iter()).collect()
             }
@@ -542,6 +596,12 @@ pub enum Transition {
     Push,
     /// Elements of the previous scene shrink into a corner before the new scene appears.
     Zoom,
+    /// Fast horizontal whip: both scenes slide sideways while a simulated
+    /// motion blur (non-uniform stretch plus an opacity dip, see
+    /// `framechester-motion`) peaks mid-transition. A true SVG blur filter
+    /// is not used: it would be rasterized per frame by resvg at high cost
+    /// and its radius is not seekable from the transition progress alone.
+    WhipPan,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -641,8 +701,14 @@ impl StoryboardScene {
         let words = narration_words(&self.narration);
         self.validate_composition(&narration)?;
         let object_ids: HashSet<&str> = self.composition.object_ids().into_iter().collect();
+        let groups = self.composition.groups();
         for animation in &self.animations {
+            let is_group = animation
+                .target
+                .strip_prefix("group:")
+                .is_some_and(|name| groups.contains_key(name));
             if animation.target != "*"
+                && !is_group
                 && !object_ids.contains(animation.target.as_str())
                 && !(animation.target.starts_with("line:")
                     && matches!(self.composition, Composition::Code { .. }))
@@ -660,6 +726,12 @@ impl StoryboardScene {
                 || animation.duration_secs > 10.0
             {
                 return Err(invalid(id, "duracao de animacao deve ficar entre 0 e 10 s"));
+            }
+            if !animation.easing.is_valid() {
+                return Err(invalid(
+                    id,
+                    "cubic_bezier exige pontos finitos e x1/x2 entre 0 e 1",
+                ));
             }
             if animation.motion == Motion::MoveTo {
                 match &animation.destination {
@@ -897,6 +969,11 @@ impl StoryboardScene {
                     ));
                 }
             }
+            Composition::Steps { objects } => {
+                if objects.len() < 2 || objects.len() > 6 {
+                    return Err(invalid(id, "passos exigem 2 a 6 itens"));
+                }
+            }
             Composition::Chart {
                 objects, max_value, ..
             } => {
@@ -1109,6 +1186,51 @@ mod tests {
         let text = serde_json::to_string_pretty(&board).unwrap();
         let back: Storyboard = serde_json::from_str(&text).unwrap();
         assert_eq!(back, board);
+    }
+
+    #[test]
+    fn cubic_bezier_easing_round_trips_and_validates() {
+        let mut board = storyboard();
+        board.scenes[0].animations[0].easing = Easing::cubic_bezier(0.25, 0.1, 0.25, 1.0);
+        board.validate().unwrap();
+        let text = serde_json::to_string(&board).unwrap();
+        assert!(text.contains("cubic_bezier"), "{text}");
+        let back: Storyboard = serde_json::from_str(&text).unwrap();
+        assert_eq!(back, board);
+        // The pre-existing string forms still deserialize unchanged.
+        let old: Easing = serde_json::from_str("\"ease_out\"").unwrap();
+        assert_eq!(old, Easing::EaseOut);
+        // x outside 0..=1 (or non-finite) is rejected by validation.
+        board.scenes[0].animations[0].easing = Easing::cubic_bezier(1.5, 0.0, 0.5, 1.0);
+        assert!(board.validate().is_err());
+        board.scenes[0].animations[0].easing = Easing::cubic_bezier(f32::NAN, 0.0, 0.5, 1.0);
+        assert!(board.validate().is_err());
+    }
+
+    #[test]
+    fn group_target_and_whip_pan_round_trip_and_validate() {
+        let mut board = storyboard();
+        // Both flow objects form one named sub-composition.
+        if let Composition::FlowDiagram { objects, .. } = &mut board.scenes[0].composition {
+            for object in objects.iter_mut() {
+                object.group = Some("loop".into());
+            }
+        }
+        assert_eq!(
+            board.scenes[0].composition.groups()["loop"],
+            vec!["decide".to_string(), "age".to_string()]
+        );
+        board.scenes[0].animations[0].target = "group:loop".into();
+        board.scenes[0].transition = Transition::WhipPan;
+        board.validate().unwrap();
+        let text = serde_json::to_string(&board).unwrap();
+        assert!(text.contains("\"whip_pan\""), "{text}");
+        assert!(text.contains("group:loop"), "{text}");
+        let back: Storyboard = serde_json::from_str(&text).unwrap();
+        assert_eq!(back, board);
+        // An unknown group is rejected like an unknown object.
+        board.scenes[0].animations[0].target = "group:ghost".into();
+        assert!(board.validate().is_err());
     }
 
     #[test]

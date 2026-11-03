@@ -46,6 +46,7 @@ Storyboard
 | `annotation` | árvore (pastas, arquivos) com notas | `objects` com `parent`, `notes` |
 | `infographic` | cartões de dados | `title`, `objects` |
 | `cause_effect` | causa → consequência, passos | `objects` |
+| `steps` | checklist vertical numerada (espinha + cartões) | `objects` (2–6) |
 | `character` | personagem que fala ao lado de um balão | `character` (`presenter`, `developer`, `scientist`, `robot`), `pose` (`explain`, `point`, `think`, `celebrate`), `text` (≤ 140), `persona` opcional (personagem descrito: `name`, `skin`, `hair`, `hair_colour`, `beard`, `beard_colour`, `outfit`, `colour`, `number`, `prop`, `glasses`, `laurel`) |
 
 Cada objeto tem `id`, `label` (≤ 60 caracteres), `detail` (≤ 120), `role`
@@ -97,6 +98,7 @@ O autor do roteiro (pessoa ou modelo) escreve uma diretiva na primeira linha de
 | `#anotacao pasta/arquivo: nota; …` | `annotation` |
 | `#infografico TÍTULO \| rótulo=valor: detalhe; …` | `infographic` |
 | `#causa A => B => C` · `#lista A; B; C` | `cause_effect` |
+| `#passos A; B; C` | `steps` |
 | `#personagem PERSONAGEM \| POSE \| FALA` (fala opcional; padrão: título da cena) | `character` |
 
 Qualquer rótulo aceita um ícone `[agent]` e um papel `{primary}`. A linha seguinte do

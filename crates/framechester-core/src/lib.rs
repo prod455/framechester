@@ -11,6 +11,7 @@ pub mod persona;
 pub mod pipeline;
 pub mod planner;
 pub mod ports;
+pub mod presets;
 pub mod qa;
 pub mod security;
 pub mod shorts;

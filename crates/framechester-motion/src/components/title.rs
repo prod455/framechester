@@ -18,18 +18,43 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, text: &str, kicker: Option<&str>) ->
         top += scale.small * 2.2;
     }
     let text_area = Rect::new(area.x, top, area.w, area.bottom() - top - scale.body * 2.0);
-    let (text_nodes, bottom) = ctx.fitted(
-        "title",
+    // Kinetic typography: the fitted layout (size, line breaks, top) is
+    // exactly the one `Ctx::fitted` would produce, but the text is emitted
+    // as one node per word so `compose` can reveal word by word. Word boxes
+    // stay inside the fitted line boxes, so overflow QA is unchanged.
+    let family = tokens::FONT_SANS;
+    let (size, lines) = match ctx.ts.fit(
         text,
-        text_area,
         scale.title,
         scale.body,
+        text_area.w,
+        text_area.h,
         tokens::WEIGHT_BOLD,
+        family,
+    ) {
+        Some(found) => found,
+        None => {
+            ctx.overflow("title", text);
+            (
+                scale.body,
+                ctx.ts
+                    .wrap(text, scale.body, tokens::WEIGHT_BOLD, family, text_area.w),
+            )
+        }
+    };
+    let height = crate::text::Typesetter::block_height(size, lines.len());
+    let bottom = text_area.y + height;
+    nodes.extend(ctx.ts.word_block(
+        "title",
+        &lines,
+        text_area.x,
+        text_area.y,
+        size,
+        tokens::WEIGHT_BOLD,
+        family,
         tokens::INK,
         Anchor::Start,
-        0.0,
-    );
-    nodes.extend(text_nodes);
+    ));
     let rule_y = bottom + scale.body * 0.8;
     let rule_width = (area.w * 0.28).max(120.0);
     nodes.push(

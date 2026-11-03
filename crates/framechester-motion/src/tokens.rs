@@ -4,6 +4,12 @@
 use framechester_core::storyboard::Role;
 
 pub const BACKGROUND: &str = "#0B0F17";
+/// Top of the vertical background gradient (slightly lifted so frames have depth).
+pub const BACKGROUND_TOP: &str = "#131B2A";
+/// Bottom of the vertical background gradient (deeper than the flat base).
+pub const BACKGROUND_BOTTOM: &str = "#070A10";
+/// Opacity of the soft accent glow behind the upper third of the frame.
+pub const BACKGROUND_GLOW_OPACITY: f32 = 0.16;
 pub const BACKGROUND_RAISED: &str = "#121926";
 pub const SURFACE: &str = "#182130";
 pub const SURFACE_STRONG: &str = "#223044";
@@ -90,10 +96,12 @@ pub const WEIGHT_BOLD: u16 = 700;
 pub const LINE_HEIGHT: f32 = 1.22;
 
 /// Typical durations in seconds; the storyboard may override per animation.
+/// Named combinations of duration/easing/stagger live in
+/// `framechester_core::presets` (planner and engine share them).
 pub const DURATION_FAST: f32 = 0.28;
-pub const DURATION_BASE: f32 = 0.55;
+pub const DURATION_BASE: f32 = framechester_core::presets::REVEAL.duration_secs;
 pub const DURATION_SLOW: f32 = 0.9;
 /// Stagger between siblings that enter at the same cue.
-pub const STAGGER: f32 = 0.16;
+pub const STAGGER: f32 = framechester_core::presets::REVEAL.stagger_secs;
 /// Slide distance of a reveal, in pixels at 1080 width.
 pub const REVEAL_OFFSET: f32 = 28.0;

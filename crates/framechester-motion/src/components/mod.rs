@@ -10,6 +10,7 @@ pub mod code;
 pub mod comparison;
 pub mod flow;
 pub mod infographic;
+pub mod steps;
 pub mod timeline;
 pub mod title;
 pub mod transformation;

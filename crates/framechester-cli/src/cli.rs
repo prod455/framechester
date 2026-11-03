@@ -218,6 +218,11 @@ pub(crate) struct ProduceArgs {
         help = "id local cadastrado em [[channels]]; obrigatorio quando ha canais"
     )]
     pub(crate) channel: Option<String>,
+    #[arg(
+        long,
+        help = "slug do episodio; grava em channels/<canal>/episodes/<slug> sem sobrescrever outros episodios"
+    )]
+    pub(crate) episode: Option<String>,
     #[arg(long)]
     pub(crate) workdir: Option<PathBuf>,
     #[arg(long, help = "destino do storyboard em `plan`")]

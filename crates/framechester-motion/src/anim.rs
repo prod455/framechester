@@ -28,7 +28,71 @@ pub fn ease(easing: Easing, t: f32) -> f32 {
                 2.0f32.powf(-10.0 * t) * ((t * 10.0 - 0.75) * c4).sin() + 1.0
             }
         }
+        Easing::CubicBezier { x1, y1, x2, y2 } => cubic_bezier(x1, y1, x2, y2, t),
     }
+}
+
+/// One coordinate of the cubic Bezier with endpoints 0 and 1 at parameter `s`.
+fn bezier_axis(p1: f32, p2: f32, s: f32) -> f32 {
+    let u = 1.0 - s;
+    3.0 * u * u * s * p1 + 3.0 * u * s * s * p2 + s * s * s
+}
+
+fn bezier_axis_derivative(p1: f32, p2: f32, s: f32) -> f32 {
+    let u = 1.0 - s;
+    3.0 * u * u * p1 + 6.0 * u * s * (p2 - p1) + 3.0 * s * s * (1.0 - p2)
+}
+
+/// Evaluates `cubic-bezier(x1, y1, x2, y2)` at progress `t`: solves `x(s) = t`
+/// for `s`, then returns `y(s)`. Pure and seekable — no clock, no state. The
+/// solve is deterministic: Newton steps from `s = t`, falling back to a fixed
+/// 32-step bisection whenever a step leaves `0..=1` or the slope vanishes
+/// (with `x1`/`x2` clamped into `0..=1`, `x` is monotonic, so bisection
+/// always converges). Endpoints are exact.
+pub fn cubic_bezier(x1: f32, y1: f32, x2: f32, y2: f32, t: f32) -> f32 {
+    if t <= 0.0 {
+        return 0.0;
+    }
+    if t >= 1.0 {
+        return 1.0;
+    }
+    let x1 = x1.clamp(0.0, 1.0);
+    let x2 = x2.clamp(0.0, 1.0);
+    let mut s = t;
+    let mut solved = false;
+    for _ in 0..8 {
+        let error = bezier_axis(x1, x2, s) - t;
+        if error.abs() < 1e-6 {
+            solved = true;
+            break;
+        }
+        let slope = bezier_axis_derivative(x1, x2, s);
+        if slope.abs() < 1e-6 {
+            break;
+        }
+        let next = s - error / slope;
+        if !(0.0..=1.0).contains(&next) {
+            break;
+        }
+        s = next;
+    }
+    if !solved {
+        let (mut low, mut high) = (0.0f32, 1.0f32);
+        s = t;
+        for _ in 0..32 {
+            let x = bezier_axis(x1, x2, s);
+            if (x - t).abs() < 1e-6 {
+                break;
+            }
+            if x < t {
+                low = s;
+            } else {
+                high = s;
+            }
+            s = (low + high) / 2.0;
+        }
+    }
+    bezier_axis(y1, y2, s)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -133,6 +197,42 @@ mod tests {
             assert!((ease(easing, 1.0) - 1.0).abs() < 1e-5, "{easing:?}");
         }
         assert!(ease(Easing::Back, 0.7) > 1.0, "back overshoots");
+    }
+
+    #[test]
+    fn cubic_bezier_hits_endpoints_and_known_curves() {
+        let identity = Easing::cubic_bezier(0.0, 0.0, 1.0, 1.0);
+        for t in [0.0, 0.25, 0.5, 0.75, 1.0] {
+            assert!((ease(identity, t) - t).abs() < 1e-4, "t={t}");
+        }
+        // CSS `ease` (0.25, 0.1, 0.25, 1) passes through ~0.8024 at t=0.5.
+        let css_ease = Easing::cubic_bezier(0.25, 0.1, 0.25, 1.0);
+        assert_eq!(ease(css_ease, 0.0), 0.0);
+        assert_eq!(ease(css_ease, 1.0), 1.0);
+        assert!((ease(css_ease, 0.5) - 0.8024).abs() < 1e-3);
+        // Extreme control points still hit the endpoints exactly.
+        let extreme = Easing::cubic_bezier(0.0, 2.0, 1.0, -1.0);
+        assert_eq!(ease(extreme, 0.0), 0.0);
+        assert_eq!(ease(extreme, 1.0), 1.0);
+        assert!(ease(extreme, 0.3).is_finite());
+    }
+
+    #[test]
+    fn cubic_bezier_is_monotonic_and_seekable() {
+        // y within 0..=1 with x in 0..=1 gives a monotonic easing.
+        let easing = Easing::cubic_bezier(0.42, 0.0, 0.58, 1.0);
+        let mut previous = ease(easing, 0.0);
+        for step in 1..=20 {
+            let value = ease(easing, step as f32 / 20.0);
+            assert!(value >= previous - 1e-5, "step {step}");
+            previous = value;
+        }
+        // Seekable: evaluating the same instant twice is bit-identical.
+        assert_eq!(ease(easing, 0.37), ease(easing, 0.37));
+        // A track using it interpolates through the eased midpoint.
+        let mut track = Track::constant(0.0);
+        track.to(1.0, 1.0, 10.0, easing);
+        assert!((track.eval(1.5) - 5.0).abs() < 1e-3);
     }
 
     #[test]

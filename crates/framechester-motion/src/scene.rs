@@ -62,6 +62,8 @@ pub struct Props {
     /// Non-uniform scale, for bars growing from one edge.
     pub sx: Track,
     pub sy: Track,
+    /// Rotation in degrees, clockwise (SVG convention), around `Node::origin`.
+    pub rotate: Track,
     /// Stroke draw progress for paths and count progress for counters; ignored elsewhere.
     pub draw: Track,
     /// Glow ring intensity 0..1 (highlight).
@@ -79,6 +81,7 @@ impl Default for Props {
             scale: Track::constant(1.0),
             sx: Track::constant(1.0),
             sy: Track::constant(1.0),
+            rotate: Track::constant(0.0),
             draw: Track::constant(1.0),
             glow: Track::constant(0.0),
             typed: Track::constant(f32::MAX),
@@ -167,7 +170,10 @@ impl Node {
         self.origin.1 += dy;
     }
 
-    /// Bounding box at time `t` including translation and scale.
+    /// Bounding box at time `t` including translation, scale and rotation.
+    /// Rotation is around `origin`, matching `svg_inner`'s transform
+    /// (`translate(origin) rotate scale translate(-origin)`), so the box is
+    /// the axis-aligned hull of the four rotated corners.
     pub fn bbox_at(&self, t: f32) -> Rect {
         let base = self.bbox();
         let scale = self.props.scale.eval(t);
@@ -176,12 +182,35 @@ impl Node {
         let dx = self.props.dx.eval(t);
         let dy = self.props.dy.eval(t);
         let (ox, oy) = self.origin;
-        Rect::new(
-            ox + (base.x - ox) * sx + dx,
-            oy + (base.y - oy) * sy + dy,
-            base.w * sx,
-            base.h * sy,
-        )
+        let degrees = self.props.rotate.eval(t);
+        if degrees.abs() < 1e-4 {
+            return Rect::new(
+                ox + (base.x - ox) * sx + dx,
+                oy + (base.y - oy) * sy + dy,
+                base.w * sx.abs(),
+                base.h * sy.abs(),
+            );
+        }
+        let radians = degrees.to_radians();
+        let (sin, cos) = radians.sin_cos();
+        let corners = [
+            (base.x, base.y),
+            (base.right(), base.y),
+            (base.x, base.bottom()),
+            (base.right(), base.bottom()),
+        ];
+        let (mut min_x, mut min_y) = (f32::MAX, f32::MAX);
+        let (mut max_x, mut max_y) = (f32::MIN, f32::MIN);
+        for (x, y) in corners {
+            let (lx, ly) = ((x - ox) * sx, (y - oy) * sy);
+            let rx = ox + lx * cos - ly * sin + dx;
+            let ry = oy + lx * sin + ly * cos + dy;
+            min_x = min_x.min(rx);
+            min_y = min_y.min(ry);
+            max_x = max_x.max(rx);
+            max_y = max_y.max(ry);
+        }
+        Rect::new(min_x, min_y, max_x - min_x, max_y - min_y)
     }
 
     pub fn is_text(&self) -> bool {
@@ -253,6 +282,10 @@ impl Camera {
 #[derive(Debug, Clone, Default)]
 pub struct Graph {
     pub nodes: Vec<Node>,
+    /// Named sub-compositions: group name → member object ids. Animating
+    /// `group:<name>` animates every member as one unit (see `compose`);
+    /// a group is a reusable bundle of objects, not a new node type.
+    pub groups: std::collections::BTreeMap<String, Vec<String>>,
     pub background: Option<String>,
     /// Gentle vertical float (amplitude px, period s) so a still composition never
     /// freezes between animation events. Captions are excluded (`z >= 1000`).
@@ -282,6 +315,31 @@ impl Graph {
 
     pub fn has_object(&self, object: &str) -> bool {
         self.nodes.iter().any(|node| node.object == object)
+    }
+
+    /// Registers (or replaces) a named sub-composition over existing objects.
+    pub fn define_group(
+        &mut self,
+        name: &str,
+        objects: impl IntoIterator<Item = impl Into<String>>,
+    ) {
+        self.groups.insert(
+            name.to_string(),
+            objects.into_iter().map(Into::into).collect(),
+        );
+    }
+
+    /// Member object ids of a group, when registered.
+    pub fn group_members(&self, name: &str) -> Option<&Vec<String>> {
+        self.groups.get(name)
+    }
+
+    /// True when `object` belongs to the group named by a `group:<name>` target.
+    pub fn in_group(&self, target: &str, object: &str) -> bool {
+        target
+            .strip_prefix("group:")
+            .and_then(|name| self.groups.get(name))
+            .is_some_and(|members| members.iter().any(|member| member == object))
     }
 
     /// Object ids in first-appearance order.
@@ -334,6 +392,7 @@ impl Graph {
                     &props.scale,
                     &props.sx,
                     &props.sy,
+                    &props.rotate,
                     &props.draw,
                     &props.glow,
                     &props.typed,
@@ -348,12 +407,28 @@ impl Graph {
         times
     }
 
+    /// Layered frame background: vertical gradient, a soft accent glow in the
+    /// upper third and a vignette that darkens the edges. Decorative only; it is
+    /// never a readable node, so layout QA is unaffected. `base` overrides the
+    /// gradient mid-tone (per-graph background colour).
+    pub fn background_svg(width: u32, height: u32, base: Option<&str>) -> String {
+        let base = base.unwrap_or(tokens::BACKGROUND);
+        format!(
+            "<defs><linearGradient id='fc-bg' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='{}'/><stop offset='0.55' stop-color='{base}'/><stop offset='1' stop-color='{}'/></linearGradient><radialGradient id='fc-glow' cx='0.5' cy='0.22' r='0.75'><stop offset='0' stop-color='{}' stop-opacity='{}'/><stop offset='1' stop-color='{}' stop-opacity='0'/></radialGradient><radialGradient id='fc-vig' cx='0.5' cy='0.5' r='0.85'><stop offset='0.62' stop-color='#000000' stop-opacity='0'/><stop offset='1' stop-color='#000000' stop-opacity='0.38'/></radialGradient></defs><rect width='{width}' height='{height}' fill='url(#fc-bg)'/><rect width='{width}' height='{height}' fill='url(#fc-glow)'/><rect width='{width}' height='{height}' fill='url(#fc-vig)'/>",
+            tokens::BACKGROUND_TOP,
+            tokens::BACKGROUND_BOTTOM,
+            tokens::ACCENT,
+            tokens::BACKGROUND_GLOW_OPACITY,
+            tokens::ACCENT,
+        )
+    }
+
     /// The SVG document for instant `t`.
     pub fn svg(&self, t: f32, width: u32, height: u32, font_family: &str) -> String {
         let mut svg = String::with_capacity(16 * 1024);
         svg.push_str(&format!(
-            "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'><rect width='100%' height='100%' fill='{}'/><g font-family='{}'>",
-            self.background.as_deref().unwrap_or(tokens::BACKGROUND),
+            "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>{}<g font-family='{}'>",
+            Self::background_svg(width, height, self.background.as_deref()),
             xml(font_family)
         ));
         self.svg_inner(&mut svg, t, 0.0, 0.0, 1.0, 1.0);
@@ -361,9 +436,50 @@ impl Graph {
         svg
     }
 
+    /// Camera travel factor of one parallax band: background layers (`z < 0`)
+    /// travel less than the focal plane (`z == 0`), foreground (`z > 0`, below
+    /// captions) travels more. Captions (`z >= Z_CAPTIONS`) never join the camera.
+    fn parallax_factor(z: i32) -> f32 {
+        if z < 0 {
+            0.55
+        } else if z > 0 {
+            1.3
+        } else {
+            1.0
+        }
+    }
+
+    fn parallax_band(z: i32) -> i32 {
+        if z < 0 {
+            -1
+        } else if z > 0 {
+            1
+        } else {
+            0
+        }
+    }
+
     /// Appends the scene content for instant `t`, shifted by (`dx`, `dy`), scaled by
     /// `scale` around the canvas centre and multiplied by `opacity`. Used for transitions.
     pub fn svg_inner(&self, svg: &mut String, t: f32, dx: f32, dy: f32, scale: f32, opacity: f32) {
+        self.svg_inner_ex(svg, t, dx, dy, scale, scale, opacity);
+    }
+
+    /// Like [`Self::svg_inner`] but with non-uniform outer scale (`sx`, `sy`):
+    /// the whip-pan transition stretches the frame horizontally mid-whip to
+    /// simulate motion blur. Limit: this is a geometric stretch plus an
+    /// opacity dip, not a true blur — resvg has no cheap seekable blur here.
+    #[allow(clippy::too_many_arguments)]
+    pub fn svg_inner_ex(
+        &self,
+        svg: &mut String,
+        t: f32,
+        dx: f32,
+        dy: f32,
+        sx: f32,
+        sy: f32,
+        opacity: f32,
+    ) {
         let mut order: Vec<&Node> = self.nodes.iter().collect();
         order.sort_by_key(|node| node.z);
         let breathe_dy = self
@@ -372,32 +488,55 @@ impl Graph {
                 amplitude * (2.0 * std::f32::consts::PI * t / period.max(0.5)).sin()
             })
             .unwrap_or(0.0);
-        let outer =
-            dx.abs() > 1e-3 || dy.abs() > 1e-3 || (scale - 1.0).abs() > 1e-3 || opacity < 0.999;
+        let outer = dx.abs() > 1e-3
+            || dy.abs() > 1e-3
+            || (sx - 1.0).abs() > 1e-3
+            || (sy - 1.0).abs() > 1e-3
+            || opacity < 0.999;
         if outer {
             svg.push_str(&format!(
-                "<g transform='translate({dx:.2} {dy:.2}) scale({scale:.4})' opacity='{}'>",
+                "<g transform='translate({dx:.2} {dy:.2}) scale({sx:.4} {sy:.4})' opacity='{}'>",
                 fmt(opacity)
             ));
         }
-        let camera = self.camera.map(|(camera, duration, (width, height))| {
-            let (cx, cy, cs) = camera.at(t / duration.max(0.1), width, height);
-            // Four decimals: a slow zoom in 0.01 steps would visibly jump ~10 px at a time.
-            format!("<g transform='translate({cx:.2} {cy:.2}) scale({cs:.4})'>")
+        // Camera with parallax bands: background (z < 0) travels 0.55x, the
+        // focal plane (z == 0) 1x, foreground (0 < z < captions) 1.3x.
+        // Captions never join the camera. Nodes are z-sorted, so bands are
+        // contiguous and each band opens/closes one <g>.
+        let camera_base = self.camera.map(|(camera, duration, (width, height))| {
+            (
+                camera.at(t / duration.max(0.1), width, height),
+                width,
+                height,
+            )
         });
-        let mut in_camera = false;
+        let band_open = |svg: &mut String, band: i32| {
+            if let Some(((cx, cy, cs), width, height)) = camera_base {
+                let f = Self::parallax_factor(band);
+                let s = 1.0 + (cs - 1.0) * f;
+                let bx = width * (1.0 - s) / 2.0 + (cx - width * (1.0 - cs) / 2.0) * f;
+                let by = height * (1.0 - s) / 2.0 + (cy - height * (1.0 - cs) / 2.0) * f;
+                // Four decimals: a slow zoom in 0.01 steps would visibly jump.
+                svg.push_str(&format!(
+                    "<g transform='translate({bx:.2} {by:.2}) scale({s:.4})'>"
+                ));
+            }
+        };
+        let mut open_band: Option<i32> = None;
         for node in order {
-            // Content moves with the camera; captions (drawn last) stay put.
-            match (&camera, node.z < Z_CAPTIONS, in_camera) {
-                (Some(open), true, false) => {
-                    svg.push_str(open);
-                    in_camera = true;
-                }
-                (_, false, true) => {
+            let wanted = if camera_base.is_some() && node.z < Z_CAPTIONS {
+                Some(Self::parallax_band(node.z))
+            } else {
+                None
+            };
+            if wanted != open_band {
+                if open_band.is_some() {
                     svg.push_str("</g>");
-                    in_camera = false;
                 }
-                _ => {}
+                if let Some(band) = wanted {
+                    band_open(svg, band);
+                }
+                open_band = wanted;
             }
             let node_opacity = node.props.opacity.eval(t);
             if node_opacity <= 0.002 {
@@ -414,17 +553,19 @@ impl Graph {
             let scale = node.props.scale.eval(t);
             let sx = scale * node.props.sx.eval(t);
             let sy = scale * node.props.sy.eval(t);
+            let rotate = node.props.rotate.eval(t);
             let glow = node.props.glow.eval(t);
             let (ox, oy) = node.origin;
             let mut transform = String::new();
             if ndx.abs() > 1e-3 || ndy.abs() > 1e-3 {
                 transform.push_str(&format!("translate({} {}) ", fmt(ndx), fmt(ndy)));
             }
-            if (sx - 1.0).abs() > 1e-3 || (sy - 1.0).abs() > 1e-3 {
+            if (sx - 1.0).abs() > 1e-3 || (sy - 1.0).abs() > 1e-3 || rotate.abs() > 1e-3 {
                 transform.push_str(&format!(
-                    "translate({} {}) scale({} {}) translate({} {})",
+                    "translate({} {}) rotate({}) scale({} {}) translate({} {})",
                     fmt(ox),
                     fmt(oy),
+                    fmt(rotate),
                     fmt(sx.max(0.0)),
                     fmt(sy.max(0.0)),
                     fmt(-ox),
@@ -439,13 +580,14 @@ impl Graph {
                 svg.push_str(&format!(" opacity='{}'", fmt(node_opacity)));
             }
             svg.push('>');
+            node.shadow_svg(svg);
             if glow > 0.01 {
                 node.glow_svg(svg, glow);
             }
             node.shape_svg(svg, t);
             svg.push_str("</g>");
         }
-        if in_camera {
+        if open_band.is_some() {
             svg.push_str("</g>");
         }
         if outer {
@@ -455,6 +597,35 @@ impl Graph {
 }
 
 impl Node {
+    /// Soft elevation under card-like rects: two offset black layers, cheaper
+    /// than an SVG blur filter at 30 fps and stable across rasterizers.
+    /// Captions and tiny chips are excluded; full-canvas backgrounds are not
+    /// nodes, so every rounded rect here is scene content.
+    fn shadow_svg(&self, svg: &mut String) {
+        if self.z >= Z_CAPTIONS {
+            return;
+        }
+        if let Shape::Rect { rect, rx, fill, .. } = &self.shape {
+            if *rx < 6.0 || rect.w < 80.0 || rect.h < 40.0 {
+                return;
+            }
+            if fill == tokens::CAPTION_BOX {
+                return;
+            }
+            for (dy, opacity) in [(16.0, 0.16), (8.0, 0.22)] {
+                svg.push_str(&format!(
+                    "<rect x='{}' y='{}' width='{}' height='{}' rx='{}' fill='#000000' opacity='{}'/>",
+                    fmt(rect.x),
+                    fmt(rect.y + dy),
+                    fmt(rect.w),
+                    fmt(rect.h),
+                    fmt(*rx),
+                    fmt(opacity)
+                ));
+            }
+        }
+    }
+
     fn glow_svg(&self, svg: &mut String, glow: f32) {
         let colour = &self.glow_colour;
         match &self.shape {
@@ -687,6 +858,11 @@ impl Props {
         self.sy.to(at, duration, 1.0, easing);
     }
 
+    /// Rotate from the current angle to `degrees` around the node's origin.
+    pub fn rotate_to(&mut self, at: f32, duration: f32, degrees: f32, easing: Easing) {
+        self.rotate.to(at, duration, degrees, easing);
+    }
+
     pub fn type_in(&mut self, at: f32, duration: f32, characters: usize) {
         self.typed.key(at.min(0.0), 0.0, Easing::Linear);
         self.typed
@@ -727,6 +903,77 @@ mod tests {
     }
 
     #[test]
+    fn parallax_moves_background_less_than_the_focal_plane() {
+        let shape = |z: i32| {
+            Node::new(
+                "n",
+                Shape::Circle {
+                    cx: 10.0,
+                    cy: 10.0,
+                    r: 5.0,
+                    fill: "#fff".into(),
+                    stroke: None,
+                },
+            )
+            .with_z(z)
+        };
+        let graph = Graph {
+            nodes: vec![shape(-1), shape(0), shape(Z_CAPTIONS)],
+            camera: Some((Camera::PushIn, 4.0, (100.0, 100.0))),
+            ..Graph::default()
+        };
+        let svg = graph.svg(4.0, 100, 100, "Inter");
+        // Focal plane keeps the full 1.025 zoom; background gets 55% of it.
+        assert!(svg.contains("scale(1.0250)"), "{svg}");
+        assert!(svg.contains("scale(1.013"), "{svg}");
+        // Three circles drawn; captions outside every camera group.
+        assert_eq!(svg.matches("<circle").count(), 3, "{svg}");
+    }
+
+    #[test]
+    fn frames_have_a_layered_background_instead_of_a_flat_fill() {
+        let graph = Graph::default();
+        let svg = graph.svg(0.0, 100, 100, "Inter");
+        assert!(svg.contains("id='fc-bg'"), "{svg}");
+        assert!(svg.contains("id='fc-glow'"), "{svg}");
+        assert!(svg.contains("id='fc-vig'"), "{svg}");
+        assert!(svg.contains("fill='url(#fc-bg)'"), "{svg}");
+    }
+
+    #[test]
+    fn cards_get_elevation_but_captions_do_not() {
+        let card = Node::new(
+            "card",
+            Shape::Rect {
+                rect: Rect::new(10.0, 10.0, 200.0, 100.0),
+                rx: 12.0,
+                fill: tokens::SURFACE.into(),
+                stroke: None,
+            },
+        );
+        let mut with_card = Graph::default();
+        with_card.push(card);
+        let svg = with_card.svg(0.0, 300, 200, "Inter");
+        assert_eq!(svg.matches("fill='#000000' opacity=").count(), 2, "{svg}");
+
+        let mut caption = Node::new(
+            "cap",
+            Shape::Rect {
+                rect: Rect::new(10.0, 10.0, 200.0, 100.0),
+                rx: 12.0,
+                fill: tokens::CAPTION_BOX.into(),
+                stroke: None,
+            },
+        )
+        .with_z(Z_CAPTIONS);
+        caption.props = Props::default();
+        let mut with_caption = Graph::default();
+        with_caption.push(caption);
+        let svg = with_caption.svg(0.0, 300, 200, "Inter");
+        assert!(!svg.contains("opacity='0.22'"), "{svg}");
+    }
+
+    #[test]
     fn svg_skips_invisible_nodes_and_escapes_text() {
         let mut graph = Graph::default();
         let mut node = Node::new(
@@ -750,6 +997,34 @@ mod tests {
         assert!(!before.contains("<text"));
         let after = graph.svg(2.0, 100, 100, "Inter");
         assert!(after.contains("A &lt; B &amp; C"));
+        assert_eq!(graph.change_times(), vec![1.0]);
+    }
+
+    #[test]
+    fn rotation_swaps_bbox_axes_at_ninety_degrees() {
+        let mut node = Node::new(
+            "r",
+            Shape::Rect {
+                rect: Rect::new(0.0, 0.0, 100.0, 50.0),
+                rx: 0.0,
+                fill: "#fff".into(),
+                stroke: None,
+            },
+        );
+        // Origin is the rect centre (50, 25): a 90 degree turn swaps w/h there.
+        node.props.rotate = Track::constant(90.0);
+        let bbox = node.bbox_at(0.0);
+        assert!((bbox.x - 25.0).abs() < 1e-3, "{bbox:?}");
+        assert!((bbox.y - -25.0).abs() < 1e-3, "{bbox:?}");
+        assert!((bbox.w - 50.0).abs() < 1e-3, "{bbox:?}");
+        assert!((bbox.h - 100.0).abs() < 1e-3, "{bbox:?}");
+        // No rotation keeps the old box, and rotation is visible in the SVG.
+        node.props.rotate = Track::constant(0.0);
+        assert_eq!(node.bbox_at(0.0), Rect::new(0.0, 0.0, 100.0, 50.0));
+        node.props.rotate_to(1.0, 1.0, 45.0, Easing::Linear);
+        let mut graph = Graph::default();
+        graph.push(node);
+        assert!(graph.svg(2.0, 200, 200, "Inter").contains("rotate(45)"));
         assert_eq!(graph.change_times(), vec![1.0]);
     }
 

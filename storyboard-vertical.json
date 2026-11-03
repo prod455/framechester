@@ -1,0 +1,951 @@
+{
+  "version": 1,
+  "title": "Skills vs. Agentes de IA: a diferença na prática",
+  "channel": "framechester",
+  "format": "vertical",
+  "language": "pt-BR",
+  "scenes": [
+    {
+      "id": 0,
+      "concept": "Agente ou skill?",
+      "learning_goal": "Abrir o loop: o espectador precisa querer a resposta.",
+      "narration": "Agente de IA e skill não são a mesma coisa. Qual é a diferença na prática?",
+      "segments": [],
+      "duration_secs": 0.0,
+      "start_secs": 0.0,
+      "composition": {
+        "kind": "title",
+        "text": "Agente ou skill: qual é a diferença na prática?",
+        "kicker": "Pergunta"
+      },
+      "animations": [
+        {
+          "target": "title",
+          "motion": "reveal",
+          "at": "start",
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "*",
+          "motion": "breathe",
+          "at": "start",
+          "duration_secs": 4.0,
+          "easing": "ease_in_out"
+        }
+      ],
+      "captions": {
+        "emphasis": [],
+        "hidden": false
+      },
+      "resources": [],
+      "validation": {
+        "spoken_terms": [],
+        "min_visual_changes": 2,
+        "max_still_secs": 5.0,
+        "readable_without_audio": true
+      },
+      "transition": "cut"
+    },
+    {
+      "id": 1,
+      "concept": "O agente decide em um loop",
+      "learning_goal": "Mostrar que a decisão é do agente: cada etapa acende quando é dita.",
+      "narration": "Um agente é um loop. Ele recebe um objetivo, decide o próximo passo, age com uma ferramenta e observa o resultado. Depois repete, até concluir a tarefa.",
+      "segments": [],
+      "duration_secs": 0.0,
+      "start_secs": 0.0,
+      "composition": {
+        "kind": "flow_diagram",
+        "objects": [
+          {
+            "id": "objetivo",
+            "label": "Objetivo",
+            "role": "neutral",
+            "icon": "user"
+          },
+          {
+            "id": "decidir",
+            "label": "Decidir",
+            "role": "primary",
+            "icon": "brain"
+          },
+          {
+            "id": "agir",
+            "label": "Agir",
+            "role": "neutral",
+            "icon": "tool"
+          },
+          {
+            "id": "observar",
+            "label": "Observar",
+            "role": "neutral",
+            "icon": "search"
+          }
+        ],
+        "relations": [
+          {
+            "from": "objetivo",
+            "to": "decidir",
+            "kind": "flow"
+          },
+          {
+            "from": "decidir",
+            "to": "agir",
+            "kind": "flow"
+          },
+          {
+            "from": "agir",
+            "to": "observar",
+            "kind": "flow"
+          }
+        ],
+        "looped": true
+      },
+      "animations": [
+        {
+          "target": "objetivo",
+          "motion": "pop",
+          "at": "start",
+          "duration_secs": 0.55,
+          "easing": "back"
+        },
+        {
+          "target": "decidir",
+          "motion": "pop",
+          "at": {
+            "word": {
+              "word": "decide",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "back"
+        },
+        {
+          "target": "decidir",
+          "motion": "highlight",
+          "at": {
+            "word": {
+              "word": "decide",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 1.2,
+          "easing": "ease_out"
+        },
+        {
+          "target": "agir",
+          "motion": "pop",
+          "at": {
+            "word": {
+              "word": "uma",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "back"
+        },
+        {
+          "target": "agir",
+          "motion": "highlight",
+          "at": {
+            "word": {
+              "word": "uma",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 1.2,
+          "easing": "ease_out"
+        },
+        {
+          "target": "observar",
+          "motion": "pop",
+          "at": {
+            "word": {
+              "word": "observa",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "back"
+        },
+        {
+          "target": "observar",
+          "motion": "highlight",
+          "at": {
+            "word": {
+              "word": "observa",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 1.2,
+          "easing": "ease_out"
+        },
+        {
+          "target": "*",
+          "motion": "breathe",
+          "at": "start",
+          "duration_secs": 4.0,
+          "easing": "ease_in_out"
+        }
+      ],
+      "captions": {
+        "emphasis": [
+          "objetivo",
+          "decide",
+          "observa"
+        ],
+        "hidden": false
+      },
+      "resources": [],
+      "validation": {
+        "spoken_terms": [],
+        "min_visual_changes": 2,
+        "max_still_secs": 5.0,
+        "readable_without_audio": true
+      },
+      "transition": "push"
+    },
+    {
+      "id": 2,
+      "concept": "Uma skill é uma pasta",
+      "learning_goal": "Estrutura da skill: pasta, arquivo obrigatório e extras.",
+      "narration": "Uma skill é uma pasta. Dentro dela, um arquivo SKILL.md traz nome, descrição e instruções passo a passo. Scripts e recursos são opcionais.",
+      "segments": [],
+      "duration_secs": 0.0,
+      "start_secs": 0.0,
+      "composition": {
+        "kind": "annotation",
+        "objects": [
+          {
+            "id": "revisar-pr",
+            "label": "revisar-pr",
+            "role": "neutral",
+            "icon": "folder"
+          },
+          {
+            "id": "skill-md",
+            "label": "SKILL.md",
+            "detail": "nome, descrição e instruções",
+            "role": "neutral",
+            "icon": "file",
+            "parent": "revisar-pr"
+          },
+          {
+            "id": "scripts",
+            "label": "scripts",
+            "detail": "código opcional",
+            "role": "neutral",
+            "icon": "folder",
+            "parent": "revisar-pr"
+          },
+          {
+            "id": "recursos",
+            "label": "recursos",
+            "detail": "exemplos e modelos",
+            "role": "neutral",
+            "icon": "folder",
+            "parent": "revisar-pr"
+          }
+        ],
+        "notes": [
+          {
+            "from": "skill-md",
+            "to": "skill-md",
+            "kind": "contains",
+            "label": "nome, descrição e instruções"
+          },
+          {
+            "from": "scripts",
+            "to": "scripts",
+            "kind": "contains",
+            "label": "código opcional"
+          },
+          {
+            "from": "recursos",
+            "to": "recursos",
+            "kind": "contains",
+            "label": "exemplos e modelos"
+          }
+        ]
+      },
+      "animations": [
+        {
+          "target": "revisar-pr",
+          "motion": "reveal",
+          "at": "start",
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "skill-md",
+          "motion": "reveal",
+          "at": {
+            "word": {
+              "word": "skill",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "skill-md",
+          "motion": "highlight",
+          "at": {
+            "word": {
+              "word": "skill",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 1.2,
+          "easing": "ease_out"
+        },
+        {
+          "target": "scripts",
+          "motion": "reveal",
+          "at": {
+            "word": {
+              "word": "scripts",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "scripts",
+          "motion": "highlight",
+          "at": {
+            "word": {
+              "word": "scripts",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 1.2,
+          "easing": "ease_out"
+        },
+        {
+          "target": "recursos",
+          "motion": "reveal",
+          "at": {
+            "word": {
+              "word": "recursos",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "recursos",
+          "motion": "highlight",
+          "at": {
+            "word": {
+              "word": "recursos",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 1.2,
+          "easing": "ease_out"
+        },
+        {
+          "target": "*",
+          "motion": "breathe",
+          "at": "start",
+          "duration_secs": 4.0,
+          "easing": "ease_in_out"
+        }
+      ],
+      "captions": {
+        "emphasis": [
+          "skill",
+          "scripts",
+          "recursos"
+        ],
+        "hidden": false
+      },
+      "resources": [],
+      "validation": {
+        "spoken_terms": [],
+        "min_visual_changes": 2,
+        "max_still_secs": 5.0,
+        "readable_without_audio": true
+      },
+      "transition": "push"
+    },
+    {
+      "id": 3,
+      "concept": "Por dentro do SKILL.md",
+      "learning_goal": "Entender: Por dentro do SKILL.md",
+      "narration": "O começo do arquivo diz o nome e quando usar a skill. O resto ensina o processo: ler o diff, rodar os testes e resumir o risco.",
+      "segments": [],
+      "duration_secs": 0.0,
+      "start_secs": 0.0,
+      "composition": {
+        "kind": "code",
+        "language": "markdown",
+        "lines": [
+          "---",
+          "name: revisar-pr",
+          "description: Revisa pull requests",
+          "---",
+          "1. Leia o diff",
+          "2. Rode os testes",
+          "3. Resuma o risco"
+        ],
+        "file_name": "SKILL.md"
+      },
+      "animations": [
+        {
+          "target": "line:0",
+          "motion": "type",
+          "at": "start",
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "line:1",
+          "motion": "type",
+          "at": {
+            "segment": {
+              "index": 0
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "line:2",
+          "motion": "type",
+          "at": {
+            "segment": {
+              "index": 0
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "line:3",
+          "motion": "type",
+          "at": {
+            "segment": {
+              "index": 0
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "line:4",
+          "motion": "type",
+          "at": {
+            "segment": {
+              "index": 1
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "line:5",
+          "motion": "type",
+          "at": {
+            "segment": {
+              "index": 1
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "line:6",
+          "motion": "type",
+          "at": {
+            "segment": {
+              "index": 1
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "*",
+          "motion": "breathe",
+          "at": "start",
+          "duration_secs": 4.0,
+          "easing": "ease_in_out"
+        }
+      ],
+      "captions": {
+        "emphasis": [],
+        "hidden": false
+      },
+      "resources": [],
+      "validation": {
+        "spoken_terms": [],
+        "min_visual_changes": 2,
+        "max_still_secs": 5.0,
+        "readable_without_audio": true
+      },
+      "transition": "push"
+    },
+    {
+      "id": 4,
+      "concept": "Como o agente usa a skill",
+      "learning_goal": "Divulgação progressiva: pouco contexto no início, a skill inteira só quando é relevante.",
+      "narration": "No início, o agente lê só o nome e a descrição de cada skill. Quando a tarefa combina, ele carrega a skill inteira e segue as instruções.",
+      "segments": [],
+      "duration_secs": 0.0,
+      "start_secs": 0.0,
+      "composition": {
+        "kind": "cause_effect",
+        "objects": [
+          {
+            "id": "tarefa-chega",
+            "label": "Tarefa chega",
+            "role": "neutral",
+            "icon": "user"
+          },
+          {
+            "id": "agente-lê-nomes",
+            "label": "Agente lê nomes e descrições",
+            "role": "neutral",
+            "icon": "search"
+          },
+          {
+            "id": "tarefa-combina-com",
+            "label": "Tarefa combina com revisar-pr",
+            "role": "neutral",
+            "icon": "check"
+          },
+          {
+            "id": "carrega-a-skill",
+            "label": "Carrega a skill inteira",
+            "role": "neutral",
+            "icon": "skill"
+          },
+          {
+            "id": "segue-as-instruções",
+            "label": "Segue as instruções",
+            "role": "neutral",
+            "icon": "tool"
+          }
+        ]
+      },
+      "animations": [
+        {
+          "target": "tarefa-chega",
+          "motion": "reveal",
+          "at": "start",
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "agente-lê-nomes",
+          "motion": "reveal",
+          "at": {
+            "word": {
+              "word": "agente",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "agente-lê-nomes",
+          "motion": "highlight",
+          "at": {
+            "word": {
+              "word": "agente",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 1.2,
+          "easing": "ease_out"
+        },
+        {
+          "target": "tarefa-combina-com",
+          "motion": "reveal",
+          "at": {
+            "word": {
+              "word": "combina",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "tarefa-combina-com",
+          "motion": "highlight",
+          "at": {
+            "word": {
+              "word": "combina",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 1.2,
+          "easing": "ease_out"
+        },
+        {
+          "target": "carrega-a-skill",
+          "motion": "reveal",
+          "at": {
+            "word": {
+              "word": "carrega",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "carrega-a-skill",
+          "motion": "highlight",
+          "at": {
+            "word": {
+              "word": "carrega",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 1.2,
+          "easing": "ease_out"
+        },
+        {
+          "target": "segue-as-instruções",
+          "motion": "reveal",
+          "at": {
+            "word": {
+              "word": "segue",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "segue-as-instruções",
+          "motion": "highlight",
+          "at": {
+            "word": {
+              "word": "segue",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 1.2,
+          "easing": "ease_out"
+        },
+        {
+          "target": "*",
+          "motion": "breathe",
+          "at": "start",
+          "duration_secs": 4.0,
+          "easing": "ease_in_out"
+        }
+      ],
+      "captions": {
+        "emphasis": [
+          "tarefa",
+          "agente",
+          "combina",
+          "skill",
+          "segue"
+        ],
+        "hidden": false
+      },
+      "resources": [],
+      "validation": {
+        "spoken_terms": [],
+        "min_visual_changes": 2,
+        "max_still_secs": 5.0,
+        "readable_without_audio": true
+      },
+      "transition": "push"
+    },
+    {
+      "id": 5,
+      "concept": "Agente versus skill",
+      "learning_goal": "Contraste direto, lado a lado.",
+      "narration": "O agente decide e executa. A skill empacota o conhecimento que ele consulta. Um age; a outra ensina como agir.",
+      "segments": [],
+      "duration_secs": 0.0,
+      "start_secs": 0.0,
+      "composition": {
+        "kind": "comparison",
+        "left_title": "Agente",
+        "right_title": "Skill",
+        "objects": [
+          {
+            "id": "decide-o-próximo",
+            "label": "decide o próximo passo",
+            "role": "primary",
+            "group": "left"
+          },
+          {
+            "id": "executa-ferramentas",
+            "label": "executa ferramentas",
+            "role": "primary",
+            "group": "left"
+          },
+          {
+            "id": "observa-resultados",
+            "label": "observa resultados",
+            "role": "primary",
+            "group": "left"
+          },
+          {
+            "id": "empacota-o-conhecimento",
+            "label": "empacota o conhecimento",
+            "role": "secondary",
+            "group": "right"
+          },
+          {
+            "id": "instruções-versionadas",
+            "label": "instruções versionadas",
+            "role": "secondary",
+            "group": "right"
+          },
+          {
+            "id": "reutilizável-em-qualquer",
+            "label": "reutilizável em qualquer agente",
+            "role": "secondary",
+            "group": "right"
+          }
+        ]
+      },
+      "animations": [
+        {
+          "target": "decide-o-próximo",
+          "motion": "reveal",
+          "at": "start",
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "executa-ferramentas",
+          "motion": "reveal",
+          "at": {
+            "word": {
+              "word": "executa",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "executa-ferramentas",
+          "motion": "highlight",
+          "at": {
+            "word": {
+              "word": "executa",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 1.2,
+          "easing": "ease_out"
+        },
+        {
+          "target": "observa-resultados",
+          "motion": "reveal",
+          "at": {
+            "segment": {
+              "index": 1
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "empacota-o-conhecimento",
+          "motion": "reveal",
+          "at": {
+            "word": {
+              "word": "empacota",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "empacota-o-conhecimento",
+          "motion": "highlight",
+          "at": {
+            "word": {
+              "word": "empacota",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 1.2,
+          "easing": "ease_out"
+        },
+        {
+          "target": "instruções-versionadas",
+          "motion": "reveal",
+          "at": {
+            "segment": {
+              "index": 2
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "reutilizável-em-qualquer",
+          "motion": "reveal",
+          "at": {
+            "word": {
+              "word": "agente",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "reutilizável-em-qualquer",
+          "motion": "highlight",
+          "at": {
+            "word": {
+              "word": "agente",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 1.2,
+          "easing": "ease_out"
+        },
+        {
+          "target": "*",
+          "motion": "breathe",
+          "at": "start",
+          "duration_secs": 4.0,
+          "easing": "ease_in_out"
+        }
+      ],
+      "captions": {
+        "emphasis": [
+          "decide",
+          "executa",
+          "empacota",
+          "agente"
+        ],
+        "hidden": false
+      },
+      "resources": [],
+      "validation": {
+        "spoken_terms": [],
+        "min_visual_changes": 2,
+        "max_still_secs": 5.0,
+        "readable_without_audio": true
+      },
+      "transition": "push"
+    },
+    {
+      "id": 6,
+      "concept": "Por que isso importa",
+      "learning_goal": "Fechar o loop retomando o gancho.",
+      "narration": "Sem skills, o agente improvisa a cada tarefa. Com skills, ele repete o processo certo e carrega no contexto só o que precisa. Agente decide. Skill ensina.",
+      "segments": [],
+      "duration_secs": 0.0,
+      "start_secs": 0.0,
+      "composition": {
+        "kind": "infographic",
+        "title": "Com skills",
+        "objects": [
+          {
+            "id": "processo-repetível",
+            "label": "Processo repetível",
+            "detail": "o agente segue as mesmas etapas",
+            "role": "neutral",
+            "icon": "check"
+          },
+          {
+            "id": "contexto-enxuto",
+            "label": "Contexto enxuto",
+            "detail": "carrega só o que precisa",
+            "role": "neutral",
+            "icon": "bolt"
+          },
+          {
+            "id": "conhecimento-reutilizável",
+            "label": "Conhecimento reutilizável",
+            "detail": "a mesma skill serve a vários agentes",
+            "role": "neutral",
+            "icon": "book"
+          }
+        ]
+      },
+      "animations": [
+        {
+          "target": "processo-repetível",
+          "motion": "reveal",
+          "at": "start",
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "contexto-enxuto",
+          "motion": "reveal",
+          "at": {
+            "word": {
+              "word": "contexto",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "contexto-enxuto",
+          "motion": "highlight",
+          "at": {
+            "word": {
+              "word": "contexto",
+              "occurrence": 0
+            }
+          },
+          "duration_secs": 1.2,
+          "easing": "ease_out"
+        },
+        {
+          "target": "conhecimento-reutilizável",
+          "motion": "reveal",
+          "at": {
+            "segment": {
+              "index": 1
+            }
+          },
+          "duration_secs": 0.55,
+          "easing": "ease_out"
+        },
+        {
+          "target": "*",
+          "motion": "breathe",
+          "at": "start",
+          "duration_secs": 4.0,
+          "easing": "ease_in_out"
+        }
+      ],
+      "captions": {
+        "emphasis": [
+          "repete",
+          "contexto"
+        ],
+        "hidden": false
+      },
+      "resources": [],
+      "validation": {
+        "spoken_terms": [],
+        "min_visual_changes": 2,
+        "max_still_secs": 5.0,
+        "readable_without_audio": true
+      },
+      "transition": "push"
+    }
+  ]
+}

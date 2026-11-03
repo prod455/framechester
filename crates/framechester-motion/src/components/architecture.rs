@@ -57,11 +57,19 @@ pub fn build(
                 inner.h - scale.small * 1.7,
             );
         }
-        let box_h = inner.h.min(scale.body * 3.2);
-        let boxes_area = Rect::new(inner.x, inner.y + (inner.h - box_h) / 2.0, inner.w, box_h);
-        for (object, cell) in members.iter().zip(cols(boxes_area, members.len(), gap)) {
-            places.insert(object.id.clone(), cell);
-            nodes.extend(ctx.labelled_card(object, cell, scale.body, true));
+        // Vertical formats stack the boxes as full-width rows, like the flow
+        // diagram: side-by-side columns get too narrow for label + detail
+        // (a three-word detail already overflows a ~280 px card).
+        let cells: Vec<Rect> = if ctx.canvas.vertical {
+            rows(inner, members.len(), gap)
+        } else {
+            let box_h = inner.h.min(scale.body * 3.2);
+            let boxes_area = Rect::new(inner.x, inner.y + (inner.h - box_h) / 2.0, inner.w, box_h);
+            cols(boxes_area, members.len(), gap)
+        };
+        for (object, cell) in members.iter().zip(&cells) {
+            places.insert(object.id.clone(), *cell);
+            nodes.extend(ctx.labelled_card(object, *cell, scale.body, true));
         }
     }
     for relation in relations {

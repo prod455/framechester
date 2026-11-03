@@ -191,6 +191,10 @@ export interface WebJob {
   videoAvailable: boolean;
   previewOnly?: boolean;
   automated?: boolean;
+  /** Scene assets and switches of the run, kept so a stopped job runs again as-is. */
+  assetIds?: Record<string, string>;
+  asr?: boolean;
+  burnSubtitles?: boolean;
   engine?: VideoEngine;
   publications?: Partial<Record<Platform, Publication>>;
   /** A Short cut from another job's approved final version. */
@@ -342,6 +346,7 @@ export interface RunnerApi {
   publish?(channelId: string, jobId: string, platform: Platform): Promise<WebJob>;
   startShorts?(channelId: string, sourceJobId: string): Promise<WebJob[]>;
   retryShort?(channelId: string, jobId: string): Promise<WebJob>;
+  retry?(channelId: string, jobId: string): Promise<WebJob>;
   remove?(channelId: string, jobId: string): Promise<void>;
   removeAsset?(channelId: string, assetId: string): Promise<void>;
 }

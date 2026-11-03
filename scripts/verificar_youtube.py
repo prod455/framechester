@@ -111,7 +111,9 @@ def build_auth_url(client_id: str, redirect_uri: str, state: str) -> str:
         "response_type": "code",
         "scope": " ".join(SCOPES),
         "access_type": "offline",
-        "prompt": "consent",
+        # select_account forca o seletor de conta/canal de marca a cada auth;
+        # so consent reusa o canal padrao logado e o token nao confere depois.
+        "prompt": "consent select_account",
         "include_granted_scopes": "true",
         "state": state,
     }

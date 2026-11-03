@@ -7,7 +7,19 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 const HELPER: &str = include_str!("../../../scripts/kokoro_tts.py");
-pub const COMMERCIAL_VOICES: [&str; 3] = ["pf_dora", "pm_alex", "pm_santa"];
+/// Reviewed Kokoro-82M v1.0 voices, matching `scripts/kokoro_tts.py`,
+/// `web/shared/voices.ts` and docs/VOZES_COMERCIAIS.md (Apache-2.0).
+pub const COMMERCIAL_VOICES: [&str; 9] = [
+    "pf_dora",
+    "pm_alex",
+    "pm_santa",
+    "af_heart",
+    "af_bella",
+    "am_michael",
+    "ef_dora",
+    "em_alex",
+    "em_santa",
+];
 
 pub struct KokoroTts {
     config: TtsConfig,
@@ -17,7 +29,7 @@ impl KokoroTts {
     pub fn new(config: &TtsConfig) -> Result<Self> {
         if config.engine != "kokoro" || !COMMERCIAL_VOICES.contains(&config.voice_name.as_str()) {
             return Err(FramechesterError::InvalidInput(
-                "voz sem aprovacao comercial: escolha Dora, Alex ou Santa (Kokoro) nas configuracoes; Piper legado esta bloqueado".into(),
+                "voz sem aprovacao comercial: escolha uma voz Kokoro do catalogo (PT-BR, EN-US ou ES) nas configuracoes; Piper legado esta bloqueado".into(),
             ));
         }
         let instance = Self {
@@ -188,6 +200,29 @@ mod tests {
                 .unwrap()
                 .to_string()
                 .contains("comercial"));
+        }
+    }
+
+    #[test]
+    fn reviewed_english_and_spanish_voices_pass_the_commercial_gate() {
+        // The gate must accept every reviewed voice; with no Python installed
+        // the failure is availability, never commercial approval.
+        for voice in [
+            "af_heart",
+            "af_bella",
+            "am_michael",
+            "ef_dora",
+            "em_alex",
+            "em_santa",
+        ] {
+            let config = TtsConfig {
+                engine: "kokoro".into(),
+                voice_name: voice.into(),
+                python_path: "nonexistent-python".into(),
+                ..TtsConfig::default()
+            };
+            let error = KokoroTts::new(&config).err().unwrap().to_string();
+            assert!(!error.contains("aprovacao comercial"), "{voice}: {error}");
         }
     }
 }

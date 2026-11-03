@@ -204,9 +204,13 @@ mod tests {
             let mut graph = crate::scene::Graph::default();
             graph.extend(nodes);
             let svg = graph.svg(0.0, 80, 80, "Inter");
-            let background_end = svg.find("/>").map(|at| at + 2).unwrap();
-            let background_start = svg.find("<rect").unwrap();
-            let svg = format!("{}{}", &svg[..background_start], &svg[background_end..]);
+            // Drop the whole layered background (defs + 3 rects) so only the
+            // icon nodes are measured.
+            let content_start = svg.find("<g ").unwrap();
+            let svg = format!(
+                "<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'>{}",
+                &svg[content_start..]
+            );
             let tree = resvg::usvg::Tree::from_str(&svg, typesetter.options()).unwrap();
             let bbox = tree.root().abs_bounding_box();
             // usvg reports the root box normalized to the origin; sizes are what matter.

@@ -99,6 +99,7 @@ pub(crate) fn run_pipeline(path: &Option<PathBuf>, args: RunArgs) -> anyhow::Res
                 topic_index: args.topic_index,
                 format: Some(format.into()),
                 channel: args.channel.clone(),
+                episode: None,
                 workdir: args.workdir.clone(),
                 output: None,
                 voice: args.voice.clone(),

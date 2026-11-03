@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, writeFile, mkdir, rm, stat } from 'node:fs/promises';
@@ -1601,6 +1602,86 @@ test('a Short that stopped runs its own part again, without splitting the video 
     assert.equal(done.part, 4);
     await assert.rejects(runner.retryShort('tech', 'part-4'), /Só um Short que parou/);
     await assert.rejects(runner.startShorts('tech', 'source'), /já foram gerados/);
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('a video that stopped runs again as-is, even when QA blocked a file that exists', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'framechester-web-retry-video-'));
+  const input = state();
+  const checksum = createHash('sha256').update(visualPng).digest('hex');
+  const asset = {
+    id: 'visual-42',
+    channelId: 'tech',
+    name: 'scene-42.png',
+    kind: 'image' as const,
+    bytes: visualPng.length,
+    checksum,
+    license: 'Gerado pelo motor local',
+    provenance: 'Fixture',
+    restrictions: 'Nenhuma',
+    createdAt: date,
+    diskName: 'visual-42.png',
+    generated: { scriptId: 'script-one', sceneId: 42, fingerprint: 'fixture' },
+  };
+  await mkdir(join(home, 'production', 'media', 'tech'), { recursive: true });
+  await writeFile(join(home, 'production', 'media', 'tech', 'visual-42.png'), visualPng);
+  await writeFile(join(home, 'production', 'assets.json'), JSON.stringify([asset]));
+  const stale = join(home, 'production', 'jobs', 'tech', 'video-1', 'output', 'channels', 'tech');
+  await mkdir(stale, { recursive: true });
+  await writeFile(join(stale, 'pipeline_report.json'), '{"stage":"blocked"}');
+  await writeFile(
+    join(home, 'production', 'jobs.json'),
+    JSON.stringify([
+      {
+        id: 'video-1',
+        channelId: 'tech',
+        scriptId: 'script-one',
+        status: 'blocked',
+        createdAt: date,
+        message: 'pico de audio',
+        videoAvailable: true,
+        assetIds: { 42: 'visual-42' },
+      },
+    ]),
+  );
+  const calls: string[][] = [];
+  let stalePresent = true;
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => structuredClone(input),
+    execute: async (args) => {
+      calls.push(args);
+      const out = join(args[args.indexOf('--workdir') + 1], 'channels', 'tech');
+      stalePresent = existsSync(join(out, 'pipeline_report.json'));
+      await mkdir(join(out, 'render'), { recursive: true });
+      await writeFile(join(out, 'render', 'final.mp4'), 'synthetic video');
+      await writeFile(
+        join(out, 'pipeline_report.json'),
+        JSON.stringify({
+          stage: 'editorial_qa',
+          technical_qa: { checks: [{ status: 'pass' }] },
+          editorial_qa: { checks: [{ status: 'pass' }] },
+        }),
+      );
+      return { exitCode: 0, stdout: '', stderr: '' };
+    },
+  });
+  try {
+    await assert.rejects(runner.retryShort('tech', 'video-1'), /Só um Short que parou/);
+    const queued = await runner.retry('tech', 'video-1');
+    assert.equal(queued.status, 'queued');
+    await assert.rejects(runner.retry('tech', 'video-1'), /Só um vídeo que parou/, 'two clicks, one run');
+    await runner.idle();
+    assert.equal(calls.length, 1, 'the same job ran once more');
+    assert.equal(stalePresent, false, 'the blocked run left no report behind');
+    const done = (await runner.list('tech')).find((item) => item.id === 'video-1')!;
+    assert.equal(done.status, 'completed', done.message);
+    assert.equal(done.videoAvailable, true);
+    await assert.rejects(runner.retry('tech', 'video-1'), /Só um vídeo que parou/);
   } finally {
     await runner.close();
     await rm(home, { recursive: true, force: true });

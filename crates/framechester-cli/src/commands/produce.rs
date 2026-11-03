@@ -228,7 +228,7 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
         .as_ref()
         .map(|channel| channel.id.clone())
         .unwrap_or_else(|| "framechester".into());
-    let mut workdir = args.workdir.clone().unwrap_or_else(|| {
+    let base_workdir = args.workdir.clone().unwrap_or_else(|| {
         config.workdir_path().join(format!(
             "motion-{}-{}-{}",
             format.slug(),
@@ -236,9 +236,11 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
             std::process::id()
         ))
     });
-    if let Some(channel) = &channel {
-        workdir = workdir.join("channels").join(&channel.id);
-    }
+    let workdir = episode_workdir(
+        base_workdir,
+        channel.as_ref().map(|channel| channel.id.as_str()),
+        args.episode.as_deref(),
+    )?;
     std::fs::create_dir_all(&workdir)?;
     let language = channel
         .as_ref()
@@ -533,6 +535,7 @@ pub(crate) fn short(config_path: &Option<PathBuf>, args: ShortArgs) -> anyhow::R
             topic_index: 0,
             format: Some("vertical".into()),
             channel: args.channel,
+            episode: None,
             workdir: Some(workdir),
             output: None,
             voice: args.voice,
@@ -542,11 +545,115 @@ pub(crate) fn short(config_path: &Option<PathBuf>, args: ShortArgs) -> anyhow::R
     )
 }
 
+/// Episode slug rule: same shape as a local channel id (lowercase letters,
+/// digits and hyphens, no reserved Windows device names), so a slug can never
+/// traverse out of the channel tree or collide with a device path.
+pub(crate) fn valid_episode_slug(slug: &str) -> bool {
+    if slug.is_empty() || slug.len() > 64 {
+        return false;
+    }
+    let reserved = matches!(
+        slug,
+        "con"
+            | "prn"
+            | "aux"
+            | "nul"
+            | "com1"
+            | "com2"
+            | "com3"
+            | "com4"
+            | "com5"
+            | "com6"
+            | "com7"
+            | "com8"
+            | "com9"
+            | "lpt1"
+            | "lpt2"
+            | "lpt3"
+            | "lpt4"
+            | "lpt5"
+            | "lpt6"
+            | "lpt7"
+            | "lpt8"
+            | "lpt9"
+    );
+    if reserved {
+        return false;
+    }
+    let bytes = slug.as_bytes();
+    if !bytes[0].is_ascii_alphanumeric() || !bytes[bytes.len() - 1].is_ascii_alphanumeric() {
+        return false;
+    }
+    slug.bytes()
+        .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+}
+
+/// Resolves `<base>/channels/<channel>/episodes/<slug>` for `--episode`, so two
+/// episodes of one channel never share `render/final.mp4` and overwrite each
+/// other. Without an episode the legacy per-channel layout is preserved.
+pub(crate) fn episode_workdir(
+    base: PathBuf,
+    channel_id: Option<&str>,
+    episode: Option<&str>,
+) -> anyhow::Result<PathBuf> {
+    let mut dir = base;
+    if let Some(channel_id) = channel_id {
+        dir = dir.join("channels").join(channel_id);
+    }
+    if let Some(slug) = episode {
+        if channel_id.is_none() {
+            bail!("--episode exige um canal selecionado (--channel)");
+        }
+        if !valid_episode_slug(slug) {
+            bail!("slug de episodio invalido: {slug}");
+        }
+        dir = dir.join("episodes").join(slug);
+    }
+    Ok(dir)
+}
+
 fn expected_codec(encoder: &str) -> &'static str {
     match encoder {
         "libx265" | "hevc_amf" | "hevc_nvenc" => "hevc",
         "libvpx-vp9" => "vp9",
         "libaom-av1" | "libsvtav1" => "av1",
         _ => "h264",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn episode_slug_accepts_channel_like_ids() {
+        assert!(valid_episode_slug("skills-vs-agentes"));
+        assert!(valid_episode_slug("ep1"));
+        assert!(valid_episode_slug("a"));
+    }
+
+    #[test]
+    fn episode_slug_rejects_traversal_and_devices() {
+        assert!(!valid_episode_slug("../fora"));
+        assert!(!valid_episode_slug("a/b"));
+        assert!(!valid_episode_slug("ComMaiuscula"));
+        assert!(!valid_episode_slug("-comeca-com-hifen"));
+        assert!(!valid_episode_slug("termina-"));
+        assert!(!valid_episode_slug("con"));
+        assert!(!valid_episode_slug(""));
+    }
+
+    #[test]
+    fn episodes_of_one_channel_never_share_a_workdir() {
+        let base = PathBuf::from("artifacts");
+        let first = episode_workdir(base.clone(), Some("tech"), Some("ep-um")).unwrap();
+        let second = episode_workdir(base.clone(), Some("tech"), Some("ep-dois")).unwrap();
+        assert_ne!(first, second);
+        assert!(first.ends_with("ep-um"));
+        // No episode keeps the legacy per-channel layout untouched.
+        let legacy = episode_workdir(base, Some("tech"), None).unwrap();
+        assert!(legacy.ends_with("tech"));
+        // An episode without a channel is rejected instead of escaping the tree.
+        assert!(episode_workdir(PathBuf::from("artifacts"), None, Some("ep-um")).is_err());
     }
 }

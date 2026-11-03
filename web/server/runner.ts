@@ -710,6 +710,9 @@ export class LocalRunner implements RunnerApi {
       message: 'Aguardando o motor local.',
       videoAvailable: false,
       ...(input.previewOnly ? { previewOnly: true } : {}),
+      assetIds: { ...input.assetIds },
+      ...(input.asr !== undefined ? { asr: input.asr } : {}),
+      ...(input.burnSubtitles !== undefined ? { burnSubtitles: input.burnSubtitles } : {}),
     };
     this.jobs.unshift(job);
     await this.persist();
@@ -1146,6 +1149,70 @@ export class LocalRunner implements RunnerApi {
     await this.persist();
     const work = () =>
       this.run(job, structuredClone(script), config, [], { scriptId: script.id, assetIds: {} });
+    this.queue = this.queue.then(work, work);
+    return structuredClone(job);
+  }
+  /** Runs a stopped job again: a Short keeps its own part, a video repeats its run as-is. */
+  async retry(channelId: string, jobId: string): Promise<WebJob> {
+    await this.channel(channelId);
+    id(jobId);
+    const job = this.jobs.find((item) => item.channelId === channelId && item.id === jobId);
+    if (!job) throw new RunnerError('Produção não encontrada neste canal.');
+    return job.kind === 'short' ? this.retryShort(channelId, jobId) : this.retryVideo(channelId, jobId);
+  }
+  /**
+   * Runs a stopped video again with the scene assets and switches of its own run, so the
+   * operator does not redo the production form. Older jobs without a snapshot fall back
+   * to the visuals prepared for the script; anything else is named, not guessed.
+   */
+  async retryVideo(channelId: string, jobId: string): Promise<WebJob> {
+    const state = await this.channel(channelId);
+    id(jobId);
+    if (this.stopped) throw new RunnerError('Servidor encerrando.');
+    if (!this.engineStatus().available) throw new RunnerError(this.engineStatus().message, 503);
+    const job = this.jobs.find((item) => item.channelId === channelId && item.id === jobId);
+    if (!job) throw new RunnerError('Produção não encontrada neste canal.');
+    if (job.kind === 'short') throw new RunnerError('Um Short que parou se refaz pelo próprio corte.');
+    if (job.status !== 'failed' && job.status !== 'blocked')
+      throw new RunnerError('Só um vídeo que parou pode ser tentado de novo.');
+    const script = state.scripts.find((item) => item.id === job.scriptId && item.channelId === channelId);
+    if (!script || script.status === 'archived')
+      throw new RunnerError('Roteiro deste vídeo não encontrado neste canal.');
+    const assetIds = { ...job.assetIds };
+    if (Object.keys(assetIds).length !== script.scenes.length)
+      for (const asset of this.media)
+        if (asset.channelId === channelId && asset.generated?.scriptId === script.id)
+          assetIds[String(asset.generated.sceneId)] = asset.id;
+    if (Object.keys(assetIds).length !== script.scenes.length)
+      throw new RunnerError(
+        'As mídias deste trabalho não estão mais disponíveis; gere pela tela de produção.',
+      );
+    const assets = script.scenes.map((scene) =>
+      this.media.find((asset) => asset.id === assetIds[String(scene.id)] && asset.channelId === channelId),
+    );
+    if (assets.some((asset) => !asset))
+      throw new RunnerError(
+        'As mídias deste trabalho não estão mais disponíveis; gere pela tela de produção.',
+      );
+    // Claimed before any await, so two clicks queue it once.
+    job.status = 'queued';
+    job.message = job.previewOnly ? 'Na fila: prévia de novo.' : 'Na fila: versão final de novo.';
+    job.videoAvailable = false;
+    delete job.startedAt;
+    delete job.finishedAt;
+    delete job.qa;
+    const config = jobConfig(state, channelId, this.options.repositoryRoot);
+    // A report left by the stopped run must not pass for this one's.
+    await rm(join(this.root, 'jobs', channelId, jobId, 'output'), { recursive: true, force: true });
+    await this.persist();
+    const input: StartJobInput = {
+      scriptId: script.id,
+      assetIds,
+      asr: job.asr,
+      burnSubtitles: job.burnSubtitles,
+      previewOnly: job.previewOnly,
+    };
+    const work = () => this.run(job, structuredClone(script), config, assets as StoredAsset[], input);
     this.queue = this.queue.then(work, work);
     return structuredClone(job);
   }

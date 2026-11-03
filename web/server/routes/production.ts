@@ -152,8 +152,10 @@ export const productionRoutes: Route[] = [
     async handle(context) {
       const id = await requireChannel(context);
       const runner = context.runner();
-      if (!runner.retryShort) throw new HttpError(503, 'O corte de Shorts não está disponível.');
-      json(context.response, 202, await runner.retryShort(id, validId(context.params.jobId)));
+      if (!runner.retry && !runner.retryShort)
+        throw new HttpError(503, 'Tentar de novo não está disponível.');
+      const retry = runner.retry ?? runner.retryShort!;
+      json(context.response, 202, await retry(id, validId(context.params.jobId)));
     },
   },
   {

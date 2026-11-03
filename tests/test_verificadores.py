@@ -59,6 +59,10 @@ class YoutubeTests(unittest.TestCase):
         self.assertIn("client_id=client", url)
         self.assertIn("state=estado", url)
         self.assertIn("access_type=offline", url)
+        # Quem tem varios canais/contas de marca precisa escolher a cada auth;
+        # sem select_account o Google autoriza o canal padrao e o --check acusa
+        # token de outro canal.
+        self.assertIn("prompt=consent+select_account", url)
         self.assertIn("youtube.upload", url)
         self.assertIn("yt-analytics.readonly", url)
 

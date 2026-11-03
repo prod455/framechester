@@ -177,22 +177,10 @@ export function jobCard(job: WebJob, nested = false): HTMLElement {
       )
     : el('p', {}, translateMessage(job.message));
   // A stop ends with a way forward, not only a log (peak-end rule, feedback loop).
-  // A Short that stopped runs its own part again; the video is never split twice.
-  const retry =
-    stopped && job.kind === 'short'
-      ? retryShortButton(job)
-      : stopped && script && script.status !== 'archived'
-        ? button(
-            t('Tentar de novo'),
-            () => {
-              studio.activeScriptId = script.id;
-              startProduction();
-            },
-            // In a list several cards can stop; only Gerar versão final stays dark (Von Restorff).
-            'secondary',
-            'refresh',
-          )
-        : null;
+  // Any stopped job runs again as-is — even one whose file exists but QA blocked —
+  // so the operator never redoes the production form to retry.
+  const stoppedJob = ['failed', 'blocked'].includes(job.status);
+  const retry = stoppedJob ? retryButton(job) : null;
   // Thumbnail in one column, everything about the video in the title's column, so messages
   // and actions line up with the title instead of the thumbnail's edge. On a phone the
   // thumbnail sits beside the title and the rest takes the full width (workspace.css).
@@ -274,7 +262,7 @@ function shortsOf(job: WebJob): HTMLElement | null {
   return list;
 }
 
-function retryShortButton(job: WebJob): HTMLElement {
+function retryButton(job: WebJob): HTMLElement {
   const action = button(
     t('Tentar de novo'),
     async () => {
@@ -282,11 +270,15 @@ function retryShortButton(job: WebJob): HTMLElement {
       try {
         await request(channelPath(`/jobs/${encodeURIComponent(job.id)}/retry`), 'POST', {});
         await refresh();
-        toast(t('Short na fila de novo, com a mesma parte do vídeo.'));
+        toast(
+          job.kind === 'short'
+            ? t('Short na fila de novo, com a mesma parte do vídeo.')
+            : t('Vídeo na fila de novo, do mesmo jeito.'),
+        );
       } catch (error) {
         action.disabled = false;
         toast(
-          error instanceof Error ? translateMessage(error.message) : t('Não foi possível gerar o Short.'),
+          error instanceof Error ? translateMessage(error.message) : t('Não foi possível tentar de novo.'),
         );
       }
     },

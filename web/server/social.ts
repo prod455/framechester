@@ -116,7 +116,10 @@ const OAUTH: Record<Platform, OAuthProvider> = {
     separator: ' ',
     clientParam: 'client_id',
     pkce: 'base64url',
-    extra: { access_type: 'offline', prompt: 'consent' },
+    // select_account forces Google's account/Brand Account chooser on every connection;
+    // consent alone reuses the signed-in default channel, whose token then fails
+    // verifyIdentity for operators holding several YouTube channels.
+    extra: { access_type: 'offline', prompt: 'consent select_account' },
   },
   tiktok: {
     authorize: 'https://www.tiktok.com/v2/auth/authorize/',

@@ -303,9 +303,13 @@ fn mix_filter(plan: &MixPlan, measured: Option<&LoudnessMeasurement>) -> String 
             measured.input_i, measured.input_tp, measured.input_lra, measured.input_thresh, measured.target_offset
         ));
     }
+    // The ceiling sits 2.3 dB under the true-peak target, not 0.3: the final
+    // AAC re-encode overshoots hard-limited peaks (measured +2.1 dB at a
+    // -1.8 dBFS ceiling on long narration, ~0.3 dB at -3.8 dBFS), and QA
+    // measures the decoded MP4 against the true-peak target.
     let limiter = format!(
         "alimiter=limit={:.4}:attack=5:release=50:level=false",
-        10f32.powf((target.true_peak_dbtp - 0.3) / 20.0)
+        10f32.powf((target.true_peak_dbtp - 2.3) / 20.0)
     );
     match &plan.music {
         Some(_) => format!(
@@ -460,6 +464,6 @@ mod tests {
         let filter = mix_filter(&plan, Some(&measured));
         assert!(filter.contains("measured_I=-23.5"));
         assert!(filter.contains("I=-14:TP=-1.5"));
-        assert!(filter.contains("alimiter=limit=0.8128"));
+        assert!(filter.contains("alimiter=limit=0.6457"));
     }
 }

@@ -345,6 +345,9 @@ test('a finished video shows one card per network with its own state and action'
   const stoppedShort = { ...data.jobs[1], status: 'failed' as const, videoAvailable: false };
   const stoppedCard = jobCard(stoppedShort, true);
   assert.ok(stoppedCard.querySelector(`[data-testid="retry-${stoppedShort.id}"]`));
+  // A blocked video whose file exists (QA stopped it) also offers the same run again.
+  const blockedVideo = { ...job, status: 'blocked' as const, videoAvailable: true };
+  assert.ok(jobCard(blockedVideo).querySelector(`[data-testid="retry-${blockedVideo.id}"]`));
   // Once per video: the button does not come back when the Shorts are gone.
   data.jobs = [{ ...job, shortsAt: now }];
   assert.equal(

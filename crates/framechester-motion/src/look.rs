@@ -376,6 +376,15 @@ impl Theme {
         (a.max(b) + 0.05) / (a.min(b) + 0.05)
     }
 
+    /// The colour of `paint` when it is opaque (`#RRGGBB`), for floods that must cover.
+    pub fn opaque<'a>(&self, paint: &'a str) -> Option<&'a str>
+    where
+        'static: 'a,
+    {
+        let colour = self.paint(paint);
+        (colour.starts_with('#') && colour.len() == 7).then_some(colour)
+    }
+
     /// Every (text, surface, minimum) pair the components draw, below its minimum.
     pub fn contrast_failures(&self) -> Vec<String> {
         let mut surfaces = vec!["@bg", "@surface", "@surface-strong"];

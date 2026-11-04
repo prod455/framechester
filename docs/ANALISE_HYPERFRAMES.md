@@ -39,9 +39,10 @@ layout escolhe o maior tamanho que passa no QA.
    (blueprint) ao lado do `noite`, por canal, com fontes de título OFL embutidas e
    contraste WCAG verificado em teste para cada par texto/fundo — o que os presets deles
    não garantem. Próximos looks possíveis: editorial em duas cores, lousa.
-2. **Transições com causa** (3–5 tipos por filme): objeto vira o mundo, morph de
-   container, inundação de cor, whip, troca com blur, dip cut. Hoje: corte, fade, push,
-   zoom, whip.
+2. ~~Transições com causa.~~ Feito em 2026-11-04: `expand` (objeto vira o mundo), `iris`
+   do ponto focal, `blur_swap` e `dip_cut`, escolhidas pelo planner a partir da cena
+   anterior, sem repetir e sem fade cruzado. Faltam: morph de container e inundação de
+   cor com objeto herói compartilhado entre cenas.
 3. **Blur de movimento e blur de entrada** por palavra (6 px → 0 em 0,13 s). Custo de
    filtro no resvg por frame precisa ser medido antes.
 4. **Checagens de ofício no QA**: `line_unread` (hold de 0,5 s + 0,3 s/palavra),

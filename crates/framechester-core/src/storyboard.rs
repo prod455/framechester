@@ -743,6 +743,18 @@ pub enum Transition {
     /// is not used: it would be rasterized per frame by resvg at high cost
     /// and its radius is not seekable from the transition progress alone.
     WhipPan,
+    /// The object becomes the world: the outgoing scene's focal card grows past the
+    /// frame, everything around it leaves, and its colour is the ground the next scene
+    /// enters on.
+    Expand,
+    /// The next scene opens in a circle from the outgoing scene's focal point.
+    Iris,
+    /// Blur swap on one stage: the outgoing content blurs out, the incoming blurs in,
+    /// and the ground never cuts.
+    BlurSwap,
+    /// Dip cut: the outgoing frame darkens about 40% for three frames before a hard cut,
+    /// so the cut reads as meant.
+    DipCut,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

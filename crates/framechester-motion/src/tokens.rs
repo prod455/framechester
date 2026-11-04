@@ -120,6 +120,11 @@ pub fn card_fill(role: Role) -> String {
     format!("url(#fc-card-{})", role_name(role))
 }
 
+/// The role name of a card paint made by [`card_fill`], if `fill` is one.
+pub fn card_role_name(fill: &str) -> Option<&str> {
+    fill.strip_prefix("url(#fc-card-")?.strip_suffix(')')
+}
+
 /// Paint of a card edge of `role`: bright at the top, fading towards the bottom.
 pub fn card_edge(role: Role) -> String {
     format!("url(#fc-edge-{})", role_name(role))

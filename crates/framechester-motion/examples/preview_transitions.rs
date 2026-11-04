@@ -54,14 +54,23 @@ fn main() {
         1,
     );
     for transition in [
+        Transition::Flood,
         Transition::Morph,
         Transition::Expand,
         Transition::Iris,
         Transition::BlurSwap,
         Transition::DipCut,
     ] {
-        // A morph needs a card on both sides: it goes into a steps scene.
-        let mut second = if transition == Transition::Morph {
+        // A flood needs an object both scenes show ("Observar"); a morph needs a card on
+        // both sides: both go into a steps scene.
+        let mut second = if transition == Transition::Flood {
+            narrated(
+                2,
+                "#passos Observar; Ajustar o plano; Repetir",
+                "Observar o resultado, ajustar o plano e repetir.",
+                2,
+            )
+        } else if transition == Transition::Morph {
             narrated(
                 2,
                 "#passos Leia o SKILL.md; Siga os passos; Confira o resultado",

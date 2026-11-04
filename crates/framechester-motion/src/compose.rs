@@ -33,6 +33,8 @@ pub struct ComposedScene {
     pub focal: Option<Focal>,
     /// The first card (or object) to enter: where a `morph` into this scene lands.
     pub opening: Option<Focal>,
+    /// Named objects a viewer can follow into the next scene (a `flood` hero).
+    pub followable: Vec<String>,
 }
 
 /// The last object to enter a scene, where a caused transition starts from.
@@ -118,8 +120,27 @@ pub fn transition_secs(transition: Transition) -> f32 {
         Transition::BlurSwap => 0.36,
         Transition::DipCut => 0.1,
         Transition::Morph => 0.5,
+        Transition::Flood => 0.6,
         _ => TRANSITION_SECS,
     }
+}
+
+/// Union of the boxes of an object's text nodes (its label lines), outside captions.
+fn text_bbox(graph: &Graph, object: &str) -> Option<Rect> {
+    graph
+        .nodes
+        .iter()
+        .filter(|node| node.object == object && node.is_text() && node.z < Z_CAPTIONS)
+        .map(Node::bbox)
+        .reduce(|a, b| {
+            let (x, y) = (a.x.min(b.x), a.y.min(b.y));
+            Rect::new(
+                x,
+                y,
+                a.right().max(b.right()) - x,
+                a.bottom().max(b.bottom()) - y,
+            )
+        })
 }
 
 /// `a` mixed towards `b` by `t` (both `#RRGGBB`), for a colour that travels with a shape.
@@ -962,6 +983,7 @@ fn compose_at(
             animated_objects,
             focal,
             opening,
+            followable: framechester_core::storyboard::followable_ids(&scene.composition),
         },
         fits,
     )
@@ -1065,11 +1087,21 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
         if progress < 1.0 {
             let theme = crate::look::theme(canvas.look);
             let previous = &composed.scenes[index - 1];
+            // The object both scenes show, and where it sits in each.
+            let hero =
+                framechester_core::storyboard::hero_of(&previous.followable, &scene.followable)
+                    .and_then(|id| {
+                        // Its label is what the eye follows: text box to text box.
+                        let from = text_bbox(&previous.graph, &id)?;
+                        let to = text_bbox(&scene.graph, &id)?;
+                        Some((id, from, to))
+                    });
             // A morph needs a card on both sides; without one the stage hands over.
             let transition = match scene.transition {
                 Transition::Morph if previous.focal.is_none() || scene.opening.is_none() => {
                     Transition::BlurSwap
                 }
+                Transition::Flood if hero.is_none() => Transition::BlurSwap,
                 other => other,
             };
             let eased = crate::anim::ease(Easing::EaseInOut, progress);
@@ -1167,6 +1199,78 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
                     ));
                     scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, 1.0);
                     svg.push_str("</g>");
+                }
+                Transition::Flood => {
+                    let Some((id, from, to)) = &hero else {
+                        unreachable!("a flood without a hero falls back to a blur swap");
+                    };
+                    let is_hero = |node: &Node| &node.object == id;
+                    let rest = |node: &Node| &node.object != id;
+                    // The ground floods with the hero's colour and recedes as the new
+                    // scene builds; the hero never leaves the screen.
+                    let wash = previous
+                        .graph
+                        .nodes
+                        .iter()
+                        .filter(|node| is_hero(node))
+                        .find_map(|node| match &node.shape {
+                            Shape::Rect { fill, .. } => tokens::card_role_name(fill),
+                            _ => None,
+                        })
+                        .and_then(|name| {
+                            tokens::ROLES
+                                .into_iter()
+                                .find(|role| tokens::role_name(*role) == name)
+                        })
+                        // A neutral hero floods with the look's accent, its one focus colour.
+                        .filter(|role| *role != framechester_core::storyboard::Role::Neutral)
+                        .map_or(tokens::ACCENT, |role| tokens::palette(role).stroke);
+                    let flood = crate::anim::ease(Easing::EaseInOut, (progress / 0.5).min(1.0))
+                        * (1.0 - ((progress - 0.5) / 0.5).clamp(0.0, 1.0));
+                    svg.push_str(&format!(
+                        "<rect id='fc-flood' width='{width}' height='{height}' fill='{}' opacity='{:.3}'/>",
+                        theme.paint(wash),
+                        0.32 * flood
+                    ));
+                    let leave = 1.0 - (progress / 0.4).min(1.0);
+                    if leave > 0.0 {
+                        previous
+                            .graph
+                            .svg_nodes(&mut svg, previous_t, 0.0, 0.0, 1.0, 1.0, leave, &rest);
+                    }
+                    let build = ((progress - 0.4) / 0.6).clamp(0.0, 1.0);
+                    if build > 0.0 {
+                        scene
+                            .graph
+                            .svg_nodes(&mut svg, local, 0.0, 0.0, 1.0, 1.0, build, &rest);
+                    }
+                    // The hero travels and rescales into its new place, then hands over
+                    // to the incoming scene's own copy of itself.
+                    let travel = crate::anim::ease(Easing::EaseInOut, (progress / 0.85).min(1.0));
+                    // Uniform scale from label height to label height (text never
+                    // stretches), so the label lands on the new label.
+                    let fit = to.h / from.h.max(1.0);
+                    let scale = 1.0 + (fit - 1.0) * travel;
+                    let centre = (
+                        from.cx() + (to.cx() - from.cx()) * travel,
+                        from.cy() + (to.cy() - from.cy()) * travel,
+                    );
+                    let handover = ((progress - 0.8) / 0.2).clamp(0.0, 1.0);
+                    previous.graph.svg_nodes(
+                        &mut svg,
+                        previous_t,
+                        centre.0 - scale * from.cx(),
+                        centre.1 - scale * from.cy(),
+                        scale,
+                        scale,
+                        1.0 - handover,
+                        &is_hero,
+                    );
+                    if handover > 0.0 {
+                        scene
+                            .graph
+                            .svg_nodes(&mut svg, local, 0.0, 0.0, 1.0, 1.0, handover, &is_hero);
+                    }
                 }
                 Transition::Morph => {
                     let (Some(from), Some(to)) = (previous.focal.as_ref(), scene.opening.as_ref())
@@ -2230,5 +2334,59 @@ mod tests {
         let mut plain = composed.clone();
         plain.scenes[1].opening = None;
         assert!(frame_svg(&plain, seam + 0.1, tokens::FONT_SANS).contains("feGaussianBlur"));
+    }
+
+    #[test]
+    fn a_flood_keeps_the_shared_hero_on_screen_while_the_ground_floods() {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Horizontal);
+        let first = narrated(
+            "#fluxo Objetivo -> Decidir -> Agir -> Observar",
+            "O agente recebe o objetivo, decide, age e observa.",
+        );
+        let mut second = narrated(
+            "#passos Observar; Ajustar o plano; Repetir",
+            "Observar o resultado, ajustar o plano e repetir.",
+        );
+        second.id = 2;
+        second.transition = Transition::Flood;
+        second.start_secs = first.duration_secs;
+        let composed = Composed {
+            canvas,
+            scenes: vec![
+                compose_scene(&typesetter, &canvas, &first, 1, 3),
+                compose_scene(&typesetter, &canvas, &second, 2, 3),
+            ],
+        };
+        assert!(composed.scenes[0]
+            .followable
+            .contains(&"observar".to_string()));
+        let seam = first.duration_secs;
+        let span = transition_secs(Transition::Flood);
+        for fraction in [0.05f32, 0.3, 0.55, 0.8, 0.95] {
+            let svg = frame_svg(&composed, seam + span * fraction, tokens::FONT_SANS);
+            assert!(
+                svg.contains(">Observar<"),
+                "the hero is on screen at {fraction}"
+            );
+        }
+        let mid = frame_svg(&composed, seam + span * 0.5, tokens::FONT_SANS);
+        let wash = mid.find("id='fc-flood'").expect("the ground floods");
+        let opacity: f32 = mid[wash..]
+            .split("opacity='")
+            .nth(1)
+            .unwrap()
+            .split('\'')
+            .next()
+            .unwrap()
+            .parse()
+            .unwrap();
+        assert!(opacity > 0.2, "{opacity}");
+        // The rest of the old scene has left by then.
+        assert!(!mid.contains(">Objetivo<"));
+        // Without a shared object a flood hands over as a blur swap.
+        let mut alone = composed.clone();
+        alone.scenes[1].followable.clear();
+        assert!(frame_svg(&alone, seam + 0.1, tokens::FONT_SANS).contains("feGaussianBlur"));
     }
 }

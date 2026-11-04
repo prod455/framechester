@@ -624,8 +624,25 @@ impl Graph {
         sy: f32,
         opacity: f32,
     ) {
+        self.svg_nodes(svg, t, dx, dy, sx, sy, opacity, &|_| true);
+    }
+
+    /// Like [`Self::svg_inner_ex`], drawing only the nodes `keep` accepts (a transition
+    /// that carries one object across draws it apart from the rest of its scene).
+    #[allow(clippy::too_many_arguments)]
+    pub fn svg_nodes(
+        &self,
+        svg: &mut String,
+        t: f32,
+        dx: f32,
+        dy: f32,
+        sx: f32,
+        sy: f32,
+        opacity: f32,
+        keep: &dyn Fn(&Node) -> bool,
+    ) {
         let palette = theme(self.look);
-        let mut order: Vec<&Node> = self.nodes.iter().collect();
+        let mut order: Vec<&Node> = self.nodes.iter().filter(|node| keep(node)).collect();
         order.sort_by_key(|node| node.z);
         let outer = dx.abs() > 1e-3
             || dy.abs() > 1e-3

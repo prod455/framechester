@@ -30,9 +30,9 @@ use crate::error::{FramechesterError, Result};
 use crate::narration::segment_narration;
 use crate::presets;
 use crate::storyboard::{
-    narration_words, Animation, CaptionPlan, Character, Composition, Cue, ElementShape, Icon,
-    Motion, Pose, Relation, RelationKind, Role, Storyboard, StoryboardScene, Transition,
-    ValidationCriteria, VideoFormat, VisualObject, SCHEMA_VERSION,
+    narration_words, shared_hero, Animation, CaptionPlan, Character, Composition, Cue,
+    ElementShape, Icon, Motion, Pose, Relation, RelationKind, Role, Storyboard, StoryboardScene,
+    Transition, ValidationCriteria, VideoFormat, VisualObject, SCHEMA_VERSION,
 };
 
 const MAX_FIELD: usize = 160;
@@ -1081,6 +1081,12 @@ pub fn transition_into(
     if index == 0 {
         return Transition::Cut;
     }
+    // An object both scenes share is the strongest cause: it stays as the hero.
+    if let (Some(previous), Some(next)) = (previous, next) {
+        if shared_hero(previous, next).is_some() && before != Some(Transition::Flood) {
+            return Transition::Flood;
+        }
+    }
     let focal_card = previous.is_some_and(has_cards);
     let candidates = match (focal_card, next.is_some_and(has_cards)) {
         (true, true) => [Transition::Morph, Transition::Expand, Transition::Iris],
@@ -1216,6 +1222,20 @@ pub fn plan_script(
             index,
             Some(previous.transition),
         );
+        // The hero is already on screen when the seam ends: it enters at the start.
+        if after[0].transition == Transition::Flood {
+            if let Some(hero) = shared_hero(&previous.composition, &next) {
+                for animation in after[0].animations.iter_mut().filter(|animation| {
+                    animation.target == hero
+                        && matches!(
+                            animation.motion,
+                            Motion::Reveal | Motion::Pop | Motion::Grow | Motion::Draw
+                        )
+                }) {
+                    animation.at = Cue::Start;
+                }
+            }
+        }
     }
     let storyboard = Storyboard {
         version: SCHEMA_VERSION,
@@ -1459,6 +1479,9 @@ mod tests {
         let flow = plan_scene(&scene("#fluxo A -> B -> C", "A, depois B, depois C."), 1)
             .unwrap()
             .composition;
+        let other_flow = plan_scene(&scene("#fluxo D -> E -> F", "D, depois E, depois F."), 1)
+            .unwrap()
+            .composition;
         let title = plan_scene(&scene("#destaque", "Uma frase."), 1)
             .unwrap()
             .composition;
@@ -1466,7 +1489,7 @@ mod tests {
         let mut kinds = Vec::new();
         for index in 1..7 {
             // Card to card: the shared container morphs (or the card causes the seam).
-            let card_to_card = transition_into(Some(&flow), Some(&flow), index, None);
+            let card_to_card = transition_into(Some(&flow), Some(&other_flow), index, None);
             assert!(matches!(
                 card_to_card,
                 Transition::Morph | Transition::Expand | Transition::Iris
@@ -1485,7 +1508,7 @@ mod tests {
             ));
             // The same seam twice in a row is replaced.
             assert_ne!(
-                transition_into(Some(&flow), Some(&flow), index, Some(card_to_card)),
+                transition_into(Some(&flow), Some(&other_flow), index, Some(card_to_card)),
                 card_to_card
             );
             kinds.extend([card_to_card, card_to_title, after_title]);
@@ -1495,6 +1518,43 @@ mod tests {
         // Several kinds over a film, none of them a crossfade.
         assert!(kinds.len() >= 5, "{kinds:?}");
         assert!(!kinds.contains(&Transition::Fade));
+    }
+
+    #[test]
+    fn a_shared_object_floods_the_seam_and_is_on_screen_when_it_ends() {
+        let mut script = script(
+            "Skill e agente",
+            vec![
+                scene(
+                    "#fluxo Agente -> Skill -> Resultado",
+                    "O agente chama a skill e entrega o resultado.",
+                ),
+                scene(
+                    "#passos Skill; Testes; Entrega",
+                    "Primeiro a skill, depois os testes, depois a entrega.",
+                ),
+            ],
+        );
+        script.scenes[1].id = 1;
+        let (storyboard, _) = plan_script(&script, "canal", VideoFormat::Vertical).unwrap();
+        let next = &storyboard.scenes[1];
+        assert_eq!(next.transition, Transition::Flood);
+        let hero = shared_hero(&storyboard.scenes[0].composition, &next.composition).unwrap();
+        assert!(next
+            .animations
+            .iter()
+            .filter(|animation| animation.target == hero)
+            .any(|animation| animation.at == Cue::Start));
+        // Two floods in a row are not allowed.
+        assert_ne!(
+            transition_into(
+                Some(&storyboard.scenes[0].composition),
+                Some(&next.composition),
+                2,
+                Some(Transition::Flood)
+            ),
+            Transition::Flood
+        );
     }
 
     #[test]

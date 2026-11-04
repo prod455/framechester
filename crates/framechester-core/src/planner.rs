@@ -30,9 +30,9 @@ use crate::error::{FramechesterError, Result};
 use crate::narration::segment_narration;
 use crate::presets;
 use crate::storyboard::{
-    narration_words, Animation, CaptionPlan, Character, Composition, Cue, Icon, Motion, Pose,
-    Relation, RelationKind, Role, Storyboard, StoryboardScene, Transition, ValidationCriteria,
-    VideoFormat, VisualObject, SCHEMA_VERSION,
+    narration_words, Animation, CaptionPlan, Character, Composition, Cue, ElementShape, Icon,
+    Motion, Pose, Relation, RelationKind, Role, Storyboard, StoryboardScene, Transition,
+    ValidationCriteria, VideoFormat, VisualObject, SCHEMA_VERSION,
 };
 
 const MAX_FIELD: usize = 160;
@@ -839,6 +839,15 @@ pub fn plan_animations(composition: &Composition, narration: &str) -> Vec<Animat
     let labels: Vec<(String, String)> = match composition {
         Composition::Title { .. } => vec![("title".into(), String::new())],
         Composition::Character { .. } => vec![("speech".into(), String::new())],
+        Composition::Freeform { elements } => elements
+            .iter()
+            .map(|element| {
+                (
+                    element.id.clone(),
+                    element.shape.text().unwrap_or_default().to_string(),
+                )
+            })
+            .collect(),
         Composition::Code { lines, .. } => (0..lines.len())
             .map(|index| (format!("line:{index}"), String::new()))
             .collect(),
@@ -872,6 +881,7 @@ pub fn plan_animations(composition: &Composition, narration: &str) -> Vec<Animat
             | Composition::Steps { .. }
             | Composition::Annotation { .. }
             | Composition::Architecture { .. }
+            | Composition::Freeform { .. }
     );
     let before_count = match composition {
         Composition::Transformation { before, .. } => before.len(),
@@ -886,6 +896,11 @@ pub fn plan_animations(composition: &Composition, narration: &str) -> Vec<Animat
     let mut last_position = 0usize;
     for (index, (id, label)) in labels.iter().enumerate() {
         let motion = match composition {
+            Composition::Freeform { elements } => match elements[index].shape {
+                ElementShape::Arrow { .. } => Motion::Draw,
+                ElementShape::Text { .. } => Motion::Reveal,
+                _ => Motion::Pop,
+            },
             Composition::Chart { .. } => Motion::Grow,
             Composition::Code { .. } => Motion::Type,
             Composition::FlowDiagram { .. }
@@ -991,6 +1006,10 @@ fn plan_emphasis(composition: &Composition, narration: &str) -> Vec<String> {
         Composition::Title { .. } | Composition::Code { .. } | Composition::Character { .. } => {
             Vec::new()
         }
+        Composition::Freeform { elements } => elements
+            .iter()
+            .filter_map(|element| element.shape.text().map(str::to_string))
+            .collect(),
         Composition::FlowDiagram { objects, .. }
         | Composition::Comparison { objects, .. }
         | Composition::Timeline { objects }
@@ -1021,6 +1040,18 @@ fn plan_emphasis(composition: &Composition, narration: &str) -> Vec<String> {
         }
     }
     emphasis
+}
+
+/// Fills what a hand- or agent-written storyboard scene left out: without animations it
+/// gets the planner's narration-cued ones, without caption emphasis the mentioned labels.
+/// Anything the author wrote is kept as is.
+pub fn complete_scene(scene: &mut StoryboardScene) {
+    if scene.animations.is_empty() {
+        scene.animations = plan_animations(&scene.composition, &scene.narration);
+    }
+    if scene.captions.emphasis.is_empty() {
+        scene.captions.emphasis = plan_emphasis(&scene.composition, &scene.narration);
+    }
 }
 
 /// Plans one scene. The note after the directive becomes the learning goal when present.

@@ -174,6 +174,7 @@ fn build_component(
         }
         Composition::CauseEffect { objects } => components::cause_effect::build(ctx, area, objects),
         Composition::Steps { objects } => components::steps::build(ctx, area, objects),
+        Composition::Freeform { elements } => components::freeform::build(ctx, area, elements),
         Composition::Character {
             character,
             pose,
@@ -1373,6 +1374,93 @@ mod tests {
                 );
             }
         }
+    }
+
+    fn freeform_scene(elements: serde_json::Value, narration: &str) -> StoryboardScene {
+        let mut scene = narrated("#pergunta Cena livre?", narration);
+        scene.composition = serde_json::from_value(serde_json::json!({
+            "kind": "freeform",
+            "elements": elements,
+        }))
+        .unwrap();
+        scene.animations.clear();
+        scene.captions.emphasis.clear();
+        framechester_core::planner::complete_scene(&mut scene);
+        scene.validate().unwrap();
+        scene
+    }
+
+    #[test]
+    fn the_freeform_example_composes_in_every_format_and_reveals_on_the_spoken_word() {
+        let typesetter = Typesetter::new().unwrap();
+        let mut example: Storyboard =
+            serde_json::from_str(include_str!("../../../examples/freeform.storyboard.json"))
+                .unwrap();
+        for scene in &mut example.scenes {
+            framechester_core::planner::complete_scene(scene);
+        }
+        example.validate().unwrap();
+        for format in [
+            VideoFormat::Vertical,
+            VideoFormat::Horizontal,
+            VideoFormat::X,
+        ] {
+            example.format = format;
+            let issues = layout_preflight(&example, &typesetter);
+            assert!(issues.is_empty(), "{format:?}: {issues:?}");
+        }
+        let terra = example.scenes[0]
+            .animations
+            .iter()
+            .find(|animation| animation.target == "terra")
+            .unwrap();
+        assert_eq!(
+            terra.at,
+            Cue::Word {
+                word: "terra".into(),
+                occurrence: 0
+            },
+            "an element enters when its text is spoken"
+        );
+        assert!(example.scenes[0]
+            .animations
+            .iter()
+            .any(|animation| animation.target == "luz" && animation.motion == Motion::Draw));
+    }
+
+    #[test]
+    fn freeform_text_that_does_not_fit_or_overlaps_is_reported() {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Vertical);
+        let cramped = freeform_scene(
+            serde_json::json!([{ "id": "nota", "shape": { "kind": "text", "area": { "x": 0, "y": 0, "w": 8, "h": 3 }, "text": "Um texto longo demais para uma caixa minuscula" } }]),
+            "Um texto longo demais.",
+        );
+        let composed = compose_scene(&typesetter, &canvas, &cramped, 1, 2);
+        assert!(
+            composed
+                .issues
+                .iter()
+                .any(|issue| issue.code == "text_overflow"),
+            "{:?}",
+            composed.issues
+        );
+        let stacked = freeform_scene(
+            serde_json::json!([
+                { "id": "a", "shape": { "kind": "text", "area": { "x": 0, "y": 10, "w": 100, "h": 20 }, "text": "Primeira frase aqui" } },
+                { "id": "b", "shape": { "kind": "text", "area": { "x": 0, "y": 10, "w": 100, "h": 20 }, "text": "Segunda frase aqui" } }
+            ]),
+            "Primeira frase e segunda frase.",
+        );
+        let composed = compose_scene(&typesetter, &canvas, &stacked, 1, 2);
+        assert!(
+            composed
+                .issues
+                .iter()
+                .any(|issue| issue.code == "text_intersection"),
+            "{:?}",
+            composed.issues
+        );
     }
 
     #[test]

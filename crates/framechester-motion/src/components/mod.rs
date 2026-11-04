@@ -9,6 +9,7 @@ pub mod chart;
 pub mod code;
 pub mod comparison;
 pub mod flow;
+pub mod freeform;
 pub mod infographic;
 pub mod steps;
 pub mod timeline;

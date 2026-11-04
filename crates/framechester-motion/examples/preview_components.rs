@@ -93,4 +93,51 @@ fn main() {
             }
         }
     }
+    // Free-form scenes from the agent-facing example, in every format.
+    let example: framechester_core::storyboard::Storyboard = serde_json::from_str(
+        &std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../examples/freeform.storyboard.json"
+        ))
+        .unwrap(),
+    )
+    .unwrap();
+    for format in [
+        VideoFormat::Vertical,
+        VideoFormat::Horizontal,
+        VideoFormat::X,
+    ] {
+        let canvas = Canvas::for_format(format);
+        let rasterizer = Rasterizer::new(&typesetter, canvas.width, canvas.height);
+        for (index, scene) in example.scenes.iter().enumerate() {
+            let mut scene = scene.clone();
+            framechester_core::planner::complete_scene(&mut scene);
+            let texts = segment_narration(&scene.narration);
+            let audio: Vec<SegmentAudio> = texts
+                .iter()
+                .map(|t| SegmentAudio {
+                    duration_secs: t.split_whitespace().count() as f32 * 0.33,
+                    leading_silence_secs: 0.05,
+                    trailing_silence_secs: 0.1,
+                    pauses: Vec::new(),
+                })
+                .collect();
+            let (segments, duration) = assemble_scene(&texts, &audio, &vec![false; texts.len()]);
+            scene.segments = segments;
+            scene.duration_secs = duration;
+            let composed = compose_scene(&typesetter, &canvas, &scene, index, example.scenes.len());
+            let svg = composed
+                .graph
+                .svg(duration * 0.95, canvas.width, canvas.height, "Inter");
+            rasterizer
+                .save_png(
+                    &svg,
+                    &out.join(format!("{}-freeform-{}.png", format.slug(), scene.id)),
+                )
+                .unwrap();
+            if !composed.issues.is_empty() {
+                println!("{format:?} freeform {}: {:?}", scene.id, composed.issues);
+            }
+        }
+    }
 }

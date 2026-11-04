@@ -102,7 +102,8 @@ pub fn build(
                 (first.right(), first.cy()),
             ]
         } else {
-            let y = area.bottom() - gap * 0.6;
+            // Just under the cards, never down in the caption band.
+            let y = (first.bottom().max(last.bottom()) + gap * 1.4).min(area.bottom() - gap * 0.6);
             vec![
                 (last.cx(), last.bottom()),
                 (last.cx(), y),

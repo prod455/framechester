@@ -148,6 +148,9 @@ fn fit_placed(
     }
 }
 
+/// Delay between the words of a caption chunk as they enter.
+const WORD_STAGGER: f32 = 0.045;
+
 pub fn build(ctx: &mut Ctx<'_>, scene: &StoryboardScene) -> Vec<Node> {
     if scene.captions.hidden {
         return Vec::new();
@@ -260,47 +263,65 @@ pub fn build(ctx: &mut Ctx<'_>, scene: &StoryboardScene) -> Vec<Node> {
                     base_colour,
                     Anchor::Start,
                 );
-                base.z = Z_CAPTIONS + 1;
+                base.z = Z_CAPTIONS + 2;
+                // Kinetic entry: the chunk's words rise in one after another with a small
+                // overshoot instead of the block appearing at once.
+                let enter = (chunk.start_secs + (word_cursor - 1) as f32 * WORD_STAGGER)
+                    .min(visible_end - fade);
                 base.props.opacity.key(0.0, 0.0, Easing::Linear);
-                base.props
-                    .opacity
-                    .to(chunk.start_secs, fade, 1.0, Easing::EaseOut);
+                base.props.opacity.to(enter, fade, 1.0, Easing::EaseOut);
                 base.props
                     .opacity
                     .to(visible_end, fade, 0.0, Easing::EaseIn);
+                base.props.dy.key(0.0, size * 0.28, Easing::Linear);
+                base.props.dy.to(enter, 0.22, 0.0, Easing::Back);
                 let width = ctx.ts.measure(word_text, size, weight, family);
                 if let Some(timed) = timed {
-                    if !emphasized {
-                        let mut accent = ctx.ts.line(
-                            &object,
-                            word_text,
-                            x,
-                            baseline,
-                            size,
-                            weight,
-                            family,
-                            tokens::ACCENT,
-                            Anchor::Start,
-                        );
-                        accent.z = Z_CAPTIONS + 2;
-                        let lit_start = timed.start_secs.clamp(chunk.start_secs, visible_end);
-                        let lit_end = timed.end_secs.max(lit_start + 0.12).min(visible_end);
-                        accent.props.opacity.key(0.0, 0.0, Easing::Linear);
-                        accent
-                            .props
-                            .opacity
-                            .to(lit_start, 0.06, 1.0, Easing::EaseOut);
-                        accent.props.opacity.to(lit_end, 0.08, 0.0, Easing::EaseIn);
-                        accent.readable = false;
-                        nodes.push(accent);
-                    } else {
-                        base.props
+                    let lit_start = timed.start_secs.clamp(enter, visible_end);
+                    let lit_end = timed.end_secs.max(lit_start + 0.12).min(visible_end);
+                    // The spoken word sits on an accent pill, in dark ink, and pops.
+                    let pad_x = size * 0.09;
+                    let mut pill = Node::new(
+                        &object,
+                        Shape::Rect {
+                            rect: Rect::new(
+                                x - pad_x,
+                                baseline - size * 0.86,
+                                width + 2.0 * pad_x,
+                                size * 1.12,
+                            ),
+                            rx: size * 0.22,
+                            fill: tokens::ACCENT.into(),
+                            stroke: None,
+                        },
+                    )
+                    .with_z(Z_CAPTIONS + 1)
+                    .decorative();
+                    let mut ink = ctx.ts.line(
+                        &object,
+                        word_text,
+                        x,
+                        baseline,
+                        size,
+                        weight,
+                        family,
+                        tokens::CAPTION_INK_ON_ACCENT,
+                        Anchor::Start,
+                    );
+                    ink.z = Z_CAPTIONS + 3;
+                    ink.readable = false;
+                    for node in [&mut pill, &mut ink] {
+                        node.props.opacity.key(0.0, 0.0, Easing::Linear);
+                        node.props.opacity.to(lit_start, 0.05, 1.0, Easing::EaseOut);
+                        node.props.opacity.to(lit_end, 0.07, 0.0, Easing::EaseIn);
+                        node.props.scale.key(0.0, 0.9, Easing::Linear);
+                        node.props.scale.to(lit_start, 0.12, 1.08, Easing::EaseOut);
+                        node.props
                             .scale
-                            .to(timed.start_secs, 0.12, 1.08, Easing::EaseOut);
-                        base.props
-                            .scale
-                            .to(timed.start_secs + 0.12, 0.18, 1.0, Easing::EaseInOut);
+                            .to(lit_start + 0.12, 0.16, 1.0, Easing::EaseInOut);
                     }
+                    nodes.push(pill);
+                    nodes.push(ink);
                 }
                 nodes.push(base);
                 x += width + space;
@@ -433,11 +454,18 @@ mod tests {
         }
         let word = scene.segments[0].words[1].clone();
         let mid = (word.start_secs + word.end_secs) / 2.0;
-        let lit = nodes
-            .iter()
-            .filter(|node| node.z == Z_CAPTIONS + 2 && node.props.opacity.eval(mid) > 0.9)
-            .count();
-        assert_eq!(lit, 1, "exactly one accent word while speaking");
+        let lit = |z: i32| {
+            nodes
+                .iter()
+                .filter(|node| node.z == z && node.props.opacity.eval(mid) > 0.9)
+                .count()
+        };
+        assert_eq!(
+            lit(Z_CAPTIONS + 3),
+            1,
+            "exactly one lit word while speaking"
+        );
+        assert_eq!(lit(Z_CAPTIONS + 1), 1, "on exactly one accent pill");
     }
 
     #[test]

@@ -35,8 +35,16 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, title: &str, objects: &[VisualObject
         objects.len().clamp(1, 3)
     };
     let row_count = objects.len().div_ceil(columns);
-    let card_h =
-        (grid.h / row_count as f32 - gap).min(if ctx.canvas.vertical { 360.0 } else { 300.0 });
+    // Tall enough for what a card holds (icon, value, one label line, two detail
+    // lines, insets), so text never presses on the bottom edge at any zoom.
+    let content_h = gap * 1.6
+        + ctx.canvas.icon * 0.9
+        + gap * 0.5
+        + scale.heading * 1.25 * 1.1
+        + scale.body * tokens::LINE_HEIGHT
+        + scale.small * (0.3 + 2.0 * tokens::LINE_HEIGHT)
+        + gap * 0.4;
+    let card_h = (grid.h / row_count as f32 - gap).min(content_h);
     let grid = Rect::new(
         grid.x,
         grid.y,
@@ -101,7 +109,8 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, title: &str, objects: &[VisualObject
             inner.x,
             top,
             inner.w,
-            (inner.bottom() - top).max(scale.small),
+            // Never stretched past the card: text that does not fit inside is reported.
+            (inner.bottom() - top).max(0.0),
         );
         let (label_nodes, bottom) = ctx.fitted(
             &object.id,
@@ -120,7 +129,7 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, title: &str, objects: &[VisualObject
                 inner.x,
                 bottom + scale.small * 0.3,
                 inner.w,
-                (inner.bottom() - bottom - scale.small * 0.3).max(scale.small),
+                (inner.bottom() - bottom - scale.small * 0.3).max(0.0),
             );
             let (detail_nodes, _) = ctx.fitted(
                 &object.id,

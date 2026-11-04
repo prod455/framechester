@@ -71,6 +71,9 @@ pub struct Props {
     pub glow: Track,
     /// Characters shown for text (typewriter); `f32::MAX` means all.
     pub typed: Track,
+    /// Gaussian blur radius in pixels (an element sharpening as it lands). Costly to
+    /// raster, so only entrances use it, for a fraction of a second.
+    pub blur: Track,
 }
 
 impl Default for Props {
@@ -86,6 +89,7 @@ impl Default for Props {
             draw: Track::constant(1.0),
             glow: Track::constant(0.0),
             typed: Track::constant(f32::MAX),
+            blur: Track::constant(0.0),
         }
     }
 }
@@ -405,6 +409,7 @@ impl Graph {
                     &props.draw,
                     &props.glow,
                     &props.typed,
+                    &props.blur,
                 ]
                 .into_iter()
                 .flat_map(|track| track.change_times())
@@ -688,12 +693,26 @@ impl Graph {
                     fmt(-oy)
                 ));
             }
+            // Blur only while an entrance sharpens; the filter region stays the node's own
+            // box, so a word costs a fraction of a full-frame blur.
+            let blur = node.props.blur.eval(t);
+            let filter = (blur > 0.05).then(|| {
+                let id = format!("fc-b-{:p}", node);
+                svg.push_str(&format!(
+                    "<defs><filter id='{id}' x='-30%' y='-60%' width='160%' height='220%'><feGaussianBlur stdDeviation='{}'/></filter></defs>",
+                    fmt(blur)
+                ));
+                id
+            });
             svg.push_str("<g");
             if !transform.is_empty() {
                 svg.push_str(&format!(" transform='{}'", transform.trim()));
             }
             if node_opacity < 0.999 {
                 svg.push_str(&format!(" opacity='{}'", fmt(node_opacity)));
+            }
+            if let Some(id) = &filter {
+                svg.push_str(&format!(" filter='url(#{id})'"));
             }
             svg.push('>');
             node.shadow_svg(svg, palette);
@@ -944,6 +963,17 @@ impl Props {
     pub fn fade_in(&mut self, at: f32, duration: f32) {
         self.opacity.key(at.min(0.0), 0.0, Easing::Linear);
         self.opacity.to(at, duration * 0.8, 1.0, Easing::EaseOut);
+    }
+
+    /// Appear in place sharpening from a 6 px blur in 0.13 s, as reference titles enter
+    /// word by word (opacity follows over the same beat; no translate).
+    pub fn blur_in(&mut self, at: f32) {
+        const BLUR_IN_SECS: f32 = 0.13;
+        const BLUR_IN_PX: f32 = 6.0;
+        self.opacity.key(at.min(0.0), 0.0, Easing::Linear);
+        self.opacity.to(at, BLUR_IN_SECS, 1.0, Easing::EaseOut);
+        self.blur.key(at.min(0.0), BLUR_IN_PX, Easing::Linear);
+        self.blur.to(at, BLUR_IN_SECS, 0.0, Easing::EaseOut);
     }
 
     /// Arrive slightly large and settle into place, fading in.

@@ -374,7 +374,7 @@ fn resolve_times(scene: &StoryboardScene, hook: bool) -> Vec<(f32, &Animation)> 
 enum Entrance {
     /// Fade while sliding in from below (vertical) or the side.
     Slide,
-    /// Opacity only, no translate: words and cards appear in place.
+    /// No translate: words sharpen in from a 6 px blur, cards fade in place.
     Fade,
     /// Arrive slightly large and settle.
     Settle,
@@ -426,6 +426,8 @@ fn apply_animation(
                 };
                 match Entrance::for_scene(scene.id) {
                     Entrance::Slide => node.props.reveal(at, duration, direction, animation.easing),
+                    // Text sharpens in place; shapes (cards, rules) just appear.
+                    Entrance::Fade if node.is_text() => node.props.blur_in(at),
                     Entrance::Fade => node.props.fade_in(at, duration),
                     Entrance::Settle => node.props.settle(at, duration, animation.easing),
                 }
@@ -2070,5 +2072,49 @@ mod tests {
         let status = |id: &str| checks.iter().find(|check| check.id == id).unwrap().status;
         assert_eq!(status("text_below_floor"), QaStatus::Fail);
         assert_eq!(status("line_unread"), QaStatus::NeedsHuman);
+    }
+
+    #[test]
+    fn words_sharpen_in_from_a_blur_and_land_dead_sharp() {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Vertical);
+        let mut scene = narrated(
+            "#pergunta Skill ou agente: qual a diferença na prática?",
+            "Skill ou agente: qual a diferenca na pratica? Vamos ver.",
+        );
+        // Scene 1 enters with the no-translate entrance (`Entrance::for_scene`).
+        scene.id = 1;
+        assert_eq!(Entrance::for_scene(1), Entrance::Fade);
+        let composed = compose_scene(&typesetter, &canvas, &scene, 1, 3);
+        let word = composed
+            .graph
+            .nodes
+            .iter()
+            .filter(|node| node.object == "title" && node.is_text())
+            .nth(3)
+            .unwrap();
+        let entry = (0..200)
+            .map(|step| step as f32 * 0.01)
+            .find(|t| word.props.opacity.eval(*t) > 0.0)
+            .unwrap();
+        assert!(word.props.blur.eval(entry + 0.01) > 2.0, "arrives blurred");
+        assert_eq!(word.props.blur.eval(entry + 0.2), 0.0, "lands sharp");
+        assert_eq!(word.props.dx.eval(entry + 0.05), 0.0, "no translate");
+        assert_eq!(word.props.dy.eval(entry + 0.05), 0.0, "no translate");
+        let during =
+            composed
+                .graph
+                .svg(entry + 0.03, canvas.width, canvas.height, tokens::FONT_SANS);
+        assert!(during.contains("feGaussianBlur"));
+        let landed = composed.graph.svg(
+            scene.duration_secs,
+            canvas.width,
+            canvas.height,
+            tokens::FONT_SANS,
+        );
+        assert!(
+            !landed.contains("feGaussianBlur"),
+            "no filter once everything landed"
+        );
     }
 }

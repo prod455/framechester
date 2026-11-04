@@ -123,7 +123,7 @@ Regras de composição:
 
 | Movimento | Duração padrão | Easing | Quando |
 |---|---|---|---|
-| `reveal` | 0,6 s | chegada de cauda longa `cubic-bezier(0.16,1,0.3,1)` | objeto entra quando é mencionado; a entrada gira por cena: deslizar, só opacidade (sem translação) ou chegar 6% maior e assentar |
+| `reveal` | 0,6 s | chegada de cauda longa `cubic-bezier(0.16,1,0.3,1)` | objeto entra quando é mencionado; a entrada gira por cena: deslizar, sem translação (texto entra nítido a partir de 6 px de desfoque em 0,13 s, palavra por palavra; cartões só aparecem) ou chegar 6% maior e assentar. O desfoque fica restrito à caixa do elemento e dura 4 frames: custo dentro do ruído do render |
 | `pop` | 0,6 s | ênfase `cubic-bezier(0.34,1.56,0.64,1)` (overshoot de amortecimento ~0,75) | nós de fluxo e arquitetura |
 | `draw` | 0,45 s | ease-out | aresta depois que as duas pontas existem |
 | `highlight` | 1,2 s | ease-out | anel de brilho enquanto o objeto é discutido |

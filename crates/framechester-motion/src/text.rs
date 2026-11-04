@@ -252,10 +252,12 @@ impl Typesetter {
 
     /// One text node per word of `lines`, at the same baselines and with the
     /// same line breaks as [`Self::block`]: kinetic typography reveals word
-    /// by word without changing the layout (each word keeps its measured
-    /// box, so overflow/overlap QA sees exactly what is drawn). Only
-    /// horizontal placement is recomputed, from measured word widths plus
-    /// the font's real space advance.
+    /// by word without changing the layout. Each word keeps its measured box
+    /// (so overflow/overlap QA sees exactly what is drawn) and the words of a
+    /// line span exactly the fitted line: the first box starts where the line
+    /// starts and the last box ends where it ends, the leftover width split
+    /// evenly between the words. No word can leave the fitted line, on either
+    /// side.
     #[allow(clippy::too_many_arguments)]
     pub fn word_block(
         &self,
@@ -269,10 +271,6 @@ impl Typesetter {
         fill: &str,
         anchor: Anchor,
     ) -> Vec<Node> {
-        // Real space advance of the font: difference made by one space.
-        let space = (self.measure("a a", size, weight, family)
-            - self.measure("aa", size, weight, family))
-        .max(size * 0.12);
         let mut nodes = Vec::new();
         for (index, line) in lines.iter().enumerate() {
             let words: Vec<&str> = line.split_whitespace().collect();
@@ -280,33 +278,22 @@ impl Typesetter {
                 .iter()
                 .map(|word| self.measure(word, size, weight, family))
                 .collect();
-            // `measure` adds side bearings per call, so summing per-word
-            // widths overstates the line. Compress advances back to the
-            // measured line width: glyphs keep their size, only the
-            // (invisible) bearing padding shrinks, so the last word's box
-            // stays where the fitted line put it.
-            let mut widths = widths;
-            let mut space = space;
-            let line_width =
-                widths.iter().sum::<f32>() + space * words.len().saturating_sub(1) as f32;
             let fitted_width = self.measure(line, size, weight, family);
-            if line_width > fitted_width && fitted_width > 0.0 {
-                let k = fitted_width / line_width;
-                for width in &mut widths {
-                    *width *= k;
-                }
-                space *= k;
-            }
-            let line_width =
-                widths.iter().sum::<f32>() + space * words.len().saturating_sub(1) as f32;
-            let _ = line_width;
-            let mut cursor = match anchor {
+            let left = match anchor {
                 Anchor::Start => x,
-                Anchor::Middle => x - line_width / 2.0,
-                Anchor::End => x - line_width,
+                Anchor::Middle => x - fitted_width / 2.0,
+                Anchor::End => x - fitted_width,
+            };
+            // Word boxes carry their own side bearings, so their sum is below the
+            // line's measured width by about one space per gap; never negative gaps.
+            let gaps = words.len().saturating_sub(1);
+            let space = if gaps == 0 {
+                0.0
+            } else {
+                ((fitted_width - widths.iter().sum::<f32>()) / gaps as f32).max(0.0)
             };
             let baseline = top + size * 0.85 + index as f32 * size * LINE_HEIGHT;
-            let first_word_at = nodes.len();
+            let mut cursor = left;
             for (word, width) in words.iter().zip(&widths) {
                 nodes.push(self.line(
                     object,
@@ -320,24 +307,6 @@ impl Typesetter {
                     Anchor::Start,
                 ));
                 cursor += width + space;
-            }
-            // Each drawn word keeps its full measured box, so after advance
-            // compression the span can still end past the fitted line by one
-            // bearing. Shift the whole line back so its right edge lands
-            // exactly on the fitted line's right edge.
-            if nodes.len() > first_word_at {
-                let fitted_right = match anchor {
-                    Anchor::Start => x + fitted_width,
-                    Anchor::Middle => x + fitted_width / 2.0,
-                    Anchor::End => x,
-                };
-                let drawn_right = nodes[nodes.len() - 1].bbox().right();
-                let shift = fitted_right - drawn_right;
-                if shift.abs() > 0.01 {
-                    for node in &mut nodes[first_word_at..] {
-                        node.shift(shift, 0.0);
-                    }
-                }
             }
         }
         nodes
@@ -422,6 +391,11 @@ mod tests {
             assert!(
                 right <= line_right + 1.0,
                 "word box {right} beyond fitted line {line_right}"
+            );
+            assert!(
+                node.bbox().x >= 40.0 - 0.01,
+                "word box {} starts before the line",
+                node.bbox().x
             );
         }
         // Words keep narration order along the line.

@@ -39,8 +39,12 @@ manifesto de render registra o SHA-256 de cada fonte.
 | número | 190 | 210 | 150 |
 
 Entrelinha 1,22. Hierarquia fixa: cabeçalho da cena em Bold, rótulos em SemiBold,
-detalhes em Regular com `INK_SOFT`. Texto encolhe até um mínimo por componente e, se
-ainda não couber, **o QA reprova** — nunca há reticências.
+detalhes em Regular com `INK_SOFT`. Texto encolhe até um mínimo por componente, depois
+até o piso de legibilidade (`pequeno`, o tamanho dos detalhes); títulos de comparação
+quebram em até 3 linhas e cartões do fluxo vertical crescem até a célula. Só o que não
+cabe nem no piso **reprova** — nunca há reticências. O `produce` (e o `short`) roda esse
+layout sobre o plano **antes** do TTS e do render (`layout_preflight`) e para em segundos,
+dizendo a cena e o texto a encurtar.
 
 ## Áreas seguras e layout por formato
 

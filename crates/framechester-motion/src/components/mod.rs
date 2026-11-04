@@ -100,6 +100,36 @@ impl<'a> Ctx<'a> {
         );
     }
 
+    /// Size and line breaks of sans `text` in a `width` × `height` box: the largest size
+    /// from `max` down to `min`, then down to the canvas legibility floor
+    /// (`type_scale.small`, the size details are already drawn at) before giving up. Only
+    /// text that does not fit even at the floor is an overflow; it is still drawn at the
+    /// smallest size tried, never truncated.
+    #[allow(clippy::too_many_arguments)]
+    pub fn fit(
+        &mut self,
+        object: &str,
+        text: &str,
+        width: f32,
+        height: f32,
+        max: f32,
+        min: f32,
+        weight: u16,
+    ) -> (f32, Vec<String>) {
+        let family = tokens::FONT_SANS;
+        let floor = self.canvas.type_scale.small.min(min);
+        if let Some(found) = self.ts.fit(text, max, min, width, height, weight, family) {
+            return found;
+        }
+        if floor < min {
+            if let Some(found) = self.ts.fit(text, min, floor, width, height, weight, family) {
+                return found;
+            }
+        }
+        self.overflow(object, text);
+        (floor, self.ts.wrap(text, floor, weight, family, width))
+    }
+
     /// Rounded card coloured by role.
     pub fn card(&self, object: &str, rect: Rect, role: Role) -> Node {
         let colours = palette(role);
@@ -133,13 +163,7 @@ impl<'a> Ctx<'a> {
         valign: f32,
     ) -> (Vec<Node>, f32) {
         let family = tokens::FONT_SANS;
-        let (size, lines) = match self.ts.fit(text, max, min, rect.w, rect.h, weight, family) {
-            Some(found) => found,
-            None => {
-                self.overflow(object, text);
-                (min, self.ts.wrap(text, min, weight, family, rect.w))
-            }
-        };
+        let (size, lines) = self.fit(object, text, rect.w, rect.h, max, min, weight);
         let height = Typesetter::block_height(size, lines.len());
         let top = rect.y + (rect.h - height).max(0.0) * valign;
         let x = match anchor {

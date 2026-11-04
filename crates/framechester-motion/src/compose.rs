@@ -9,6 +9,9 @@ use crate::scene::{Anchor, Camera, Graph, Node, Shape, Z_CAPTIONS};
 use crate::text::Typesetter;
 use crate::tokens;
 use framechester_core::error::Result;
+use framechester_core::narration::{
+    assemble_scene, paragraph_breaks, segment_narration, SegmentAudio,
+};
 use framechester_core::storyboard::{
     Animation, Composition, Easing, Motion, Storyboard, StoryboardScene, Transition,
 };
@@ -720,6 +723,42 @@ pub fn compose(storyboard: &Storyboard, typesetter: &Typesetter) -> Result<Compo
     Ok(Composed { canvas, scenes })
 }
 
+/// Critical layout issues of a planned (not yet narrated) storyboard, found in
+/// milliseconds instead of after the TTS and the full render. Text layout does not
+/// depend on audio timing, so each scene is composed with estimated word timings
+/// (`ESTIMATED_SECS_PER_WORD`); the storyboard itself is not changed.
+pub fn layout_preflight(storyboard: &Storyboard, typesetter: &Typesetter) -> Vec<LayoutIssue> {
+    const ESTIMATED_SECS_PER_WORD: f32 = 0.33;
+    let canvas = Canvas::for_format(storyboard.format);
+    let total = storyboard.scenes.len();
+    let mut issues = Vec::new();
+    for (index, scene) in storyboard.scenes.iter().enumerate() {
+        let mut scene = scene.clone();
+        let texts = segment_narration(&scene.narration);
+        let audio: Vec<SegmentAudio> = texts
+            .iter()
+            .map(|text| SegmentAudio {
+                duration_secs: text.split_whitespace().count().max(1) as f32
+                    * ESTIMATED_SECS_PER_WORD,
+                leading_silence_secs: 0.0,
+                trailing_silence_secs: 0.0,
+                pauses: Vec::new(),
+            })
+            .collect();
+        let breaks = paragraph_breaks(&scene.narration, &texts);
+        let (segments, duration) = assemble_scene(&texts, &audio, &breaks);
+        scene.segments = segments;
+        scene.duration_secs = duration;
+        issues.extend(
+            compose_scene(typesetter, &canvas, &scene, index, total)
+                .issues
+                .into_iter()
+                .filter(|issue| issue.severity == Severity::Critical),
+        );
+    }
+    issues
+}
+
 /// SVG of the whole frame at absolute time `t`, including transitions between scenes.
 const PREVIEW_MARK: &str = "PRÉVIA · REVISÃO PENDENTE";
 
@@ -861,7 +900,6 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
 mod tests {
     use super::*;
     use framechester_core::domain::Scene;
-    use framechester_core::narration::{assemble_scene, segment_narration, SegmentAudio};
     use framechester_core::planner::plan_scene;
     use framechester_core::storyboard::*;
 
@@ -1296,5 +1334,84 @@ mod tests {
             .graph
             .svg(5.0, canvas.width, canvas.height, tokens::FONT_SANS);
         assert!(!svg.contains('…'));
+    }
+
+    #[test]
+    fn long_but_valid_texts_fit_in_every_format() {
+        let typesetter = Typesetter::new().unwrap();
+        let briefs: Vec<(String, String)> = vec![
+            ("#pergunta Por que os modelos de linguagem alucinam quando não sabem a resposta correta para uma pergunta factual?".into(), "Por que alucinam? Vamos ver.".into()),
+            ("#fluxo Usuário envia a pergunta [user] -> Modelo recupera documentos relevantes [search] -> Modelo gera a resposta final [brain] -> Verificador confere as fontes citadas [check] -> Resposta entregue ao usuário".into(), "O usuario envia, o modelo recupera, gera, o verificador confere e entrega.".into()),
+            ("#comparacao Modelos pequenos rodando localmente: baratos e privados; latência baixa no dispositivo; qualidade menor em raciocínio | Modelos grandes na nuvem: mais capazes em tarefas complexas; custo por token alto; dependem de conexão".into(), "Modelos pequenos sao baratos. Modelos grandes sao mais capazes.".into()),
+            ("#linha-do-tempo 1950: Turing propõe o jogo da imitação; 1997: Deep Blue vence Kasparov no xadrez; 2012: AlexNet revoluciona visão computacional; 2017: Transformers mudam o processamento de linguagem; 2022: ChatGPT populariza a IA generativa".into(), "Em 1950 Turing. Em 1997 Deep Blue. Em 2012 AlexNet. Em 2017 Transformers. Em 2022 ChatGPT.".into()),
+            ("#transformacao Prompt gigante com todas as regras misturadas; Instruções repetidas em cada conversa; Contexto desperdiçado => Skill versionada e reutilizável entre projetos [skill]".into(), "O prompt gigante vira uma skill versionada.".into()),
+            ("#causa Dados de treino desatualizados ou incompletos => O modelo preenche lacunas com padrões estatísticos => Respostas confiantes porém incorretas => Usuários perdem a confiança no sistema".into(), "Dados desatualizados, lacunas preenchidas, respostas incorretas, perda de confianca.".into()),
+            ("#passos Defina claramente o objetivo da tarefa antes de começar; Escolha o modelo adequado ao orçamento disponível; Teste com exemplos reais e meça os resultados; Itere no prompt até atingir a qualidade desejada".into(), "Defina, escolha, teste e itere.".into()),
+            ("#infografico Impacto da IA no trabalho em 2025 | Produtividade=40%: ganho médio em tarefas de escrita [chart]; Empresas=72%: já adotam alguma ferramenta de IA [check]; Empregos [shield]: novas funções surgem enquanto outras desaparecem".into(), "Produtividade sobe 40%, 72% das empresas adotam.".into()),
+            ("#anotacao projeto/src/main.rs: ponto de entrada da aplicação que inicializa o servidor; projeto/Cargo.toml: dependências e metadados do pacote Rust; projeto/tests/integracao.rs: testes de integração ponta a ponta".into(), "O main inicializa, o Cargo lista dependencias, os testes cobrem.".into()),
+            ("#arquitetura Frontend/Interface web em React; Frontend/Aplicativo móvel nativo; Backend/API REST de autenticação; Backend/Fila de processamento assíncrono; Interface web em React -> API REST de autenticação; Aplicativo móvel nativo -> Fila de processamento assíncrono".into(), "A interface fala com a API e o app com a fila.".into()),
+            ("#personagem apresentador | explicar | Uma skill é como uma receita detalhada que o agente segue passo a passo sempre que encontra aquela tarefa específica".into(), "Uma skill e uma receita.".into()),
+            ("#fluxo Coleta de dados brutos de várias fontes heterogêneas -> Limpeza e normalização dos registros duplicados -> Treinamento do modelo com validação cruzada -> Avaliação em conjunto de teste independente -> Implantação em produção com monitoramento contínuo -> Retreino periódico com dados novos".into(), "Coleta, limpeza, treinamento, avaliacao, implantacao e retreino.".into()),
+            ("#linha-do-tempo 1943: McCulloch e Pitts descrevem o primeiro modelo matemático de neurônio artificial; 1958: Rosenblatt apresenta o perceptron como máquina capaz de aprender; 1986: Rumelhart populariza a retropropagação do erro em redes multicamadas; 2006: Hinton reacende o interesse em redes profundas pré-treinadas; 2012: AlexNet vence o ImageNet por larga margem; 2017: o artigo Attention Is All You Need apresenta o Transformer".into(), "Em 1943, 1958, 1986, 2006, 2012 e 2017.".into()),
+            ("#personagem cientista | explicar | Quando treinamos uma rede neural, ajustamos milhões de pesos para reduzir o erro medido em exemplos que o modelo nunca viu antes".into(), "Treinar e ajustar pesos.".into()),
+            ("#citacao A ciência é muito mais uma maneira de pensar do que um corpo de conhecimentos, e essa maneira de pensar exige ceticismo constante | Carl Sagan".into(), "A ciencia e uma maneira de pensar.".into()),
+        ];
+        for format in [
+            VideoFormat::Vertical,
+            VideoFormat::Horizontal,
+            VideoFormat::X,
+        ] {
+            let canvas = Canvas::for_format(format);
+            for (brief, narration) in &briefs {
+                let scene = narrated(brief, narration);
+                let composed = compose_scene(&typesetter, &canvas, &scene, 1, 6);
+                assert!(
+                    composed.issues.is_empty(),
+                    "{format:?} {}: {:?}",
+                    scene.composition.kind_name(),
+                    composed.issues
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn layout_preflight_finds_overflow_before_narration() {
+        let typesetter = Typesetter::new().unwrap();
+        let lines = (0..18)
+            .map(|index| format!("linha_{index} = calcula(valor_{index})"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let mut ok = narrated(
+            "#passos Confira a amostra; Leia o intervalo",
+            "Confira a amostra e leia o intervalo.",
+        );
+        let mut bad = narrated(
+            &format!("#codigo python | demo.py\n{lines}"),
+            "Dezoito linhas sao demais.",
+        );
+        for scene in [&mut ok, &mut bad] {
+            scene.segments.clear();
+            scene.duration_secs = 0.0;
+        }
+        bad.id = 2;
+        let storyboard = |scenes: Vec<StoryboardScene>| Storyboard {
+            version: SCHEMA_VERSION,
+            title: "Preflight".into(),
+            channel: "Canal".into(),
+            format: VideoFormat::X,
+            language: "pt-BR".into(),
+            scenes,
+            source_hash: None,
+        };
+        assert!(layout_preflight(&storyboard(vec![ok.clone()]), &typesetter).is_empty());
+        let storyboard = storyboard(vec![ok, bad]);
+        let issues = layout_preflight(&storyboard, &typesetter);
+        assert!(
+            issues
+                .iter()
+                .any(|issue| issue.scene_id == 2 && issue.code == "code_overflow"),
+            "{issues:?}"
+        );
     }
 }

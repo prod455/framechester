@@ -2,6 +2,8 @@ import type { AreaCatalog } from './index.ts';
 
 export default {
   en: {
+    'Vídeo na fila de novo, do mesmo jeito.': 'Video queued again, exactly as before.',
+    'Não foi possível tentar de novo.': "Couldn't try again.",
     'Short na fila de novo, com a mesma parte do vídeo.':
       'Short queued again, with the same part of the video.',
     'Short {part} de {parts}': 'Short {part} of {parts}',
@@ -276,6 +278,8 @@ export default {
     'Automático neste canal.': 'Automatic on this channel.',
   },
   es: {
+    'Vídeo na fila de novo, do mesmo jeito.': 'Video en cola otra vez, igual que antes.',
+    'Não foi possível tentar de novo.': 'No se pudo intentar de nuevo.',
     'Short na fila de novo, com a mesma parte do vídeo.':
       'Short en cola de nuevo, con la misma parte del video.',
     'Short {part} de {parts}': 'Short {part} de {parts}',

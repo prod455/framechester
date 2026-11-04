@@ -45,7 +45,7 @@ layout escolhe o maior tamanho que passa no QA.
    cor com objeto herói compartilhado entre cenas.
 3. **Blur de movimento e blur de entrada** por palavra (6 px → 0 em 0,13 s). Custo de
    filtro no resvg por frame precisa ser medido antes.
-4. **Checagens de ofício no QA**: `line_unread` (hold de 0,5 s + 0,3 s/palavra),
-   `dead_stretch` (> 3 s sem mudança), `text_below_floor` (< 2,6% do lado menor),
-   `first_frame_empty`. Parte já existe (`long_still`, gancho); o resto é barato.
+4. ~~Checagens de ofício no QA.~~ Feito em 2026-11-04: `text_below_floor`, `line_unread`
+   e `dead_stretch`, com o motor garantindo as três (piso no `fit`, entradas antecipadas)
+   — nelas o deles só avisa.
 5. Mídia real (tela do produto, footage) com proveniência — fora do escopo atual.

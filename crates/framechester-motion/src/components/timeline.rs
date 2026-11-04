@@ -18,7 +18,11 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, objects: &[VisualObject]) -> Vec<Nod
         // text) instead of spreading thin over the whole frame; the block is centred
         // vertically by `compose`.
         // Big markers for a few milestones; long timelines keep the room for their text.
-        let marker = if count <= 4 { scale.heading } else { scale.label };
+        let marker = if count <= 4 {
+            scale.heading
+        } else {
+            scale.label
+        };
         let step = (area.h / count as f32)
             .min(marker * 1.1 + scale.body * tokens::LINE_HEIGHT * 3.0 + gap * 1.5);
         nodes.push(
@@ -57,12 +61,27 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, objects: &[VisualObject]) -> Vec<Nod
             );
             let text_x = rail_x + dot + gap * 1.2;
             let text_w = area.right() - text_x;
+            // A long timeline sets the marker inline, left of its text, so each
+            // milestone keeps every line of its row for the text.
+            let inline = count > 4;
+            let label_w = if inline {
+                ctx.ts
+                    .measure(
+                        &object.label,
+                        marker,
+                        tokens::WEIGHT_BOLD,
+                        tokens::FONT_SANS,
+                    )
+                    .min(text_w * 0.3)
+            } else {
+                text_w
+            };
             let (label_nodes, label_bottom) = ctx.fitted(
                 &object.id,
                 &object.label,
-                Rect::new(text_x, y - marker * 0.55, text_w, marker * 1.25),
+                Rect::new(text_x, y - marker * 0.55, label_w, marker * 1.25),
                 marker,
-                scale.label,
+                scale.small,
                 tokens::WEIGHT_BOLD,
                 tokens::ACCENT,
                 Anchor::Start,
@@ -70,12 +89,17 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, objects: &[VisualObject]) -> Vec<Nod
             );
             nodes.extend(label_nodes);
             if let Some(detail) = &object.detail {
-                let detail_top = label_bottom + gap * 0.2;
+                let (detail_x, detail_top) = if inline {
+                    (text_x + label_w + gap * 0.6, y - marker * 0.55)
+                } else {
+                    (text_x, label_bottom + gap * 0.2)
+                };
                 let detail_area = Rect::new(
-                    text_x,
+                    detail_x,
                     detail_top,
-                    text_w,
-                    (area.y + (index + 1) as f32 * step - detail_top - gap * 0.6).max(scale.small),
+                    area.right() - detail_x,
+                    // Never stretched past the milestone's row: overflow is reported.
+                    (area.y + (index + 1) as f32 * step - detail_top - gap * 0.4).max(0.0),
                 );
                 let (detail_nodes, _) = ctx.fitted(
                     &object.id,

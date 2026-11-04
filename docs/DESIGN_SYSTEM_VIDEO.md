@@ -9,7 +9,7 @@ cruas: pedem um papel (`role`).
 
 | Token | Valor | Uso |
 |---|---|---|
-| `BACKGROUND` (`_TOP` / `_BOTTOM`) | `#070B14` (`#0D1630` / `#04060C`) | fundo de todas as telas, em gradiente vertical |
+| `BACKGROUND` / `BACKGROUND_TOP` | `#070B14` / `#0D1630` | fundo sólido com luz radial do topo (gradiente linear de tela cheia faz banding no H.264) |
 | `AURORA` | `#3D6BFF`, `#8B5CF6`, `#14B8A6` | três campos de cor fria atrás do conteúdo, derivando devagar |
 | `BACKGROUND_RAISED` / `SURFACE` / `SURFACE_STRONG` | `#121926` / `#182130` / `#223044` | camadas, cartões, barras vazias |
 | `RULE` | `#2B3A52` | réguas, trilhos, bordas neutras |
@@ -24,7 +24,7 @@ texto e cor do brilho (`palette()`).
 
 ### Profundidade (2026-11-04)
 
-- **Fundo vivo**: gradiente vertical azul-noite, três campos de aurora em tons frios
+- **Fundo vivo**: base sólida azul-noite com luz radial do topo, três campos de aurora em tons frios
   (azul, violeta, verde-água) que derivam alguns por cento da tela a cada dez segundos, e
   vinheta. Nada quente no fundo: brilho âmbar sobre o escuro virava marrom. Cada campo
   pinta só o próprio quadrado, então o custo de render fica em ~3% (`bench_raster`).
@@ -74,7 +74,7 @@ Cada formato tem geometria própria (`Canvas::for_format`); nenhum é recorte de
 
 | | Conteúdo | Legendas | Motivo |
 |---|---|---|---|
-| Vertical | x 72–1008, y 230–1270 | x 72–892, y 1330–1560 | barra de status no topo, botões à direita entre ~55 % e ~85 % da altura, faixa de descrição e áudio no rodapé |
+| Vertical | x 72–1008, y 230–1070 | x 72–892, y 1100–1320 | barra de status e busca nos 168 px do topo, botões à direita entre ~55 % e ~85 % da altura; título, @ e áudio cobrem tudo abaixo de 1330 px, onde só fica textura |
 | Horizontal | x 112–1808, y 92–852 | x 312–1608, y 896–1016 | barra de progresso e controles do player no rodapé |
 | X | x 72–1208, y 56–556 | x 180–1100, y 586–682 | miniatura pequena no feed; tipo maior, legendas mais curtas |
 
@@ -96,25 +96,26 @@ Regras de composição:
 
 | Movimento | Duração padrão | Easing | Quando |
 |---|---|---|---|
-| `reveal` | 0,55 s | ease-out | objeto entra quando é mencionado |
-| `pop` | 0,55 s | back | nós de fluxo e arquitetura |
+| `reveal` | 0,6 s | chegada de cauda longa `cubic-bezier(0.16,1,0.3,1)` | objeto entra quando é mencionado; a entrada gira por cena: deslizar, só opacidade (sem translação) ou chegar 6% maior e assentar |
+| `pop` | 0,6 s | ênfase `cubic-bezier(0.34,1.56,0.64,1)` (overshoot de amortecimento ~0,75) | nós de fluxo e arquitetura |
 | `draw` | 0,45 s | ease-out | aresta depois que as duas pontas existem |
 | `highlight` | 1,2 s | ease-out | anel de brilho enquanto o objeto é discutido |
 | `grow` / `count` | ≥ 0,8 s | ease-out | barras crescem e números contam |
 | `type` | 0,04 s por caractere | linear | linhas de código |
 | `move_to` | 0,9 s | ease-in-out | uma cópia viaja até o destino; o original fica a 30 % |
-| `breathe` | ±3 px, 4 s | senoidal | deriva vertical suave entre eventos |
+| `breathe` | — | — | movimento contínuo vem do fundo (aurora); o conteúdo nunca flutua |
 
 Transições entre cenas (0,42 s): `push` (padrão a partir da segunda cena), `fade`,
-`zoom`, `cut`. Irmãos que entram no mesmo cue são escalonados em 0,16 s.
+`zoom`, `cut`. Irmãos que entram no mesmo cue são escalonados em 80 ms (itens de lista 40–80 ms, palavras 60–120 ms; legendas a 70 ms).
 
 Justificativa: movimento só quando a narração traz algo novo (um objeto, uma relação,
 um valor) ou para manter o quadro vivo; nunca zoom decorativo, nunca animação aleatória.
 
 ## Câmera e variedade
 
-Cada cena tem um movimento lento de câmera que cobre a duração inteira, em ciclo para que
-duas cenas seguidas nunca repitam: aproximar 2,5%, deslizar para a esquerda, afastar
+Cada cena tem um movimento de câmera que assenta em até 2,4 s com cauda longa e depois
+fica parado (um empurrão que continua enquanto se lê é sinal de vídeo gerado), em ciclo
+para que duas cenas seguidas nunca repitam: aproximar 2,5%, deslizar para a esquerda, afastar
 2,5%, deslizar para a direita (14 px de cada lado, com 1,25% de zoom). As legendas ficam
 fora do movimento. A escala vai para o SVG com 4 casas decimais: com 2, um zoom lento
 andaria em degraus de ~10 px. A primeira cena entra em corte; as seguintes alternam

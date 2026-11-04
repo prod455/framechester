@@ -4,10 +4,8 @@
 use framechester_core::storyboard::Role;
 
 pub const BACKGROUND: &str = "#070B14";
-/// Top of the vertical background gradient (slightly lifted so frames have depth).
+/// Radial lift from the top of the frame over the solid base (depth without banding).
 pub const BACKGROUND_TOP: &str = "#0D1630";
-/// Bottom of the vertical background gradient (deeper than the flat base).
-pub const BACKGROUND_BOTTOM: &str = "#04060C";
 /// Aurora: large soft colour fields behind the content, drifting slowly so even a
 /// still layout breathes. Cool hues only: a warm glow over the dark base reads as mud.
 /// `(colour, opacity, cx, cy, radius)`, positions as fractions of the frame.

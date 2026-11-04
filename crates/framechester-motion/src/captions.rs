@@ -149,7 +149,7 @@ fn fit_placed(
 }
 
 /// Delay between the words of a caption chunk as they enter.
-const WORD_STAGGER: f32 = 0.045;
+const WORD_STAGGER: f32 = 0.07;
 
 pub fn build(ctx: &mut Ctx<'_>, scene: &StoryboardScene) -> Vec<Node> {
     if scene.captions.hidden {

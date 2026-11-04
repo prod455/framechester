@@ -30,17 +30,32 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, title: &str, objects: &[VisualObject
         area.h - title_h - gap,
     );
     let columns = if ctx.canvas.vertical {
-        2
+        // Three stacked full-width cards read better than a 2 + 1 grid with a
+        // half-empty row, and give long labels a whole line.
+        if objects.len() == 3 {
+            1
+        } else {
+            2
+        }
     } else {
         objects.len().clamp(1, 3)
     };
     let row_count = objects.len().div_ceil(columns);
     // Tall enough for what a card holds (icon, value, one label line, two detail
     // lines, insets), so text never presses on the bottom edge at any zoom.
+    // Full-width cards carry the icon beside the text instead of above it.
+    let side_icon = columns == 1;
     let content_h = gap * 1.6
-        + ctx.canvas.icon * 0.9
-        + gap * 0.5
-        + scale.heading * 1.25 * 1.1
+        + if side_icon {
+            0.0
+        } else {
+            ctx.canvas.icon * 0.9 + gap * 0.5
+        }
+        + if objects.iter().any(|object| object.value.is_some()) && !side_icon {
+            scale.heading * 1.25 * 1.1
+        } else {
+            0.0
+        }
         + scale.body * tokens::LINE_HEIGHT
         + scale.small * (0.3 + 2.0 * tokens::LINE_HEIGHT)
         + gap * 0.4;
@@ -76,10 +91,53 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, title: &str, objects: &[VisualObject
             icon,
             colours.stroke,
         ));
-        let mut top = inner.y + icon + gap * 0.5;
-        if let Some(value) = object.value {
+        let (inner, top) = if side_icon {
+            let shift = icon + gap * 0.8;
+            (
+                Rect::new(inner.x + shift, inner.y, inner.w - shift, inner.h),
+                inner.y,
+            )
+        } else {
+            (inner, inner.y + icon + gap * 0.5)
+        };
+        // Stat row: in a full-width card the number stands in its own column, as tall
+        // as the card allows, with the label and detail beside it.
+        let (inner, mut top) = match object.value {
+            Some(value) if side_icon => {
+                let text = format_value(value, object.unit.as_deref());
+                let size = (scale.heading * 1.25).min(inner.h * 0.75);
+                let width = ctx
+                    .ts
+                    .measure(&text, size, tokens::WEIGHT_BOLD, tokens::FONT_SANS);
+                let mut node = ctx.ts.line(
+                    &object.id,
+                    &text,
+                    inner.x,
+                    inner.y + (inner.h - size) / 2.0 + size * 0.85,
+                    size,
+                    tokens::WEIGHT_BOLD,
+                    tokens::FONT_SANS,
+                    colours.stroke,
+                    Anchor::Start,
+                );
+                if let Shape::Text { counter, .. } = &mut node.shape {
+                    *counter = Some((value, object.unit.clone()));
+                }
+                nodes.push(node);
+                let shift = width + gap;
+                (
+                    Rect::new(inner.x + shift, inner.y, inner.w - shift, inner.h),
+                    top,
+                )
+            }
+            _ => (inner, top),
+        };
+        if let (Some(value), false) = (object.value, side_icon) {
             let text = format_value(value, object.unit.as_deref());
-            let mut size = scale.heading * 1.25;
+            // A card shorter than its content gives the space back from the big number,
+            // never from the label or the detail.
+            let deficit = (content_h - card_h).max(0.0);
+            let mut size = (scale.heading * 1.25 - deficit / 1.1).max(scale.body);
             while size > scale.body
                 && ctx
                     .ts

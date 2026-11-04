@@ -18,9 +18,19 @@ pub fn build(
     let scale = ctx.canvas.type_scale;
     let arrow_room = gap * 3.5;
     let (before_area, after_area, arrow) = if ctx.canvas.vertical {
-        let half = (area.h - arrow_room) / 2.0;
-        let before_area = Rect::new(area.x, area.y, area.w, half);
-        let after_area = Rect::new(area.x, area.y + half + arrow_room, area.w, half);
+        // Height shared by card count (each side at least 30%), so three "before"
+        // cards are not squeezed into the same half as one "after" card.
+        let room = area.h - arrow_room;
+        let share = (before.len().max(1) as f32 / (before.len() + after.len()).max(2) as f32)
+            .clamp(0.3, 0.7);
+        let before_h = room * share;
+        let before_area = Rect::new(area.x, area.y, area.w, before_h);
+        let after_area = Rect::new(
+            area.x,
+            area.y + before_h + arrow_room,
+            area.w,
+            room - before_h,
+        );
         let arrow = (
             (area.cx(), before_area.bottom() + gap * 0.6),
             (area.cx(), after_area.y - gap * 0.6),

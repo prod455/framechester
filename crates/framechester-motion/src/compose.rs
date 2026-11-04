@@ -250,6 +250,25 @@ fn resolve_times(scene: &StoryboardScene, hook: bool) -> Vec<(f32, &Animation)> 
     resolved
 }
 
+/// How `reveal` enters in a scene. Every scene entering the same way (and every
+/// element fading and sliding up) is a tell of generated video, so consecutive scenes
+/// rotate through three entrances.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Entrance {
+    /// Fade while sliding in from below (vertical) or the side.
+    Slide,
+    /// Opacity only, no translate: words and cards appear in place.
+    Fade,
+    /// Arrive slightly large and settle.
+    Settle,
+}
+
+impl Entrance {
+    fn for_scene(scene_id: u32) -> Self {
+        [Self::Slide, Self::Fade, Self::Settle][scene_id as usize % 3]
+    }
+}
+
 fn nodes_of<'a>(graph: &'a mut Graph, target: &str) -> Vec<&'a mut Node> {
     graph
         .nodes
@@ -288,7 +307,11 @@ fn apply_animation(
                 } else {
                     time
                 };
-                node.props.reveal(at, duration, direction, animation.easing);
+                match Entrance::for_scene(scene.id) {
+                    Entrance::Slide => node.props.reveal(at, duration, direction, animation.easing),
+                    Entrance::Fade => node.props.fade_in(at, duration),
+                    Entrance::Settle => node.props.settle(at, duration, animation.easing),
+                }
             }
             entries.entry(animation.target.clone()).or_insert(time);
         }
@@ -1199,8 +1222,8 @@ mod tests {
         };
         let settled = frame_svg(&composed, 0.6, tokens::FONT_SANS);
         assert!(
-            max_scale(&settled) < 1.02,
-            "the punch-in has settled after 0.5 s; only the slow camera remains"
+            max_scale(&settled) < 1.04,
+            "the punch-in (1.05) has settled after 0.5 s; only the camera move remains"
         );
         let storyboard = Storyboard {
             version: SCHEMA_VERSION,
@@ -1567,5 +1590,22 @@ mod tests {
                 .any(|issue| issue.scene_id == 2 && issue.code == "code_overflow"),
             "{issues:?}"
         );
+    }
+
+    #[test]
+    fn consecutive_scenes_enter_differently() {
+        let kinds: Vec<Entrance> = (1..=3).map(Entrance::for_scene).collect();
+        assert_ne!(kinds[0], kinds[1]);
+        assert_ne!(kinds[1], kinds[2]);
+        assert_ne!(kinds[0], kinds[2]);
+    }
+
+    #[test]
+    fn vertical_text_stays_above_the_platform_overlay() {
+        // Shorts/Reels/TikTok draw title, handle and audio over everything below 1330 px.
+        let canvas = Canvas::for_format(VideoFormat::Vertical);
+        assert!(canvas.content.bottom() <= 1330.0);
+        assert!(canvas.captions.bottom() <= 1330.0);
+        assert!(canvas.content.y >= 168.0);
     }
 }

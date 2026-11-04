@@ -249,6 +249,10 @@ pub enum Camera {
 /// How far the camera travels over a scene: small enough that content stays in the safe
 /// area, large enough to read as movement.
 const CAMERA_ZOOM: f32 = 0.025;
+/// The camera move lasts at most this long, then the frame is still.
+pub const CAMERA_SETTLE_SECS: f32 = 2.4;
+const CAMERA_SETTLE_EASING: framechester_core::storyboard::Easing =
+    framechester_core::storyboard::Easing::cubic_bezier(0.16, 1.0, 0.3, 1.0);
 const CAMERA_DRIFT: f32 = 14.0;
 
 impl Camera {
@@ -287,8 +291,10 @@ pub struct Graph {
     /// a group is a reusable bundle of objects, not a new node type.
     pub groups: std::collections::BTreeMap<String, Vec<String>>,
     pub background: Option<String>,
-    /// Gentle vertical float (amplitude px, period s) so a still composition never
-    /// freezes between animation events. Captions are excluded (`z >= 1000`).
+    /// The scene asked for continuous motion between its events (amplitude px,
+    /// period s). It is carried by the drifting background (`background_svg`), never
+    /// by floating the content: text and cards that bob while they are read are a
+    /// tell of generated video. QA reads it to accept long reading holds.
     pub breathe: Option<(f32, f32)>,
     /// Camera move over the scene: the move, the scene duration and the canvas size.
     pub camera: Option<(Camera, f32, (f32, f32))>,
@@ -407,7 +413,7 @@ impl Graph {
         times
     }
 
-    /// Layered frame background at instant `t`: vertical gradient, three cool aurora
+    /// Layered frame background at instant `t`: solid base with a radial lift, three aurora
     /// fields drifting slowly (so a still layout still breathes) and a vignette; plus
     /// the shared paints (`tokens::card_fill`, `tokens::card_edge`, `tokens::HEADLINE`)
     /// every frame may reference. Decorative only; it is never a
@@ -417,9 +423,10 @@ impl Graph {
         let base = base.unwrap_or(tokens::BACKGROUND);
         let mut svg = String::with_capacity(4096);
         svg.push_str(&format!(
-            "<defs><linearGradient id='fc-bg' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='{}'/><stop offset='0.5' stop-color='{base}'/><stop offset='1' stop-color='{}'/></linearGradient>",
+            // A full-frame linear gradient on a dark ground bands under H.264: a solid
+            // base with a radial lift from the top reads the same and stays smooth.
+            "<defs><radialGradient id='fc-bg' cx='0.5' cy='0' r='1.1'><stop offset='0' stop-color='{}'/><stop offset='1' stop-color='{base}' stop-opacity='0'/></radialGradient>",
             tokens::BACKGROUND_TOP,
-            tokens::BACKGROUND_BOTTOM,
         ));
         let (w, h) = (width as f32, height as f32);
         let span = w.max(h);
@@ -460,7 +467,7 @@ impl Graph {
             ));
         }
         svg.push_str(&format!(
-            "</defs><rect width='{width}' height='{height}' fill='url(#fc-bg)'/>"
+            "</defs><rect width='{width}' height='{height}' fill='{base}'/><rect width='{width}' height='{height}' fill='url(#fc-bg)'/>"
         ));
         for (index, x, y, field_w, field_h) in fields {
             svg.push_str(&format!(
@@ -536,12 +543,6 @@ impl Graph {
     ) {
         let mut order: Vec<&Node> = self.nodes.iter().collect();
         order.sort_by_key(|node| node.z);
-        let breathe_dy = self
-            .breathe
-            .map(|(amplitude, period)| {
-                amplitude * (2.0 * std::f32::consts::PI * t / period.max(0.5)).sin()
-            })
-            .unwrap_or(0.0);
         let outer = dx.abs() > 1e-3
             || dy.abs() > 1e-3
             || (sx - 1.0).abs() > 1e-3
@@ -559,7 +560,16 @@ impl Graph {
         // contiguous and each band opens/closes one <g>.
         let camera_base = self.camera.map(|(camera, duration, (width, height))| {
             (
-                camera.at(t / duration.max(0.1), width, height),
+                // The camera settles early on a long tail and then holds: a push that
+                // creeps on while the viewer reads is a tell of generated video.
+                camera.at(
+                    crate::anim::ease(
+                        CAMERA_SETTLE_EASING,
+                        t / duration.clamp(0.1, CAMERA_SETTLE_SECS),
+                    ),
+                    width,
+                    height,
+                ),
                 width,
                 height,
             )
@@ -597,13 +607,7 @@ impl Graph {
                 continue;
             }
             let ndx = node.props.dx.eval(t) + node.offset.0;
-            let ndy = node.props.dy.eval(t)
-                + node.offset.1
-                + if node.z >= Z_CAPTIONS {
-                    0.0
-                } else {
-                    breathe_dy
-                };
+            let ndy = node.props.dy.eval(t) + node.offset.1;
             let scale = node.props.scale.eval(t);
             let sx = scale * node.props.sx.eval(t);
             let sy = scale * node.props.sy.eval(t);
@@ -861,6 +865,20 @@ impl Props {
         self.dy.to(at, duration, 0.0, easing);
     }
 
+    /// Fade in without moving (the per-word title entrance: no translate).
+    pub fn fade_in(&mut self, at: f32, duration: f32) {
+        self.opacity.key(at.min(0.0), 0.0, Easing::Linear);
+        self.opacity.to(at, duration * 0.8, 1.0, Easing::EaseOut);
+    }
+
+    /// Arrive slightly large and settle into place, fading in.
+    pub fn settle(&mut self, at: f32, duration: f32, easing: Easing) {
+        self.opacity.key(at.min(0.0), 0.0, Easing::Linear);
+        self.opacity.to(at, duration * 0.6, 1.0, Easing::EaseOut);
+        self.scale.key(at.min(0.0), 1.06, Easing::Linear);
+        self.scale.to(at, duration, 1.0, easing);
+    }
+
     pub fn pop(&mut self, at: f32, duration: f32, easing: Easing) {
         self.opacity.key(at.min(0.0), 0.0, Easing::Linear);
         self.opacity.to(at, duration * 0.5, 1.0, Easing::EaseOut);
@@ -982,6 +1000,47 @@ mod tests {
         assert!(svg.contains("scale(1.013"), "{svg}");
         // Three circles drawn; captions outside every camera group.
         assert_eq!(svg.matches("<circle").count(), 3, "{svg}");
+    }
+
+    #[test]
+    fn the_camera_settles_and_holds_and_content_never_floats() {
+        let node = Node::new(
+            "content",
+            Shape::Circle {
+                cx: 50.0,
+                cy: 50.0,
+                r: 5.0,
+                fill: "#fff".into(),
+                stroke: None,
+            },
+        );
+        let graph = Graph {
+            nodes: vec![node],
+            camera: Some((Camera::PushIn, 12.0, (100.0, 100.0))),
+            breathe: Some((3.0, 4.0)),
+            ..Graph::default()
+        };
+        let content = |t: f32| {
+            let svg = graph.svg(t, 100, 100, "Inter");
+            let at = svg.rfind("<g transform").unwrap();
+            svg[at..].to_string()
+        };
+        assert_ne!(
+            content(0.3),
+            content(CAMERA_SETTLE_SECS),
+            "the camera moves early"
+        );
+        assert_eq!(
+            content(CAMERA_SETTLE_SECS),
+            content(11.0),
+            "then the frame is still: no creeping push, no breathing content"
+        );
+    }
+
+    #[test]
+    fn no_full_frame_linear_gradient_on_the_dark_ground() {
+        let svg = Graph::default().svg(0.0, 100, 100, "Inter");
+        assert!(!svg.contains("<linearGradient id='fc-bg'"), "{svg}");
     }
 
     #[test]

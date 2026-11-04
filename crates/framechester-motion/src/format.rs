@@ -111,15 +111,18 @@ impl Canvas {
     pub fn for_format(format: VideoFormat) -> Self {
         let (width, height) = format.dimensions();
         match format {
-            // Shorts/Reels/TikTok overlays: status bar on top, action buttons on the right
-            // from roughly 55% to 85% of the height, caption and audio strip at the bottom.
+            // Shorts/Reels/TikTok overlays: status and search bar in the top 168 px,
+            // action buttons on the right from roughly 55% to 85% of the height, and the
+            // title, handle and audio strip over everything below 1330 px. Every word sits
+            // between 168 and 1330 px; captions at the bottom of that band, clear of the
+            // right rail.
             VideoFormat::Vertical => Canvas {
                 format,
                 width,
                 height,
-                content: Rect::new(72.0, 230.0, 936.0, 1040.0),
-                captions: Rect::new(72.0, 1330.0, 820.0, 230.0),
-                safe: Rect::new(54.0, 180.0, 972.0, 1420.0),
+                content: Rect::new(72.0, 230.0, 936.0, 840.0),
+                captions: Rect::new(72.0, 1100.0, 820.0, 220.0),
+                safe: Rect::new(54.0, 180.0, 972.0, 1150.0),
                 margin: 72.0,
                 gap: 28.0,
                 radius: 26.0,

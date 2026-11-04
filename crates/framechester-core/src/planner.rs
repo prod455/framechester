@@ -1054,33 +1054,38 @@ pub fn complete_scene(scene: &mut StoryboardScene) {
     }
 }
 
-/// The transition into scene `index`, caused by what the scene before it leaves on
-/// screen: a focal card grows into the next world or opens it as an iris; a title or a
-/// character hands over on the same stage (blur swap) or with a dip cut. Consecutive
-/// seams never repeat, worlds never crossfade, and the opening cuts in.
+/// Whether a composition lays out cards (a focal card to leave from or arrive at).
+fn has_cards(composition: &Composition) -> bool {
+    matches!(
+        composition,
+        Composition::FlowDiagram { .. }
+            | Composition::Architecture { .. }
+            | Composition::Infographic { .. }
+            | Composition::CauseEffect { .. }
+            | Composition::Steps { .. }
+            | Composition::Transformation { .. }
+    )
+}
+
+/// The transition into scene `index`, caused by what is on screen: a card the next
+/// scene also opens with morphs into it; a focal card otherwise grows into the next world
+/// or opens it as an iris; a title or a character hands over on the same stage (blur
+/// swap) or with a dip cut. Consecutive seams never repeat, worlds never crossfade, and
+/// the opening cuts in.
 pub fn transition_into(
     previous: Option<&Composition>,
+    next: Option<&Composition>,
     index: usize,
     before: Option<Transition>,
 ) -> Transition {
     if index == 0 {
         return Transition::Cut;
     }
-    let focal_card = previous.is_some_and(|composition| {
-        matches!(
-            composition,
-            Composition::FlowDiagram { .. }
-                | Composition::Architecture { .. }
-                | Composition::Infographic { .. }
-                | Composition::CauseEffect { .. }
-                | Composition::Steps { .. }
-                | Composition::Transformation { .. }
-        )
-    });
-    let candidates = if focal_card {
-        [Transition::Expand, Transition::Iris, Transition::BlurSwap]
-    } else {
-        [Transition::BlurSwap, Transition::DipCut, Transition::Iris]
+    let focal_card = previous.is_some_and(has_cards);
+    let candidates = match (focal_card, next.is_some_and(has_cards)) {
+        (true, true) => [Transition::Morph, Transition::Expand, Transition::Iris],
+        (true, false) => [Transition::Expand, Transition::Iris, Transition::BlurSwap],
+        _ => [Transition::BlurSwap, Transition::DipCut, Transition::Iris],
     };
     let pick = candidates[index % 3];
     if Some(pick) == before {
@@ -1123,7 +1128,7 @@ pub fn plan_scene(scene: &Scene, index: usize) -> Result<StoryboardScene> {
             readable_without_audio: true,
         },
         // Provisional: `plan_script` sets each transition from the scene before it.
-        transition: transition_into(None, index, None),
+        transition: transition_into(None, None, index, None),
     };
     planned.validate()?;
     Ok(planned)
@@ -1204,8 +1209,10 @@ pub fn plan_script(
     for index in 1..scenes.len() {
         let (before, after) = scenes.split_at_mut(index);
         let previous = &before[index - 1];
+        let next = after[0].composition.clone();
         after[0].transition = transition_into(
             Some(&previous.composition),
+            Some(&next),
             index,
             Some(previous.transition),
         );
@@ -1455,33 +1462,38 @@ mod tests {
         let title = plan_scene(&scene("#destaque", "Uma frase."), 1)
             .unwrap()
             .composition;
-        assert_eq!(transition_into(None, 0, None), Transition::Cut);
-        // After a scene with cards, the focal card causes the change.
+        assert_eq!(transition_into(None, None, 0, None), Transition::Cut);
+        let mut kinds = Vec::new();
         for index in 1..7 {
-            let after_cards = transition_into(Some(&flow), index, None);
+            // Card to card: the shared container morphs (or the card causes the seam).
+            let card_to_card = transition_into(Some(&flow), Some(&flow), index, None);
             assert!(matches!(
-                after_cards,
+                card_to_card,
+                Transition::Morph | Transition::Expand | Transition::Iris
+            ));
+            // Card to title: the focal card causes the change.
+            let card_to_title = transition_into(Some(&flow), Some(&title), index, None);
+            assert!(matches!(
+                card_to_title,
                 Transition::Expand | Transition::Iris | Transition::BlurSwap
             ));
-            let after_title = transition_into(Some(&title), index, None);
+            // After a title, the same stage hands over.
+            let after_title = transition_into(Some(&title), Some(&flow), index, None);
             assert!(matches!(
                 after_title,
                 Transition::BlurSwap | Transition::DipCut | Transition::Iris
             ));
             // The same seam twice in a row is replaced.
             assert_ne!(
-                transition_into(Some(&flow), index, Some(after_cards)),
-                after_cards
+                transition_into(Some(&flow), Some(&flow), index, Some(card_to_card)),
+                card_to_card
             );
+            kinds.extend([card_to_card, card_to_title, after_title]);
         }
-        // Three kinds over a film, none of them a crossfade.
-        let mut kinds: Vec<Transition> = (1..7)
-            .map(|index| transition_into(Some(&flow), index, None))
-            .collect();
-        kinds.dedup();
         kinds.sort_by_key(|kind| format!("{kind:?}"));
         kinds.dedup();
-        assert!(kinds.len() >= 3);
+        // Several kinds over a film, none of them a crossfade.
+        assert!(kinds.len() >= 5, "{kinds:?}");
         assert!(!kinds.contains(&Transition::Fade));
     }
 

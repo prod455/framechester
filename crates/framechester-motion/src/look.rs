@@ -376,13 +376,25 @@ impl Theme {
         (a.max(b) + 0.05) / (a.min(b) + 0.05)
     }
 
-    /// The colour of `paint` when it is opaque (`#RRGGBB`), for floods that must cover.
-    pub fn opaque<'a>(&self, paint: &'a str) -> Option<&'a str>
-    where
-        'static: 'a,
-    {
-        let colour = self.paint(paint);
-        (colour.starts_with('#') && colour.len() == 7).then_some(colour)
+    /// The solid colour a card floods or morphs with: its own paint when opaque, else
+    /// the look's raised surface, else the ground (translucent panels cannot cover).
+    pub fn flood(&self, paint: Option<&str>) -> &'static str {
+        let opaque = |paint: &str| -> Option<&'static str> {
+            let colour = self.paint_static(paint)?;
+            (colour.starts_with('#') && colour.len() == 7).then_some(colour)
+        };
+        paint
+            .and_then(opaque)
+            .or_else(|| opaque("@raised"))
+            .unwrap_or(self.ground)
+    }
+
+    /// The look's own colour for a semantic paint (`None` for anything else).
+    fn paint_static(&self, paint: &str) -> Option<&'static str> {
+        self.paints
+            .iter()
+            .find(|(name, _)| *name == paint)
+            .map(|(_, colour)| *colour)
     }
 
     /// Every (text, surface, minimum) pair the components draw, below its minimum.

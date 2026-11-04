@@ -1,4 +1,5 @@
-//! Renders a filmstrip of every caused transition (flow → title), for visual review:
+//! Renders a filmstrip of every caused transition (flow → title; flow → steps for the
+//! morph), for visual review:
 //! `cargo run --release -p framechester-motion --example preview_transitions -- <dir> [look]`.
 use framechester_core::domain::Scene;
 use framechester_core::narration::{assemble_scene, segment_narration, SegmentAudio};
@@ -53,17 +54,28 @@ fn main() {
         1,
     );
     for transition in [
+        Transition::Morph,
         Transition::Expand,
         Transition::Iris,
         Transition::BlurSwap,
         Transition::DipCut,
     ] {
-        let mut second = narrated(
-            2,
-            "#pergunta E se a skill decidir?",
-            "E se a skill decidir?",
-            2,
-        );
+        // A morph needs a card on both sides: it goes into a steps scene.
+        let mut second = if transition == Transition::Morph {
+            narrated(
+                2,
+                "#passos Leia o SKILL.md; Siga os passos; Confira o resultado",
+                "Leia o SKILL.md, siga os passos e confira o resultado.",
+                2,
+            )
+        } else {
+            narrated(
+                2,
+                "#pergunta E se a skill decidir?",
+                "E se a skill decidir?",
+                2,
+            )
+        };
         second.transition = transition;
         second.start_secs = first.duration_secs;
         let composed = Composed {

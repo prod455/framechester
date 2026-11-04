@@ -755,6 +755,9 @@ pub enum Transition {
     /// Dip cut: the outgoing frame darkens about 40% for three frames before a hard cut,
     /// so the cut reads as meant.
     DipCut,
+    /// Morph: the outgoing focal card reshapes into the incoming scene's first card
+    /// (place, size, corners and colour), and the new content appears in it.
+    Morph,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

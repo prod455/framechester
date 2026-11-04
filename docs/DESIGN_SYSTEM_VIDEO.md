@@ -206,6 +206,14 @@ título com `?` usa a pose pensar. Título que não cabe no tamanho mínimo vira
 relatório, nunca texto cortado. Revisão visual: `cargo run --release -p
 framechester-motion --example preview_components -- <pasta>`.
 
+## Desfoque de movimento
+
+Quem se move rápido (pop, deslize, viagem de `move_to`) deixa um rastro por **acúmulo
+temporal**: três amostras de dentro do obturador (0,025 s, ~270° a 30 fps), atrás do nó e
+com opacidade 35%, 22% e 12%. Só entra quando o nó anda mais de 2 px no obturador, nunca
+nas legendas (precisam ser lidas). Um filtro gaussiano por frame custaria ~10 ms por linha
+no resvg; as amostras são desenhos vetoriais e o render fica na mesma velocidade.
+
 ## Ofício medido (garantido pelo motor, guardado pelo QA)
 
 | Regra | Garantia no motor | Guarda no QA |

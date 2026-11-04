@@ -218,6 +218,19 @@ impl Node {
         Rect::new(min_x, min_y, max_x - min_x, max_y - min_y)
     }
 
+    /// How far the node's box moves between `from` and `to`, in pixels: translation plus
+    /// the growth of its farthest edge under scale.
+    pub fn travel(&self, from: f32, to: f32) -> f32 {
+        let props = &self.props;
+        let shift = ((props.dx.eval(to) - props.dx.eval(from)).powi(2)
+            + (props.dy.eval(to) - props.dy.eval(from)).powi(2))
+        .sqrt();
+        let bbox = self.bbox();
+        let reach = bbox.w.max(bbox.h) / 2.0;
+        let scale = |t: f32| props.scale.eval(t) * props.sx.eval(t).max(props.sy.eval(t));
+        shift + (scale(to) - scale(from)).abs() * reach
+    }
+
     pub fn is_text(&self) -> bool {
         matches!(self.shape, Shape::Text { .. })
     }
@@ -254,6 +267,14 @@ pub enum Camera {
 /// How far the camera travels over a scene: small enough that content stays in the safe
 /// area, large enough to read as movement.
 const CAMERA_ZOOM: f32 = 0.025;
+/// Shutter of the motion blur: samples are taken this far back from each frame (a
+/// 270° shutter at 30 fps).
+pub const MOTION_SHUTTER_SECS: f32 = 0.025;
+/// Below this travel within the shutter, in pixels, a node draws no trail.
+pub const MOTION_BLUR_MIN_PX: f32 = 2.0;
+/// Opacity of each trail sample, nearest first.
+const MOTION_TRAIL: [f32; 3] = [0.35, 0.22, 0.12];
+
 /// The camera move lasts at most this long, then the frame is still.
 pub const CAMERA_SETTLE_SECS: f32 = 2.4;
 const CAMERA_SETTLE_EASING: framechester_core::storyboard::Easing =
@@ -665,62 +686,21 @@ impl Graph {
                 }
                 open_band = wanted;
             }
-            let node_opacity = node.props.opacity.eval(t);
-            if node_opacity <= 0.002 {
-                continue;
+            if node.z < Z_CAPTIONS {
+                // Motion blur by temporal accumulation: a fast mover leaves a trail of
+                // samples from within the shutter, behind it and fading. A Gaussian
+                // filter per frame would cost ~10 ms a line in resvg; three extra vector
+                // draws cost almost nothing, and nothing at all once things are still.
+                let travel = node.travel(t - MOTION_SHUTTER_SECS, t);
+                if travel > MOTION_BLUR_MIN_PX {
+                    for (index, weight) in MOTION_TRAIL.iter().enumerate().rev() {
+                        let at = t - MOTION_SHUTTER_SECS * (index + 1) as f32
+                            / MOTION_TRAIL.len() as f32;
+                        Self::node_svg(svg, node, at, palette, *weight);
+                    }
+                }
             }
-            let ndx = node.props.dx.eval(t) + node.offset.0;
-            let ndy = node.props.dy.eval(t) + node.offset.1;
-            let scale = node.props.scale.eval(t);
-            let sx = scale * node.props.sx.eval(t);
-            let sy = scale * node.props.sy.eval(t);
-            let rotate = node.props.rotate.eval(t);
-            let glow = node.props.glow.eval(t);
-            let (ox, oy) = node.origin;
-            let mut transform = String::new();
-            if ndx.abs() > 1e-3 || ndy.abs() > 1e-3 {
-                transform.push_str(&format!("translate({} {}) ", fmt(ndx), fmt(ndy)));
-            }
-            if (sx - 1.0).abs() > 1e-3 || (sy - 1.0).abs() > 1e-3 || rotate.abs() > 1e-3 {
-                transform.push_str(&format!(
-                    "translate({} {}) rotate({}) scale({} {}) translate({} {})",
-                    fmt(ox),
-                    fmt(oy),
-                    fmt(rotate),
-                    fmt(sx.max(0.0)),
-                    fmt(sy.max(0.0)),
-                    fmt(-ox),
-                    fmt(-oy)
-                ));
-            }
-            // Blur only while an entrance sharpens; the filter region stays the node's own
-            // box, so a word costs a fraction of a full-frame blur.
-            let blur = node.props.blur.eval(t);
-            let filter = (blur > 0.05).then(|| {
-                let id = format!("fc-b-{:p}", node);
-                svg.push_str(&format!(
-                    "<defs><filter id='{id}' x='-30%' y='-60%' width='160%' height='220%'><feGaussianBlur stdDeviation='{}'/></filter></defs>",
-                    fmt(blur)
-                ));
-                id
-            });
-            svg.push_str("<g");
-            if !transform.is_empty() {
-                svg.push_str(&format!(" transform='{}'", transform.trim()));
-            }
-            if node_opacity < 0.999 {
-                svg.push_str(&format!(" opacity='{}'", fmt(node_opacity)));
-            }
-            if let Some(id) = &filter {
-                svg.push_str(&format!(" filter='url(#{id})'"));
-            }
-            svg.push('>');
-            node.shadow_svg(svg, palette);
-            if glow > 0.01 {
-                node.glow_svg(svg, glow, palette);
-            }
-            node.shape_svg(svg, t, palette);
-            svg.push_str("</g>");
+            Self::node_svg(svg, node, t, palette, 1.0);
         }
         if open_band.is_some() {
             svg.push_str("</g>");
@@ -728,6 +708,68 @@ impl Graph {
         if outer {
             svg.push_str("</g>");
         }
+    }
+
+    /// One node at instant `t`, its opacity scaled by `weight` (1 for the node itself,
+    /// less for a motion-blur sample).
+    fn node_svg(svg: &mut String, node: &Node, t: f32, palette: &Theme, weight: f32) {
+        let node_opacity = node.props.opacity.eval(t) * weight;
+        if node_opacity <= 0.002 {
+            return;
+        }
+        let ndx = node.props.dx.eval(t) + node.offset.0;
+        let ndy = node.props.dy.eval(t) + node.offset.1;
+        let scale = node.props.scale.eval(t);
+        let sx = scale * node.props.sx.eval(t);
+        let sy = scale * node.props.sy.eval(t);
+        let rotate = node.props.rotate.eval(t);
+        let glow = node.props.glow.eval(t);
+        let (ox, oy) = node.origin;
+        let mut transform = String::new();
+        if ndx.abs() > 1e-3 || ndy.abs() > 1e-3 {
+            transform.push_str(&format!("translate({} {}) ", fmt(ndx), fmt(ndy)));
+        }
+        if (sx - 1.0).abs() > 1e-3 || (sy - 1.0).abs() > 1e-3 || rotate.abs() > 1e-3 {
+            transform.push_str(&format!(
+                "translate({} {}) rotate({}) scale({} {}) translate({} {})",
+                fmt(ox),
+                fmt(oy),
+                fmt(rotate),
+                fmt(sx.max(0.0)),
+                fmt(sy.max(0.0)),
+                fmt(-ox),
+                fmt(-oy)
+            ));
+        }
+        // Blur only while an entrance sharpens; the filter region stays the node's own
+        // box, so a word costs a fraction of a full-frame blur.
+        let blur = node.props.blur.eval(t);
+        let filter = (blur > 0.05).then(|| {
+            // One id per node and sample: trail samples carry their own blur radius.
+            let id = format!("fc-b-{:p}-{}", node, (weight * 100.0) as u32);
+            svg.push_str(&format!(
+                "<defs><filter id='{id}' x='-30%' y='-60%' width='160%' height='220%'><feGaussianBlur stdDeviation='{}'/></filter></defs>",
+                fmt(blur)
+            ));
+            id
+        });
+        svg.push_str("<g");
+        if !transform.is_empty() {
+            svg.push_str(&format!(" transform='{}'", transform.trim()));
+        }
+        if node_opacity < 0.999 {
+            svg.push_str(&format!(" opacity='{}'", fmt(node_opacity)));
+        }
+        if let Some(id) = &filter {
+            svg.push_str(&format!(" filter='url(#{id})'"));
+        }
+        svg.push('>');
+        node.shadow_svg(svg, palette);
+        if glow > 0.01 {
+            node.glow_svg(svg, glow, palette);
+        }
+        node.shape_svg(svg, t, palette);
+        svg.push_str("</g>");
     }
 }
 
@@ -1139,6 +1181,50 @@ mod tests {
             content(CAMERA_SETTLE_SECS),
             content(11.0),
             "then the frame is still: no creeping push, no breathing content"
+        );
+    }
+
+    #[test]
+    fn fast_movers_leave_a_motion_trail_and_still_nodes_do_not() {
+        let mut node = Node::new(
+            "card",
+            Shape::Rect {
+                rect: Rect::new(100.0, 100.0, 300.0, 120.0),
+                rx: 20.0,
+                fill: "#123456".into(),
+                stroke: None,
+            },
+        );
+        // 400 px in 0.4 s: about 25 px inside the shutter at the fastest frame.
+        node.props.dx.key(0.0, 400.0, Easing::Linear);
+        node.props.dx.to(0.0, 0.4, 0.0, Easing::Linear);
+        let graph = Graph {
+            nodes: vec![node],
+            ..Graph::default()
+        };
+        let fills = |t: f32| {
+            graph
+                .svg(t, 800, 400, "Inter")
+                .matches("fill='#123456'")
+                .count()
+        };
+        assert_eq!(
+            fills(0.2),
+            1 + MOTION_TRAIL.len(),
+            "moving: the node and its trail"
+        );
+        assert_eq!(fills(1.0), 1, "landed: the node alone");
+        let caption = Graph {
+            nodes: vec![graph.nodes[0].clone().with_z(Z_CAPTIONS)],
+            ..Graph::default()
+        };
+        assert_eq!(
+            caption
+                .svg(0.2, 800, 400, "Inter")
+                .matches("fill='#123456'")
+                .count(),
+            1,
+            "captions never smear: they must be read"
         );
     }
 

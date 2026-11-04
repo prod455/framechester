@@ -32,6 +32,10 @@ texto e cor do brilho (`palette()`).
   borda fina iluminada no topo que some embaixo (`tokens::card_edge`), mais a sombra já
   existente. Gradientes ficam no `<defs>` de cada frame.
 - **Títulos** em gradiente branco → azul-gelo (`tokens::HEADLINE`).
+- Objetos neutros têm traço `#8EA2C8` (ícones e marcadores legíveis sobre o vidro).
+- Linha do tempo vertical compacta e centrada, com marcadores grandes até 4 marcos;
+  cartões de infográfico com altura derivada do conteúdo, e o texto que não cabe no
+  cartão é reportado (antes a área era esticada para fora dele).
 - **Zoom de layout**: fluxos, comparações, linhas do tempo, gráficos (não no vertical),
   arquiteturas, anotações, infográficos, causa/efeito e passos são refeitos com tipo,
   ícones e espaçamento 1,6×, 1,45×, 1,3× ou 1,15× (`Canvas::zoomed`). Fica o maior que
@@ -52,7 +56,7 @@ manifesto de render registra o SHA-256 de cada fonte.
 | corpo | 42 | 38 | 29 |
 | rótulo | 38 | 34 | 26 |
 | pequeno | 30 | 27 | 21 |
-| legenda | 54 | 46 | 36 |
+| legenda | 64 | 52 | 40 |
 | código | 34 | 32 | 24 |
 | número | 190 | 210 | 150 |
 
@@ -83,8 +87,9 @@ Regras de composição:
 - fluxos empilham no vertical e enfileiram no horizontal; comparações sempre em duas
   colunas; infográfico em duas colunas no vertical e até três no horizontal;
 - legendas em blocos de até 5 palavras (vertical) ou 7 (horizontal/X), no máximo duas
-  linhas, caixa semitransparente, palavra falada em `ACCENT`, palavras de ênfase em
-  `ACCENT` permanente;
+  linhas, caixa semitransparente; as palavras do bloco entram uma a uma (45 ms) subindo
+  com leve overshoot, a palavra falada ganha pílula `ACCENT` com tinta escura e "pop" de
+  escala, e palavras de ênfase ficam em `ACCENT` permanente;
 - ícones vetoriais próprios em grade 24 px, traço 2 (`icons.rs`).
 
 ## Movimento

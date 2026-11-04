@@ -14,19 +14,25 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, objects: &[VisualObject]) -> Vec<Nod
     let scale = ctx.canvas.type_scale;
     if ctx.canvas.vertical {
         let rail_x = area.x + dot;
-        let step = area.h / count as f32;
+        // Milestones sit close together (a big accent marker over up to three lines of
+        // text) instead of spreading thin over the whole frame; the block is centred
+        // vertically by `compose`.
+        // Big markers for a few milestones; long timelines keep the room for their text.
+        let marker = if count <= 4 { scale.heading } else { scale.label };
+        let step = (area.h / count as f32)
+            .min(marker * 1.1 + scale.body * tokens::LINE_HEIGHT * 3.0 + gap * 1.5);
         nodes.push(
             Node::new(
                 "rail",
                 Shape::Path {
                     d: format!(
                         "M{rail_x:.1} {:.1} L{rail_x:.1} {:.1}",
-                        area.y,
-                        area.y + step * (count as f32 - 0.5)
+                        area.y + marker * 0.55,
+                        area.y + marker * 0.55 + step * (count as f32 - 1.0)
                     ),
                     stroke: tokens::RULE.into(),
                     width: ctx.canvas.stroke,
-                    length: step * (count as f32 - 0.5),
+                    length: step * (count as f32 - 1.0),
                     fill: None,
                     dashed: false,
                 },
@@ -34,7 +40,8 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, objects: &[VisualObject]) -> Vec<Nod
             .decorative(),
         );
         for (index, object) in objects.iter().enumerate() {
-            let y = area.y + index as f32 * step + dot;
+            // The marker is centred on the dot, so the first one starts inside the area.
+            let y = area.y + index as f32 * step + marker * 0.55;
             nodes.push(
                 Node::new(
                     &object.id,
@@ -50,24 +57,25 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, objects: &[VisualObject]) -> Vec<Nod
             );
             let text_x = rail_x + dot + gap * 1.2;
             let text_w = area.right() - text_x;
-            let label = ctx.ts.line(
+            let (label_nodes, label_bottom) = ctx.fitted(
                 &object.id,
                 &object.label,
-                text_x,
-                y + scale.label * 0.35,
+                Rect::new(text_x, y - marker * 0.55, text_w, marker * 1.25),
+                marker,
                 scale.label,
                 tokens::WEIGHT_BOLD,
-                tokens::FONT_SANS,
                 tokens::ACCENT,
                 Anchor::Start,
+                0.0,
             );
-            nodes.push(label);
+            nodes.extend(label_nodes);
             if let Some(detail) = &object.detail {
+                let detail_top = label_bottom + gap * 0.2;
                 let detail_area = Rect::new(
                     text_x,
-                    y + scale.label * 0.9,
+                    detail_top,
                     text_w,
-                    step - scale.label * 1.4 - gap * 0.5,
+                    (area.y + (index + 1) as f32 * step - detail_top - gap * 0.6).max(scale.small),
                 );
                 let (detail_nodes, _) = ctx.fitted(
                     &object.id,

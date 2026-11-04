@@ -30,6 +30,8 @@ pub const SUCCESS: &str = "#58D68D";
 pub const WARNING: &str = "#F2B544";
 pub const DANGER: &str = "#FF6B6B";
 pub const CAPTION_BOX: &str = "#05080E";
+/// Ink of the spoken caption word on its accent pill.
+pub const CAPTION_INK_ON_ACCENT: &str = "#0B0F17";
 
 /// Fill, stroke and text colour of an object by role.
 pub struct RolePalette {
@@ -47,7 +49,8 @@ pub fn palette(role: Role) -> RolePalette {
         Role::Neutral => RolePalette {
             fill: SURFACE,
             fill_top: "#26324A",
-            stroke: RULE,
+            // Icons, bullets and lines of neutral objects: readable on the glass cards.
+            stroke: "#8EA2C8",
             text: INK,
             glow: ACCENT,
         },

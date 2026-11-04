@@ -85,6 +85,29 @@ pub struct Canvas {
 }
 
 impl Canvas {
+    /// The same frame with component type, icons and spacing scaled by `zoom`; safe
+    /// areas, captions and the caption type are unchanged.
+    pub fn zoomed(&self, zoom: f32) -> Self {
+        let scale = self.type_scale;
+        Canvas {
+            gap: self.gap * zoom,
+            radius: self.radius * zoom,
+            stroke: self.stroke * zoom.sqrt(),
+            icon: self.icon * zoom,
+            type_scale: TypeScale {
+                title: scale.title * zoom,
+                heading: scale.heading * zoom,
+                body: scale.body * zoom,
+                label: scale.label * zoom,
+                small: scale.small * zoom,
+                caption: scale.caption,
+                code: scale.code * zoom,
+                number: scale.number * zoom,
+            },
+            ..*self
+        }
+    }
+
     pub fn for_format(format: VideoFormat) -> Self {
         let (width, height) = format.dimensions();
         match format {

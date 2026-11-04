@@ -9,7 +9,8 @@ cruas: pedem um papel (`role`).
 
 | Token | Valor | Uso |
 |---|---|---|
-| `BACKGROUND` | `#0B0F17` | fundo de todas as telas |
+| `BACKGROUND` (`_TOP` / `_BOTTOM`) | `#070B14` (`#0D1630` / `#04060C`) | fundo de todas as telas, em gradiente vertical |
+| `AURORA` | `#3D6BFF`, `#8B5CF6`, `#14B8A6` | três campos de cor fria atrás do conteúdo, derivando devagar |
 | `BACKGROUND_RAISED` / `SURFACE` / `SURFACE_STRONG` | `#121926` / `#182130` / `#223044` | camadas, cartões, barras vazias |
 | `RULE` | `#2B3A52` | réguas, trilhos, bordas neutras |
 | `INK` / `INK_SOFT` / `MUTED` | `#EEF2F8` / `#C7D0DE` / `#8C99AE` | texto principal, detalhe, metadados |
@@ -18,7 +19,24 @@ cruas: pedem um papel (`role`).
 | `SECONDARY` | `#3DD6B5` | lado/objeto secundário (ex.: skill) |
 | `SUCCESS` / `WARNING` / `DANGER` | `#58D68D` / `#F2B544` / `#FF6B6B` | estados |
 
-Cada `role` mapeia para preenchimento, borda, texto e cor do brilho (`palette()`).
+Cada `role` mapeia para preenchimento (`fill` embaixo, `fill_top` em cima), borda,
+texto e cor do brilho (`palette()`).
+
+### Profundidade (2026-11-04)
+
+- **Fundo vivo**: gradiente vertical azul-noite, três campos de aurora em tons frios
+  (azul, violeta, verde-água) que derivam alguns por cento da tela a cada dez segundos, e
+  vinheta. Nada quente no fundo: brilho âmbar sobre o escuro virava marrom. Cada campo
+  pinta só o próprio quadrado, então o custo de render fica em ~3% (`bench_raster`).
+- **Cartões de vidro**: gradiente `fill_top` → `fill` por papel (`tokens::card_fill`) e
+  borda fina iluminada no topo que some embaixo (`tokens::card_edge`), mais a sombra já
+  existente. Gradientes ficam no `<defs>` de cada frame.
+- **Títulos** em gradiente branco → azul-gelo (`tokens::HEADLINE`).
+- **Zoom de layout**: fluxos, comparações, linhas do tempo, gráficos (não no vertical),
+  arquiteturas, anotações, infográficos, causa/efeito e passos são refeitos com tipo,
+  ícones e espaçamento 1,6×, 1,45×, 1,3× ou 1,15× (`Canvas::zoomed`). Fica o maior que
+  cabe na área e passa em todo o QA de layout; uma cena que já tem problema fica no
+  tamanho de referência, para o relatório descrever o design base.
 
 ## Tipografia
 

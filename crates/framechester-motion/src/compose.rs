@@ -652,6 +652,12 @@ fn centre_vertically(mut nodes: Vec<Node>, area: Rect) -> Vec<Node> {
     nodes
 }
 
+/// Layout zooms tried, largest first, for compositions that lay out cards and rows.
+/// The component is rebuilt with type, icons and spacing scaled up, so it fills the
+/// frame instead of sitting small in it; the scene keeps the largest zoom whose layout
+/// fits the content area and passes every layout check.
+const ZOOMS: [f32; 4] = [1.6, 1.45, 1.3, 1.15];
+
 pub fn compose_scene(
     typesetter: &Typesetter,
     canvas: &Canvas,
@@ -659,6 +665,50 @@ pub fn compose_scene(
     index: usize,
     total: usize,
 ) -> ComposedScene {
+    let base = compose_at(typesetter, canvas, scene, index, total, 1.0);
+    let zoomable = matches!(
+        scene.composition,
+        Composition::FlowDiagram { .. }
+            | Composition::Comparison { .. }
+            | Composition::Timeline { .. }
+            | Composition::Architecture { .. }
+            | Composition::Annotation { .. }
+            | Composition::Infographic { .. }
+            | Composition::CauseEffect { .. }
+            | Composition::Steps { .. }
+    ) || (matches!(scene.composition, Composition::Chart { .. })
+        && !canvas.vertical);
+    // In a tall frame a zoomed chart widens its labels at the bars' expense.
+    // A scene that already has a problem keeps the reference layout, so its report
+    // describes the plain design and a zoom never hides or changes a defect.
+    if !zoomable
+        || base
+            .0
+            .issues
+            .iter()
+            .any(|issue| issue.severity == Severity::Critical)
+    {
+        return base.0;
+    }
+    for zoom in ZOOMS {
+        let (composed, fits) = compose_at(typesetter, canvas, scene, index, total, zoom);
+        if fits && composed.issues.is_empty() {
+            return composed;
+        }
+    }
+    base.0
+}
+
+/// One composition of the scene with the component laid out at `zoom`; also says
+/// whether the component stayed inside its area.
+fn compose_at(
+    typesetter: &Typesetter,
+    canvas: &Canvas,
+    scene: &StoryboardScene,
+    index: usize,
+    total: usize,
+    zoom: f32,
+) -> (ComposedScene, bool) {
     let mut ctx = Ctx::new(canvas, typesetter, scene.id);
     let mut graph = Graph::default();
     // A title or a character speaks for itself: no heading bar above it.
@@ -673,7 +723,20 @@ pub fn compose_scene(
         graph.extend(nodes);
         area
     };
-    let component = build_component(&mut ctx, scene, area, index);
+    let component = if zoom == 1.0 {
+        build_component(&mut ctx, scene, area, index)
+    } else {
+        let zoomed = canvas.zoomed(zoom);
+        let mut zoomed_ctx = Ctx::new(&zoomed, typesetter, scene.id);
+        let nodes = build_component(&mut zoomed_ctx, scene, area, index);
+        ctx.issues.extend(zoomed_ctx.issues);
+        nodes
+    };
+    let fits = component
+        .iter()
+        .map(Node::bbox)
+        .filter(|bbox| bbox.w > 0.0 || bbox.h > 0.0)
+        .all(|bbox| area.inset(-2.0).contains(&bbox));
     graph.extend(centre_vertically(component, area));
     graph.extend(captions::build(&mut ctx, scene));
     let mut entries: HashMap<String, f32> = HashMap::new();
@@ -697,16 +760,19 @@ pub fn compose_scene(
     ));
     check_layout(&mut ctx, &graph);
     let change_times = graph.change_times();
-    ComposedScene {
-        id: scene.id,
-        start_secs: scene.start_secs,
-        duration_secs: scene.duration_secs,
-        transition: scene.transition,
-        graph,
-        issues: ctx.issues,
-        change_times,
-        animated_objects,
-    }
+    (
+        ComposedScene {
+            id: scene.id,
+            start_secs: scene.start_secs,
+            duration_secs: scene.duration_secs,
+            transition: scene.transition,
+            graph,
+            issues: ctx.issues,
+            change_times,
+            animated_objects,
+        },
+        fits,
+    )
 }
 
 /// Composes every scene for the storyboard's format. Scenes need real timing
@@ -789,7 +855,7 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
     let mut svg = String::with_capacity(32 * 1024);
     svg.push_str(&format!(
         "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>{}<g font-family='{}'>",
-        Graph::background_svg(width, height, None),
+        Graph::background_svg(width, height, None, t),
         font_family
     ));
     let index = composed

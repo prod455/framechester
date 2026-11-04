@@ -3,13 +3,19 @@
 //! they ask for a role. `docs/DESIGN_SYSTEM_VIDEO.md` documents the choices.
 use framechester_core::storyboard::Role;
 
-pub const BACKGROUND: &str = "#0B0F17";
+pub const BACKGROUND: &str = "#070B14";
 /// Top of the vertical background gradient (slightly lifted so frames have depth).
-pub const BACKGROUND_TOP: &str = "#131B2A";
+pub const BACKGROUND_TOP: &str = "#0D1630";
 /// Bottom of the vertical background gradient (deeper than the flat base).
-pub const BACKGROUND_BOTTOM: &str = "#070A10";
-/// Opacity of the soft accent glow behind the upper third of the frame.
-pub const BACKGROUND_GLOW_OPACITY: f32 = 0.16;
+pub const BACKGROUND_BOTTOM: &str = "#04060C";
+/// Aurora: large soft colour fields behind the content, drifting slowly so even a
+/// still layout breathes. Cool hues only: a warm glow over the dark base reads as mud.
+/// `(colour, opacity, cx, cy, radius)`, positions as fractions of the frame.
+pub const AURORA: [(&str, f32, f32, f32, f32); 3] = [
+    ("#3D6BFF", 0.30, 0.12, 0.08, 0.75),
+    ("#8B5CF6", 0.20, 0.95, 0.55, 0.65),
+    ("#14B8A6", 0.14, 0.25, 1.0, 0.70),
+];
 pub const BACKGROUND_RAISED: &str = "#121926";
 pub const SURFACE: &str = "#182130";
 pub const SURFACE_STRONG: &str = "#223044";
@@ -27,7 +33,10 @@ pub const CAPTION_BOX: &str = "#05080E";
 
 /// Fill, stroke and text colour of an object by role.
 pub struct RolePalette {
+    /// Bottom of the card gradient (and flat fill where a gradient does not apply).
     pub fill: &'static str,
+    /// Top of the card gradient: the same hue lifted, so cards read as lit glass.
+    pub fill_top: &'static str,
     pub stroke: &'static str,
     pub text: &'static str,
     pub glow: &'static str,
@@ -37,48 +46,91 @@ pub fn palette(role: Role) -> RolePalette {
     match role {
         Role::Neutral => RolePalette {
             fill: SURFACE,
+            fill_top: "#26324A",
             stroke: RULE,
             text: INK,
             glow: ACCENT,
         },
         Role::Primary => RolePalette {
             fill: "#15294A",
+            fill_top: "#24427A",
             stroke: PRIMARY,
             text: INK,
             glow: PRIMARY,
         },
         Role::Secondary => RolePalette {
             fill: "#113A33",
+            fill_top: "#1B5E52",
             stroke: SECONDARY,
             text: INK,
             glow: SECONDARY,
         },
         Role::Accent => RolePalette {
             fill: "#3D2F10",
+            fill_top: "#64501F",
             stroke: ACCENT,
             text: INK,
             glow: ACCENT,
         },
         Role::Success => RolePalette {
             fill: "#143A24",
+            fill_top: "#21603C",
             stroke: SUCCESS,
             text: INK,
             glow: SUCCESS,
         },
         Role::Warning => RolePalette {
             fill: "#3D2F10",
+            fill_top: "#64501F",
             stroke: WARNING,
             text: INK,
             glow: WARNING,
         },
         Role::Danger => RolePalette {
             fill: "#44191C",
+            fill_top: "#712A30",
             stroke: DANGER,
             text: INK,
             glow: DANGER,
         },
     }
 }
+
+/// Lowercase role name, used for the per-role gradient ids in every frame's `<defs>`.
+pub fn role_name(role: Role) -> &'static str {
+    match role {
+        Role::Neutral => "neutral",
+        Role::Primary => "primary",
+        Role::Secondary => "secondary",
+        Role::Accent => "accent",
+        Role::Success => "success",
+        Role::Warning => "warning",
+        Role::Danger => "danger",
+    }
+}
+
+pub const ROLES: [Role; 7] = [
+    Role::Neutral,
+    Role::Primary,
+    Role::Secondary,
+    Role::Accent,
+    Role::Success,
+    Role::Warning,
+    Role::Danger,
+];
+
+/// Paint of a card or bubble of `role`: the lit-glass gradient defined per frame.
+pub fn card_fill(role: Role) -> String {
+    format!("url(#fc-card-{})", role_name(role))
+}
+
+/// Paint of a card edge of `role`: bright at the top, fading towards the bottom.
+pub fn card_edge(role: Role) -> String {
+    format!("url(#fc-edge-{})", role_name(role))
+}
+
+/// Paint of large headline text: white at the cap height easing into a cool tint.
+pub const HEADLINE: &str = "url(#fc-headline)";
 
 pub fn role_colour(role: Role) -> &'static str {
     palette(role).stroke

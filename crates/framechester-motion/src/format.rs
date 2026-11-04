@@ -86,7 +86,16 @@ pub struct Canvas {
     pub look: framechester_core::storyboard::Look,
 }
 
+/// Smallest readable text, as a fraction of the frame's short side: below it a line
+/// cannot be read on a phone (measured on reference films).
+pub const TEXT_FLOOR_RATIO: f32 = 0.026;
+
 impl Canvas {
+    /// The legibility floor in pixels for this frame: no readable text is drawn smaller.
+    pub fn text_floor(&self) -> f32 {
+        (self.width.min(self.height) as f32 * TEXT_FLOOR_RATIO).ceil()
+    }
+
     /// The same frame with component type, icons and spacing scaled by `zoom`; safe
     /// areas, captions and the caption type are unchanged.
     pub fn zoomed(&self, zoom: f32) -> Self {
@@ -167,7 +176,8 @@ impl Canvas {
                     heading: 56.0,
                     body: 38.0,
                     label: 34.0,
-                    small: 27.0,
+                    // 2.6% of the short side is 28.1 px: nothing readable goes below it.
+                    small: 29.0,
                     caption: 52.0,
                     code: 32.0,
                     number: 210.0,

@@ -254,6 +254,61 @@ fn build_component(
     }
 }
 
+/// Seconds a line needs on screen to be read: 0.5 s plus 0.3 s a word (measured on
+/// reference films).
+pub fn reading_hold(words: usize) -> f32 {
+    0.5 + 0.3 * words as f32
+}
+
+/// Words of each text line of a graph, keyed by object and baseline: a line drawn as one
+/// node counts its words, a kinetic line (one node per word) counts its nodes.
+pub fn text_lines(graph: &Graph) -> HashMap<(String, i32), usize> {
+    let mut lines: HashMap<(String, i32), usize> = HashMap::new();
+    for node in graph
+        .nodes
+        .iter()
+        .filter(|node| node.readable && node.z < Z_CAPTIONS)
+    {
+        if let Shape::Text { y, content, .. } = &node.shape {
+            let words = content.split_whitespace().count();
+            *lines
+                .entry((node.object.clone(), (y + node.offset.1).round() as i32))
+                .or_insert(0) += words;
+        }
+    }
+    lines
+}
+
+/// The entry time brought forward so the text is readable for `hold` seconds before the
+/// scene ends; the fade-in itself takes `READ_MARGIN` before the text is legible.
+fn latest_entry(time: f32, hold: f32, duration: f32) -> f32 {
+    const READ_MARGIN: f32 = 0.15;
+    time.min((duration - hold - READ_MARGIN).max(0.0))
+}
+
+/// The reading hold of each object: its longest line, plus the cascade in which its text
+/// nodes enter (one step per node, `apply_animation`).
+fn reading_holds(graph: &Graph) -> HashMap<String, f32> {
+    let mut longest: HashMap<String, usize> = HashMap::new();
+    for ((object, _), words) in text_lines(graph) {
+        let entry = longest.entry(object).or_insert(0);
+        *entry = (*entry).max(words);
+    }
+    longest
+        .into_iter()
+        .map(|(object, words)| {
+            let nodes = graph
+                .nodes
+                .iter()
+                .filter(|node| node.object == object && node.is_text() && node.z < Z_CAPTIONS)
+                .count();
+            let cascade = framechester_core::presets::TITLE_CASCADE.stagger_secs
+                * nodes.saturating_sub(1) as f32;
+            (object, reading_hold(words) + cascade)
+        })
+        .collect()
+}
+
 /// Resolves every animation to a time, staggering those that land together.
 /// The opening scene is the hook: whatever would enter in its first moments is already on
 /// screen at frame 0 (the cover of a Short and the viewer's first impression), and a short
@@ -569,7 +624,13 @@ fn auto_animate_edges(
             edges.push((edge_id(last, first), at));
         }
     }
+    let holds = reading_holds(graph);
+    let readable = |object: &str, at: f32| match holds.get(object) {
+        Some(hold) => latest_entry(at, *hold, scene.duration_secs),
+        None => at,
+    };
     for (edge, at) in edges {
+        let at = readable(&edge, at);
         for node in nodes_of(graph, &edge) {
             node.props.draw(at, 0.45, Easing::EaseOut);
             node.props.hidden_until(at);
@@ -579,7 +640,7 @@ fn auto_animate_edges(
     if let Composition::Annotation { objects, .. } = &scene.composition {
         for object in objects {
             let note = format!("note:{}", object.id);
-            let at = entries.get(&object.id).copied().unwrap_or(0.0) + 0.3;
+            let at = readable(&note, entries.get(&object.id).copied().unwrap_or(0.0) + 0.3);
             for node in nodes_of(graph, &note) {
                 if matches!(node.shape, Shape::Path { .. }) {
                     node.props.draw(at, 0.4, Easing::EaseOut);
@@ -830,7 +891,17 @@ fn compose_at(
     let mut entries: HashMap<String, f32> = HashMap::new();
     let mut animated_objects = Vec::new();
     let hook = index == 0;
+    let holds = reading_holds(&graph);
     for (time, animation) in resolve_times(scene, hook) {
+        // A line must stay on screen long enough to be read before the scene ends: an
+        // entry the narration cues too late is brought forward just enough.
+        let time = match (animation.motion, holds.get(&animation.target)) {
+            (
+                Motion::Reveal | Motion::Pop | Motion::Grow | Motion::Type | Motion::Draw,
+                Some(hold),
+            ) => latest_entry(time, *hold, scene.duration_secs),
+            _ => time,
+        };
         if !animated_objects.contains(&animation.target) {
             animated_objects.push(animation.target.clone());
         }
@@ -1914,5 +1985,90 @@ mod tests {
                 resvg::usvg::Tree::from_str(&svg, Typesetter::new().unwrap().options()).is_ok()
             );
         }
+    }
+
+    fn sample_film(format: VideoFormat, look: Look) -> (Storyboard, Composed) {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_storyboard(format, look);
+        let mut scenes = Vec::new();
+        let mut start = 0.0;
+        for (index, (brief, narration)) in sample_briefs().into_iter().enumerate() {
+            let mut scene = narrated(brief, narration);
+            scene.id = index as u32 + 1;
+            scene.start_secs = start;
+            start += scene.duration_secs;
+            scenes.push(scene);
+        }
+        let storyboard = Storyboard {
+            version: SCHEMA_VERSION,
+            title: "Filme".into(),
+            channel: "Canal".into(),
+            format,
+            language: "pt-BR".into(),
+            scenes,
+            look: Some(look),
+            source_hash: None,
+        };
+        let total = storyboard.scenes.len();
+        let composed = Composed {
+            canvas,
+            scenes: storyboard
+                .scenes
+                .iter()
+                .enumerate()
+                .map(|(index, scene)| compose_scene(&typesetter, &canvas, scene, index, total))
+                .collect(),
+        };
+        (storyboard, composed)
+    }
+
+    #[test]
+    fn every_layout_meets_the_measured_craft_in_every_look_and_format() {
+        for look in Look::ALL {
+            for format in [
+                VideoFormat::Vertical,
+                VideoFormat::Horizontal,
+                VideoFormat::X,
+            ] {
+                let (storyboard, composed) = sample_film(format, look);
+                for check in crate::qa::craft_checks(&storyboard, &composed) {
+                    assert_eq!(
+                        check.status,
+                        framechester_core::domain::QaStatus::Pass,
+                        "{look:?} {format:?} {}: {}",
+                        check.id,
+                        check.detail
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_craft_guards_catch_what_the_engine_cannot_fix() {
+        use framechester_core::domain::QaStatus;
+        let (mut storyboard, mut composed) = sample_film(VideoFormat::Horizontal, Look::Noite);
+        // A scene too short for its own text: nothing can make it readable.
+        storyboard.scenes[2].duration_secs = 0.6;
+        composed.scenes[2].duration_secs = 0.6;
+        // Text drawn under the floor by hand (not through `Ctx::fit`).
+        composed.scenes[0]
+            .graph
+            .nodes
+            .push(Typesetter::new().unwrap().line(
+                "tiny",
+                "letra miuda",
+                200.0,
+                300.0,
+                12.0,
+                400,
+                tokens::FONT_SANS,
+                tokens::INK,
+                Anchor::Start,
+            ));
+        let checks = crate::qa::craft_checks(&storyboard, &composed);
+        let status = |id: &str| checks.iter().find(|check| check.id == id).unwrap().status;
+        assert_eq!(status("text_below_floor"), QaStatus::Fail);
+        assert_eq!(status("line_unread"), QaStatus::NeedsHuman);
     }
 }

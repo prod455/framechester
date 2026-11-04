@@ -203,6 +203,14 @@ título com `?` usa a pose pensar. Título que não cabe no tamanho mínimo vira
 relatório, nunca texto cortado. Revisão visual: `cargo run --release -p
 framechester-motion --example preview_components -- <pasta>`.
 
+## Ofício medido (garantido pelo motor, guardado pelo QA)
+
+| Regra | Garantia no motor | Guarda no QA |
+|---|---|---|
+| Nenhum texto legível abaixo de 2,6% do lado menor (28 px em 1080p, 19 px no X) | `Ctx::fit` nunca desce abaixo de `Canvas::text_floor`; o que não cabe é reportado | `text_below_floor` reprova |
+| Cada linha fica na tela 0,5 s + 0,3 s por palavra (mais a cascata das palavras) | `compose` antecipa a entrada de objetos, notas e rótulos que entrariam tarde demais | `line_unread` pede revisão (só quando a cena é curta demais para o próprio texto) |
+| Nenhum trecho de mais de 3 s sem mudança | legendas por bloco, destaques por palavra, câmera que assenta | `dead_stretch` pede revisão |
+
 ## Proibições (impostas por QA quando mensuráveis)
 
 - parágrafos longos ocupando a tela — rótulos ≤ 60 caracteres, detalhes ≤ 120;

@@ -167,7 +167,11 @@ impl<'a> Ctx<'a> {
         min: f32,
         weight: u16,
     ) -> (f32, Vec<String>) {
-        let floor = self.canvas.type_scale.small.min(min);
+        // Never below the frame's legibility floor, whatever the component asked for.
+        let legible = self.canvas.text_floor();
+        let min = min.max(legible);
+        let max = max.max(min);
+        let floor = self.canvas.type_scale.small.min(min).max(legible);
         if let Some(found) = self.ts.fit(text, max, min, width, height, weight, family) {
             return found;
         }

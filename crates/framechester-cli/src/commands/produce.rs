@@ -90,6 +90,10 @@ pub(crate) fn plan_from_args(
         let mut storyboard: Storyboard =
             serde_json::from_str(&text).with_context(|| "storyboard JSON invalido")?;
         storyboard.format = format;
+        storyboard
+            .scenes
+            .iter_mut()
+            .for_each(framechester_core::planner::complete_scene);
         storyboard.validate()?;
         return Ok(Planned {
             topic: None,
@@ -178,7 +182,19 @@ pub(crate) fn plan_command(
             );
         }
     }
-    Ok(0)
+    // The same layout gate `produce` runs before the TTS, so a plan can be fixed in a
+    // loop of seconds. Issues go to stderr so `--json` stays parseable.
+    let layout = framechester_motion::compose::layout_preflight(
+        &planned.storyboard,
+        &framechester_motion::text::Typesetter::new()?,
+    );
+    for issue in &layout {
+        eprintln!(
+            "layout cena {}: {} ({})",
+            issue.scene_id, issue.detail, issue.code
+        );
+    }
+    Ok(if layout.is_empty() { 0 } else { 2 })
 }
 
 /// Legacy editorial QA still applies: the motion engine generates every visual, so each

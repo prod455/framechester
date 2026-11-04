@@ -43,8 +43,10 @@ layout escolhe o maior tamanho que passa no QA.
    do ponto focal, `blur_swap` e `dip_cut`, escolhidas pelo planner a partir da cena
    anterior, sem repetir e sem fade cruzado. Faltam: morph de container e inundação de
    cor com objeto herói compartilhado entre cenas.
-3. **Blur de movimento e blur de entrada** por palavra (6 px → 0 em 0,13 s). Custo de
-   filtro no resvg por frame precisa ser medido antes.
+3. ~~Blur de entrada por palavra.~~ Feito em 2026-11-04 (6 px → 0 em 0,13 s, sem
+   translação, região do filtro limitada ao elemento; custo medido dentro do ruído).
+   Blur de movimento em deslocamentos rápidos continua fora: ~11 ms por linha larga
+   desfocada no resvg.
 4. ~~Checagens de ofício no QA.~~ Feito em 2026-11-04: `text_below_floor`, `line_unread`
    e `dead_stretch`, com o motor garantindo as três (piso no `fit`, entradas antecipadas)
    — nelas o deles só avisa.

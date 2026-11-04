@@ -231,6 +231,11 @@ pub(crate) struct ProduceArgs {
     pub(crate) voice: Option<String>,
     #[arg(
         long,
+        help = "visual: noite, papel ou planta; sem ele vale o do storyboard, depois o do canal"
+    )]
+    pub(crate) look: Option<String>,
+    #[arg(
+        long,
         help = "renderiza previa com marca de revisao; sem aprovacao editorial nem pacote"
     )]
     pub(crate) preview_only: bool,

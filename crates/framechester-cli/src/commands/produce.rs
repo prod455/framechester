@@ -19,7 +19,7 @@ use framechester_core::planner::plan_script;
 use framechester_core::ports::{
     FactEvidenceProvider, GenerationBudget, LlmProvider, ScriptPrompt, TrendRequest, TrendSource,
 };
-use framechester_core::storyboard::{Storyboard, VideoFormat};
+use framechester_core::storyboard::{Look, Storyboard, VideoFormat};
 use framechester_motion::audio::LoudnessTarget;
 use framechester_motion::narrate::narrate;
 use framechester_motion::qa::{audit, QaInput};
@@ -83,6 +83,27 @@ pub(crate) fn plan_from_args(
     format: VideoFormat,
     channel_name: &str,
     language: &str,
+    channel_look: Option<Look>,
+) -> anyhow::Result<Planned> {
+    let mut planned = plan_without_look(config, args, format, channel_name, language)?;
+    // The flag wins, then what the storyboard says, then the channel's identity.
+    let flag = match &args.look {
+        Some(value) => Some(
+            Look::parse(value)
+                .ok_or_else(|| anyhow::anyhow!("--look deve ser noite, papel ou planta"))?,
+        ),
+        None => None,
+    };
+    planned.storyboard.look = flag.or(planned.storyboard.look).or(channel_look);
+    Ok(planned)
+}
+
+fn plan_without_look(
+    config: &Config,
+    args: &ProduceArgs,
+    format: VideoFormat,
+    channel_name: &str,
+    language: &str,
 ) -> anyhow::Result<Planned> {
     if let Some(path) = &args.storyboard {
         let text = std::fs::read_to_string(path)
@@ -90,6 +111,10 @@ pub(crate) fn plan_from_args(
         let mut storyboard: Storyboard =
             serde_json::from_str(&text).with_context(|| "storyboard JSON invalido")?;
         storyboard.format = format;
+        storyboard
+            .scenes
+            .iter_mut()
+            .for_each(framechester_core::planner::complete_scene);
         storyboard.validate()?;
         return Ok(Planned {
             topic: None,
@@ -145,7 +170,14 @@ pub(crate) fn plan_command(
     let language = channel
         .as_ref()
         .map_or("pt-BR", |channel| channel.language());
-    let planned = plan_from_args(&config, &args, format, &channel_name, language)?;
+    let planned = plan_from_args(
+        &config,
+        &args,
+        format,
+        &channel_name,
+        language,
+        channel.as_ref().and_then(|channel| channel.look),
+    )?;
     let output = args
         .output
         .clone()
@@ -178,7 +210,19 @@ pub(crate) fn plan_command(
             );
         }
     }
-    Ok(0)
+    // The same layout gate `produce` runs before the TTS, so a plan can be fixed in a
+    // loop of seconds. Issues go to stderr so `--json` stays parseable.
+    let layout = framechester_motion::compose::layout_preflight(
+        &planned.storyboard,
+        &framechester_motion::text::Typesetter::new()?,
+    );
+    for issue in &layout {
+        eprintln!(
+            "layout cena {}: {} ({})",
+            issue.scene_id, issue.detail, issue.code
+        );
+    }
+    Ok(if layout.is_empty() { 0 } else { 2 })
 }
 
 /// Legacy editorial QA still applies: the motion engine generates every visual, so each
@@ -245,7 +289,14 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
     let language = channel
         .as_ref()
         .map_or("pt-BR", |channel| channel.language());
-    let planned = plan_from_args(&config, &args, format, &channel_name, language)?;
+    let planned = plan_from_args(
+        &config,
+        &args,
+        format,
+        &channel_name,
+        language,
+        channel.as_ref().and_then(|channel| channel.look),
+    )?;
     // Same editorial gate as the legacy pipeline: a draft renders without the operator's
     // declaration, never with unsafe inputs or contradictions.
     let mut warnings = planned.fallbacks.clone();
@@ -292,6 +343,48 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
         workdir.join("storyboard.plan.json"),
         serde_json::to_string_pretty(&storyboard)?,
     )?;
+    // Text that cannot fit is known from the plan alone: stop here, before minutes of
+    // TTS and rendering, and say which scene and text to shorten.
+    let layout = framechester_motion::compose::layout_preflight(
+        &storyboard,
+        &framechester_motion::text::Typesetter::new()?,
+    );
+    if !layout.is_empty() {
+        warnings.extend(
+            layout
+                .iter()
+                .map(|issue| format!("layout cena {}: {}", issue.scene_id, issue.detail)),
+        );
+        warnings.push(
+            "layout reprovado antes da narracao: encurte os textos indicados e gere de novo".into(),
+        );
+        let report = PipelineReport {
+            channel: channel.clone(),
+            topic_id: planned
+                .topic
+                .as_ref()
+                .map(|topic| topic.id.clone())
+                .unwrap_or_else(|| storyboard.title.clone()),
+            stage: Stage::Blocked,
+            artifacts_dir: workdir.clone(),
+            script: planned.script.clone(),
+            render: None,
+            technical_qa: None,
+            editorial_qa: None,
+            publish: None,
+            package: None,
+            metrics: Vec::new(),
+            warnings,
+        };
+        framechester_core::pipeline::write_report(&workdir, &report)?;
+        write_html_report(&report, &workdir)?;
+        if args.json {
+            println!("{}", serde_json::to_string_pretty(&report)?);
+        } else {
+            print_report(&report);
+        }
+        return Ok(2);
+    }
 
     let voice = args
         .voice
@@ -354,6 +447,7 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
         &framechester_motion::text::Typesetter::new()?,
         &storyboard.title,
         &cast,
+        storyboard.look.unwrap_or_default(),
         &thumbnail,
     )? {
         warnings.push(format!("thumbnail: {}", issue.detail));
@@ -539,6 +633,7 @@ pub(crate) fn short(config_path: &Option<PathBuf>, args: ShortArgs) -> anyhow::R
             workdir: Some(workdir),
             output: None,
             voice: args.voice,
+            look: None,
             preview_only: false,
             json: args.json,
         },

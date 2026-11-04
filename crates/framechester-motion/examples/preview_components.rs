@@ -9,6 +9,11 @@ use framechester_motion::raster::Rasterizer;
 use framechester_motion::text::Typesetter;
 fn main() {
     let out = std::path::PathBuf::from(std::env::args().nth(1).expect("output dir"));
+    // Optional second argument: the look (noite, papel, planta).
+    let look = std::env::args()
+        .nth(2)
+        .map(|value| framechester_core::storyboard::Look::parse(&value).expect("unknown look"))
+        .unwrap_or_default();
     let briefs = [
         ("pergunta", "#pergunta Skill ou agente: qual a diferença na prática?", "Skill ou agente: qual a diferenca na pratica? Vamos ver."),
         ("fluxo", "#fluxo Objetivo [user] -> Decidir [brain] {primary} -> Agir [tool] -> Observar [search] -> loop", "O agente recebe o objetivo, decide o proximo passo, age com uma ferramenta e observa o resultado. Depois repete."),
@@ -43,6 +48,7 @@ fn main() {
             &typesetter,
             title,
             &framechester_motion::thumbnail::Cast::Preset(character),
+            look,
             &out.join(format!("thumbnail-{name}.png")),
         )
         .unwrap();
@@ -55,7 +61,7 @@ fn main() {
         VideoFormat::Horizontal,
         VideoFormat::X,
     ] {
-        let canvas = Canvas::for_format(format);
+        let canvas = Canvas::for_storyboard(format, look);
         let rasterizer = Rasterizer::new(&typesetter, canvas.width, canvas.height);
         for (name, brief, narration) in briefs {
             let mut scene = plan_scene(
@@ -90,6 +96,53 @@ fn main() {
                 .unwrap();
             if !composed.issues.is_empty() {
                 println!("{format:?} {name}: {:?}", composed.issues);
+            }
+        }
+    }
+    // Free-form scenes from the agent-facing example, in every format.
+    let example: framechester_core::storyboard::Storyboard = serde_json::from_str(
+        &std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../examples/freeform.storyboard.json"
+        ))
+        .unwrap(),
+    )
+    .unwrap();
+    for format in [
+        VideoFormat::Vertical,
+        VideoFormat::Horizontal,
+        VideoFormat::X,
+    ] {
+        let canvas = Canvas::for_storyboard(format, look);
+        let rasterizer = Rasterizer::new(&typesetter, canvas.width, canvas.height);
+        for (index, scene) in example.scenes.iter().enumerate() {
+            let mut scene = scene.clone();
+            framechester_core::planner::complete_scene(&mut scene);
+            let texts = segment_narration(&scene.narration);
+            let audio: Vec<SegmentAudio> = texts
+                .iter()
+                .map(|t| SegmentAudio {
+                    duration_secs: t.split_whitespace().count() as f32 * 0.33,
+                    leading_silence_secs: 0.05,
+                    trailing_silence_secs: 0.1,
+                    pauses: Vec::new(),
+                })
+                .collect();
+            let (segments, duration) = assemble_scene(&texts, &audio, &vec![false; texts.len()]);
+            scene.segments = segments;
+            scene.duration_secs = duration;
+            let composed = compose_scene(&typesetter, &canvas, &scene, index, example.scenes.len());
+            let svg = composed
+                .graph
+                .svg(duration * 0.95, canvas.width, canvas.height, "Inter");
+            rasterizer
+                .save_png(
+                    &svg,
+                    &out.join(format!("{}-freeform-{}.png", format.slug(), scene.id)),
+                )
+                .unwrap();
+            if !composed.issues.is_empty() {
+                println!("{format:?} freeform {}: {:?}", scene.id, composed.issues);
             }
         }
     }

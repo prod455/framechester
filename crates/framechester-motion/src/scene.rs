@@ -2,6 +2,7 @@
 //! Components build graphs; the rasterizer turns `graph.svg(t)` into frames.
 use crate::anim::Track;
 use crate::format::Rect;
+use crate::look::{theme, Headline, Shadow, Theme};
 use crate::tokens;
 use framechester_core::storyboard::Easing;
 
@@ -70,6 +71,9 @@ pub struct Props {
     pub glow: Track,
     /// Characters shown for text (typewriter); `f32::MAX` means all.
     pub typed: Track,
+    /// Gaussian blur radius in pixels (an element sharpening as it lands). Costly to
+    /// raster, so only entrances use it, for a fraction of a second.
+    pub blur: Track,
 }
 
 impl Default for Props {
@@ -85,6 +89,7 @@ impl Default for Props {
             draw: Track::constant(1.0),
             glow: Track::constant(0.0),
             typed: Track::constant(f32::MAX),
+            blur: Track::constant(0.0),
         }
     }
 }
@@ -213,6 +218,19 @@ impl Node {
         Rect::new(min_x, min_y, max_x - min_x, max_y - min_y)
     }
 
+    /// How far the node's box moves between `from` and `to`, in pixels: translation plus
+    /// the growth of its farthest edge under scale.
+    pub fn travel(&self, from: f32, to: f32) -> f32 {
+        let props = &self.props;
+        let shift = ((props.dx.eval(to) - props.dx.eval(from)).powi(2)
+            + (props.dy.eval(to) - props.dy.eval(from)).powi(2))
+        .sqrt();
+        let bbox = self.bbox();
+        let reach = bbox.w.max(bbox.h) / 2.0;
+        let scale = |t: f32| props.scale.eval(t) * props.sx.eval(t).max(props.sy.eval(t));
+        shift + (scale(to) - scale(from)).abs() * reach
+    }
+
     pub fn is_text(&self) -> bool {
         matches!(self.shape, Shape::Text { .. })
     }
@@ -249,6 +267,18 @@ pub enum Camera {
 /// How far the camera travels over a scene: small enough that content stays in the safe
 /// area, large enough to read as movement.
 const CAMERA_ZOOM: f32 = 0.025;
+/// Shutter of the motion blur: samples are taken this far back from each frame (a
+/// 270° shutter at 30 fps).
+pub const MOTION_SHUTTER_SECS: f32 = 0.025;
+/// Below this travel within the shutter, in pixels, a node draws no trail.
+pub const MOTION_BLUR_MIN_PX: f32 = 2.0;
+/// Opacity of each trail sample, nearest first.
+const MOTION_TRAIL: [f32; 3] = [0.35, 0.22, 0.12];
+
+/// The camera move lasts at most this long, then the frame is still.
+pub const CAMERA_SETTLE_SECS: f32 = 2.4;
+const CAMERA_SETTLE_EASING: framechester_core::storyboard::Easing =
+    framechester_core::storyboard::Easing::cubic_bezier(0.16, 1.0, 0.3, 1.0);
 const CAMERA_DRIFT: f32 = 14.0;
 
 impl Camera {
@@ -287,8 +317,12 @@ pub struct Graph {
     /// a group is a reusable bundle of objects, not a new node type.
     pub groups: std::collections::BTreeMap<String, Vec<String>>,
     pub background: Option<String>,
-    /// Gentle vertical float (amplitude px, period s) so a still composition never
-    /// freezes between animation events. Captions are excluded (`z >= 1000`).
+    /// Look whose paints the frame resolves (`crate::look`).
+    pub look: framechester_core::storyboard::Look,
+    /// The scene asked for continuous motion between its events (amplitude px,
+    /// period s). It is carried by the drifting background (`background_svg`), never
+    /// by floating the content: text and cards that bob while they are read are a
+    /// tell of generated video. QA reads it to accept long reading holds.
     pub breathe: Option<(f32, f32)>,
     /// Camera move over the scene: the move, the scene duration and the canvas size.
     pub camera: Option<(Camera, f32, (f32, f32))>,
@@ -396,6 +430,7 @@ impl Graph {
                     &props.draw,
                     &props.glow,
                     &props.typed,
+                    &props.blur,
                 ]
                 .into_iter()
                 .flat_map(|track| track.change_times())
@@ -407,20 +442,129 @@ impl Graph {
         times
     }
 
-    /// Layered frame background: vertical gradient, a soft accent glow in the
-    /// upper third and a vignette that darkens the edges. Decorative only; it is
-    /// never a readable node, so layout QA is unaffected. `base` overrides the
-    /// gradient mid-tone (per-graph background colour).
-    pub fn background_svg(width: u32, height: u32, base: Option<&str>) -> String {
-        let base = base.unwrap_or(tokens::BACKGROUND);
-        format!(
-            "<defs><linearGradient id='fc-bg' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='{}'/><stop offset='0.55' stop-color='{base}'/><stop offset='1' stop-color='{}'/></linearGradient><radialGradient id='fc-glow' cx='0.5' cy='0.22' r='0.75'><stop offset='0' stop-color='{}' stop-opacity='{}'/><stop offset='1' stop-color='{}' stop-opacity='0'/></radialGradient><radialGradient id='fc-vig' cx='0.5' cy='0.5' r='0.85'><stop offset='0.62' stop-color='#000000' stop-opacity='0'/><stop offset='1' stop-color='#000000' stop-opacity='0.38'/></radialGradient></defs><rect width='{width}' height='{height}' fill='url(#fc-bg)'/><rect width='{width}' height='{height}' fill='url(#fc-glow)'/><rect width='{width}' height='{height}' fill='url(#fc-vig)'/>",
-            tokens::BACKGROUND_TOP,
-            tokens::BACKGROUND_BOTTOM,
-            tokens::ACCENT,
-            tokens::BACKGROUND_GLOW_OPACITY,
-            tokens::ACCENT,
-        )
+    /// Layered frame background at instant `t`: solid base with a radial lift, three aurora
+    /// fields drifting slowly (so a still layout still breathes) and a vignette; plus
+    /// the shared paints (`tokens::card_fill`, `tokens::card_edge`, `tokens::HEADLINE`)
+    /// every frame may reference. Decorative only; it is never a
+    /// readable node, so layout QA is unaffected. `base` overrides the gradient mid-tone
+    /// (per-graph background colour).
+    pub fn background_svg(
+        width: u32,
+        height: u32,
+        base: Option<&str>,
+        t: f32,
+        theme: &Theme,
+    ) -> String {
+        let base = theme.paint(base.unwrap_or(tokens::BACKGROUND));
+        let mut svg = String::with_capacity(4096);
+        svg.push_str("<defs>");
+        if let Some((lift, opacity)) = theme.lift {
+            // A full-frame linear gradient on a dark ground bands under H.264: a solid
+            // base with a radial lift from the top reads the same and stays smooth.
+            svg.push_str(&format!(
+                "<radialGradient id='fc-bg' cx='0.5' cy='0' r='1.1'><stop offset='0' stop-color='{}' stop-opacity='{}'/><stop offset='1' stop-color='{base}' stop-opacity='0'/></radialGradient>",
+                theme.paint(lift),
+                fmt(opacity),
+            ));
+        }
+        let (w, h) = (width as f32, height as f32);
+        let span = w.max(h);
+        let mut fields = Vec::with_capacity(theme.atmosphere.len());
+        for (index, (colour, opacity, cx, cy, r)) in theme.atmosphere.iter().enumerate() {
+            let colour = theme.paint(colour);
+            // Slow Lissajous drift, a few percent of the frame per ten seconds.
+            let phase = index as f32 * 2.1;
+            let x = (cx + 0.05 * (t * 0.11 + phase).sin()) * w;
+            let y = (cy + 0.04 * (t * 0.09 + phase * 1.3).cos()) * h;
+            svg.push_str(&format!(
+                "<radialGradient id='fc-aurora-{index}' gradientUnits='userSpaceOnUse' cx='{}' cy='{}' r='{}'><stop offset='0' stop-color='{colour}' stop-opacity='{opacity}'/><stop offset='0.45' stop-color='{colour}' stop-opacity='{}'/><stop offset='1' stop-color='{colour}' stop-opacity='0'/></radialGradient>",
+                fmt(x),
+                fmt(y),
+                fmt(r * span),
+                fmt(opacity * 0.35),
+            ));
+            // Paint only the field's own square: the gradient is transparent beyond it.
+            let radius = r * span;
+            let (left, top) = ((x - radius).max(0.0), (y - radius).max(0.0));
+            let (right, bottom) = ((x + radius).min(w), (y + radius).min(h));
+            if right > left && bottom > top {
+                fields.push((index, left, top, right - left, bottom - top));
+            }
+        }
+        if theme.vignette > 0.0 {
+            svg.push_str(&format!(
+                "<radialGradient id='fc-vig' cx='0.5' cy='0.5' r='0.8'><stop offset='0.55' stop-color='#000000' stop-opacity='0'/><stop offset='1' stop-color='#000000' stop-opacity='{}'/></radialGradient>",
+                fmt(theme.vignette)
+            ));
+        }
+        match theme.headline {
+            Headline::Gradient(top, bottom) => svg.push_str(&format!(
+                "<linearGradient id='fc-headline' x1='0' y1='0' x2='0' y2='1'><stop offset='0.2' stop-color='{}'/><stop offset='1' stop-color='{}'/></linearGradient>",
+                theme.paint(top),
+                theme.paint(bottom)
+            )),
+            Headline::Solid(paint) => {
+                let colour = theme.paint(paint);
+                svg.push_str(&format!(
+                    "<linearGradient id='fc-headline'><stop offset='0' stop-color='{colour}'/><stop offset='1' stop-color='{colour}'/></linearGradient>"
+                ))
+            }
+        }
+        for role in tokens::ROLES {
+            let colours = tokens::palette(role);
+            let name = tokens::role_name(role);
+            let edge = theme.paint(match role {
+                framechester_core::storyboard::Role::Neutral => "@edge-neutral",
+                _ => colours.stroke,
+            });
+            svg.push_str(&format!(
+                "<linearGradient id='fc-card-{name}' x1='0' y1='0' x2='0.35' y2='1'><stop offset='0' stop-color='{}'/><stop offset='1' stop-color='{}'/></linearGradient><linearGradient id='fc-edge-{name}' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='{edge}' stop-opacity='1'/><stop offset='1' stop-color='{edge}' stop-opacity='{}'/></linearGradient>",
+                theme.paint(colours.fill_top),
+                theme.paint(colours.fill),
+                fmt(theme.edge_fade),
+            ));
+        }
+        svg.push_str(&format!(
+            "</defs><rect width='{width}' height='{height}' fill='{base}'/>"
+        ));
+        if theme.lift.is_some() {
+            svg.push_str(&format!(
+                "<rect width='{width}' height='{height}' fill='url(#fc-bg)'/>"
+            ));
+        }
+        for (index, x, y, field_w, field_h) in fields {
+            svg.push_str(&format!(
+                "<rect x='{}' y='{}' width='{}' height='{}' fill='url(#fc-aurora-{index})'/>",
+                fmt(x),
+                fmt(y),
+                fmt(field_w),
+                fmt(field_h)
+            ));
+        }
+        if let Some((step, paint)) = theme.grid {
+            // One path for the whole ruled sheet: far cheaper to raster than a pattern.
+            let mut d = String::new();
+            let mut x = step;
+            while x < w {
+                d.push_str(&format!("M{x:.0} 0V{h:.0}"));
+                x += step;
+            }
+            let mut y = step;
+            while y < h {
+                d.push_str(&format!("M0 {y:.0}H{w:.0}"));
+                y += step;
+            }
+            svg.push_str(&format!(
+                "<path d='{d}' stroke='{}' stroke-width='1.5' fill='none'/>",
+                theme.paint(paint)
+            ));
+        }
+        if theme.vignette > 0.0 {
+            svg.push_str(&format!(
+                "<rect width='{width}' height='{height}' fill='url(#fc-vig)'/>"
+            ));
+        }
+        svg
     }
 
     /// The SVG document for instant `t`.
@@ -428,7 +572,7 @@ impl Graph {
         let mut svg = String::with_capacity(16 * 1024);
         svg.push_str(&format!(
             "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>{}<g font-family='{}'>",
-            Self::background_svg(width, height, self.background.as_deref()),
+            Self::background_svg(width, height, self.background.as_deref(), t, theme(self.look)),
             xml(font_family)
         ));
         self.svg_inner(&mut svg, t, 0.0, 0.0, 1.0, 1.0);
@@ -480,14 +624,26 @@ impl Graph {
         sy: f32,
         opacity: f32,
     ) {
-        let mut order: Vec<&Node> = self.nodes.iter().collect();
+        self.svg_nodes(svg, t, dx, dy, sx, sy, opacity, &|_| true);
+    }
+
+    /// Like [`Self::svg_inner_ex`], drawing only the nodes `keep` accepts (a transition
+    /// that carries one object across draws it apart from the rest of its scene).
+    #[allow(clippy::too_many_arguments)]
+    pub fn svg_nodes(
+        &self,
+        svg: &mut String,
+        t: f32,
+        dx: f32,
+        dy: f32,
+        sx: f32,
+        sy: f32,
+        opacity: f32,
+        keep: &dyn Fn(&Node) -> bool,
+    ) {
+        let palette = theme(self.look);
+        let mut order: Vec<&Node> = self.nodes.iter().filter(|node| keep(node)).collect();
         order.sort_by_key(|node| node.z);
-        let breathe_dy = self
-            .breathe
-            .map(|(amplitude, period)| {
-                amplitude * (2.0 * std::f32::consts::PI * t / period.max(0.5)).sin()
-            })
-            .unwrap_or(0.0);
         let outer = dx.abs() > 1e-3
             || dy.abs() > 1e-3
             || (sx - 1.0).abs() > 1e-3
@@ -505,7 +661,16 @@ impl Graph {
         // contiguous and each band opens/closes one <g>.
         let camera_base = self.camera.map(|(camera, duration, (width, height))| {
             (
-                camera.at(t / duration.max(0.1), width, height),
+                // The camera settles early on a long tail and then holds: a push that
+                // creeps on while the viewer reads is a tell of generated video.
+                camera.at(
+                    crate::anim::ease(
+                        CAMERA_SETTLE_EASING,
+                        t / duration.clamp(0.1, CAMERA_SETTLE_SECS),
+                    ),
+                    width,
+                    height,
+                ),
                 width,
                 height,
             )
@@ -538,54 +703,21 @@ impl Graph {
                 }
                 open_band = wanted;
             }
-            let node_opacity = node.props.opacity.eval(t);
-            if node_opacity <= 0.002 {
-                continue;
+            if node.z < Z_CAPTIONS {
+                // Motion blur by temporal accumulation: a fast mover leaves a trail of
+                // samples from within the shutter, behind it and fading. A Gaussian
+                // filter per frame would cost ~10 ms a line in resvg; three extra vector
+                // draws cost almost nothing, and nothing at all once things are still.
+                let travel = node.travel(t - MOTION_SHUTTER_SECS, t);
+                if travel > MOTION_BLUR_MIN_PX {
+                    for (index, weight) in MOTION_TRAIL.iter().enumerate().rev() {
+                        let at = t - MOTION_SHUTTER_SECS * (index + 1) as f32
+                            / MOTION_TRAIL.len() as f32;
+                        Self::node_svg(svg, node, at, palette, *weight);
+                    }
+                }
             }
-            let ndx = node.props.dx.eval(t) + node.offset.0;
-            let ndy = node.props.dy.eval(t)
-                + node.offset.1
-                + if node.z >= Z_CAPTIONS {
-                    0.0
-                } else {
-                    breathe_dy
-                };
-            let scale = node.props.scale.eval(t);
-            let sx = scale * node.props.sx.eval(t);
-            let sy = scale * node.props.sy.eval(t);
-            let rotate = node.props.rotate.eval(t);
-            let glow = node.props.glow.eval(t);
-            let (ox, oy) = node.origin;
-            let mut transform = String::new();
-            if ndx.abs() > 1e-3 || ndy.abs() > 1e-3 {
-                transform.push_str(&format!("translate({} {}) ", fmt(ndx), fmt(ndy)));
-            }
-            if (sx - 1.0).abs() > 1e-3 || (sy - 1.0).abs() > 1e-3 || rotate.abs() > 1e-3 {
-                transform.push_str(&format!(
-                    "translate({} {}) rotate({}) scale({} {}) translate({} {})",
-                    fmt(ox),
-                    fmt(oy),
-                    fmt(rotate),
-                    fmt(sx.max(0.0)),
-                    fmt(sy.max(0.0)),
-                    fmt(-ox),
-                    fmt(-oy)
-                ));
-            }
-            svg.push_str("<g");
-            if !transform.is_empty() {
-                svg.push_str(&format!(" transform='{}'", transform.trim()));
-            }
-            if node_opacity < 0.999 {
-                svg.push_str(&format!(" opacity='{}'", fmt(node_opacity)));
-            }
-            svg.push('>');
-            node.shadow_svg(svg);
-            if glow > 0.01 {
-                node.glow_svg(svg, glow);
-            }
-            node.shape_svg(svg, t);
-            svg.push_str("</g>");
+            Self::node_svg(svg, node, t, palette, 1.0);
         }
         if open_band.is_some() {
             svg.push_str("</g>");
@@ -594,6 +726,68 @@ impl Graph {
             svg.push_str("</g>");
         }
     }
+
+    /// One node at instant `t`, its opacity scaled by `weight` (1 for the node itself,
+    /// less for a motion-blur sample).
+    fn node_svg(svg: &mut String, node: &Node, t: f32, palette: &Theme, weight: f32) {
+        let node_opacity = node.props.opacity.eval(t) * weight;
+        if node_opacity <= 0.002 {
+            return;
+        }
+        let ndx = node.props.dx.eval(t) + node.offset.0;
+        let ndy = node.props.dy.eval(t) + node.offset.1;
+        let scale = node.props.scale.eval(t);
+        let sx = scale * node.props.sx.eval(t);
+        let sy = scale * node.props.sy.eval(t);
+        let rotate = node.props.rotate.eval(t);
+        let glow = node.props.glow.eval(t);
+        let (ox, oy) = node.origin;
+        let mut transform = String::new();
+        if ndx.abs() > 1e-3 || ndy.abs() > 1e-3 {
+            transform.push_str(&format!("translate({} {}) ", fmt(ndx), fmt(ndy)));
+        }
+        if (sx - 1.0).abs() > 1e-3 || (sy - 1.0).abs() > 1e-3 || rotate.abs() > 1e-3 {
+            transform.push_str(&format!(
+                "translate({} {}) rotate({}) scale({} {}) translate({} {})",
+                fmt(ox),
+                fmt(oy),
+                fmt(rotate),
+                fmt(sx.max(0.0)),
+                fmt(sy.max(0.0)),
+                fmt(-ox),
+                fmt(-oy)
+            ));
+        }
+        // Blur only while an entrance sharpens; the filter region stays the node's own
+        // box, so a word costs a fraction of a full-frame blur.
+        let blur = node.props.blur.eval(t);
+        let filter = (blur > 0.05).then(|| {
+            // One id per node and sample: trail samples carry their own blur radius.
+            let id = format!("fc-b-{:p}-{}", node, (weight * 100.0) as u32);
+            svg.push_str(&format!(
+                "<defs><filter id='{id}' x='-30%' y='-60%' width='160%' height='220%'><feGaussianBlur stdDeviation='{}'/></filter></defs>",
+                fmt(blur)
+            ));
+            id
+        });
+        svg.push_str("<g");
+        if !transform.is_empty() {
+            svg.push_str(&format!(" transform='{}'", transform.trim()));
+        }
+        if node_opacity < 0.999 {
+            svg.push_str(&format!(" opacity='{}'", fmt(node_opacity)));
+        }
+        if let Some(id) = &filter {
+            svg.push_str(&format!(" filter='url(#{id})'"));
+        }
+        svg.push('>');
+        node.shadow_svg(svg, palette);
+        if glow > 0.01 {
+            node.glow_svg(svg, glow, palette);
+        }
+        node.shape_svg(svg, t, palette);
+        svg.push_str("</g>");
+    }
 }
 
 impl Node {
@@ -601,7 +795,7 @@ impl Node {
     /// than an SVG blur filter at 30 fps and stable across rasterizers.
     /// Captions and tiny chips are excluded; full-canvas backgrounds are not
     /// nodes, so every rounded rect here is scene content.
-    fn shadow_svg(&self, svg: &mut String) {
+    fn shadow_svg(&self, svg: &mut String, theme: &Theme) {
         if self.z >= Z_CAPTIONS {
             return;
         }
@@ -612,22 +806,33 @@ impl Node {
             if fill == tokens::CAPTION_BOX {
                 return;
             }
-            for (dy, opacity) in [(16.0, 0.16), (8.0, 0.22)] {
+            let layers: &[(f32, f32, &str, f32)] = match theme.shadow {
+                Shadow::Soft => &[(0.0, 16.0, "#000000", 0.16), (0.0, 8.0, "#000000", 0.22)],
+                Shadow::Offset {
+                    paint,
+                    dx,
+                    dy,
+                    opacity,
+                } => &[(dx, dy, paint, opacity)],
+                Shadow::None => &[],
+            };
+            for (dx, dy, paint, opacity) in layers {
                 svg.push_str(&format!(
-                    "<rect x='{}' y='{}' width='{}' height='{}' rx='{}' fill='#000000' opacity='{}'/>",
-                    fmt(rect.x),
+                    "<rect x='{}' y='{}' width='{}' height='{}' rx='{}' fill='{}' opacity='{}'/>",
+                    fmt(rect.x + dx),
                     fmt(rect.y + dy),
                     fmt(rect.w),
                     fmt(rect.h),
                     fmt(*rx),
-                    fmt(opacity)
+                    theme.paint(paint),
+                    fmt(*opacity)
                 ));
             }
         }
     }
 
-    fn glow_svg(&self, svg: &mut String, glow: f32) {
-        let colour = &self.glow_colour;
+    fn glow_svg(&self, svg: &mut String, glow: f32, theme: &Theme) {
+        let colour = theme.paint(&self.glow_colour);
         match &self.shape {
             Shape::Rect { rect, rx, .. } => {
                 let pad = 6.0 + 6.0 * glow;
@@ -666,7 +871,7 @@ impl Node {
         }
     }
 
-    fn shape_svg(&self, svg: &mut String, t: f32) {
+    fn shape_svg(&self, svg: &mut String, t: f32, theme: &Theme) {
         match &self.shape {
             Shape::Rect {
                 rect,
@@ -675,16 +880,18 @@ impl Node {
                 stroke,
             } => {
                 svg.push_str(&format!(
-                    "<rect x='{}' y='{}' width='{}' height='{}' rx='{}' fill='{fill}'",
+                    "<rect x='{}' y='{}' width='{}' height='{}' rx='{}' fill='{}'",
                     fmt(rect.x),
                     fmt(rect.y),
                     fmt(rect.w),
                     fmt(rect.h),
-                    fmt(*rx)
+                    fmt(*rx),
+                    theme.paint(fill)
                 ));
                 if let Some((colour, width)) = stroke {
                     svg.push_str(&format!(
-                        " stroke='{colour}' stroke-width='{}'",
+                        " stroke='{}' stroke-width='{}'",
+                        theme.paint(colour),
                         fmt(*width)
                     ));
                 }
@@ -698,14 +905,16 @@ impl Node {
                 stroke,
             } => {
                 svg.push_str(&format!(
-                    "<circle cx='{}' cy='{}' r='{}' fill='{fill}'",
+                    "<circle cx='{}' cy='{}' r='{}' fill='{}'",
                     fmt(*cx),
                     fmt(*cy),
-                    fmt(*r)
+                    fmt(*r),
+                    theme.paint(fill)
                 ));
                 if let Some((colour, width)) = stroke {
                     svg.push_str(&format!(
-                        " stroke='{colour}' stroke-width='{}'",
+                        " stroke='{}' stroke-width='{}'",
+                        theme.paint(colour),
                         fmt(*width)
                     ));
                 }
@@ -724,9 +933,10 @@ impl Node {
                     return;
                 }
                 svg.push_str(&format!(
-                    "<path d='{}' fill='{}' stroke='{stroke}' stroke-width='{}' stroke-linecap='round' stroke-linejoin='round'",
+                    "<path d='{}' fill='{}' stroke='{}' stroke-width='{}' stroke-linecap='round' stroke-linejoin='round'",
                     xml(d),
-                    fill.as_deref().unwrap_or("none"),
+                    fill.as_deref().map_or("none", |fill| theme.paint(fill)),
+                    theme.paint(stroke),
                     fmt(*width)
                 ));
                 if draw < 0.999 {
@@ -781,11 +991,12 @@ impl Node {
                     Anchor::End => "end",
                 };
                 svg.push_str(&format!(
-                    "<text x='{}' y='{}' font-size='{}' font-weight='{weight}' font-family='{}' fill='{fill}' text-anchor='{anchor}' xml:space='preserve'>{}</text>",
+                    "<text x='{}' y='{}' font-size='{}' font-weight='{weight}' font-family='{}' fill='{}' text-anchor='{anchor}' xml:space='preserve'>{}</text>",
                     fmt(*x),
                     fmt(*y),
                     fmt(*size),
                     xml(family),
+                    theme.paint(fill),
                     xml(&shown)
                 ));
             }
@@ -805,6 +1016,31 @@ impl Props {
         self.dx.to(at, duration, 0.0, easing);
         self.dy.key(at.min(0.0), offset.1, Easing::Linear);
         self.dy.to(at, duration, 0.0, easing);
+    }
+
+    /// Fade in without moving (the per-word title entrance: no translate).
+    pub fn fade_in(&mut self, at: f32, duration: f32) {
+        self.opacity.key(at.min(0.0), 0.0, Easing::Linear);
+        self.opacity.to(at, duration * 0.8, 1.0, Easing::EaseOut);
+    }
+
+    /// Appear in place sharpening from a 6 px blur in 0.13 s, as reference titles enter
+    /// word by word (opacity follows over the same beat; no translate).
+    pub fn blur_in(&mut self, at: f32) {
+        const BLUR_IN_SECS: f32 = 0.13;
+        const BLUR_IN_PX: f32 = 6.0;
+        self.opacity.key(at.min(0.0), 0.0, Easing::Linear);
+        self.opacity.to(at, BLUR_IN_SECS, 1.0, Easing::EaseOut);
+        self.blur.key(at.min(0.0), BLUR_IN_PX, Easing::Linear);
+        self.blur.to(at, BLUR_IN_SECS, 0.0, Easing::EaseOut);
+    }
+
+    /// Arrive slightly large and settle into place, fading in.
+    pub fn settle(&mut self, at: f32, duration: f32, easing: Easing) {
+        self.opacity.key(at.min(0.0), 0.0, Easing::Linear);
+        self.opacity.to(at, duration * 0.6, 1.0, Easing::EaseOut);
+        self.scale.key(at.min(0.0), 1.06, Easing::Linear);
+        self.scale.to(at, duration, 1.0, easing);
     }
 
     pub fn pop(&mut self, at: f32, duration: f32, easing: Easing) {
@@ -931,11 +1167,97 @@ mod tests {
     }
 
     #[test]
+    fn the_camera_settles_and_holds_and_content_never_floats() {
+        let node = Node::new(
+            "content",
+            Shape::Circle {
+                cx: 50.0,
+                cy: 50.0,
+                r: 5.0,
+                fill: "#fff".into(),
+                stroke: None,
+            },
+        );
+        let graph = Graph {
+            nodes: vec![node],
+            camera: Some((Camera::PushIn, 12.0, (100.0, 100.0))),
+            breathe: Some((3.0, 4.0)),
+            ..Graph::default()
+        };
+        let content = |t: f32| {
+            let svg = graph.svg(t, 100, 100, "Inter");
+            let at = svg.rfind("<g transform").unwrap();
+            svg[at..].to_string()
+        };
+        assert_ne!(
+            content(0.3),
+            content(CAMERA_SETTLE_SECS),
+            "the camera moves early"
+        );
+        assert_eq!(
+            content(CAMERA_SETTLE_SECS),
+            content(11.0),
+            "then the frame is still: no creeping push, no breathing content"
+        );
+    }
+
+    #[test]
+    fn fast_movers_leave_a_motion_trail_and_still_nodes_do_not() {
+        let mut node = Node::new(
+            "card",
+            Shape::Rect {
+                rect: Rect::new(100.0, 100.0, 300.0, 120.0),
+                rx: 20.0,
+                fill: "#123456".into(),
+                stroke: None,
+            },
+        );
+        // 400 px in 0.4 s: about 25 px inside the shutter at the fastest frame.
+        node.props.dx.key(0.0, 400.0, Easing::Linear);
+        node.props.dx.to(0.0, 0.4, 0.0, Easing::Linear);
+        let graph = Graph {
+            nodes: vec![node],
+            ..Graph::default()
+        };
+        let fills = |t: f32| {
+            graph
+                .svg(t, 800, 400, "Inter")
+                .matches("fill='#123456'")
+                .count()
+        };
+        assert_eq!(
+            fills(0.2),
+            1 + MOTION_TRAIL.len(),
+            "moving: the node and its trail"
+        );
+        assert_eq!(fills(1.0), 1, "landed: the node alone");
+        let caption = Graph {
+            nodes: vec![graph.nodes[0].clone().with_z(Z_CAPTIONS)],
+            ..Graph::default()
+        };
+        assert_eq!(
+            caption
+                .svg(0.2, 800, 400, "Inter")
+                .matches("fill='#123456'")
+                .count(),
+            1,
+            "captions never smear: they must be read"
+        );
+    }
+
+    #[test]
+    fn no_full_frame_linear_gradient_on_the_dark_ground() {
+        let svg = Graph::default().svg(0.0, 100, 100, "Inter");
+        assert!(!svg.contains("<linearGradient id='fc-bg'"), "{svg}");
+    }
+
+    #[test]
     fn frames_have_a_layered_background_instead_of_a_flat_fill() {
         let graph = Graph::default();
         let svg = graph.svg(0.0, 100, 100, "Inter");
         assert!(svg.contains("id='fc-bg'"), "{svg}");
-        assert!(svg.contains("id='fc-glow'"), "{svg}");
+        assert!(svg.contains("id='fc-aurora-0'"), "{svg}");
+        assert!(svg.contains("id='fc-card-primary'"), "{svg}");
         assert!(svg.contains("id='fc-vig'"), "{svg}");
         assert!(svg.contains("fill='url(#fc-bg)'"), "{svg}");
     }

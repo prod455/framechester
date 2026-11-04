@@ -201,6 +201,7 @@ mod tests {
                     transition: Transition::Push,
                 },
             ],
+            look: None,
             source_hash: None,
         }
     }

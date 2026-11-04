@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "title": "Quanto tempo a luz do Sol leva até a Terra",
+  "channel": "framechester",
+  "format": "vertical",
+  "language": "pt-BR",
+  "scenes": [
+    {
+      "id": 1,
+      "concept": "A luz do Sol leva cerca de oito minutos para chegar à Terra.",
+      "learning_goal": "Entender que vemos o Sol como ele era minutos atrás.",
+      "narration": "A luz sai do Sol e viaja pelo espaço vazio. Ela leva cerca de oito minutos para chegar à Terra.",
+      "composition": {
+        "kind": "freeform",
+        "elements": [
+          { "id": "sol", "shape": { "kind": "circle", "area": { "x": 0, "y": 20, "w": 40, "h": 40 }, "text": "Sol", "role": "warning" } },
+          { "id": "luz", "shape": { "kind": "arrow", "from": { "x": 42, "y": 40 }, "to": { "x": 72, "y": 40 }, "role": "accent" } },
+          { "id": "terra", "shape": { "kind": "circle", "area": { "x": 74, "y": 25, "w": 26, "h": 30 }, "text": "Terra", "role": "primary" } },
+          { "id": "tempo", "shape": { "kind": "text", "area": { "x": 0, "y": 70, "w": 100, "h": 25 }, "text": "cerca de 8 minutos", "size": "heading", "role": "accent" } }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "concept": "Olhar para o Sol é olhar para o passado.",
+      "learning_goal": "Relacionar distância e tempo de viagem da luz.",
+      "narration": "Por isso, quando você olha o Sol, vê a luz que saiu dele no passado. Quanto maior a distância, mais antiga a imagem.",
+      "composition": {
+        "kind": "freeform",
+        "elements": [
+          { "id": "olha", "shape": { "kind": "card", "area": { "x": 0, "y": 0, "w": 100, "h": 22 }, "text": "Você olha o Sol", "icon": "search", "role": "primary" } },
+          { "id": "seta", "shape": { "kind": "arrow", "from": { "x": 50, "y": 25 }, "to": { "x": 50, "y": 37 } } },
+          { "id": "passado", "shape": { "kind": "card", "area": { "x": 0, "y": 40, "w": 100, "h": 22 }, "text": "Vê a luz do passado", "icon": "clock", "role": "secondary" } },
+          { "id": "regra", "shape": { "kind": "text", "area": { "x": 0, "y": 72, "w": 100, "h": 26 }, "text": "Maior distância, imagem mais antiga", "size": "label" } }
+        ]
+      }
+    }
+  ]
+}

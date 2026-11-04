@@ -9,6 +9,7 @@ pub mod chart;
 pub mod code;
 pub mod comparison;
 pub mod flow;
+pub mod freeform;
 pub mod infographic;
 pub mod steps;
 pub mod timeline;
@@ -100,6 +101,89 @@ impl<'a> Ctx<'a> {
         );
     }
 
+    /// Face and weight of titles, headings and big numbers in this scene's look.
+    pub fn display(&self) -> (&'static str, u16) {
+        let theme = crate::look::theme(self.canvas.look);
+        (theme.display_family, theme.display_weight)
+    }
+
+    /// Size and line breaks of body-face `text` in a `width` × `height` box: the largest
+    /// size from `max` down to `min`, then down to the canvas legibility floor
+    /// (`type_scale.small`, the size details are already drawn at) before giving up. Only
+    /// text that does not fit even at the floor is an overflow; it is still drawn at the
+    /// smallest size tried, never truncated.
+    #[allow(clippy::too_many_arguments)]
+    pub fn fit(
+        &mut self,
+        object: &str,
+        text: &str,
+        width: f32,
+        height: f32,
+        max: f32,
+        min: f32,
+        weight: u16,
+    ) -> (f32, Vec<String>) {
+        self.fit_in(
+            tokens::FONT_SANS,
+            object,
+            text,
+            width,
+            height,
+            max,
+            min,
+            weight,
+        )
+    }
+
+    /// A display-face size: `size` scaled for the look's face (`Theme::display_scale`).
+    pub fn display_size(&self, size: f32) -> f32 {
+        size * crate::look::theme(self.canvas.look).display_scale
+    }
+
+    /// [`Self::fit`] in the look's display face; `max` is scaled for the face.
+    pub fn fit_display(
+        &mut self,
+        object: &str,
+        text: &str,
+        width: f32,
+        height: f32,
+        max: f32,
+        min: f32,
+    ) -> (f32, Vec<String>) {
+        let (family, weight) = self.display();
+        let max = self.display_size(max);
+        self.fit_in(family, object, text, width, height, max, min, weight)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn fit_in(
+        &mut self,
+        family: &'static str,
+        object: &str,
+        text: &str,
+        width: f32,
+        height: f32,
+        max: f32,
+        min: f32,
+        weight: u16,
+    ) -> (f32, Vec<String>) {
+        // Never below the frame's legibility floor, whatever the component asked for.
+        let legible = self.canvas.text_floor();
+        let min = min.max(legible);
+        let max = max.max(min);
+        let floor = self.canvas.type_scale.small.min(min).max(legible);
+        if let Some(found) = self.ts.fit(text, max, min, width, height, weight, family) {
+            return found;
+        }
+        if floor < min {
+            if let Some(found) = self.ts.fit(text, min, floor, width, height, weight, family) {
+                return found;
+            }
+        }
+        self.overflow(object, text);
+        (floor, self.ts.wrap(text, floor, weight, family, width))
+    }
+
     /// Rounded card coloured by role.
     pub fn card(&self, object: &str, rect: Rect, role: Role) -> Node {
         let colours = palette(role);
@@ -108,8 +192,9 @@ impl<'a> Ctx<'a> {
             Shape::Rect {
                 rect,
                 rx: self.canvas.radius,
-                fill: colours.fill.into(),
-                stroke: Some((colours.stroke.into(), self.canvas.stroke)),
+                fill: tokens::card_fill(role),
+                // Thin lit edge: the gradient does the work a heavy outline used to.
+                stroke: Some((tokens::card_edge(role), self.canvas.stroke * 0.5)),
             },
         )
         .with_glow(colours.glow)
@@ -117,8 +202,9 @@ impl<'a> Ctx<'a> {
         .decorative()
     }
 
-    /// Text fitted inside `rect` between `max` and `min` sizes; records an overflow issue
-    /// when it never fits (the text is still drawn at the minimum size, so a human sees it).
+    /// Body-face text fitted inside `rect` between `max` and `min` sizes; records an
+    /// overflow issue when it never fits (the text is still drawn at the minimum size, so
+    /// a human sees it).
     #[allow(clippy::too_many_arguments)]
     pub fn fitted(
         &mut self,
@@ -132,14 +218,55 @@ impl<'a> Ctx<'a> {
         anchor: Anchor,
         valign: f32,
     ) -> (Vec<Node>, f32) {
-        let family = tokens::FONT_SANS;
-        let (size, lines) = match self.ts.fit(text, max, min, rect.w, rect.h, weight, family) {
-            Some(found) => found,
-            None => {
-                self.overflow(object, text);
-                (min, self.ts.wrap(text, min, weight, family, rect.w))
-            }
-        };
+        self.fitted_in(
+            tokens::FONT_SANS,
+            weight,
+            object,
+            text,
+            rect,
+            max,
+            min,
+            colour,
+            anchor,
+            valign,
+        )
+    }
+
+    /// [`Self::fitted`] in the look's display face (titles, headings, big numbers).
+    #[allow(clippy::too_many_arguments)]
+    pub fn fitted_display(
+        &mut self,
+        object: &str,
+        text: &str,
+        rect: Rect,
+        max: f32,
+        min: f32,
+        colour: &str,
+        anchor: Anchor,
+        valign: f32,
+    ) -> (Vec<Node>, f32) {
+        let (family, weight) = self.display();
+        let max = self.display_size(max);
+        self.fitted_in(
+            family, weight, object, text, rect, max, min, colour, anchor, valign,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn fitted_in(
+        &mut self,
+        family: &'static str,
+        weight: u16,
+        object: &str,
+        text: &str,
+        rect: Rect,
+        max: f32,
+        min: f32,
+        colour: &str,
+        anchor: Anchor,
+        valign: f32,
+    ) -> (Vec<Node>, f32) {
+        let (size, lines) = self.fit_in(family, object, text, rect.w, rect.h, max, min, weight);
         let height = Typesetter::block_height(size, lines.len());
         let top = rect.y + (rect.h - height).max(0.0) * valign;
         let x = match anchor {

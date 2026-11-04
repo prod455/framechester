@@ -4,9 +4,12 @@
 
 [[channels]]
 id = "tech"
+# Visual do canal: noite (padrao), papel (risografia) ou planta (blueprint).
+look = "planta"
 
 [[channels]]
 id = "science"
+look = "papel"
 
 [app]
 dry_run = true

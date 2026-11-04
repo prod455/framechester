@@ -67,10 +67,23 @@ pub fn build(
             let boxes_area = Rect::new(inner.x, inner.y + (inner.h - box_h) / 2.0, inner.w, box_h);
             cols(boxes_area, members.len(), gap)
         };
+        let reported = ctx.issues.len();
+        let mut layer_nodes = Vec::new();
         for (object, cell) in members.iter().zip(&cells) {
             places.insert(object.id.clone(), *cell);
-            nodes.extend(ctx.labelled_card(object, *cell, scale.body, true));
+            layer_nodes.extend(ctx.labelled_card(object, *cell, scale.body, true));
         }
+        // Compact boxes first; a label and detail that need more lines get the whole
+        // height of the layer instead of shrinking under the legibility floor.
+        if ctx.issues.len() > reported && !ctx.canvas.vertical {
+            ctx.issues.truncate(reported);
+            layer_nodes.clear();
+            for (object, cell) in members.iter().zip(cols(inner, members.len(), gap)) {
+                places.insert(object.id.clone(), cell);
+                layer_nodes.extend(ctx.labelled_card(object, cell, scale.body, true));
+            }
+        }
+        nodes.extend(layer_nodes);
     }
     for relation in relations {
         let (Some(from), Some(to)) = (places.get(&relation.from), places.get(&relation.to)) else {

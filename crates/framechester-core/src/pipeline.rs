@@ -860,6 +860,7 @@ mod tests {
                 id: id.into(),
                 youtube_channel_id: Some(format!("synthetic-{id}")),
                 language: None,
+                look: None,
             };
             let mut adapters = providers();
             adapters.publisher = Box::new(ChannelPublisher(format!("synthetic-{id}")));
@@ -901,6 +902,7 @@ mod tests {
                     id: "../escape".into(),
                     youtube_channel_id: None,
                     language: None,
+                    look: None,
                 }),
                 workdir: root.clone(),
                 ..PipelineOptions::default()

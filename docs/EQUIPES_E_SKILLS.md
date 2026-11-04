@@ -2,6 +2,8 @@
 
 Decisão do operador em 27/10/2026: desenvolver o software em Rust para produzir vídeos originais e operar **múltiplos canais**. Existe um canal configurado segundo o operador; acesso ao Studio, dados e monetização não foram verificados nesta execução. BA significa Business Analyst; PA é tratado como Product Analyst até definição diferente.
 
+Skill pública (para agentes de fora, não para a equipe interna): [`skills/framechester-video`](../skills/framechester-video/SKILL.md), que ensina a produzir um vídeo e iterar até o QA aprovar. As skills de `.agents/skills/` continuam sendo os procedimentos internos de desenvolvimento e operação.
+
 ## Contrato compartilhado
 
 - A instrução atual do operador prevalece sobre planos históricos de um único canal. O alvo imediato é um operador com vários canais locais. Diretórios separados não equivalem a autenticação e isolamento de múltiplos usuários SaaS.

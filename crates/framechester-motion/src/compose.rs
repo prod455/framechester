@@ -31,6 +31,8 @@ pub struct ComposedScene {
     pub animated_objects: Vec<String>,
     /// What the viewer's eye is on when the scene ends: the cause of the transition out.
     pub focal: Option<Focal>,
+    /// The first card (or object) to enter: where a `morph` into this scene lands.
+    pub opening: Option<Focal>,
 }
 
 /// The last object to enter a scene, where a caused transition starts from.
@@ -42,10 +44,20 @@ pub struct Focal {
     pub paint: Option<String>,
 }
 
-/// The focal object of a composed scene: the latest entry with a box, preferring cards.
-fn focal_of(graph: &Graph, entries: &HashMap<String, f32>) -> Option<Focal> {
+/// A focal object of a composed scene, preferring cards: the latest entry with a box
+/// (`latest`, where the eye is at the end) or the earliest (where the scene opens).
+fn focal_of(graph: &Graph, entries: &HashMap<String, f32>, latest: bool) -> Option<Focal> {
     let mut ordered: Vec<(&String, &f32)> = entries.iter().collect();
-    ordered.sort_by(|a, b| b.1.partial_cmp(a.1).unwrap_or(std::cmp::Ordering::Equal));
+    ordered.sort_by(|a, b| {
+        let order = b.1.partial_cmp(a.1).unwrap_or(std::cmp::Ordering::Equal);
+        // Ties (several entries on one cue) keep a stable, name-based order.
+        let order = order.then_with(|| a.0.cmp(b.0));
+        if latest {
+            order
+        } else {
+            order.reverse()
+        }
+    });
     let card_paint = |object: &str| {
         graph
             .nodes
@@ -105,8 +117,23 @@ pub fn transition_secs(transition: Transition) -> f32 {
         Transition::Iris => 0.45,
         Transition::BlurSwap => 0.36,
         Transition::DipCut => 0.1,
+        Transition::Morph => 0.5,
         _ => TRANSITION_SECS,
     }
+}
+
+/// `a` mixed towards `b` by `t` (both `#RRGGBB`), for a colour that travels with a shape.
+fn mix_hex(a: &str, b: &str, t: f32) -> String {
+    let channel =
+        |hex: &str, at: usize| u8::from_str_radix(&hex[1 + at..3 + at], 16).map_or(0.0, f32::from);
+    let mixed: Vec<String> = [0, 2, 4]
+        .into_iter()
+        .map(|at| {
+            let value = channel(a, at) + (channel(b, at) - channel(a, at)) * t.clamp(0.0, 1.0);
+            format!("{:02X}", value.round() as u8)
+        })
+        .collect();
+    format!("#{}", mixed.concat())
 }
 
 /// Opens a Gaussian blur group of `radius` px with a unique `id` (closed by `</g>`).
@@ -921,7 +948,8 @@ fn compose_at(
     ));
     check_layout(&mut ctx, &graph);
     let change_times = graph.change_times();
-    let focal = focal_of(&graph, &entries);
+    let focal = focal_of(&graph, &entries, true);
+    let opening = focal_of(&graph, &entries, false);
     (
         ComposedScene {
             id: scene.id,
@@ -933,6 +961,7 @@ fn compose_at(
             change_times,
             animated_objects,
             focal,
+            opening,
         },
         fits,
     )
@@ -1036,9 +1065,16 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
         if progress < 1.0 {
             let theme = crate::look::theme(canvas.look);
             let previous = &composed.scenes[index - 1];
+            // A morph needs a card on both sides; without one the stage hands over.
+            let transition = match scene.transition {
+                Transition::Morph if previous.focal.is_none() || scene.opening.is_none() => {
+                    Transition::BlurSwap
+                }
+                other => other,
+            };
             let eased = crate::anim::ease(Easing::EaseInOut, progress);
             let previous_t = previous.duration_secs;
-            match scene.transition {
+            match transition {
                 Transition::Push => {
                     let shift = if canvas.vertical {
                         height as f32
@@ -1132,12 +1168,49 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
                     scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, 1.0);
                     svg.push_str("</g>");
                 }
+                Transition::Morph => {
+                    let (Some(from), Some(to)) = (previous.focal.as_ref(), scene.opening.as_ref())
+                    else {
+                        unreachable!("a morph without both cards falls back to a blur swap");
+                    };
+                    // The container reshapes on a long-tail arrival while the old content
+                    // leaves fast; the new content appears in it and the shell dissolves
+                    // once it sits exactly where the incoming card is.
+                    let shape = crate::anim::ease(
+                        framechester_core::presets::EASE_ARRIVE,
+                        (progress / 0.8).min(1.0),
+                    );
+                    let lerp = |a: f32, b: f32| a + (b - a) * shape;
+                    let rect = Rect::new(
+                        lerp(from.rect.x, to.rect.x),
+                        lerp(from.rect.y, to.rect.y),
+                        lerp(from.rect.w, to.rect.w),
+                        lerp(from.rect.h, to.rect.h),
+                    );
+                    let colour = mix_hex(
+                        theme.flood(from.paint.as_deref()),
+                        theme.flood(to.paint.as_deref()),
+                        shape,
+                    );
+                    let leave = 1.0 - (progress / 0.35).min(1.0);
+                    if leave > 0.0 {
+                        previous
+                            .graph
+                            .svg_inner(&mut svg, previous_t, 0.0, 0.0, 1.0, leave);
+                    }
+                    let shell = 1.0 - ((progress - 0.75) / 0.25).clamp(0.0, 1.0);
+                    svg.push_str(&format!(
+                        "<rect id='fc-morph' x='{:.1}' y='{:.1}' width='{:.1}' height='{:.1}' rx='{:.1}' fill='{colour}' opacity='{shell:.3}'/>",
+                        rect.x, rect.y, rect.w, rect.h, canvas.radius,
+                    ));
+                    let enter = ((progress - 0.5) / 0.5).clamp(0.0, 1.0);
+                    if enter > 0.0 {
+                        scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, enter);
+                    }
+                }
                 Transition::Expand => {
                     let focal = previous.focal.as_ref();
-                    let flood = focal
-                        .and_then(|focal| focal.paint.as_deref())
-                        .and_then(|paint| theme.opaque(paint))
-                        .unwrap_or_else(|| theme.paint(tokens::SURFACE_STRONG));
+                    let flood = theme.flood(focal.and_then(|focal| focal.paint.as_deref()));
                     let from = focal.map_or(
                         Rect::new(
                             width as f32 * 0.4,
@@ -1945,17 +2018,13 @@ mod tests {
         // Expand: the focal card's own colour floods the frame.
         let (composed, at) = seam(Transition::Expand);
         let theme = crate::look::theme(composed.canvas.look);
-        let flood = theme
-            .opaque(
-                composed.scenes[0]
-                    .focal
-                    .as_ref()
-                    .unwrap()
-                    .paint
-                    .as_deref()
-                    .unwrap(),
-            )
-            .unwrap();
+        let paint = composed.scenes[0].focal.as_ref().unwrap().paint.as_deref();
+        let flood = theme.flood(paint);
+        assert_eq!(
+            Some(flood),
+            paint.map(|paint| theme.paint(paint)),
+            "the card's own colour"
+        );
         let svg = frame_svg(&composed, at + 0.45, tokens::FONT_SANS);
         assert!(
             svg.contains(&format!("fill='{flood}'")),
@@ -2116,5 +2185,50 @@ mod tests {
             !landed.contains("feGaussianBlur"),
             "no filter once everything landed"
         );
+    }
+
+    #[test]
+    fn a_morph_reshapes_the_focal_card_into_the_next_opening_card() {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Horizontal);
+        let first = narrated(
+            "#fluxo Objetivo -> Decidir -> Agir -> Observar",
+            "O agente recebe o objetivo, decide, age e observa.",
+        );
+        let mut second = narrated(
+            "#passos Confira a amostra; Leia o intervalo; Veja as condicoes",
+            "Confira a amostra, leia o intervalo e veja as condicoes.",
+        );
+        second.id = 2;
+        second.transition = Transition::Morph;
+        second.start_secs = first.duration_secs;
+        let composed = Composed {
+            canvas,
+            scenes: vec![
+                compose_scene(&typesetter, &canvas, &first, 1, 3),
+                compose_scene(&typesetter, &canvas, &second, 2, 3),
+            ],
+        };
+        let from = composed.scenes[0].focal.clone().unwrap().rect;
+        let to = composed.scenes[1].opening.clone().unwrap().rect;
+        let seam = first.duration_secs;
+        let shell_x = |t: f32| {
+            let svg = frame_svg(&composed, t, tokens::FONT_SANS);
+            let marker = "<rect id='fc-morph' x='";
+            let at = svg.find(marker).unwrap() + marker.len();
+            svg[at..]
+                .split('\'')
+                .next()
+                .unwrap()
+                .parse::<f32>()
+                .unwrap()
+        };
+        // It starts on the outgoing card and travels to the incoming one.
+        assert!((shell_x(seam) - from.x).abs() < 1.0);
+        assert!((shell_x(seam + 0.38) - to.x).abs() < 25.0);
+        // Without a card on the incoming side it hands over as a blur swap.
+        let mut plain = composed.clone();
+        plain.scenes[1].opening = None;
+        assert!(frame_svg(&plain, seam + 0.1, tokens::FONT_SANS).contains("feGaussianBlur"));
     }
 }

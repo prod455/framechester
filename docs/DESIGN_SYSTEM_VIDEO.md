@@ -138,13 +138,16 @@ dissolvem um no outro):
 
 | Transição | Causa | Como (duração medida em filmes de referência) |
 |---|---|---|
+| `morph` | um cartão dos dois lados | o cartão em foco que sai muda de lugar, tamanho e cor até virar o primeiro cartão da cena que entra (0,5 s, chegada de cauda longa); o conteúdo antigo sai rápido e o novo aparece dentro dele |
 | `expand` | o cartão em foco da cena que sai (o último a entrar) | cresce até passar do quadro com o raio encolhendo (0,65 s, ease-in-out); o resto sai; a cor dele é o fundo onde a próxima cena entra e depois assenta no chão do look |
 | `iris` | o ponto em foco | a próxima cena abre num círculo a partir do centro do objeto em foco, acelerando (0,45 s) |
 | `blur_swap` | o mesmo palco (depois de título ou personagem) | a cena sai com desfoque crescendo até 8 px e entra focando (0,18 s + 0,18 s); o chão nunca corta |
 | `dip_cut` | corte intencional | o quadro escurece 40% por 3 frames antes do corte seco |
 
-Depois de cena com cartões (fluxo, arquitetura, infográfico, causa, passos, transformação):
-`expand`, `iris` ou `blur_swap`; depois das outras: `blur_swap`, `dip_cut` ou `iris`. A
+De cena com cartões para cena com cartões (fluxo, arquitetura, infográfico, causa, passos,
+transformação): `morph`, `expand` ou `iris`; de cena com cartões para as outras: `expand`,
+`iris` ou `blur_swap`; depois das outras: `blur_swap`, `dip_cut` ou `iris`. Sem cartão dos
+dois lados, um `morph` vira `blur_swap`. A
 abertura entra em corte. `push`, `fade`, `zoom` e `whip_pan` continuam disponíveis para
 storyboards escritos à mão. Revisão visual:
 `cargo run --release -p framechester-motion --example preview_transitions -- <pasta> [look]`.

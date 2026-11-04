@@ -112,7 +112,7 @@
             "readable_without_audio": { "type": "boolean" }
           }
         },
-        "transition": { "enum": ["cut", "fade", "push", "zoom", "whip_pan", "expand", "iris", "blur_swap", "dip_cut"] }
+        "transition": { "enum": ["cut", "fade", "push", "zoom", "whip_pan", "expand", "iris", "blur_swap", "dip_cut", "morph"] }
       }
     },
     "segment": {

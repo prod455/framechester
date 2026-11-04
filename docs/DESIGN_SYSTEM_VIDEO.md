@@ -5,7 +5,33 @@ Direção de arte do motor motion (`crates/framechester-motion/src/tokens.rs`,
 por formato e movimento justificado pela narração. Componentes nunca escolhem cores
 cruas: pedem um papel (`role`).
 
-## Cores
+## Looks (2026-11-04)
+
+Cada canal escolhe um look (`look = "…"` em `[[channels]]`, campo "Visual dos vídeos" no
+Studio, `look` no storyboard ou `--look` no `plan`/`produce`; o flag vence o storyboard,
+que vence o canal). Um look é a regra de um meio, não uma troca de paleta
+(`crates/framechester-motion/src/look.rs`):
+
+| Look | Meio | Chão | Tintas | Cartões | Título |
+|---|---|---|---|---|---|
+| `noite` (padrão) | tela à noite | `#070B14` + luz radial + aurora fria | tinta `#EEF2F8`, acento `#F2B544` | vidro iluminado, sombra suave | Inter Bold em gradiente |
+| `papel` | risografia | papel plano `#EFE8DA`, sem gradiente | tinta A navy `#1F2A55`, tinta B vermelhão `#CC3314` | impressos planos com contorno em tinta A e a placa B deslocada 9 px | Archivo Black |
+| `planta` | blueprint | cobalto `#0F3D91` + grade de 60 px | linhas brancas, acento amarelo-segurança `#FFD23F` | painéis translúcidos, só traço, sem sombra | Bebas Neue (×1,3) |
+
+Os componentes pintam com referências semânticas (`tokens::INK` é `"@ink"`); o frame as
+resolve no look ao escrever o SVG. A fonte de título é escolhida no layout
+(`Ctx::display`), porque o texto é medido na fonte em que é desenhado.
+
+**Contraste é medido, não estimado**: `look::Theme::contrast_failures` calcula o contraste
+WCAG 2 de cada par texto/fundo que os componentes desenham (fundos translúcidos compostos
+sobre o chão, a luz do topo incluída): texto de leitura ≥ 4,5:1; texto grande (títulos,
+números, rótulos de 21 px semibold ou mais, ênfase) ≥ 3:1. O teste
+`every_look_meets_wcag_contrast_for_what_it_draws` reprova qualquer look abaixo disso — foi
+ele que levou o acento do `papel` de laranja fluorescente (2,7:1 sobre o papel) a
+vermelhão (≥ 3,5:1) com a palavra falada em branco-papel (5,1:1), e escureceu o topo
+iluminado de três cartões do `noite`.
+
+## Cores (look `noite`)
 
 | Token | Valor | Uso |
 |---|---|---|
@@ -45,7 +71,8 @@ texto e cor do brilho (`palette()`).
 ## Tipografia
 
 Fontes embutidas no binário (OFL-1.1, em `assets/fonts/`): **Inter** (Regular,
-SemiBold, Bold) para interface e legendas e **Liberation Mono** para código. Por serem
+SemiBold, Bold) para interface e legendas, **Liberation Mono** para código e as fontes
+de título dos looks, **Archivo Black** (`papel`) e **Bebas Neue** (`planta`). Por serem
 embutidas, a medição e a quebra de linha são idênticas em qualquer máquina; o
 manifesto de render registra o SHA-256 de cada fonte.
 

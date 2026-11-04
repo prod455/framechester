@@ -41,7 +41,7 @@ pub fn build(
             Shape::Rect {
                 rect: window,
                 rx: ctx.canvas.radius,
-                fill: "#0A0E16".into(),
+                fill: tokens::CODE_BG.into(),
                 stroke: Some((tokens::RULE.into(), ctx.canvas.stroke * 0.6)),
             },
         )
@@ -115,7 +115,7 @@ pub fn build(
                         line_h,
                     ),
                     rx: 0.0,
-                    fill: "#1B2A3F".into(),
+                    fill: tokens::CODE_LINE.into(),
                     stroke: None,
                 },
             )

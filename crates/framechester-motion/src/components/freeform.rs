@@ -115,28 +115,49 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, elements: &[Element]) -> Vec<Node> {
                 role,
             } => {
                 let scale = ctx.canvas.type_scale;
-                let (max, weight) = match size {
-                    TextSize::Title => (scale.title, tokens::WEIGHT_BOLD),
-                    TextSize::Heading => (scale.heading, tokens::WEIGHT_BOLD),
-                    TextSize::Body => (scale.body, tokens::WEIGHT_REGULAR),
-                    TextSize::Label => (scale.label, tokens::WEIGHT_SEMIBOLD),
-                    TextSize::Small => (scale.small, tokens::WEIGHT_REGULAR),
-                };
                 let colour = match role {
                     Role::Neutral => tokens::INK,
                     other => palette(*other).stroke,
                 };
-                let (text_nodes, _) = ctx.fitted(
-                    id,
-                    text,
-                    place(part),
-                    max,
-                    scale.small,
-                    weight,
-                    colour,
-                    Anchor::Start,
-                    0.0,
-                );
+                let rect = place(part);
+                // Titles and headings take the look's display face.
+                let (text_nodes, _) = match size {
+                    TextSize::Title | TextSize::Heading => {
+                        let max = if *size == TextSize::Title {
+                            scale.title
+                        } else {
+                            scale.heading
+                        };
+                        ctx.fitted_display(
+                            id,
+                            text,
+                            rect,
+                            max,
+                            scale.small,
+                            colour,
+                            Anchor::Start,
+                            0.0,
+                        )
+                    }
+                    TextSize::Body | TextSize::Label | TextSize::Small => {
+                        let (max, weight) = match size {
+                            TextSize::Label => (scale.label, tokens::WEIGHT_SEMIBOLD),
+                            TextSize::Small => (scale.small, tokens::WEIGHT_REGULAR),
+                            _ => (scale.body, tokens::WEIGHT_REGULAR),
+                        };
+                        ctx.fitted(
+                            id,
+                            text,
+                            rect,
+                            max,
+                            scale.small,
+                            weight,
+                            colour,
+                            Anchor::Start,
+                            0.0,
+                        )
+                    }
+                };
                 nodes.extend(text_nodes);
             }
             ElementShape::Icon {

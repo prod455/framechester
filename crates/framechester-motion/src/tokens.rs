@@ -1,35 +1,30 @@
-//! Framechester audiovisual design system: one dark editorial theme, semantic colours,
-//! a typographic scale per format and motion timings. Components never pick raw colours;
-//! they ask for a role. `docs/DESIGN_SYSTEM_VIDEO.md` documents the choices.
+//! Framechester audiovisual design system: semantic paints resolved per look
+//! (`crate::look`), a typographic scale per format and motion timings. Components never
+//! pick raw colours; they ask for a role. `docs/DESIGN_SYSTEM_VIDEO.md` documents the choices.
 use framechester_core::storyboard::Role;
 
-pub const BACKGROUND: &str = "#070B14";
-/// Radial lift from the top of the frame over the solid base (depth without banding).
-pub const BACKGROUND_TOP: &str = "#0D1630";
-/// Aurora: large soft colour fields behind the content, drifting slowly so even a
-/// still layout breathes. Cool hues only: a warm glow over the dark base reads as mud.
-/// `(colour, opacity, cx, cy, radius)`, positions as fractions of the frame.
-pub const AURORA: [(&str, f32, f32, f32, f32); 3] = [
-    ("#3D6BFF", 0.30, 0.12, 0.08, 0.75),
-    ("#8B5CF6", 0.20, 0.95, 0.55, 0.65),
-    ("#14B8A6", 0.14, 0.25, 1.0, 0.70),
-];
-pub const BACKGROUND_RAISED: &str = "#121926";
-pub const SURFACE: &str = "#182130";
-pub const SURFACE_STRONG: &str = "#223044";
-pub const RULE: &str = "#2B3A52";
-pub const INK: &str = "#EEF2F8";
-pub const INK_SOFT: &str = "#C7D0DE";
-pub const MUTED: &str = "#8C99AE";
-pub const ACCENT: &str = "#F2B544";
-pub const PRIMARY: &str = "#5B9DFF";
-pub const SECONDARY: &str = "#3DD6B5";
-pub const SUCCESS: &str = "#58D68D";
-pub const WARNING: &str = "#F2B544";
-pub const DANGER: &str = "#FF6B6B";
-pub const CAPTION_BOX: &str = "#05080E";
+// Semantic paints: resolved against the scene's look when a frame is written
+// (`look::Theme::paint`). Components never see a colour value.
+pub const BACKGROUND: &str = "@bg";
+pub const BACKGROUND_RAISED: &str = "@raised";
+pub const SURFACE: &str = "@surface";
+pub const SURFACE_STRONG: &str = "@surface-strong";
+pub const RULE: &str = "@rule";
+pub const INK: &str = "@ink";
+pub const INK_SOFT: &str = "@ink-soft";
+pub const MUTED: &str = "@muted";
+pub const ACCENT: &str = "@accent";
+pub const PRIMARY: &str = "@primary";
+pub const SECONDARY: &str = "@secondary";
+pub const SUCCESS: &str = "@success";
+pub const WARNING: &str = "@warning";
+pub const DANGER: &str = "@danger";
+pub const CAPTION_BOX: &str = "@caption-box";
+/// Code editor window and its highlighted line.
+pub const CODE_BG: &str = "@code-bg";
+pub const CODE_LINE: &str = "@code-line";
 /// Ink of the spoken caption word on its accent pill.
-pub const CAPTION_INK_ON_ACCENT: &str = "#0B0F17";
+pub const CAPTION_INK_ON_ACCENT: &str = "@caption-ink";
 
 /// Fill, stroke and text colour of an object by role.
 pub struct RolePalette {
@@ -45,51 +40,51 @@ pub struct RolePalette {
 pub fn palette(role: Role) -> RolePalette {
     match role {
         Role::Neutral => RolePalette {
-            fill: SURFACE,
-            fill_top: "#26324A",
-            // Icons, bullets and lines of neutral objects: readable on the glass cards.
-            stroke: "#8EA2C8",
+            fill: "@fill-neutral",
+            fill_top: "@fill-top-neutral",
+            // Icons, bullets and lines of neutral objects: readable on the cards.
+            stroke: "@neutral",
             text: INK,
             glow: ACCENT,
         },
         Role::Primary => RolePalette {
-            fill: "#15294A",
-            fill_top: "#24427A",
+            fill: "@fill-primary",
+            fill_top: "@fill-top-primary",
             stroke: PRIMARY,
             text: INK,
             glow: PRIMARY,
         },
         Role::Secondary => RolePalette {
-            fill: "#113A33",
-            fill_top: "#1B5E52",
+            fill: "@fill-secondary",
+            fill_top: "@fill-top-secondary",
             stroke: SECONDARY,
             text: INK,
             glow: SECONDARY,
         },
         Role::Accent => RolePalette {
-            fill: "#3D2F10",
-            fill_top: "#64501F",
+            fill: "@fill-accent",
+            fill_top: "@fill-top-accent",
             stroke: ACCENT,
             text: INK,
             glow: ACCENT,
         },
         Role::Success => RolePalette {
-            fill: "#143A24",
-            fill_top: "#21603C",
+            fill: "@fill-success",
+            fill_top: "@fill-top-success",
             stroke: SUCCESS,
             text: INK,
             glow: SUCCESS,
         },
         Role::Warning => RolePalette {
-            fill: "#3D2F10",
-            fill_top: "#64501F",
+            fill: "@fill-warning",
+            fill_top: "@fill-top-warning",
             stroke: WARNING,
             text: INK,
             glow: WARNING,
         },
         Role::Danger => RolePalette {
-            fill: "#44191C",
-            fill_top: "#712A30",
+            fill: "@fill-danger",
+            fill_top: "@fill-top-danger",
             stroke: DANGER,
             text: INK,
             glow: DANGER,

@@ -87,13 +87,12 @@ fn heading(
         content.w - counter_w - canvas.gap,
         scale.heading * 1.5,
     );
-    let (heading_nodes, bottom) = ctx.fitted(
+    let (heading_nodes, bottom) = ctx.fitted_display(
         "heading",
         &scene.concept,
         heading_area,
         scale.heading * 0.72,
         scale.body * 0.9,
-        tokens::WEIGHT_BOLD,
         tokens::INK,
         Anchor::Start,
         0.0,
@@ -733,7 +732,10 @@ fn compose_at(
     zoom: f32,
 ) -> (ComposedScene, bool) {
     let mut ctx = Ctx::new(canvas, typesetter, scene.id);
-    let mut graph = Graph::default();
+    let mut graph = Graph {
+        look: canvas.look,
+        ..Graph::default()
+    };
     // A title or a character speaks for itself: no heading bar above it.
     let is_title = matches!(
         scene.composition,
@@ -802,7 +804,7 @@ fn compose_at(
 /// (`duration_secs > 0`) for cues to resolve; without it, cues fall back to the start.
 pub fn compose(storyboard: &Storyboard, typesetter: &Typesetter) -> Result<Composed> {
     storyboard.validate()?;
-    let canvas = Canvas::for_format(storyboard.format);
+    let canvas = Canvas::for_storyboard(storyboard.format, storyboard.look.unwrap_or_default());
     let total = storyboard.scenes.len();
     let scenes = storyboard
         .scenes
@@ -819,7 +821,7 @@ pub fn compose(storyboard: &Storyboard, typesetter: &Typesetter) -> Result<Compo
 /// (`ESTIMATED_SECS_PER_WORD`); the storyboard itself is not changed.
 pub fn layout_preflight(storyboard: &Storyboard, typesetter: &Typesetter) -> Vec<LayoutIssue> {
     const ESTIMATED_SECS_PER_WORD: f32 = 0.33;
-    let canvas = Canvas::for_format(storyboard.format);
+    let canvas = Canvas::for_storyboard(storyboard.format, storyboard.look.unwrap_or_default());
     let total = storyboard.scenes.len();
     let mut issues = Vec::new();
     for (index, scene) in storyboard.scenes.iter().enumerate() {
@@ -878,7 +880,7 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
     let mut svg = String::with_capacity(32 * 1024);
     svg.push_str(&format!(
         "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>{}<g font-family='{}'>",
-        Graph::background_svg(width, height, None, t),
+        Graph::background_svg(width, height, None, t, crate::look::theme(canvas.look)),
         font_family
     ));
     let index = composed
@@ -977,10 +979,11 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
     // how far along they are. Decorative, above content, below nothing else.
     let total = composed.total_duration_secs().max(0.1);
     let done = (t / total).clamp(0.0, 1.0) * width as f32;
+    let palette = crate::look::theme(canvas.look);
     svg.push_str(&format!(
-        "<g id='fc-progress'><rect x='0' y='0' width='{width}' height='6' fill='#FFFFFF' opacity='0.10'/><rect x='0' y='0' width='{done:.1}' height='6' fill='{}'/><circle cx='{done:.1}' cy='3' r='5' fill='{}'/></g>",
-        tokens::ACCENT,
-        tokens::ACCENT,
+        "<g id='fc-progress'><rect x='0' y='0' width='{width}' height='6' fill='{}' opacity='0.18'/><rect x='0' y='0' width='{done:.1}' height='6' fill='{accent}'/><circle cx='{done:.1}' cy='3' r='5' fill='{accent}'/></g>",
+        palette.paint(tokens::INK),
+        accent = palette.paint(tokens::ACCENT),
     ));
     svg.push_str("</g></svg>");
     svg
@@ -1232,6 +1235,7 @@ mod tests {
             format: VideoFormat::Vertical,
             language: "pt-BR".into(),
             scenes: vec![first, second],
+            look: None,
             source_hash: None,
         };
         let checks = crate::qa::hook_checks(&storyboard, &composed);
@@ -1579,6 +1583,7 @@ mod tests {
             format: VideoFormat::X,
             language: "pt-BR".into(),
             scenes,
+            look: None,
             source_hash: None,
         };
         assert!(layout_preflight(&storyboard(vec![ok.clone()]), &typesetter).is_empty());
@@ -1607,5 +1612,39 @@ mod tests {
         assert!(canvas.content.bottom() <= 1330.0);
         assert!(canvas.captions.bottom() <= 1330.0);
         assert!(canvas.content.y >= 168.0);
+    }
+
+    #[test]
+    fn every_component_composes_in_every_look_and_format() {
+        let typesetter = Typesetter::new().unwrap();
+        for look in Look::ALL {
+            for format in [
+                VideoFormat::Vertical,
+                VideoFormat::Horizontal,
+                VideoFormat::X,
+            ] {
+                let canvas = Canvas::for_storyboard(format, look);
+                for (brief, narration) in sample_briefs() {
+                    let scene = narrated(brief, narration);
+                    let composed = compose_scene(&typesetter, &canvas, &scene, 1, 6);
+                    assert!(
+                        composed.issues.is_empty(),
+                        "{look:?} {format:?} {}: {:?}",
+                        scene.composition.kind_name(),
+                        composed.issues
+                    );
+                    let svg =
+                        composed
+                            .graph
+                            .svg(2.0, canvas.width, canvas.height, tokens::FONT_SANS);
+                    assert!(
+                        !svg.contains("'@") && !svg.contains("\"@"),
+                        "{look:?} {format:?} {}: unresolved paint",
+                        scene.composition.kind_name()
+                    );
+                    assert!(resvg::usvg::Tree::from_str(&svg, typesetter.options()).is_ok());
+                }
+            }
+        }
     }
 }

@@ -49,6 +49,39 @@ impl VideoFormat {
     }
 }
 
+/// Visual look of a video: ground, inks, accent, card treatment and display face, each
+/// built from one medium. The renderer owns the values (`framechester-motion::look`);
+/// the storyboard only names the look, so a channel keeps one identity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Look {
+    /// Night screen: dark ground, cool light, lit cards (the original look).
+    #[default]
+    Noite,
+    /// Risograph print: flat paper, navy ink, one fluorescent accent, off-register shadow.
+    Papel,
+    /// Blueprint: flat cobalt sheet, white linework, safety-yellow accent, condensed caps.
+    Planta,
+}
+
+impl Look {
+    pub const ALL: [Look; 3] = [Look::Noite, Look::Papel, Look::Planta];
+
+    pub fn slug(self) -> &'static str {
+        match self {
+            Look::Noite => "noite",
+            Look::Papel => "papel",
+            Look::Planta => "planta",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|look| look.slug() == value.trim().to_ascii_lowercase())
+    }
+}
+
 /// A word with its spoken interval, relative to the start of the scene.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -722,6 +755,9 @@ pub struct Storyboard {
     pub format: VideoFormat,
     pub language: String,
     pub scenes: Vec<StoryboardScene>,
+    /// Visual look; absent means the default (`noite`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub look: Option<Look>,
     /// Hash of the inputs that produced this plan, for caches and reproducibility.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_hash: Option<String>,
@@ -1404,6 +1440,7 @@ mod tests {
             format: VideoFormat::Vertical,
             language: "pt-BR".into(),
             scenes: vec![scene()],
+            look: None,
             source_hash: None,
         }
     }

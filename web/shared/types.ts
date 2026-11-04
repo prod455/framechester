@@ -5,6 +5,9 @@ export interface Timestamped {
   createdAt: string;
   updatedAt: string;
 }
+/** Visual look of a channel's videos, rendered by the engine (`Look` in Rust). */
+export type Look = 'noite' | 'papel' | 'planta';
+export const looks: readonly Look[] = ['noite', 'papel', 'planta'];
 export interface Channel extends Timestamped {
   name: string;
   description: string;
@@ -12,6 +15,8 @@ export interface Channel extends Timestamped {
   audience: string;
   language: string;
   youtubeChannelId?: string;
+  /** Visual look of the channel's videos; absent means `noite`. */
+  look?: Look;
   /** Opt-in per network: send each approved final version there without making it public. */
   autoUpload?: Platform[];
 }

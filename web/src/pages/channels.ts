@@ -3,7 +3,7 @@ import { createDialog, empty, formWithSave, heading, iconButton } from '../compo
 import { button, el, field, input, select, textarea } from '../dom.ts';
 import { currentChannel, go, refresh, render, save, state, studio } from '../studio/state.ts';
 import { toast } from '../studio/toast.ts';
-import type { Channel, Platform } from '../../shared/types.ts';
+import type { Channel, Look, Platform } from '../../shared/types.ts';
 import { platformLabels, publicPlatforms, publishingPlatforms } from '../../shared/publishing.ts';
 import { t } from '../../shared/i18n.ts';
 import { productionLanguages } from '../../shared/voices.ts';
@@ -147,6 +147,16 @@ export function editChannel(record?: Channel): void {
     current,
   );
   language.required = true;
+  const lookLabels: Record<Look, string> = {
+    noite: t('Noite: tela escura, luz fria, cartões de vidro'),
+    papel: t('Papel: risografia, tinta azul-marinho e vermelhão'),
+    planta: t('Planta: blueprint azul com grade e títulos condensados'),
+  };
+  const look = select(
+    'look',
+    (Object.keys(lookLabels) as Look[]).map((item): [string, string] => [item, lookLabels[item]]),
+    record?.look || 'noite',
+  );
   const youtubeChannelId = input('youtubeChannelId', record?.youtubeChannelId || '');
   const autoUpload = publishingPlatforms.map((network) => {
     const box = input(`autoUpload-${network}`, '', 'checkbox');
@@ -167,6 +177,7 @@ export function editChannel(record?: Channel): void {
           niche: niche.value.trim(),
           audience: audience.value.trim(),
           language: language.value.trim(),
+          look: look.value,
           youtubeChannelId: youtubeChannelId.value.trim() || undefined,
           autoUpload: autoUpload.filter((item) => item.box.checked).map((item) => item.network),
         },
@@ -191,6 +202,7 @@ export function editChannel(record?: Channel): void {
       field(t('Nicho editorial'), niche),
       field(t('Público que você quer alcançar'), audience),
       field(t('Idioma'), language),
+      field(t('Visual dos vídeos'), look),
       field(t('ID do canal no YouTube (opcional)'), youtubeChannelId),
     ),
   );

@@ -19,7 +19,7 @@ use framechester_core::planner::plan_script;
 use framechester_core::ports::{
     FactEvidenceProvider, GenerationBudget, LlmProvider, ScriptPrompt, TrendRequest, TrendSource,
 };
-use framechester_core::storyboard::{Storyboard, VideoFormat};
+use framechester_core::storyboard::{Look, Storyboard, VideoFormat};
 use framechester_motion::audio::LoudnessTarget;
 use framechester_motion::narrate::narrate;
 use framechester_motion::qa::{audit, QaInput};
@@ -78,6 +78,27 @@ pub(crate) struct Planned {
 
 /// Builds the storyboard from `--storyboard` or from topic + authored script.
 pub(crate) fn plan_from_args(
+    config: &Config,
+    args: &ProduceArgs,
+    format: VideoFormat,
+    channel_name: &str,
+    language: &str,
+    channel_look: Option<Look>,
+) -> anyhow::Result<Planned> {
+    let mut planned = plan_without_look(config, args, format, channel_name, language)?;
+    // The flag wins, then what the storyboard says, then the channel's identity.
+    let flag = match &args.look {
+        Some(value) => Some(
+            Look::parse(value)
+                .ok_or_else(|| anyhow::anyhow!("--look deve ser noite, papel ou planta"))?,
+        ),
+        None => None,
+    };
+    planned.storyboard.look = flag.or(planned.storyboard.look).or(channel_look);
+    Ok(planned)
+}
+
+fn plan_without_look(
     config: &Config,
     args: &ProduceArgs,
     format: VideoFormat,
@@ -149,7 +170,14 @@ pub(crate) fn plan_command(
     let language = channel
         .as_ref()
         .map_or("pt-BR", |channel| channel.language());
-    let planned = plan_from_args(&config, &args, format, &channel_name, language)?;
+    let planned = plan_from_args(
+        &config,
+        &args,
+        format,
+        &channel_name,
+        language,
+        channel.as_ref().and_then(|channel| channel.look),
+    )?;
     let output = args
         .output
         .clone()
@@ -261,7 +289,14 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
     let language = channel
         .as_ref()
         .map_or("pt-BR", |channel| channel.language());
-    let planned = plan_from_args(&config, &args, format, &channel_name, language)?;
+    let planned = plan_from_args(
+        &config,
+        &args,
+        format,
+        &channel_name,
+        language,
+        channel.as_ref().and_then(|channel| channel.look),
+    )?;
     // Same editorial gate as the legacy pipeline: a draft renders without the operator's
     // declaration, never with unsafe inputs or contradictions.
     let mut warnings = planned.fallbacks.clone();
@@ -412,6 +447,7 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
         &framechester_motion::text::Typesetter::new()?,
         &storyboard.title,
         &cast,
+        storyboard.look.unwrap_or_default(),
         &thumbnail,
     )? {
         warnings.push(format!("thumbnail: {}", issue.detail));
@@ -597,6 +633,7 @@ pub(crate) fn short(config_path: &Option<PathBuf>, args: ShortArgs) -> anyhow::R
             workdir: Some(workdir),
             output: None,
             voice: args.voice,
+            look: None,
             preview_only: false,
             json: args.json,
         },

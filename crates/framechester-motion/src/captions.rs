@@ -217,7 +217,7 @@ pub fn build(ctx: &mut Ctx<'_>, scene: &StoryboardScene) -> Vec<Node> {
             Shape::Rect {
                 rect: box_rect,
                 rx: size * 0.35,
-                fill: "rgba(5,8,14,0.78)".into(),
+                fill: tokens::CAPTION_BOX.into(),
                 stroke: None,
             },
         )

@@ -68,6 +68,11 @@ Cada objeto tem `id`, `label` (≤ 60 caracteres), `detail` (≤ 120), `role`
 (`neutral`, `primary`, `secondary`, `accent`, `success`, `warning`, `danger`), `icon`
 (catálogo fechado de 22 ícones vetoriais próprios), `value`/`unit`, `group`, `parent`.
 
+### Look
+
+`"look": "noite" | "papel" | "planta"` no topo do storyboard escolhe o visual (ausente =
+o do canal, depois `noite`). Ver `docs/DESIGN_SYSTEM_VIDEO.md`, "Looks".
+
 ### Cues: quando algo acontece
 
 | Cue | Significado |

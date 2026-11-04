@@ -40,6 +40,10 @@ export default {
     'Público que você quer alcançar': 'Audience you want to reach',
     Idioma: 'Language',
     'ID do canal no YouTube (opcional)': 'YouTube channel ID (optional)',
+    'Visual dos vídeos': 'Video look',
+    'Noite: tela escura, luz fria, cartões de vidro': 'Night: dark screen, cool light, glass cards',
+    'Papel: risografia, tinta azul-marinho e vermelhão': 'Paper: risograph, navy and vermilion inks',
+    'Planta: blueprint azul com grade e títulos condensados': 'Blueprint: blue grid sheet, condensed titles',
     'Descrição e proposta editorial': 'Description and editorial focus',
     'Enviar cada versão final aprovada ao YouTube como vídeo privado (exige o YouTube conectado com permissão de envio)':
       'Upload each approved final version to YouTube as a private video (requires YouTube connected with upload permission)',
@@ -370,6 +374,11 @@ export default {
     'Público que você quer alcançar': 'Público que quieres alcanzar',
     Idioma: 'Idioma',
     'ID do canal no YouTube (opcional)': 'ID del canal en YouTube (opcional)',
+    'Visual dos vídeos': 'Estilo de los videos',
+    'Noite: tela escura, luz fria, cartões de vidro': 'Noche: pantalla oscura, luz fría, tarjetas de vidrio',
+    'Papel: risografia, tinta azul-marinho e vermelhão': 'Papel: risografía, tintas azul marino y bermellón',
+    'Planta: blueprint azul com grade e títulos condensados':
+      'Plano: blueprint azul con cuadrícula y títulos condensados',
     'Descrição e proposta editorial': 'Descripción y propuesta editorial',
     'Enviar cada versão final aprovada ao YouTube como vídeo privado (exige o YouTube conectado com permissão de envio)':
       'Subir cada versión final aprobada a YouTube como video privado (requiere YouTube conectado con permiso de subida)',

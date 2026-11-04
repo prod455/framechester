@@ -1,3 +1,4 @@
+import { LocalStore } from '../server/store.ts';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
@@ -1428,6 +1429,7 @@ test('an English channel narrates with an English voice, checks speech in Englis
     await runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } });
     await runner.idle();
     assert.match(toml, /\[\[channels\]\]\nid = "tech"\nlanguage = "en-US"\n/);
+    assert.doesNotMatch(toml, /^look = /m, 'no look configured: the engine default applies');
     assert.match(toml, /voice_name = "af_heart"/, 'A Portuguese voice gives way to the first English one');
     assert.match(toml, /\[asr\][^[]*language = "en"/);
     input.channels[0].language = 'de-DE';
@@ -1437,6 +1439,52 @@ test('an English channel narrates with an English voice, checks speech in Englis
     );
   } finally {
     await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test("the channel's look travels into the engine config of every job", async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-look-'));
+  const input = state();
+  input.channels[0].look = 'planta';
+  let toml = '';
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => structuredClone(input),
+    execute: async (args) => {
+      toml = await readFile(args[args.indexOf('--config') + 1], 'utf8');
+      return { exitCode: 2, stdout: '', stderr: '' };
+    },
+  });
+  try {
+    const asset = await runner.upload('tech', {
+      filename: 'fixture.png',
+      kind: 'image',
+      contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+      license: 'Original',
+      provenance: 'Fixture',
+      restrictions: 'Teste',
+    });
+    await runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } });
+    await runner.idle();
+    assert.match(toml, /\[\[channels\]\]\nid = "tech"\nlanguage = "[^"]+"\nlook = "planta"\n\[app\]/);
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('a channel saves a known look and refuses any other', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-look-store-'));
+  const store = new LocalStore(home);
+  try {
+    const saved = await store.saveChannel({ id: 'tech', name: 'Canal sintético', look: 'papel' });
+    assert.equal(saved.look, 'papel');
+    await assert.rejects(store.saveChannel({ look: 'neon' }, 'tech'), /Visual inválido/);
+    const plain = await store.saveChannel({ id: 'science', name: 'Outro canal sintético' });
+    assert.equal(plain.look, undefined, 'no look stored means the engine default');
+  } finally {
     await rm(home, { recursive: true, force: true });
   }
 });

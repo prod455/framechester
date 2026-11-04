@@ -103,6 +103,7 @@ pub(crate) fn run_pipeline(path: &Option<PathBuf>, args: RunArgs) -> anyhow::Res
                 workdir: args.workdir.clone(),
                 output: None,
                 voice: args.voice.clone(),
+                look: None,
                 preview_only: args.preview_only,
                 json: args.json,
             },

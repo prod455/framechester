@@ -8,7 +8,7 @@ use crate::text::Typesetter;
 use crate::tokens;
 use framechester_core::error::Result;
 use framechester_core::persona::Persona;
-use framechester_core::storyboard::{Character, Composition, Pose, Storyboard, VideoFormat};
+use framechester_core::storyboard::{Character, Composition, Look, Pose, Storyboard, VideoFormat};
 use std::path::Path;
 
 pub const WIDTH: u32 = 1280;
@@ -41,8 +41,9 @@ pub fn compose(
     typesetter: &Typesetter,
     title: &str,
     cast: &Cast,
+    look: Look,
 ) -> (Graph, Vec<crate::components::LayoutIssue>) {
-    let canvas = Canvas::for_format(VideoFormat::X);
+    let canvas = Canvas::for_storyboard(VideoFormat::X, look);
     let mut ctx = Ctx::new(&canvas, typesetter, 0);
     let margin = 56.0;
     let stage = Rect::new(margin, 70.0, 430.0, HEIGHT as f32 - 70.0);
@@ -61,13 +62,12 @@ pub fn compose(
         WIDTH as f32 - stage.right() - 40.0 - margin,
         HEIGHT as f32 - margin * 2.0,
     );
-    let (title_nodes, bottom) = ctx.fitted(
+    let (title_nodes, bottom) = ctx.fitted_display(
         "title",
         title,
         text_area,
         104.0,
         56.0,
-        tokens::WEIGHT_BOLD,
         tokens::INK,
         Anchor::Start,
         0.5,
@@ -91,6 +91,7 @@ pub fn compose(
     (
         Graph {
             nodes,
+            look,
             ..Graph::default()
         },
         ctx.issues,
@@ -102,9 +103,10 @@ pub fn render(
     typesetter: &Typesetter,
     title: &str,
     cast: &Cast,
+    look: Look,
     path: &Path,
 ) -> Result<Vec<crate::components::LayoutIssue>> {
-    let (graph, issues) = compose(typesetter, title, cast);
+    let (graph, issues) = compose(typesetter, title, cast, look);
     let svg = graph.svg(0.0, WIDTH, HEIGHT, tokens::FONT_SANS);
     Rasterizer::new(typesetter, WIDTH, HEIGHT).save_png(&svg, path)?;
     Ok(issues)
@@ -125,7 +127,8 @@ mod tests {
             ("Agente ou skill?", Character::Developer),
             ("O que a ciência diz sobre o sono", Character::Scientist),
         ] {
-            let (graph, issues) = compose(&typesetter, title, &Cast::Preset(character));
+            let (graph, issues) =
+                compose(&typesetter, title, &Cast::Preset(character), Look::Noite);
             assert!(issues.is_empty(), "{title}: {issues:?}");
             let safe = Rect::new(0.0, 0.0, WIDTH as f32, HEIGHT as f32);
             for node in graph.nodes.iter().filter(|node| node.is_text()) {

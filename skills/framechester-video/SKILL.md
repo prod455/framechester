@@ -33,6 +33,12 @@ the idea needs its own arrangement (a diagram of the Sun and the Earth, a map of
 A storyboard may mix both. Schema: `docs/schemas/storyboard.schema.json`; working
 example: `examples/freeform.storyboard.json`.
 
+## Pick the look
+
+`"look": "noite"` (night screen, the default), `"papel"` (risograph print) or `"planta"`
+(blueprint) at the top of the storyboard, or `--look` on `plan`/`produce`. Keep one look
+per channel; the engine guarantees WCAG contrast in each of them.
+
 ## Limits the validator enforces
 
 - Labels and card/circle texts ≤ 60 characters; details and `freeform` texts ≤ 120;

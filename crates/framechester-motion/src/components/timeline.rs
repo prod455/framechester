@@ -65,24 +65,19 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, objects: &[VisualObject]) -> Vec<Nod
             // milestone keeps every line of its row for the text.
             let inline = count > 4;
             let label_w = if inline {
+                let (family, weight) = ctx.display();
                 ctx.ts
-                    .measure(
-                        &object.label,
-                        marker,
-                        tokens::WEIGHT_BOLD,
-                        tokens::FONT_SANS,
-                    )
+                    .measure(&object.label, marker, weight, family)
                     .min(text_w * 0.3)
             } else {
                 text_w
             };
-            let (label_nodes, label_bottom) = ctx.fitted(
+            let (label_nodes, label_bottom) = ctx.fitted_display(
                 &object.id,
                 &object.label,
                 Rect::new(text_x, y - marker * 0.55, label_w, marker * 1.25),
                 marker,
                 scale.small,
-                tokens::WEIGHT_BOLD,
                 tokens::ACCENT,
                 Anchor::Start,
                 0.0,
@@ -154,13 +149,12 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, objects: &[VisualObject]) -> Vec<Nod
             );
             let label_area =
                 Rect::new(x + gap * 0.4, area.y, column - gap * 0.8, scale.label * 1.6);
-            let (label_nodes, _) = ctx.fitted(
+            let (label_nodes, _) = ctx.fitted_display(
                 &object.id,
                 &object.label,
                 label_area,
                 scale.label,
                 scale.small,
-                tokens::WEIGHT_BOLD,
                 tokens::ACCENT,
                 Anchor::Middle,
                 1.0,

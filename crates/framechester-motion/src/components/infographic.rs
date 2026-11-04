@@ -11,13 +11,12 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, title: &str, objects: &[VisualObject
     let gap = ctx.canvas.gap;
     let scale = ctx.canvas.type_scale;
     let title_h = scale.heading * 1.5;
-    let (title_nodes, _) = ctx.fitted(
+    let (title_nodes, _) = ctx.fitted_display(
         "info-title",
         title,
         Rect::new(area.x, area.y, area.w, title_h),
         scale.heading * 0.8,
         scale.body,
-        tokens::WEIGHT_SEMIBOLD,
         tokens::INK_SOFT,
         Anchor::Start,
         0.0,
@@ -105,18 +104,17 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, title: &str, objects: &[VisualObject
         let (inner, mut top) = match object.value {
             Some(value) if side_icon => {
                 let text = format_value(value, object.unit.as_deref());
-                let size = (scale.heading * 1.25).min(inner.h * 0.75);
-                let width = ctx
-                    .ts
-                    .measure(&text, size, tokens::WEIGHT_BOLD, tokens::FONT_SANS);
+                let size = ctx.display_size(scale.heading * 1.25).min(inner.h * 0.75);
+                let (family, weight) = ctx.display();
+                let width = ctx.ts.measure(&text, size, weight, family);
                 let mut node = ctx.ts.line(
                     &object.id,
                     &text,
                     inner.x,
                     inner.y + (inner.h - size) / 2.0 + size * 0.85,
                     size,
-                    tokens::WEIGHT_BOLD,
-                    tokens::FONT_SANS,
+                    weight,
+                    family,
                     colours.stroke,
                     Anchor::Start,
                 );
@@ -137,13 +135,9 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, title: &str, objects: &[VisualObject
             // A card shorter than its content gives the space back from the big number,
             // never from the label or the detail.
             let deficit = (content_h - card_h).max(0.0);
-            let mut size = (scale.heading * 1.25 - deficit / 1.1).max(scale.body);
-            while size > scale.body
-                && ctx
-                    .ts
-                    .measure(&text, size, tokens::WEIGHT_BOLD, tokens::FONT_SANS)
-                    > inner.w
-            {
+            let mut size = (ctx.display_size(scale.heading * 1.25) - deficit / 1.1).max(scale.body);
+            let (family, weight) = ctx.display();
+            while size > scale.body && ctx.ts.measure(&text, size, weight, family) > inner.w {
                 size -= 4.0;
             }
             let mut node = ctx.ts.line(
@@ -152,8 +146,8 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, title: &str, objects: &[VisualObject
                 inner.x,
                 top + size * 0.85,
                 size,
-                tokens::WEIGHT_BOLD,
-                tokens::FONT_SANS,
+                weight,
+                family,
                 colours.stroke,
                 Anchor::Start,
             );

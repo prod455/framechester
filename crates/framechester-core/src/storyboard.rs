@@ -758,6 +758,34 @@ pub enum Transition {
     /// Morph: the outgoing focal card reshapes into the incoming scene's first card
     /// (place, size, corners and colour), and the new content appears in it.
     Morph,
+    /// Colour flood around a hero: an object both scenes share stays on screen and
+    /// travels to its new place while the ground floods with its colour; the rest of the
+    /// old scene leaves and the new one builds around it.
+    Flood,
+}
+
+/// Ids of composition objects that are layout parts, not named things a viewer follows.
+const GENERIC_OBJECT_IDS: [&str; 4] = ["title", "character", "speech", "line"];
+
+/// Ids of the named things a viewer can follow across scenes (layout parts excluded).
+pub fn followable_ids(composition: &Composition) -> Vec<String> {
+    composition
+        .object_ids()
+        .into_iter()
+        .filter(|id| !GENERIC_OBJECT_IDS.contains(id))
+        .map(str::to_string)
+        .collect()
+}
+
+/// The hero of a seam: the first object id `next` shares with `previous` (same label
+/// gives the same id), ignoring layout parts.
+pub fn shared_hero(previous: &Composition, next: &Composition) -> Option<String> {
+    hero_of(&followable_ids(previous), &followable_ids(next))
+}
+
+/// The first of `previous` that `next` also has.
+pub fn hero_of(previous: &[String], next: &[String]) -> Option<String> {
+    previous.iter().find(|id| next.contains(id)).cloned()
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

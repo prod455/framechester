@@ -42,8 +42,8 @@ layout escolhe o maior tamanho que passa no QA.
 2. ~~Transições com causa.~~ Feito em 2026-11-04: `expand` (objeto vira o mundo), `iris`
    do ponto focal, `blur_swap` e `dip_cut`, escolhidas pelo planner a partir da cena
    anterior, sem repetir e sem fade cruzado. `morph` (o cartão em foco vira o primeiro
-   cartão da cena seguinte) entrou em seguida. Falta: inundação de cor com objeto herói
-   compartilhado entre cenas.
+   cartão da cena seguinte) entrou em seguida. E `flood`: o objeto que as duas cenas mostram
+   fica na tela e viaja enquanto o fundo inunda com a cor dele.
 3. ~~Blur de entrada por palavra.~~ Feito em 2026-11-04 (6 px → 0 em 0,13 s, sem
    translação, região do filtro limitada ao elemento; custo medido dentro do ruído).
    Blur de movimento em deslocamentos rápidos entrou em seguida por acúmulo temporal

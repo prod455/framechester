@@ -60,14 +60,23 @@ pub fn build(
         ctx.canvas.type_scale.heading * 0.8
     };
     for (object, cell) in objects.iter().zip(&cells) {
-        let cell = if ctx.canvas.vertical {
+        let (card, card_nodes) = if ctx.canvas.vertical {
+            // Compact card first; a label that needs more lines gets the whole cell.
             let height = cell.h.min(ctx.canvas.type_scale.heading * 2.4);
-            Rect::new(cell.x, cell.y + (cell.h - height) / 2.0, cell.w, height)
+            let compact = Rect::new(cell.x, cell.y + (cell.h - height) / 2.0, cell.w, height);
+            let reported = ctx.issues.len();
+            let card_nodes = ctx.labelled_card(object, compact, label_size, false);
+            if ctx.issues.len() == reported || compact.h >= cell.h {
+                (compact, card_nodes)
+            } else {
+                ctx.issues.truncate(reported);
+                (*cell, ctx.labelled_card(object, *cell, label_size, false))
+            }
         } else {
-            *cell
+            (*cell, ctx.labelled_card(object, *cell, label_size, true))
         };
-        places.insert(object.id.clone(), cell);
-        nodes.extend(ctx.labelled_card(object, cell, label_size, !ctx.canvas.vertical));
+        places.insert(object.id.clone(), card);
+        nodes.extend(card_nodes);
     }
     for relation in relations {
         let (Some(from), Some(to)) = (places.get(&relation.from), places.get(&relation.to)) else {

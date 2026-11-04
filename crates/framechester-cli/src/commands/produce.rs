@@ -292,6 +292,48 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
         workdir.join("storyboard.plan.json"),
         serde_json::to_string_pretty(&storyboard)?,
     )?;
+    // Text that cannot fit is known from the plan alone: stop here, before minutes of
+    // TTS and rendering, and say which scene and text to shorten.
+    let layout = framechester_motion::compose::layout_preflight(
+        &storyboard,
+        &framechester_motion::text::Typesetter::new()?,
+    );
+    if !layout.is_empty() {
+        warnings.extend(
+            layout
+                .iter()
+                .map(|issue| format!("layout cena {}: {}", issue.scene_id, issue.detail)),
+        );
+        warnings.push(
+            "layout reprovado antes da narracao: encurte os textos indicados e gere de novo".into(),
+        );
+        let report = PipelineReport {
+            channel: channel.clone(),
+            topic_id: planned
+                .topic
+                .as_ref()
+                .map(|topic| topic.id.clone())
+                .unwrap_or_else(|| storyboard.title.clone()),
+            stage: Stage::Blocked,
+            artifacts_dir: workdir.clone(),
+            script: planned.script.clone(),
+            render: None,
+            technical_qa: None,
+            editorial_qa: None,
+            publish: None,
+            package: None,
+            metrics: Vec::new(),
+            warnings,
+        };
+        framechester_core::pipeline::write_report(&workdir, &report)?;
+        write_html_report(&report, &workdir)?;
+        if args.json {
+            println!("{}", serde_json::to_string_pretty(&report)?);
+        } else {
+            print_report(&report);
+        }
+        return Ok(2);
+    }
 
     let voice = args
         .voice

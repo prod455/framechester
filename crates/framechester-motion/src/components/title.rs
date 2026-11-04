@@ -23,25 +23,15 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, text: &str, kicker: Option<&str>) ->
     // as one node per word so `compose` can reveal word by word. Word boxes
     // stay inside the fitted line boxes, so overflow QA is unchanged.
     let family = tokens::FONT_SANS;
-    let (size, lines) = match ctx.ts.fit(
+    let (size, lines) = ctx.fit(
+        "title",
         text,
-        scale.title,
-        scale.body,
         text_area.w,
         text_area.h,
+        scale.title,
+        scale.body,
         tokens::WEIGHT_BOLD,
-        family,
-    ) {
-        Some(found) => found,
-        None => {
-            ctx.overflow("title", text);
-            (
-                scale.body,
-                ctx.ts
-                    .wrap(text, scale.body, tokens::WEIGHT_BOLD, family, text_area.w),
-            )
-        }
-    };
+    );
     let height = crate::text::Typesetter::block_height(size, lines.len());
     let bottom = text_area.y + height;
     nodes.extend(ctx.ts.word_block(

@@ -132,8 +132,23 @@ Regras de composição:
 | `move_to` | 0,9 s | ease-in-out | uma cópia viaja até o destino; o original fica a 30 % |
 | `breathe` | — | — | movimento contínuo vem do fundo (aurora); o conteúdo nunca flutua |
 
-Transições entre cenas (0,42 s): `push` (padrão a partir da segunda cena), `fade`,
-`zoom`, `cut`. Irmãos que entram no mesmo cue são escalonados em 80 ms (itens de lista 40–80 ms, palavras 60–120 ms; legendas a 70 ms).
+Transições entre cenas **com causa** (o planner escolhe pelo que a cena anterior deixa na
+tela, nunca repete a mesma costura em seguida e não usa fade cruzado — mundos não se
+dissolvem um no outro):
+
+| Transição | Causa | Como (duração medida em filmes de referência) |
+|---|---|---|
+| `expand` | o cartão em foco da cena que sai (o último a entrar) | cresce até passar do quadro com o raio encolhendo (0,65 s, ease-in-out); o resto sai; a cor dele é o fundo onde a próxima cena entra e depois assenta no chão do look |
+| `iris` | o ponto em foco | a próxima cena abre num círculo a partir do centro do objeto em foco, acelerando (0,45 s) |
+| `blur_swap` | o mesmo palco (depois de título ou personagem) | a cena sai com desfoque crescendo até 8 px e entra focando (0,18 s + 0,18 s); o chão nunca corta |
+| `dip_cut` | corte intencional | o quadro escurece 40% por 3 frames antes do corte seco |
+
+Depois de cena com cartões (fluxo, arquitetura, infográfico, causa, passos, transformação):
+`expand`, `iris` ou `blur_swap`; depois das outras: `blur_swap`, `dip_cut` ou `iris`. A
+abertura entra em corte. `push`, `fade`, `zoom` e `whip_pan` continuam disponíveis para
+storyboards escritos à mão. Revisão visual:
+`cargo run --release -p framechester-motion --example preview_transitions -- <pasta> [look]`.
+Irmãos que entram no mesmo cue são escalonados em 80 ms (itens de lista 40–80 ms, palavras 60–120 ms; legendas a 70 ms).
 
 Justificativa: movimento só quando a narração traz algo novo (um objeto, uma relação,
 um valor) ou para manter o quadro vivo; nunca zoom decorativo, nunca animação aleatória.

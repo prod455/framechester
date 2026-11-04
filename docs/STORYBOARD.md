@@ -73,6 +73,12 @@ Cada objeto tem `id`, `label` (≤ 60 caracteres), `detail` (≤ 120), `role`
 `"look": "noite" | "papel" | "planta"` no topo do storyboard escolhe o visual (ausente =
 o do canal, depois `noite`). Ver `docs/DESIGN_SYSTEM_VIDEO.md`, "Looks".
 
+### Transição
+
+`"transition"` de cada cena: `cut`, `expand`, `iris`, `blur_swap`, `dip_cut` (com causa;
+o planner escolhe pela cena anterior) ou `push`, `fade`, `zoom`, `whip_pan`. Ver
+`docs/DESIGN_SYSTEM_VIDEO.md`.
+
 ### Cues: quando algo acontece
 
 | Cue | Significado |

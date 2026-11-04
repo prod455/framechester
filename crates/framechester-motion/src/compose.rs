@@ -29,6 +29,49 @@ pub struct ComposedScene {
     pub change_times: Vec<f32>,
     /// Objects the storyboard animates, in order of first appearance.
     pub animated_objects: Vec<String>,
+    /// What the viewer's eye is on when the scene ends: the cause of the transition out.
+    pub focal: Option<Focal>,
+}
+
+/// The last object to enter a scene, where a caused transition starts from.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Focal {
+    /// Its box at rest, in frame coordinates.
+    pub rect: Rect,
+    /// Its card's paint when it is a card (the colour an `expand` floods with).
+    pub paint: Option<String>,
+}
+
+/// The focal object of a composed scene: the latest entry with a box, preferring cards.
+fn focal_of(graph: &Graph, entries: &HashMap<String, f32>) -> Option<Focal> {
+    let mut ordered: Vec<(&String, &f32)> = entries.iter().collect();
+    ordered.sort_by(|a, b| b.1.partial_cmp(a.1).unwrap_or(std::cmp::Ordering::Equal));
+    let card_paint = |object: &str| {
+        graph
+            .nodes
+            .iter()
+            .filter(|node| node.object == object && node.z < Z_CAPTIONS)
+            .find_map(|node| match &node.shape {
+                Shape::Rect { fill, .. } => tokens::card_role_name(fill)
+                    .map(|role| (node.bbox(), format!("@fill-top-{role}"))),
+                _ => None,
+            })
+    };
+    if let Some((object, _)) = ordered
+        .iter()
+        .find(|(object, _)| card_paint(object).is_some())
+    {
+        let (rect, paint) = card_paint(object)?;
+        return Some(Focal {
+            rect,
+            paint: Some(paint),
+        });
+    }
+    ordered.iter().find_map(|(object, _)| {
+        graph
+            .object_bbox(object)
+            .map(|rect| Focal { rect, paint: None })
+    })
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +95,26 @@ impl Composed {
 
 /// Duration of scene transitions, in seconds.
 pub const TRANSITION_SECS: f32 = 0.42;
+
+/// How long the seam into a scene lasts. Caused transitions take the durations measured
+/// on reference films: an object growing into the world 0.65 s, an iris 0.45 s, a blur
+/// swap 0.18 s out plus 0.18 s in, a dip three frames.
+pub fn transition_secs(transition: Transition) -> f32 {
+    match transition {
+        Transition::Expand => 0.65,
+        Transition::Iris => 0.45,
+        Transition::BlurSwap => 0.36,
+        Transition::DipCut => 0.1,
+        _ => TRANSITION_SECS,
+    }
+}
+
+/// Opens a Gaussian blur group of `radius` px with a unique `id` (closed by `</g>`).
+fn open_blur(svg: &mut String, id: &str, radius: f32) {
+    svg.push_str(&format!(
+        "<defs><filter id='{id}' x='-10%' y='-10%' width='120%' height='120%'><feGaussianBlur stdDeviation='{radius:.2}'/></filter></defs><g filter='url(#{id})'>"
+    ));
+}
 
 fn heading(
     ctx: &mut Ctx<'_>,
@@ -785,6 +848,7 @@ fn compose_at(
     ));
     check_layout(&mut ctx, &graph);
     let change_times = graph.change_times();
+    let focal = focal_of(&graph, &entries);
     (
         ComposedScene {
             id: scene.id,
@@ -795,6 +859,7 @@ fn compose_at(
             issues: ctx.issues,
             change_times,
             animated_objects,
+            focal,
         },
         fits,
     )
@@ -891,11 +956,12 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
     if let Some(scene) = composed.scenes.get(index) {
         let local = (t - scene.start_secs).max(0.0);
         let progress = if index > 0 && scene.transition != Transition::Cut {
-            (local / TRANSITION_SECS).clamp(0.0, 1.0)
+            (local / transition_secs(scene.transition)).clamp(0.0, 1.0)
         } else {
             1.0
         };
         if progress < 1.0 {
+            let theme = crate::look::theme(canvas.look);
             let previous = &composed.scenes[index - 1];
             let eased = crate::anim::ease(Easing::EaseInOut, progress);
             let previous_t = previous.duration_secs;
@@ -943,6 +1009,102 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
                     scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, eased);
                 }
                 Transition::Cut => scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, 1.0),
+                Transition::DipCut => {
+                    // The outgoing frame holds three frames, darkened, then the hard cut.
+                    previous
+                        .graph
+                        .svg_inner(&mut svg, previous_t, 0.0, 0.0, 1.0, 1.0);
+                    svg.push_str(&format!(
+                        "<rect width='{width}' height='{height}' fill='#000000' opacity='0.4'/>"
+                    ));
+                }
+                Transition::BlurSwap => {
+                    // Out: fade with blur growing to 8 px; in: blur shrinking from 8 px.
+                    // Only the content swaps; the ground under both never cuts.
+                    if progress < 0.5 {
+                        let out = progress / 0.5;
+                        open_blur(&mut svg, "fc-swap", 8.0 * out);
+                        previous
+                            .graph
+                            .svg_inner(&mut svg, previous_t, 0.0, 0.0, 1.0, 1.0 - out);
+                    } else {
+                        let into = (progress - 0.5) / 0.5;
+                        open_blur(&mut svg, "fc-swap", 8.0 * (1.0 - into));
+                        scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, into);
+                    }
+                    svg.push_str("</g>");
+                }
+                Transition::Iris => {
+                    // The next world opens in a circle from where the eye already is,
+                    // accelerating as it goes (a zoom through eases in).
+                    let (cx, cy) = previous
+                        .focal
+                        .as_ref()
+                        .map_or((width as f32 / 2.0, height as f32 / 2.0), |focal| {
+                            (focal.rect.cx(), focal.rect.cy())
+                        });
+                    let reach = [(0.0, 0.0), (width as f32, 0.0), (0.0, height as f32)]
+                        .into_iter()
+                        .chain([(width as f32, height as f32)])
+                        .map(|(x, y)| ((x - cx).powi(2) + (y - cy).powi(2)).sqrt())
+                        .fold(0.0f32, f32::max);
+                    let radius = reach * crate::anim::ease(Easing::EaseIn, progress);
+                    previous
+                        .graph
+                        .svg_inner(&mut svg, previous_t, 0.0, 0.0, 1.0, 1.0);
+                    svg.push_str(&format!(
+                        "<defs><clipPath id='fc-iris'><circle cx='{cx:.1}' cy='{cy:.1}' r='{radius:.1}'/></clipPath></defs><g clip-path='url(#fc-iris)'>{}",
+                        Graph::background_svg(width, height, None, t, theme)
+                    ));
+                    scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, 1.0);
+                    svg.push_str("</g>");
+                }
+                Transition::Expand => {
+                    let focal = previous.focal.as_ref();
+                    let flood = focal
+                        .and_then(|focal| focal.paint.as_deref())
+                        .and_then(|paint| theme.opaque(paint))
+                        .unwrap_or_else(|| theme.paint(tokens::SURFACE_STRONG));
+                    let from = focal.map_or(
+                        Rect::new(
+                            width as f32 * 0.4,
+                            height as f32 * 0.4,
+                            width as f32 * 0.2,
+                            height as f32 * 0.2,
+                        ),
+                        |focal| focal.rect,
+                    );
+                    // The card grows past the frame (its radius shrinking) while the
+                    // rest leaves; once it is the ground, the next scene enters on it
+                    // and its colour settles into the look's ground.
+                    let grow = crate::anim::ease(Easing::EaseInOut, (progress / 0.7).min(1.0));
+                    let lerp = |a: f32, b: f32| a + (b - a) * grow;
+                    let rect = Rect::new(
+                        lerp(from.x, -(width as f32) * 0.02),
+                        lerp(from.y, -(height as f32) * 0.02),
+                        lerp(from.w, width as f32 * 1.04),
+                        lerp(from.h, height as f32 * 1.04),
+                    );
+                    let rest = 1.0 - (progress / 0.45).min(1.0);
+                    if rest > 0.0 {
+                        previous
+                            .graph
+                            .svg_inner(&mut svg, previous_t, 0.0, 0.0, 1.0, rest);
+                    }
+                    let settle = 1.0 - ((progress - 0.7) / 0.3).clamp(0.0, 1.0);
+                    svg.push_str(&format!(
+                        "<rect x='{:.1}' y='{:.1}' width='{:.1}' height='{:.1}' rx='{:.1}' fill='{flood}' opacity='{settle:.3}'/>",
+                        rect.x,
+                        rect.y,
+                        rect.w,
+                        rect.h,
+                        canvas.radius * (1.0 - grow),
+                    ));
+                    let enter = ((progress - 0.55) / 0.45).clamp(0.0, 1.0);
+                    if enter > 0.0 {
+                        scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, enter);
+                    }
+                }
                 Transition::WhipPan => {
                     // Fast sideways slide; mid-whip both frames stretch
                     // horizontally and dip in opacity (simulated motion blur:
@@ -1645,6 +1807,112 @@ mod tests {
                     assert!(resvg::usvg::Tree::from_str(&svg, typesetter.options()).is_ok());
                 }
             }
+        }
+    }
+
+    fn seam(transition: Transition) -> (Composed, f32) {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Horizontal);
+        let first = narrated(
+            "#fluxo Objetivo -> Decidir -> Agir -> Observar",
+            "O agente recebe o objetivo, decide, age e observa.",
+        );
+        let mut second = narrated("#pergunta E se a skill decidir?", "E se a skill decidir?");
+        second.id = 2;
+        second.transition = transition;
+        second.start_secs = first.duration_secs;
+        let seam = first.duration_secs;
+        (
+            Composed {
+                canvas,
+                scenes: vec![
+                    compose_scene(&typesetter, &canvas, &first, 1, 3),
+                    compose_scene(&typesetter, &canvas, &second, 2, 3),
+                ],
+            },
+            seam,
+        )
+    }
+
+    #[test]
+    fn the_focal_object_is_the_last_card_to_enter() {
+        let (composed, _) = seam(Transition::Iris);
+        let focal = composed.scenes[0]
+            .focal
+            .as_ref()
+            .expect("a flow has a focal card");
+        let observar = composed.scenes[0].graph.object_bbox("observar").unwrap();
+        assert!(
+            focal.rect.intersects(&observar),
+            "{focal:?} vs {observar:?}"
+        );
+        assert_eq!(
+            focal
+                .paint
+                .as_deref()
+                .map(|paint| paint.starts_with("@fill-top-")),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn caused_transitions_start_from_what_is_on_screen() {
+        // Iris: the clip circle is centred on the outgoing focal object.
+        let (composed, at) = seam(Transition::Iris);
+        let focal = composed.scenes[0].focal.clone().unwrap();
+        let svg = frame_svg(&composed, at + 0.2, tokens::FONT_SANS);
+        assert!(
+            svg.contains(&format!(
+                "<circle cx='{:.1}' cy='{:.1}'",
+                focal.rect.cx(),
+                focal.rect.cy()
+            )),
+            "iris opens from the focal point"
+        );
+        // Expand: the focal card's own colour floods the frame.
+        let (composed, at) = seam(Transition::Expand);
+        let theme = crate::look::theme(composed.canvas.look);
+        let flood = theme
+            .opaque(
+                composed.scenes[0]
+                    .focal
+                    .as_ref()
+                    .unwrap()
+                    .paint
+                    .as_deref()
+                    .unwrap(),
+            )
+            .unwrap();
+        let svg = frame_svg(&composed, at + 0.45, tokens::FONT_SANS);
+        assert!(
+            svg.contains(&format!("fill='{flood}'")),
+            "expand floods with the card"
+        );
+        // Blur swap: content blurs; the ground is drawn once and never fades.
+        let (composed, at) = seam(Transition::BlurSwap);
+        let svg = frame_svg(&composed, at + 0.1, tokens::FONT_SANS);
+        assert!(svg.contains("feGaussianBlur"));
+        assert_eq!(svg.matches("id='fc-bg'").count(), 1);
+        // Dip cut: three darkened frames of the outgoing scene, then the hard cut.
+        let (composed, at) = seam(Transition::DipCut);
+        assert!(frame_svg(&composed, at + 0.05, tokens::FONT_SANS).contains("opacity='0.4'"));
+        assert!(!frame_svg(&composed, at + 0.12, tokens::FONT_SANS)
+            .contains("fill='#000000' opacity='0.4'"));
+        for transition in [
+            Transition::Expand,
+            Transition::Iris,
+            Transition::BlurSwap,
+            Transition::DipCut,
+        ] {
+            let (composed, at) = seam(transition);
+            let svg = frame_svg(
+                &composed,
+                at + transition_secs(transition) * 0.5,
+                tokens::FONT_SANS,
+            );
+            assert!(
+                resvg::usvg::Tree::from_str(&svg, Typesetter::new().unwrap().options()).is_ok()
+            );
         }
     }
 }

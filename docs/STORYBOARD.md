@@ -31,7 +31,7 @@ Storyboard
    └─ transition (cut | fade | push | zoom)
 ```
 
-### Composições (12)
+### Composições (14)
 
 | `kind` | Uso | Campos |
 |---|---|---|
@@ -48,10 +48,36 @@ Storyboard
 | `cause_effect` | causa → consequência, passos | `objects` |
 | `steps` | checklist vertical numerada (espinha + cartões) | `objects` (2–6) |
 | `character` | personagem que fala ao lado de um balão | `character` (`presenter`, `developer`, `scientist`, `robot`), `pose` (`explain`, `point`, `think`, `celebrate`), `text` (≤ 140), `persona` opcional (personagem descrito: `name`, `skin`, `hair`, `hair_colour`, `beard`, `beard_colour`, `outfit`, `colour`, `number`, `prop`, `glasses`, `laurel`) |
+| `freeform` | cena livre, quando nenhum layout acima expressa a ideia | `elements` (1–24), ver abaixo |
+
+#### Cena livre (`freeform`)
+
+Cada elemento tem `id` e `shape`, com `kind` ∈ `card` (cartão, `text` ≤ 60 e `icon`
+opcionais), `circle` (`text` ≤ 60 opcional), `text` (`text` ≤ 120, `size` ∈ `title`,
+`heading`, `body`, `label`, `small`), `icon` e `arrow` (`from`/`to`). Posições em
+**porcentagem da área de conteúdo** (`area {x, y, w, h}`, `x + w` e `y + h` ≤ 100), nunca
+em pixels: a mesma cena se adapta a vertical, horizontal e X. O motor desenha só as
+próprias formas (paleta por `role`, fontes embutidas); não há campo para SVG, HTML,
+arquivo, URL ou script. Sem `animations`, a cena ganha as do planner: cada elemento entra
+na ordem, na palavra narrada que corresponde ao seu texto, com destaque; setas são
+desenhadas. Texto que não cabe, sai da área segura ou se sobrepõe a outro reprova no
+mesmo QA de layout — rode `plan --storyboard` para ver em segundos. Exemplo:
+[`examples/freeform.storyboard.json`](../examples/freeform.storyboard.json).
 
 Cada objeto tem `id`, `label` (≤ 60 caracteres), `detail` (≤ 120), `role`
 (`neutral`, `primary`, `secondary`, `accent`, `success`, `warning`, `danger`), `icon`
 (catálogo fechado de 22 ícones vetoriais próprios), `value`/`unit`, `group`, `parent`.
+
+### Look
+
+`"look": "noite" | "papel" | "planta"` no topo do storyboard escolhe o visual (ausente =
+o do canal, depois `noite`). Ver `docs/DESIGN_SYSTEM_VIDEO.md`, "Looks".
+
+### Transição
+
+`"transition"` de cada cena: `cut`, `flood`, `morph`, `expand`, `iris`, `blur_swap`, `dip_cut` (com causa;
+o planner escolhe pela cena anterior) ou `push`, `fade`, `zoom`, `whip_pan`. Ver
+`docs/DESIGN_SYSTEM_VIDEO.md`.
 
 ### Cues: quando algo acontece
 
@@ -76,7 +102,10 @@ Movimentos: `reveal`, `pop`, `draw`, `highlight`, `pulse`, `focus`, `count`, `gr
 - **Todo número exibido (`value`) precisa ser dito na narração**: assim passa pela
   revisão de alegações, como já valia para `#numero` e `#citacao`.
 - Textos têm limites de tamanho; o renderizador nunca corta com reticências — quando
-  não cabe, o QA reprova (`text_overflow`).
+  não cabe nem no piso de legibilidade, o QA reprova (`text_overflow`). `plan` e
+  `produce` checam isso antes do TTS (`layout_preflight`; `plan` sai com código 2).
+- Um storyboard escrito à mão ou por agente sem `animations` (ou sem ênfase de
+  legenda) recebe os do planner ao entrar por `--storyboard`; o que foi escrito fica.
 - Campos desconhecidos são rejeitados (`deny_unknown_fields`), então um modelo não
   consegue injetar comandos de render.
 

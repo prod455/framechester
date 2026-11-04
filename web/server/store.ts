@@ -9,7 +9,9 @@ import type {
   Source,
   SocialSnapshot,
   Platform,
+  Look,
 } from '../shared/types.ts';
+import { looks } from '../shared/types.ts';
 import { readFile, mkdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -225,6 +227,7 @@ function normalizeChannel(value: unknown, previous?: Channel): Channel {
     'audience',
     'language',
     'youtubeChannelId',
+    'look',
     'youtubeAutoUpload',
     'autoUpload',
     'createdAt',
@@ -251,6 +254,9 @@ function normalizeChannel(value: unknown, previous?: Channel): Channel {
   if (requested.some((network) => !publishingPlatforms.includes(network)))
     throw new HttpError(400, 'Esta rede não recebe envio automático.');
   const autoUpload = publishingPlatforms.filter((network) => requested.includes(network));
+  if (item.look !== undefined && !looks.includes(item.look as Look))
+    throw new HttpError(400, 'Visual inválido: use noite, papel ou planta.');
+  const look = item.look as Look | undefined;
   const now = new Date().toISOString();
   return {
     id,
@@ -260,6 +266,7 @@ function normalizeChannel(value: unknown, previous?: Channel): Channel {
     audience: text(item.audience, 'audience', 3000),
     language,
     ...(youtubeChannelId ? { youtubeChannelId } : {}),
+    ...(look ? { look } : {}),
     ...(autoUpload.length ? { autoUpload } : {}),
     createdAt: previous?.createdAt ?? now,
     updatedAt: now,

@@ -3,7 +3,8 @@
 //! The planner (a model or the deterministic `crate::planner`) describes *meaning*:
 //! which concept each scene explains, which objects exist, how they relate, and which
 //! animation events happen at which narration word. It never writes FFmpeg filters,
-//! pixel coordinates or SVG. `docs/schemas/storyboard.schema.json` mirrors this
+//! pixel coordinates or SVG (a `freeform` scene places elements in percent of the
+//! content area, never in pixels). `docs/schemas/storyboard.schema.json` mirrors this
 //! module for editors and models; `validate` is the authoritative gate.
 use crate::error::{FramechesterError, Result};
 use serde::{Deserialize, Serialize};
@@ -45,6 +46,39 @@ impl VideoFormat {
             "x" | "twitter" => Some(VideoFormat::X),
             _ => None,
         }
+    }
+}
+
+/// Visual look of a video: ground, inks, accent, card treatment and display face, each
+/// built from one medium. The renderer owns the values (`framechester-motion::look`);
+/// the storyboard only names the look, so a channel keeps one identity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Look {
+    /// Night screen: dark ground, cool light, lit cards (the original look).
+    #[default]
+    Noite,
+    /// Risograph print: flat paper, navy ink, one fluorescent accent, off-register shadow.
+    Papel,
+    /// Blueprint: flat cobalt sheet, white linework, safety-yellow accent, condensed caps.
+    Planta,
+}
+
+impl Look {
+    pub const ALL: [Look; 3] = [Look::Noite, Look::Papel, Look::Planta];
+
+    pub fn slug(self) -> &'static str {
+        match self {
+            Look::Noite => "noite",
+            Look::Papel => "papel",
+            Look::Planta => "planta",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|look| look.slug() == value.trim().to_ascii_lowercase())
     }
 }
 
@@ -310,6 +344,104 @@ pub struct Relation {
     pub label: Option<String>,
 }
 
+/// Rectangle in percent (0–100) of the format's content area, so one free-form scene
+/// lays out in every format.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Area {
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+}
+
+/// Point in percent (0–100) of the format's content area.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Point {
+    pub x: f32,
+    pub y: f32,
+}
+
+/// Type role of a free-form text; the design system maps it to a size per format.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum TextSize {
+    Title,
+    Heading,
+    #[default]
+    Body,
+    Label,
+    Small,
+}
+
+/// What a free-form element draws. Only the engine's own shapes: never SVG, HTML, a
+/// file, a URL or a script from the storyboard.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "kind", deny_unknown_fields)]
+pub enum ElementShape {
+    /// Rounded card coloured by role, with an optional icon and label.
+    Card {
+        area: Area,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        text: Option<String>,
+        #[serde(default)]
+        role: Role,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        icon: Option<Icon>,
+    },
+    /// Circle inscribed in `area`, with an optional label inside.
+    Circle {
+        area: Area,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        text: Option<String>,
+        #[serde(default)]
+        role: Role,
+    },
+    /// Text fitted inside `area`.
+    Text {
+        area: Area,
+        text: String,
+        #[serde(default)]
+        size: TextSize,
+        #[serde(default)]
+        role: Role,
+    },
+    /// Catalog icon centred in `area`.
+    Icon {
+        area: Area,
+        icon: Icon,
+        #[serde(default)]
+        role: Role,
+    },
+    /// Arrow drawn from `from` to `to`.
+    Arrow {
+        from: Point,
+        to: Point,
+        #[serde(default)]
+        role: Role,
+    },
+}
+
+impl ElementShape {
+    /// The text the element shows, if any.
+    pub fn text(&self) -> Option<&str> {
+        match self {
+            ElementShape::Card { text, .. } | ElementShape::Circle { text, .. } => text.as_deref(),
+            ElementShape::Text { text, .. } => Some(text),
+            ElementShape::Icon { .. } | ElementShape::Arrow { .. } => None,
+        }
+    }
+}
+
+/// One element of a free-form scene; `id` is the animation target.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Element {
+    pub id: String,
+    pub shape: ElementShape,
+}
+
 /// A reusable composition. The renderer owns its look and layout per format.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "kind", deny_unknown_fields)]
@@ -386,6 +518,9 @@ pub enum Composition {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         persona: Option<crate::persona::Persona>,
     },
+    /// Free layout for ideas no fixed layout expresses: elements placed in percent of
+    /// the content area. Text is fitted and checked by the same layout QA.
+    Freeform { elements: Vec<Element> },
 }
 
 impl Composition {
@@ -404,10 +539,11 @@ impl Composition {
             Composition::CauseEffect { .. } => "cause_effect",
             Composition::Steps { .. } => "steps",
             Composition::Character { .. } => "character",
+            Composition::Freeform { .. } => "freeform",
         }
     }
 
-    pub const KINDS: [&'static str; 13] = [
+    pub const KINDS: [&'static str; 14] = [
         "title",
         "flow_diagram",
         "comparison",
@@ -421,6 +557,7 @@ impl Composition {
         "cause_effect",
         "steps",
         "character",
+        "freeform",
     ];
 
     /// Every object id the composition defines, in order.
@@ -428,6 +565,9 @@ impl Composition {
         match self {
             Composition::Title { .. } => vec!["title"],
             Composition::Character { .. } => vec!["character", "speech"],
+            Composition::Freeform { elements } => {
+                elements.iter().map(|element| element.id.as_str()).collect()
+            }
             Composition::FlowDiagram { objects, .. }
             | Composition::Comparison { objects, .. }
             | Composition::Timeline { objects }
@@ -469,7 +609,8 @@ impl Composition {
         match self {
             Composition::Title { .. }
             | Composition::Code { .. }
-            | Composition::Character { .. } => Vec::new(),
+            | Composition::Character { .. }
+            | Composition::Freeform { .. } => Vec::new(),
             Composition::FlowDiagram { objects, .. }
             | Composition::Comparison { objects, .. }
             | Composition::Timeline { objects }
@@ -602,6 +743,49 @@ pub enum Transition {
     /// is not used: it would be rasterized per frame by resvg at high cost
     /// and its radius is not seekable from the transition progress alone.
     WhipPan,
+    /// The object becomes the world: the outgoing scene's focal card grows past the
+    /// frame, everything around it leaves, and its colour is the ground the next scene
+    /// enters on.
+    Expand,
+    /// The next scene opens in a circle from the outgoing scene's focal point.
+    Iris,
+    /// Blur swap on one stage: the outgoing content blurs out, the incoming blurs in,
+    /// and the ground never cuts.
+    BlurSwap,
+    /// Dip cut: the outgoing frame darkens about 40% for three frames before a hard cut,
+    /// so the cut reads as meant.
+    DipCut,
+    /// Morph: the outgoing focal card reshapes into the incoming scene's first card
+    /// (place, size, corners and colour), and the new content appears in it.
+    Morph,
+    /// Colour flood around a hero: an object both scenes share stays on screen and
+    /// travels to its new place while the ground floods with its colour; the rest of the
+    /// old scene leaves and the new one builds around it.
+    Flood,
+}
+
+/// Ids of composition objects that are layout parts, not named things a viewer follows.
+const GENERIC_OBJECT_IDS: [&str; 4] = ["title", "character", "speech", "line"];
+
+/// Ids of the named things a viewer can follow across scenes (layout parts excluded).
+pub fn followable_ids(composition: &Composition) -> Vec<String> {
+    composition
+        .object_ids()
+        .into_iter()
+        .filter(|id| !GENERIC_OBJECT_IDS.contains(id))
+        .map(str::to_string)
+        .collect()
+}
+
+/// The hero of a seam: the first object id `next` shares with `previous` (same label
+/// gives the same id), ignoring layout parts.
+pub fn shared_hero(previous: &Composition, next: &Composition) -> Option<String> {
+    hero_of(&followable_ids(previous), &followable_ids(next))
+}
+
+/// The first of `previous` that `next` also has.
+pub fn hero_of(previous: &[String], next: &[String]) -> Option<String> {
+    previous.iter().find(|id| next.contains(id)).cloned()
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -614,6 +798,9 @@ pub struct Storyboard {
     pub format: VideoFormat,
     pub language: String,
     pub scenes: Vec<StoryboardScene>,
+    /// Visual look; absent means the default (`noite`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub look: Option<Look>,
     /// Hash of the inputs that produced this plan, for caches and reproducibility.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_hash: Option<String>,
@@ -680,6 +867,74 @@ impl Storyboard {
         }
         Ok(())
     }
+}
+
+fn validate_freeform(scene: u32, elements: &[Element]) -> Result<()> {
+    if elements.is_empty() || elements.len() > MAX_OBJECTS {
+        return Err(invalid(
+            scene,
+            format!("cena livre exige 1 a {MAX_OBJECTS} elementos"),
+        ));
+    }
+    let percent = |value: f32| value.is_finite() && (0.0..=100.0).contains(&value);
+    let mut ids = HashSet::new();
+    for element in elements {
+        let name = &element.id;
+        if name.trim().is_empty()
+            || name.contains(char::is_whitespace)
+            || name == "*"
+            || name.starts_with("group:")
+            || name.starts_with("line:")
+            || name.chars().count() > MAX_LABEL_CHARS
+            || !ids.insert(name.as_str())
+        {
+            return Err(invalid(
+                scene,
+                format!("elemento com id vazio, reservado ou duplicado '{name}'"),
+            ));
+        }
+        let area = match &element.shape {
+            ElementShape::Card { area, .. }
+            | ElementShape::Circle { area, .. }
+            | ElementShape::Text { area, .. }
+            | ElementShape::Icon { area, .. } => Some(area),
+            ElementShape::Arrow { from, to, .. } => {
+                if ![from.x, from.y, to.x, to.y].into_iter().all(percent) || from == to {
+                    return Err(invalid(
+                        scene,
+                        format!("seta '{name}' precisa de from e to distintos entre 0 e 100"),
+                    ));
+                }
+                None
+            }
+        };
+        if let Some(area) = area {
+            let inside = [area.x, area.y, area.w, area.h].into_iter().all(percent)
+                && area.w > 0.0
+                && area.h > 0.0
+                && area.x + area.w <= 100.0 + f32::EPSILON
+                && area.y + area.h <= 100.0 + f32::EPSILON;
+            if !inside {
+                return Err(invalid(
+                    scene,
+                    format!("area de '{name}' precisa caber em 0..100 (x + w e y + h ate 100)"),
+                ));
+            }
+        }
+        let limit = match element.shape {
+            ElementShape::Text { .. } => MAX_DETAIL_CHARS,
+            _ => MAX_LABEL_CHARS,
+        };
+        if let Some(text) = element.shape.text() {
+            if text.trim().is_empty() || text.chars().count() > limit {
+                return Err(invalid(
+                    scene,
+                    format!("texto de '{name}' vazio ou acima de {limit} caracteres"),
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 impl StoryboardScene {
@@ -974,6 +1229,7 @@ impl StoryboardScene {
                     return Err(invalid(id, "passos exigem 2 a 6 itens"));
                 }
             }
+            Composition::Freeform { elements } => validate_freeform(id, elements)?,
             Composition::Chart {
                 objects, max_value, ..
             } => {
@@ -1113,6 +1369,58 @@ fn number_is_spoken(shown: &str, value: f64, narration: &str) -> bool {
 mod tests {
     use super::*;
 
+    fn freeform(elements: serde_json::Value) -> Result<()> {
+        let mut scene = scene();
+        scene.animations.clear();
+        scene.composition = serde_json::from_value(serde_json::json!({
+            "kind": "freeform",
+            "elements": elements,
+        }))
+        .unwrap();
+        scene.validate()
+    }
+
+    #[test]
+    fn freeform_elements_parse_and_stay_inside_the_content_area() {
+        let ok = serde_json::json!([
+            { "id": "a", "shape": { "kind": "card", "area": { "x": 0, "y": 0, "w": 50, "h": 30 }, "text": "Decide", "icon": "brain" } },
+            { "id": "b", "shape": { "kind": "circle", "area": { "x": 60, "y": 0, "w": 40, "h": 40 }, "role": "accent" } },
+            { "id": "c", "shape": { "kind": "text", "area": { "x": 0, "y": 60, "w": 100, "h": 40 }, "text": "Age e observa", "size": "heading" } },
+            { "id": "d", "shape": { "kind": "icon", "area": { "x": 0, "y": 40, "w": 10, "h": 10 }, "icon": "loop" } },
+            { "id": "e", "shape": { "kind": "arrow", "from": { "x": 50, "y": 15 }, "to": { "x": 60, "y": 20 } } }
+        ]);
+        freeform(ok).unwrap();
+        let outside = serde_json::json!([
+            { "id": "a", "shape": { "kind": "card", "area": { "x": 60, "y": 0, "w": 50, "h": 30 } } }
+        ]);
+        assert!(freeform(outside)
+            .unwrap_err()
+            .to_string()
+            .contains("0..100"));
+        let duplicate = serde_json::json!([
+            { "id": "a", "shape": { "kind": "icon", "area": { "x": 0, "y": 0, "w": 10, "h": 10 }, "icon": "loop" } },
+            { "id": "a", "shape": { "kind": "icon", "area": { "x": 20, "y": 0, "w": 10, "h": 10 }, "icon": "loop" } }
+        ]);
+        assert!(freeform(duplicate)
+            .unwrap_err()
+            .to_string()
+            .contains("duplicado"));
+        let long = serde_json::json!([
+            { "id": "a", "shape": { "kind": "card", "area": { "x": 0, "y": 0, "w": 50, "h": 30 }, "text": "x".repeat(61) } }
+        ]);
+        assert!(freeform(long).unwrap_err().to_string().contains("60"));
+        let point_arrow = serde_json::json!([
+            { "id": "a", "shape": { "kind": "arrow", "from": { "x": 5, "y": 5 }, "to": { "x": 5, "y": 5 } } }
+        ]);
+        assert!(freeform(point_arrow).is_err());
+        assert!(freeform(serde_json::json!([])).is_err());
+        let unknown_field = serde_json::from_value::<Composition>(serde_json::json!({
+            "kind": "freeform",
+            "elements": [{ "id": "a", "shape": { "kind": "card", "area": { "x": 0, "y": 0, "w": 1, "h": 1 }, "svg": "<script/>" } }]
+        }));
+        assert!(unknown_field.is_err(), "no raw SVG/HTML field is accepted");
+    }
+
     fn object(id: &str, label: &str) -> VisualObject {
         VisualObject {
             id: id.into(),
@@ -1175,6 +1483,7 @@ mod tests {
             format: VideoFormat::Vertical,
             language: "pt-BR".into(),
             scenes: vec![scene()],
+            look: None,
             source_hash: None,
         }
     }
@@ -1330,6 +1639,7 @@ mod tests {
                     serde_json::json!({"kind": kind, "title": "t", "objects": []})
                 }
                 "transformation" => serde_json::json!({"kind": kind, "before": [], "after": []}),
+                "freeform" => serde_json::json!({"kind": kind, "elements": []}),
                 "flow_diagram" | "architecture" => {
                     serde_json::json!({"kind": kind, "objects": [], "relations": []})
                 }

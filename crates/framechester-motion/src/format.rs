@@ -82,21 +82,66 @@ pub struct Canvas {
     /// Icon size in pixels.
     pub icon: f32,
     pub vertical: bool,
+    /// Look the scene is drawn in: its paints and its display face (`crate::look`).
+    pub look: framechester_core::storyboard::Look,
 }
 
+/// Smallest readable text, as a fraction of the frame's short side: below it a line
+/// cannot be read on a phone (measured on reference films).
+pub const TEXT_FLOOR_RATIO: f32 = 0.026;
+
 impl Canvas {
+    /// The legibility floor in pixels for this frame: no readable text is drawn smaller.
+    pub fn text_floor(&self) -> f32 {
+        (self.width.min(self.height) as f32 * TEXT_FLOOR_RATIO).ceil()
+    }
+
+    /// The same frame with component type, icons and spacing scaled by `zoom`; safe
+    /// areas, captions and the caption type are unchanged.
+    pub fn zoomed(&self, zoom: f32) -> Self {
+        let scale = self.type_scale;
+        Canvas {
+            gap: self.gap * zoom,
+            radius: self.radius * zoom,
+            stroke: self.stroke * zoom.sqrt(),
+            icon: self.icon * zoom,
+            type_scale: TypeScale {
+                title: scale.title * zoom,
+                heading: scale.heading * zoom,
+                body: scale.body * zoom,
+                label: scale.label * zoom,
+                small: scale.small * zoom,
+                caption: scale.caption,
+                code: scale.code * zoom,
+                number: scale.number * zoom,
+            },
+            ..*self
+        }
+    }
+
+    /// The format's canvas drawn in `look`.
+    pub fn for_storyboard(format: VideoFormat, look: framechester_core::storyboard::Look) -> Self {
+        Canvas {
+            look,
+            ..Self::for_format(format)
+        }
+    }
+
     pub fn for_format(format: VideoFormat) -> Self {
         let (width, height) = format.dimensions();
         match format {
-            // Shorts/Reels/TikTok overlays: status bar on top, action buttons on the right
-            // from roughly 55% to 85% of the height, caption and audio strip at the bottom.
+            // Shorts/Reels/TikTok overlays: status and search bar in the top 168 px,
+            // action buttons on the right from roughly 55% to 85% of the height, and the
+            // title, handle and audio strip over everything below 1330 px. Every word sits
+            // between 168 and 1330 px; captions at the bottom of that band, clear of the
+            // right rail.
             VideoFormat::Vertical => Canvas {
                 format,
                 width,
                 height,
-                content: Rect::new(72.0, 230.0, 936.0, 1040.0),
-                captions: Rect::new(72.0, 1330.0, 820.0, 230.0),
-                safe: Rect::new(54.0, 180.0, 972.0, 1420.0),
+                content: Rect::new(72.0, 230.0, 936.0, 840.0),
+                captions: Rect::new(72.0, 1100.0, 820.0, 220.0),
+                safe: Rect::new(54.0, 180.0, 972.0, 1150.0),
                 margin: 72.0,
                 gap: 28.0,
                 radius: 26.0,
@@ -107,12 +152,13 @@ impl Canvas {
                     body: 42.0,
                     label: 38.0,
                     small: 30.0,
-                    caption: 54.0,
+                    caption: 64.0,
                     code: 34.0,
                     number: 190.0,
                 },
                 icon: 64.0,
                 vertical: true,
+                look: Default::default(),
             },
             VideoFormat::Horizontal => Canvas {
                 format,
@@ -130,13 +176,15 @@ impl Canvas {
                     heading: 56.0,
                     body: 38.0,
                     label: 34.0,
-                    small: 27.0,
-                    caption: 46.0,
+                    // 2.6% of the short side is 28.1 px: nothing readable goes below it.
+                    small: 29.0,
+                    caption: 52.0,
                     code: 32.0,
                     number: 210.0,
                 },
                 icon: 56.0,
                 vertical: false,
+                look: Default::default(),
             },
             // X feed: small on the timeline, so type is larger relative to the frame and
             // captions are shorter.
@@ -157,12 +205,13 @@ impl Canvas {
                     body: 29.0,
                     label: 26.0,
                     small: 21.0,
-                    caption: 36.0,
+                    caption: 40.0,
                     code: 24.0,
                     number: 150.0,
                 },
                 icon: 42.0,
                 vertical: false,
+                look: Default::default(),
             },
         }
     }

@@ -8,6 +8,16 @@ podem quebrar a compatibilidade e avisam isso aqui.
 ## [Unreleased]
 
 ### Adicionado
+- **Looks por canal** (`noite`, `papel`, `planta`): cada um é a regra de um meio (tela à noite; risografia com tinta navy e vermelhão e placa deslocada; blueprint cobalto com grade), com fonte de título própria (Inter, Archivo Black, Bebas Neue, OFL-1.1). Escolha no cadastro do canal no Studio ("Visual dos vídeos"), em `[[channels]] look`, no storyboard ou com `--look`. Contraste WCAG medido em teste para todo par texto/fundo de cada look (4,5:1 leitura, 3:1 texto grande).
+- **Transições com causa**: `flood` (o objeto que as duas cenas mostram fica na tela e viaja enquanto o fundo inunda com a cor dele), `morph` (o cartão em foco vira o primeiro cartão da cena seguinte), `expand` (o cartão vira o mundo), `iris` (abre do ponto focal), `blur_swap` e `dip_cut`. O planner escolhe pela cena anterior e pela seguinte, sem repetir e sem fade cruzado. `preview_transitions` gera a tira de cada uma.
+- **Cena livre** (`freeform`): cartões, círculos, textos, ícones e setas em porcentagem da área de conteúdo, animados pela palavra narrada e checados pelo mesmo QA de layout nos três formatos. Exemplo em `examples/freeform.storyboard.json`.
+- **Skill pública para agentes** em `skills/framechester-video` (plan → produce → QA → corrigir).
+- **Legendas cinéticas**: palavras do bloco entram uma a uma; a palavra falada ganha pílula de acento com "pop".
+- **Ofício medido garantido pelo motor e guardado pelo QA**: piso de legibilidade de 2,6% do lado menor, tempo de leitura de 0,5 s + 0,3 s por palavra (entradas tardias antecipadas) e trecho morto acima de 3 s (`text_below_floor`, `line_unread`, `dead_stretch`).
+- **Desfoque de entrada** por palavra (6 px → 0 em 0,13 s, sem translação) e **desfoque de movimento** por acúmulo temporal nos deslocamentos rápidos, sem custo medido de render.
+- **Preflight de layout**: `plan` e `produce` checam o layout antes do TTS e do render e dizem a cena e o texto a encurtar (`plan` sai com código 2).
+- **Zoom de layout**: fluxos, comparações, linhas do tempo, arquiteturas e afins são refeitos até 1,6× maiores quando cabem e passam no QA.
+
 - **Vários Shorts por vídeo, uma vez só**: **Gerar Shorts** (e `framechester short --list` / `--part N`) divide a versão final horizontal do motor motion em até 5 Shorts verticais de até 58 s, em partes seguidas, cada uma aberta pelo gancho; títulos numerados `(1/N)`. Os Shorts aparecem dentro do card do vídeo de origem, não em cards próprios. A divisão é registrada no vídeo e não se repete, nem depois de excluir os Shorts. Substitui o corte único por retenção.
 - **Excluir o que não foi publicado**: vídeos que não foram enviados a nenhuma rede (envio que falhou não conta) e arquivos próprios do canal ganham exclusão com confirmação. Vídeo em produção, enviado ou com Shorts fica; arquivo só sai quando nenhum vídeo do canal está em produção. Roteiro com vídeos não pode mais ser excluído.
 - **Canais em inglês e espanhol**: o idioma do canal (pt-BR, en-US ou es) define a voz Kokoro, a transcrição do QA, a descrição gerada pelo motor ("In this video", "Fuentes y licencias") e as tags. Novas vozes revisadas do mesmo modelo e arquivo já fixados: Heart, Bella e Michael (EN-US), Dora, Alex e Santa (ES). Em **Novo vídeo**, **Também em outros idiomas** orça e inicia o mesmo vídeo nos canais de outro idioma; a IA escreve cada roteiro direto no idioma, a partir da mesma referência e fontes.
@@ -29,6 +39,10 @@ podem quebrar a compatibilidade e avisam isso aqui.
 - CLI: `plan`, `produce` e `run --engine motion` (o caminho legado continua como padrão; `[motion] enabled = true` troca o padrão). Benchmark "Skills vs. Agentes de IA" em `examples/` e `docs/BENCHMARK_SKILLS_VS_AGENTES.md`; decisões e trade-offs em `docs/MOTOR_MOTION.md`; direção visual em `docs/DESIGN_SYSTEM_VIDEO.md`.
 
 ### Alterado
+- Gramática de movimento medida em filmes de referência (`docs/ANALISE_HYPERFRAMES.md`): chegada em cauda longa, stagger de 80 ms, entrada variando por cena, câmera que assenta em 2,4 s e para, conteúdo que não "respira".
+- Vertical: conteúdo em 230–1070 px e legendas em 1100–1320 px, acima do título, @ e áudio que o app desenha abaixo de 1330 px.
+- Fundo sem gradiente linear de tela cheia (banding no H.264); cartões com gradiente e borda iluminada no look `noite`.
+
 - O catálogo de imagens paradas e o Studio aceitam as diretivas do motion como layout padrão, então um roteiro escrito para o motor motion também é gerado pelo caminho legado.
 - `TtsEngine::synthesize_batch` permite que os motores carreguem o modelo uma vez por lote; o Kokoro implementa isso.
 - A fila do Studio gera os vídeos com o motor motion (`run --engine motion`); uma produção que usa um arquivo próprio do operador volta ao caminho legado no vídeo inteiro. O cartão da produção mostra qual motor foi usado. `engine:build` compila com `--release` e o Studio roda `target/release`.
@@ -51,6 +65,10 @@ podem quebrar a compatibilidade e avisam isso aqui.
 - Um briefing visual que pede uma gravação não bloqueia mais a versão final: toda cena recebe a composição explicativa (renderizador `framechester-editorial-v3`), um arquivo próprio continua opcional por cena e o assistente de roteiro é orientado a não pedir gravações. `requires_capture`, `PreparedVisuals.pending` e o atalho de adaptar roteiro foram removidos.
 
 ### Corrigido
+- "Não cabe": textos longos mas válidos deixam de reprovar (título que saía da área segura no horizontal/X, títulos de comparação de uma linha só, cartões de fluxo vertical, caixas de arquitetura, infográfico); o texto encolhe até o piso de legibilidade antes de reprovar.
+- Linha de retorno do fluxo horizontal atravessava a legenda; cores fixas na legenda, barra de progresso e janela de código ignoravam o look.
+- Traduções en/es das mensagens de "tentar de novo".
+
 - **Studio no celular**: o card de vídeo voltou a se adaptar à tela estreita (uma classe colada numa template string deixava de ser gerada pelo Tailwind e cortava os títulos em três letras); agora a thumbnail fica ao lado do título, que quebra em até 2 linhas, e mensagens, ações, redes e Shorts usam a largura toda. A tabela financeira vira blocos de rótulo e valor; o canal tem prioridade no cabeçalho (o estado do motor vira ícone); a gaveta fecha ao tocar fora; `summary`, checkboxes e links têm 44 px de toque; áreas seguras respeitadas. Verificado em 360, 390 e 1280 px, sem overflow horizontal e sem violações axe-core WCAG 2 A/AA.
 - **Instagram: `ProcessingFailedError` no upload deixa de ser final**: desenvolvedores relatam desde outubro de 2026 que o `rupload` responde 400 `ProcessingFailedError` para Reels mais longos (acima de ~30–40 s) enquanto o contêiner recebe o arquivo e termina de processar. Depois dessa resposta, o Studio consulta o contêiner e só publica se ele chegar a `FINISHED` e confirmar ter recebido todos os bytes (`video_status.uploading_phase.bytes_transferred`); caso contrário, nada é publicado e a mensagem orienta a publicar pelo app do Instagram. Outras recusas continuam finais.
 - **Instagram recusava o vídeo (`ProcessingFailedError`)**: o FFmpeg grava edit lists (`elst`) no MP4, pelo atraso do AAC e dos B-frames, e a especificação de vídeo do Instagram exige "no edit lists". O motor passa a renderizar com `-use_editlist 0` (motion e caminho antigo), e o Studio envia ao Instagram uma cópia sem edit list dos vídeos já prontos, com as amostras intactas, sem reencode e sem ferramenta externa.

@@ -12,6 +12,7 @@ pub mod compose;
 pub mod format;
 pub mod icons;
 pub mod log;
+pub mod look;
 pub mod narrate;
 pub mod qa;
 pub mod raster;

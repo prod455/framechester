@@ -4,6 +4,8 @@ import type { AreaCatalog } from './index.ts';
 
 export default {
   en: {
+    'Visual inválido: use noite, papel ou planta.': 'Invalid look: use noite, papel or planta.',
+    'Tentar de novo não está disponível.': 'Try again is not available.',
     'O Instagram recusou o arquivo (ProcessingFailedError) e não processou o vídeo; nada foi publicado. Publique este vídeo pelo app do Instagram.':
       'Instagram rejected the file (ProcessingFailedError) and did not process the video; nothing was published. Publish this video from the Instagram app.',
     'O Instagram recusou o arquivo (ProcessingFailedError) e não terminou de processar o vídeo em 5 minutos; nada foi publicado. Publique este vídeo pelo app do Instagram.':
@@ -527,6 +529,8 @@ export default {
       'Voice without commercial approval in this installation. Choose a Kokoro voice from the catalog (PT-BR, EN-US or ES) in Settings. Legacy Piper voices are blocked.',
   },
   es: {
+    'Visual inválido: use noite, papel ou planta.': 'Estilo inválido: usa noite, papel o planta.',
+    'Tentar de novo não está disponível.': 'Intentar de nuevo no está disponible.',
     'O Instagram recusou o arquivo (ProcessingFailedError) e não processou o vídeo; nada foi publicado. Publique este vídeo pelo app do Instagram.':
       'Instagram rechazó el archivo (ProcessingFailedError) y no procesó el video; no se publicó nada. Publica este video desde la app de Instagram.',
     'O Instagram recusou o arquivo (ProcessingFailedError) e não terminou de processar o vídeo em 5 minutos; nada foi publicado. Publique este vídeo pelo app do Instagram.':

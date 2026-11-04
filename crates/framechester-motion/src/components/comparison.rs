@@ -35,28 +35,37 @@ pub fn build(
         .decorative(),
     );
     let title_size = ctx.canvas.type_scale.heading * 0.78;
-    let title_height = title_size * 1.9;
+    // Room for three lines at body size: a long column title wraps instead of
+    // failing; the underline follows the taller of the two fitted titles so the
+    // columns stay aligned.
+    let title_room = (title_size * 1.9)
+        .max(ctx.canvas.type_scale.body * tokens::LINE_HEIGHT * 3.0)
+        .min(area.h * 0.3);
     let sides = [
         ("left", left_title, Role::Primary),
         ("right", right_title, Role::Secondary),
     ];
+    let mut title_bottom = area.y + title_size * 1.2;
     for (index, (group, title, role)) in sides.iter().enumerate() {
         let column = columns[index];
-        let colours = palette(*role);
-        let title_object = format!("{group}-title");
-        let (title_nodes, _) = ctx.fitted(
-            &title_object,
+        let (title_nodes, bottom) = ctx.fitted_display(
+            &format!("{group}-title"),
             title,
-            Rect::new(column.x, column.y, column.w, title_height),
+            Rect::new(column.x, column.y, column.w, title_room),
             title_size,
             ctx.canvas.type_scale.body,
-            tokens::WEIGHT_BOLD,
-            colours.stroke,
+            palette(*role).stroke,
             Anchor::Start,
             0.0,
         );
         nodes.extend(title_nodes);
-        let underline_y = column.y + title_height + gap * 0.3;
+        title_bottom = title_bottom.max(bottom);
+    }
+    let underline_y = title_bottom + gap * 0.3;
+    for (index, (group, _, role)) in sides.iter().enumerate() {
+        let column = columns[index];
+        let colours = palette(*role);
+        let title_object = format!("{group}-title");
         nodes.push(
             Node::new(
                 &title_object,

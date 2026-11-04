@@ -9,6 +9,9 @@ use crate::scene::{Anchor, Camera, Graph, Node, Shape, Z_CAPTIONS};
 use crate::text::Typesetter;
 use crate::tokens;
 use framechester_core::error::Result;
+use framechester_core::narration::{
+    assemble_scene, paragraph_breaks, segment_narration, SegmentAudio,
+};
 use framechester_core::storyboard::{
     Animation, Composition, Easing, Motion, Storyboard, StoryboardScene, Transition,
 };
@@ -26,6 +29,63 @@ pub struct ComposedScene {
     pub change_times: Vec<f32>,
     /// Objects the storyboard animates, in order of first appearance.
     pub animated_objects: Vec<String>,
+    /// What the viewer's eye is on when the scene ends: the cause of the transition out.
+    pub focal: Option<Focal>,
+    /// The first card (or object) to enter: where a `morph` into this scene lands.
+    pub opening: Option<Focal>,
+    /// Named objects a viewer can follow into the next scene (a `flood` hero).
+    pub followable: Vec<String>,
+}
+
+/// The last object to enter a scene, where a caused transition starts from.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Focal {
+    /// Its box at rest, in frame coordinates.
+    pub rect: Rect,
+    /// Its card's paint when it is a card (the colour an `expand` floods with).
+    pub paint: Option<String>,
+}
+
+/// A focal object of a composed scene, preferring cards: the latest entry with a box
+/// (`latest`, where the eye is at the end) or the earliest (where the scene opens).
+fn focal_of(graph: &Graph, entries: &HashMap<String, f32>, latest: bool) -> Option<Focal> {
+    let mut ordered: Vec<(&String, &f32)> = entries.iter().collect();
+    ordered.sort_by(|a, b| {
+        let order = b.1.partial_cmp(a.1).unwrap_or(std::cmp::Ordering::Equal);
+        // Ties (several entries on one cue) keep a stable, name-based order.
+        let order = order.then_with(|| a.0.cmp(b.0));
+        if latest {
+            order
+        } else {
+            order.reverse()
+        }
+    });
+    let card_paint = |object: &str| {
+        graph
+            .nodes
+            .iter()
+            .filter(|node| node.object == object && node.z < Z_CAPTIONS)
+            .find_map(|node| match &node.shape {
+                Shape::Rect { fill, .. } => tokens::card_role_name(fill)
+                    .map(|role| (node.bbox(), format!("@fill-top-{role}"))),
+                _ => None,
+            })
+    };
+    if let Some((object, _)) = ordered
+        .iter()
+        .find(|(object, _)| card_paint(object).is_some())
+    {
+        let (rect, paint) = card_paint(object)?;
+        return Some(Focal {
+            rect,
+            paint: Some(paint),
+        });
+    }
+    ordered.iter().find_map(|(object, _)| {
+        graph
+            .object_bbox(object)
+            .map(|rect| Focal { rect, paint: None })
+    })
 }
 
 #[derive(Debug, Clone)]
@@ -49,6 +109,60 @@ impl Composed {
 
 /// Duration of scene transitions, in seconds.
 pub const TRANSITION_SECS: f32 = 0.42;
+
+/// How long the seam into a scene lasts. Caused transitions take the durations measured
+/// on reference films: an object growing into the world 0.65 s, an iris 0.45 s, a blur
+/// swap 0.18 s out plus 0.18 s in, a dip three frames.
+pub fn transition_secs(transition: Transition) -> f32 {
+    match transition {
+        Transition::Expand => 0.65,
+        Transition::Iris => 0.45,
+        Transition::BlurSwap => 0.36,
+        Transition::DipCut => 0.1,
+        Transition::Morph => 0.5,
+        Transition::Flood => 0.6,
+        _ => TRANSITION_SECS,
+    }
+}
+
+/// Union of the boxes of an object's text nodes (its label lines), outside captions.
+fn text_bbox(graph: &Graph, object: &str) -> Option<Rect> {
+    graph
+        .nodes
+        .iter()
+        .filter(|node| node.object == object && node.is_text() && node.z < Z_CAPTIONS)
+        .map(Node::bbox)
+        .reduce(|a, b| {
+            let (x, y) = (a.x.min(b.x), a.y.min(b.y));
+            Rect::new(
+                x,
+                y,
+                a.right().max(b.right()) - x,
+                a.bottom().max(b.bottom()) - y,
+            )
+        })
+}
+
+/// `a` mixed towards `b` by `t` (both `#RRGGBB`), for a colour that travels with a shape.
+fn mix_hex(a: &str, b: &str, t: f32) -> String {
+    let channel =
+        |hex: &str, at: usize| u8::from_str_radix(&hex[1 + at..3 + at], 16).map_or(0.0, f32::from);
+    let mixed: Vec<String> = [0, 2, 4]
+        .into_iter()
+        .map(|at| {
+            let value = channel(a, at) + (channel(b, at) - channel(a, at)) * t.clamp(0.0, 1.0);
+            format!("{:02X}", value.round() as u8)
+        })
+        .collect();
+    format!("#{}", mixed.concat())
+}
+
+/// Opens a Gaussian blur group of `radius` px with a unique `id` (closed by `</g>`).
+fn open_blur(svg: &mut String, id: &str, radius: f32) {
+    svg.push_str(&format!(
+        "<defs><filter id='{id}' x='-10%' y='-10%' width='120%' height='120%'><feGaussianBlur stdDeviation='{radius:.2}'/></filter></defs><g filter='url(#{id})'>"
+    ));
+}
 
 fn heading(
     ctx: &mut Ctx<'_>,
@@ -84,13 +198,12 @@ fn heading(
         content.w - counter_w - canvas.gap,
         scale.heading * 1.5,
     );
-    let (heading_nodes, bottom) = ctx.fitted(
+    let (heading_nodes, bottom) = ctx.fitted_display(
         "heading",
         &scene.concept,
         heading_area,
         scale.heading * 0.72,
         scale.body * 0.9,
-        tokens::WEIGHT_BOLD,
         tokens::INK,
         Anchor::Start,
         0.0,
@@ -171,6 +284,7 @@ fn build_component(
         }
         Composition::CauseEffect { objects } => components::cause_effect::build(ctx, area, objects),
         Composition::Steps { objects } => components::steps::build(ctx, area, objects),
+        Composition::Freeform { elements } => components::freeform::build(ctx, area, elements),
         Composition::Character {
             character,
             pose,
@@ -186,6 +300,61 @@ fn build_component(
             index % 2 == 1,
         ),
     }
+}
+
+/// Seconds a line needs on screen to be read: 0.5 s plus 0.3 s a word (measured on
+/// reference films).
+pub fn reading_hold(words: usize) -> f32 {
+    0.5 + 0.3 * words as f32
+}
+
+/// Words of each text line of a graph, keyed by object and baseline: a line drawn as one
+/// node counts its words, a kinetic line (one node per word) counts its nodes.
+pub fn text_lines(graph: &Graph) -> HashMap<(String, i32), usize> {
+    let mut lines: HashMap<(String, i32), usize> = HashMap::new();
+    for node in graph
+        .nodes
+        .iter()
+        .filter(|node| node.readable && node.z < Z_CAPTIONS)
+    {
+        if let Shape::Text { y, content, .. } = &node.shape {
+            let words = content.split_whitespace().count();
+            *lines
+                .entry((node.object.clone(), (y + node.offset.1).round() as i32))
+                .or_insert(0) += words;
+        }
+    }
+    lines
+}
+
+/// The entry time brought forward so the text is readable for `hold` seconds before the
+/// scene ends; the fade-in itself takes `READ_MARGIN` before the text is legible.
+fn latest_entry(time: f32, hold: f32, duration: f32) -> f32 {
+    const READ_MARGIN: f32 = 0.15;
+    time.min((duration - hold - READ_MARGIN).max(0.0))
+}
+
+/// The reading hold of each object: its longest line, plus the cascade in which its text
+/// nodes enter (one step per node, `apply_animation`).
+fn reading_holds(graph: &Graph) -> HashMap<String, f32> {
+    let mut longest: HashMap<String, usize> = HashMap::new();
+    for ((object, _), words) in text_lines(graph) {
+        let entry = longest.entry(object).or_insert(0);
+        *entry = (*entry).max(words);
+    }
+    longest
+        .into_iter()
+        .map(|(object, words)| {
+            let nodes = graph
+                .nodes
+                .iter()
+                .filter(|node| node.object == object && node.is_text() && node.z < Z_CAPTIONS)
+                .count();
+            let cascade = framechester_core::presets::TITLE_CASCADE.stagger_secs
+                * nodes.saturating_sub(1) as f32;
+            (object, reading_hold(words) + cascade)
+        })
+        .collect()
 }
 
 /// Resolves every animation to a time, staggering those that land together.
@@ -246,6 +415,25 @@ fn resolve_times(scene: &StoryboardScene, hook: bool) -> Vec<(f32, &Animation)> 
     resolved
 }
 
+/// How `reveal` enters in a scene. Every scene entering the same way (and every
+/// element fading and sliding up) is a tell of generated video, so consecutive scenes
+/// rotate through three entrances.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Entrance {
+    /// Fade while sliding in from below (vertical) or the side.
+    Slide,
+    /// No translate: words sharpen in from a 6 px blur, cards fade in place.
+    Fade,
+    /// Arrive slightly large and settle.
+    Settle,
+}
+
+impl Entrance {
+    fn for_scene(scene_id: u32) -> Self {
+        [Self::Slide, Self::Fade, Self::Settle][scene_id as usize % 3]
+    }
+}
+
 fn nodes_of<'a>(graph: &'a mut Graph, target: &str) -> Vec<&'a mut Node> {
     graph
         .nodes
@@ -284,7 +472,13 @@ fn apply_animation(
                 } else {
                     time
                 };
-                node.props.reveal(at, duration, direction, animation.easing);
+                match Entrance::for_scene(scene.id) {
+                    Entrance::Slide => node.props.reveal(at, duration, direction, animation.easing),
+                    // Text sharpens in place; shapes (cards, rules) just appear.
+                    Entrance::Fade if node.is_text() => node.props.blur_in(at),
+                    Entrance::Fade => node.props.fade_in(at, duration),
+                    Entrance::Settle => node.props.settle(at, duration, animation.easing),
+                }
             }
             entries.entry(animation.target.clone()).or_insert(time);
         }
@@ -480,7 +674,13 @@ fn auto_animate_edges(
             edges.push((edge_id(last, first), at));
         }
     }
+    let holds = reading_holds(graph);
+    let readable = |object: &str, at: f32| match holds.get(object) {
+        Some(hold) => latest_entry(at, *hold, scene.duration_secs),
+        None => at,
+    };
     for (edge, at) in edges {
+        let at = readable(&edge, at);
         for node in nodes_of(graph, &edge) {
             node.props.draw(at, 0.45, Easing::EaseOut);
             node.props.hidden_until(at);
@@ -490,7 +690,7 @@ fn auto_animate_edges(
     if let Composition::Annotation { objects, .. } = &scene.composition {
         for object in objects {
             let note = format!("note:{}", object.id);
-            let at = entries.get(&object.id).copied().unwrap_or(0.0) + 0.3;
+            let at = readable(&note, entries.get(&object.id).copied().unwrap_or(0.0) + 0.3);
             for node in nodes_of(graph, &note) {
                 if matches!(node.shape, Shape::Path { .. }) {
                     node.props.draw(at, 0.4, Easing::EaseOut);
@@ -648,6 +848,12 @@ fn centre_vertically(mut nodes: Vec<Node>, area: Rect) -> Vec<Node> {
     nodes
 }
 
+/// Layout zooms tried, largest first, for compositions that lay out cards and rows.
+/// The component is rebuilt with type, icons and spacing scaled up, so it fills the
+/// frame instead of sitting small in it; the scene keeps the largest zoom whose layout
+/// fits the content area and passes every layout check.
+const ZOOMS: [f32; 4] = [1.6, 1.45, 1.3, 1.15];
+
 pub fn compose_scene(
     typesetter: &Typesetter,
     canvas: &Canvas,
@@ -655,8 +861,55 @@ pub fn compose_scene(
     index: usize,
     total: usize,
 ) -> ComposedScene {
+    let base = compose_at(typesetter, canvas, scene, index, total, 1.0);
+    let zoomable = matches!(
+        scene.composition,
+        Composition::FlowDiagram { .. }
+            | Composition::Comparison { .. }
+            | Composition::Timeline { .. }
+            | Composition::Architecture { .. }
+            | Composition::Annotation { .. }
+            | Composition::Infographic { .. }
+            | Composition::CauseEffect { .. }
+            | Composition::Steps { .. }
+    ) || (matches!(scene.composition, Composition::Chart { .. })
+        && !canvas.vertical);
+    // In a tall frame a zoomed chart widens its labels at the bars' expense.
+    // A scene that already has a problem keeps the reference layout, so its report
+    // describes the plain design and a zoom never hides or changes a defect.
+    if !zoomable
+        || base
+            .0
+            .issues
+            .iter()
+            .any(|issue| issue.severity == Severity::Critical)
+    {
+        return base.0;
+    }
+    for zoom in ZOOMS {
+        let (composed, fits) = compose_at(typesetter, canvas, scene, index, total, zoom);
+        if fits && composed.issues.is_empty() {
+            return composed;
+        }
+    }
+    base.0
+}
+
+/// One composition of the scene with the component laid out at `zoom`; also says
+/// whether the component stayed inside its area.
+fn compose_at(
+    typesetter: &Typesetter,
+    canvas: &Canvas,
+    scene: &StoryboardScene,
+    index: usize,
+    total: usize,
+    zoom: f32,
+) -> (ComposedScene, bool) {
     let mut ctx = Ctx::new(canvas, typesetter, scene.id);
-    let mut graph = Graph::default();
+    let mut graph = Graph {
+        look: canvas.look,
+        ..Graph::default()
+    };
     // A title or a character speaks for itself: no heading bar above it.
     let is_title = matches!(
         scene.composition,
@@ -669,13 +922,36 @@ pub fn compose_scene(
         graph.extend(nodes);
         area
     };
-    let component = build_component(&mut ctx, scene, area, index);
+    let component = if zoom == 1.0 {
+        build_component(&mut ctx, scene, area, index)
+    } else {
+        let zoomed = canvas.zoomed(zoom);
+        let mut zoomed_ctx = Ctx::new(&zoomed, typesetter, scene.id);
+        let nodes = build_component(&mut zoomed_ctx, scene, area, index);
+        ctx.issues.extend(zoomed_ctx.issues);
+        nodes
+    };
+    let fits = component
+        .iter()
+        .map(Node::bbox)
+        .filter(|bbox| bbox.w > 0.0 || bbox.h > 0.0)
+        .all(|bbox| area.inset(-2.0).contains(&bbox));
     graph.extend(centre_vertically(component, area));
     graph.extend(captions::build(&mut ctx, scene));
     let mut entries: HashMap<String, f32> = HashMap::new();
     let mut animated_objects = Vec::new();
     let hook = index == 0;
+    let holds = reading_holds(&graph);
     for (time, animation) in resolve_times(scene, hook) {
+        // A line must stay on screen long enough to be read before the scene ends: an
+        // entry the narration cues too late is brought forward just enough.
+        let time = match (animation.motion, holds.get(&animation.target)) {
+            (
+                Motion::Reveal | Motion::Pop | Motion::Grow | Motion::Type | Motion::Draw,
+                Some(hold),
+            ) => latest_entry(time, *hold, scene.duration_secs),
+            _ => time,
+        };
         if !animated_objects.contains(&animation.target) {
             animated_objects.push(animation.target.clone());
         }
@@ -693,23 +969,31 @@ pub fn compose_scene(
     ));
     check_layout(&mut ctx, &graph);
     let change_times = graph.change_times();
-    ComposedScene {
-        id: scene.id,
-        start_secs: scene.start_secs,
-        duration_secs: scene.duration_secs,
-        transition: scene.transition,
-        graph,
-        issues: ctx.issues,
-        change_times,
-        animated_objects,
-    }
+    let focal = focal_of(&graph, &entries, true);
+    let opening = focal_of(&graph, &entries, false);
+    (
+        ComposedScene {
+            id: scene.id,
+            start_secs: scene.start_secs,
+            duration_secs: scene.duration_secs,
+            transition: scene.transition,
+            graph,
+            issues: ctx.issues,
+            change_times,
+            animated_objects,
+            focal,
+            opening,
+            followable: framechester_core::storyboard::followable_ids(&scene.composition),
+        },
+        fits,
+    )
 }
 
 /// Composes every scene for the storyboard's format. Scenes need real timing
 /// (`duration_secs > 0`) for cues to resolve; without it, cues fall back to the start.
 pub fn compose(storyboard: &Storyboard, typesetter: &Typesetter) -> Result<Composed> {
     storyboard.validate()?;
-    let canvas = Canvas::for_format(storyboard.format);
+    let canvas = Canvas::for_storyboard(storyboard.format, storyboard.look.unwrap_or_default());
     let total = storyboard.scenes.len();
     let scenes = storyboard
         .scenes
@@ -718,6 +1002,42 @@ pub fn compose(storyboard: &Storyboard, typesetter: &Typesetter) -> Result<Compo
         .map(|(index, scene)| compose_scene(typesetter, &canvas, scene, index, total))
         .collect();
     Ok(Composed { canvas, scenes })
+}
+
+/// Critical layout issues of a planned (not yet narrated) storyboard, found in
+/// milliseconds instead of after the TTS and the full render. Text layout does not
+/// depend on audio timing, so each scene is composed with estimated word timings
+/// (`ESTIMATED_SECS_PER_WORD`); the storyboard itself is not changed.
+pub fn layout_preflight(storyboard: &Storyboard, typesetter: &Typesetter) -> Vec<LayoutIssue> {
+    const ESTIMATED_SECS_PER_WORD: f32 = 0.33;
+    let canvas = Canvas::for_storyboard(storyboard.format, storyboard.look.unwrap_or_default());
+    let total = storyboard.scenes.len();
+    let mut issues = Vec::new();
+    for (index, scene) in storyboard.scenes.iter().enumerate() {
+        let mut scene = scene.clone();
+        let texts = segment_narration(&scene.narration);
+        let audio: Vec<SegmentAudio> = texts
+            .iter()
+            .map(|text| SegmentAudio {
+                duration_secs: text.split_whitespace().count().max(1) as f32
+                    * ESTIMATED_SECS_PER_WORD,
+                leading_silence_secs: 0.0,
+                trailing_silence_secs: 0.0,
+                pauses: Vec::new(),
+            })
+            .collect();
+        let breaks = paragraph_breaks(&scene.narration, &texts);
+        let (segments, duration) = assemble_scene(&texts, &audio, &breaks);
+        scene.segments = segments;
+        scene.duration_secs = duration;
+        issues.extend(
+            compose_scene(typesetter, &canvas, &scene, index, total)
+                .issues
+                .into_iter()
+                .filter(|issue| issue.severity == Severity::Critical),
+        );
+    }
+    issues
 }
 
 /// SVG of the whole frame at absolute time `t`, including transitions between scenes.
@@ -749,7 +1069,7 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
     let mut svg = String::with_capacity(32 * 1024);
     svg.push_str(&format!(
         "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>{}<g font-family='{}'>",
-        Graph::background_svg(width, height, None),
+        Graph::background_svg(width, height, None, t, crate::look::theme(canvas.look)),
         font_family
     ));
     let index = composed
@@ -760,15 +1080,33 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
     if let Some(scene) = composed.scenes.get(index) {
         let local = (t - scene.start_secs).max(0.0);
         let progress = if index > 0 && scene.transition != Transition::Cut {
-            (local / TRANSITION_SECS).clamp(0.0, 1.0)
+            (local / transition_secs(scene.transition)).clamp(0.0, 1.0)
         } else {
             1.0
         };
         if progress < 1.0 {
+            let theme = crate::look::theme(canvas.look);
             let previous = &composed.scenes[index - 1];
+            // The object both scenes show, and where it sits in each.
+            let hero =
+                framechester_core::storyboard::hero_of(&previous.followable, &scene.followable)
+                    .and_then(|id| {
+                        // Its label is what the eye follows: text box to text box.
+                        let from = text_bbox(&previous.graph, &id)?;
+                        let to = text_bbox(&scene.graph, &id)?;
+                        Some((id, from, to))
+                    });
+            // A morph needs a card on both sides; without one the stage hands over.
+            let transition = match scene.transition {
+                Transition::Morph if previous.focal.is_none() || scene.opening.is_none() => {
+                    Transition::BlurSwap
+                }
+                Transition::Flood if hero.is_none() => Transition::BlurSwap,
+                other => other,
+            };
             let eased = crate::anim::ease(Easing::EaseInOut, progress);
             let previous_t = previous.duration_secs;
-            match scene.transition {
+            match transition {
                 Transition::Push => {
                     let shift = if canvas.vertical {
                         height as f32
@@ -812,6 +1150,211 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
                     scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, eased);
                 }
                 Transition::Cut => scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, 1.0),
+                Transition::DipCut => {
+                    // The outgoing frame holds three frames, darkened, then the hard cut.
+                    previous
+                        .graph
+                        .svg_inner(&mut svg, previous_t, 0.0, 0.0, 1.0, 1.0);
+                    svg.push_str(&format!(
+                        "<rect width='{width}' height='{height}' fill='#000000' opacity='0.4'/>"
+                    ));
+                }
+                Transition::BlurSwap => {
+                    // Out: fade with blur growing to 8 px; in: blur shrinking from 8 px.
+                    // Only the content swaps; the ground under both never cuts.
+                    if progress < 0.5 {
+                        let out = progress / 0.5;
+                        open_blur(&mut svg, "fc-swap", 8.0 * out);
+                        previous
+                            .graph
+                            .svg_inner(&mut svg, previous_t, 0.0, 0.0, 1.0, 1.0 - out);
+                    } else {
+                        let into = (progress - 0.5) / 0.5;
+                        open_blur(&mut svg, "fc-swap", 8.0 * (1.0 - into));
+                        scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, into);
+                    }
+                    svg.push_str("</g>");
+                }
+                Transition::Iris => {
+                    // The next world opens in a circle from where the eye already is,
+                    // accelerating as it goes (a zoom through eases in).
+                    let (cx, cy) = previous
+                        .focal
+                        .as_ref()
+                        .map_or((width as f32 / 2.0, height as f32 / 2.0), |focal| {
+                            (focal.rect.cx(), focal.rect.cy())
+                        });
+                    let reach = [(0.0, 0.0), (width as f32, 0.0), (0.0, height as f32)]
+                        .into_iter()
+                        .chain([(width as f32, height as f32)])
+                        .map(|(x, y)| ((x - cx).powi(2) + (y - cy).powi(2)).sqrt())
+                        .fold(0.0f32, f32::max);
+                    let radius = reach * crate::anim::ease(Easing::EaseIn, progress);
+                    previous
+                        .graph
+                        .svg_inner(&mut svg, previous_t, 0.0, 0.0, 1.0, 1.0);
+                    svg.push_str(&format!(
+                        "<defs><clipPath id='fc-iris'><circle cx='{cx:.1}' cy='{cy:.1}' r='{radius:.1}'/></clipPath></defs><g clip-path='url(#fc-iris)'>{}",
+                        Graph::background_svg(width, height, None, t, theme)
+                    ));
+                    scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, 1.0);
+                    svg.push_str("</g>");
+                }
+                Transition::Flood => {
+                    let Some((id, from, to)) = &hero else {
+                        unreachable!("a flood without a hero falls back to a blur swap");
+                    };
+                    let is_hero = |node: &Node| &node.object == id;
+                    let rest = |node: &Node| &node.object != id;
+                    // The ground floods with the hero's colour and recedes as the new
+                    // scene builds; the hero never leaves the screen.
+                    let wash = previous
+                        .graph
+                        .nodes
+                        .iter()
+                        .filter(|node| is_hero(node))
+                        .find_map(|node| match &node.shape {
+                            Shape::Rect { fill, .. } => tokens::card_role_name(fill),
+                            _ => None,
+                        })
+                        .and_then(|name| {
+                            tokens::ROLES
+                                .into_iter()
+                                .find(|role| tokens::role_name(*role) == name)
+                        })
+                        // A neutral hero floods with the look's accent, its one focus colour.
+                        .filter(|role| *role != framechester_core::storyboard::Role::Neutral)
+                        .map_or(tokens::ACCENT, |role| tokens::palette(role).stroke);
+                    let flood = crate::anim::ease(Easing::EaseInOut, (progress / 0.5).min(1.0))
+                        * (1.0 - ((progress - 0.5) / 0.5).clamp(0.0, 1.0));
+                    svg.push_str(&format!(
+                        "<rect id='fc-flood' width='{width}' height='{height}' fill='{}' opacity='{:.3}'/>",
+                        theme.paint(wash),
+                        0.32 * flood
+                    ));
+                    let leave = 1.0 - (progress / 0.4).min(1.0);
+                    if leave > 0.0 {
+                        previous
+                            .graph
+                            .svg_nodes(&mut svg, previous_t, 0.0, 0.0, 1.0, 1.0, leave, &rest);
+                    }
+                    let build = ((progress - 0.4) / 0.6).clamp(0.0, 1.0);
+                    if build > 0.0 {
+                        scene
+                            .graph
+                            .svg_nodes(&mut svg, local, 0.0, 0.0, 1.0, 1.0, build, &rest);
+                    }
+                    // The hero travels and rescales into its new place, then hands over
+                    // to the incoming scene's own copy of itself.
+                    let travel = crate::anim::ease(Easing::EaseInOut, (progress / 0.85).min(1.0));
+                    // Uniform scale from label height to label height (text never
+                    // stretches), so the label lands on the new label.
+                    let fit = to.h / from.h.max(1.0);
+                    let scale = 1.0 + (fit - 1.0) * travel;
+                    let centre = (
+                        from.cx() + (to.cx() - from.cx()) * travel,
+                        from.cy() + (to.cy() - from.cy()) * travel,
+                    );
+                    let handover = ((progress - 0.8) / 0.2).clamp(0.0, 1.0);
+                    previous.graph.svg_nodes(
+                        &mut svg,
+                        previous_t,
+                        centre.0 - scale * from.cx(),
+                        centre.1 - scale * from.cy(),
+                        scale,
+                        scale,
+                        1.0 - handover,
+                        &is_hero,
+                    );
+                    if handover > 0.0 {
+                        scene
+                            .graph
+                            .svg_nodes(&mut svg, local, 0.0, 0.0, 1.0, 1.0, handover, &is_hero);
+                    }
+                }
+                Transition::Morph => {
+                    let (Some(from), Some(to)) = (previous.focal.as_ref(), scene.opening.as_ref())
+                    else {
+                        unreachable!("a morph without both cards falls back to a blur swap");
+                    };
+                    // The container reshapes on a long-tail arrival while the old content
+                    // leaves fast; the new content appears in it and the shell dissolves
+                    // once it sits exactly where the incoming card is.
+                    let shape = crate::anim::ease(
+                        framechester_core::presets::EASE_ARRIVE,
+                        (progress / 0.8).min(1.0),
+                    );
+                    let lerp = |a: f32, b: f32| a + (b - a) * shape;
+                    let rect = Rect::new(
+                        lerp(from.rect.x, to.rect.x),
+                        lerp(from.rect.y, to.rect.y),
+                        lerp(from.rect.w, to.rect.w),
+                        lerp(from.rect.h, to.rect.h),
+                    );
+                    let colour = mix_hex(
+                        theme.flood(from.paint.as_deref()),
+                        theme.flood(to.paint.as_deref()),
+                        shape,
+                    );
+                    let leave = 1.0 - (progress / 0.35).min(1.0);
+                    if leave > 0.0 {
+                        previous
+                            .graph
+                            .svg_inner(&mut svg, previous_t, 0.0, 0.0, 1.0, leave);
+                    }
+                    let shell = 1.0 - ((progress - 0.75) / 0.25).clamp(0.0, 1.0);
+                    svg.push_str(&format!(
+                        "<rect id='fc-morph' x='{:.1}' y='{:.1}' width='{:.1}' height='{:.1}' rx='{:.1}' fill='{colour}' opacity='{shell:.3}'/>",
+                        rect.x, rect.y, rect.w, rect.h, canvas.radius,
+                    ));
+                    let enter = ((progress - 0.5) / 0.5).clamp(0.0, 1.0);
+                    if enter > 0.0 {
+                        scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, enter);
+                    }
+                }
+                Transition::Expand => {
+                    let focal = previous.focal.as_ref();
+                    let flood = theme.flood(focal.and_then(|focal| focal.paint.as_deref()));
+                    let from = focal.map_or(
+                        Rect::new(
+                            width as f32 * 0.4,
+                            height as f32 * 0.4,
+                            width as f32 * 0.2,
+                            height as f32 * 0.2,
+                        ),
+                        |focal| focal.rect,
+                    );
+                    // The card grows past the frame (its radius shrinking) while the
+                    // rest leaves; once it is the ground, the next scene enters on it
+                    // and its colour settles into the look's ground.
+                    let grow = crate::anim::ease(Easing::EaseInOut, (progress / 0.7).min(1.0));
+                    let lerp = |a: f32, b: f32| a + (b - a) * grow;
+                    let rect = Rect::new(
+                        lerp(from.x, -(width as f32) * 0.02),
+                        lerp(from.y, -(height as f32) * 0.02),
+                        lerp(from.w, width as f32 * 1.04),
+                        lerp(from.h, height as f32 * 1.04),
+                    );
+                    let rest = 1.0 - (progress / 0.45).min(1.0);
+                    if rest > 0.0 {
+                        previous
+                            .graph
+                            .svg_inner(&mut svg, previous_t, 0.0, 0.0, 1.0, rest);
+                    }
+                    let settle = 1.0 - ((progress - 0.7) / 0.3).clamp(0.0, 1.0);
+                    svg.push_str(&format!(
+                        "<rect x='{:.1}' y='{:.1}' width='{:.1}' height='{:.1}' rx='{:.1}' fill='{flood}' opacity='{settle:.3}'/>",
+                        rect.x,
+                        rect.y,
+                        rect.w,
+                        rect.h,
+                        canvas.radius * (1.0 - grow),
+                    ));
+                    let enter = ((progress - 0.55) / 0.45).clamp(0.0, 1.0);
+                    if enter > 0.0 {
+                        scene.graph.svg_inner(&mut svg, local, 0.0, 0.0, 1.0, enter);
+                    }
+                }
                 Transition::WhipPan => {
                     // Fast sideways slide; mid-whip both frames stretch
                     // horizontally and dip in opacity (simulated motion blur:
@@ -848,10 +1391,11 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
     // how far along they are. Decorative, above content, below nothing else.
     let total = composed.total_duration_secs().max(0.1);
     let done = (t / total).clamp(0.0, 1.0) * width as f32;
+    let palette = crate::look::theme(canvas.look);
     svg.push_str(&format!(
-        "<g id='fc-progress'><rect x='0' y='0' width='{width}' height='6' fill='#FFFFFF' opacity='0.10'/><rect x='0' y='0' width='{done:.1}' height='6' fill='{}'/><circle cx='{done:.1}' cy='3' r='5' fill='{}'/></g>",
-        tokens::ACCENT,
-        tokens::ACCENT,
+        "<g id='fc-progress'><rect x='0' y='0' width='{width}' height='6' fill='{}' opacity='0.18'/><rect x='0' y='0' width='{done:.1}' height='6' fill='{accent}'/><circle cx='{done:.1}' cy='3' r='5' fill='{accent}'/></g>",
+        palette.paint(tokens::INK),
+        accent = palette.paint(tokens::ACCENT),
     ));
     svg.push_str("</g></svg>");
     svg
@@ -861,7 +1405,6 @@ pub fn frame_svg(composed: &Composed, t: f32, font_family: &str) -> String {
 mod tests {
     use super::*;
     use framechester_core::domain::Scene;
-    use framechester_core::narration::{assemble_scene, segment_narration, SegmentAudio};
     use framechester_core::planner::plan_scene;
     use framechester_core::storyboard::*;
 
@@ -1094,8 +1637,8 @@ mod tests {
         };
         let settled = frame_svg(&composed, 0.6, tokens::FONT_SANS);
         assert!(
-            max_scale(&settled) < 1.02,
-            "the punch-in has settled after 0.5 s; only the slow camera remains"
+            max_scale(&settled) < 1.04,
+            "the punch-in (1.05) has settled after 0.5 s; only the camera move remains"
         );
         let storyboard = Storyboard {
             version: SCHEMA_VERSION,
@@ -1104,6 +1647,7 @@ mod tests {
             format: VideoFormat::Vertical,
             language: "pt-BR".into(),
             scenes: vec![first, second],
+            look: None,
             source_hash: None,
         };
         let checks = crate::qa::hook_checks(&storyboard, &composed);
@@ -1296,5 +1840,553 @@ mod tests {
             .graph
             .svg(5.0, canvas.width, canvas.height, tokens::FONT_SANS);
         assert!(!svg.contains('…'));
+    }
+
+    #[test]
+    fn long_but_valid_texts_fit_in_every_format() {
+        let typesetter = Typesetter::new().unwrap();
+        let briefs: Vec<(String, String)> = vec![
+            ("#pergunta Por que os modelos de linguagem alucinam quando não sabem a resposta correta para uma pergunta factual?".into(), "Por que alucinam? Vamos ver.".into()),
+            ("#fluxo Usuário envia a pergunta [user] -> Modelo recupera documentos relevantes [search] -> Modelo gera a resposta final [brain] -> Verificador confere as fontes citadas [check] -> Resposta entregue ao usuário".into(), "O usuario envia, o modelo recupera, gera, o verificador confere e entrega.".into()),
+            ("#comparacao Modelos pequenos rodando localmente: baratos e privados; latência baixa no dispositivo; qualidade menor em raciocínio | Modelos grandes na nuvem: mais capazes em tarefas complexas; custo por token alto; dependem de conexão".into(), "Modelos pequenos sao baratos. Modelos grandes sao mais capazes.".into()),
+            ("#linha-do-tempo 1950: Turing propõe o jogo da imitação; 1997: Deep Blue vence Kasparov no xadrez; 2012: AlexNet revoluciona visão computacional; 2017: Transformers mudam o processamento de linguagem; 2022: ChatGPT populariza a IA generativa".into(), "Em 1950 Turing. Em 1997 Deep Blue. Em 2012 AlexNet. Em 2017 Transformers. Em 2022 ChatGPT.".into()),
+            ("#transformacao Prompt gigante com todas as regras misturadas; Instruções repetidas em cada conversa; Contexto desperdiçado => Skill versionada e reutilizável entre projetos [skill]".into(), "O prompt gigante vira uma skill versionada.".into()),
+            ("#causa Dados de treino desatualizados ou incompletos => O modelo preenche lacunas com padrões estatísticos => Respostas confiantes porém incorretas => Usuários perdem a confiança no sistema".into(), "Dados desatualizados, lacunas preenchidas, respostas incorretas, perda de confianca.".into()),
+            ("#passos Defina claramente o objetivo da tarefa antes de começar; Escolha o modelo adequado ao orçamento disponível; Teste com exemplos reais e meça os resultados; Itere no prompt até atingir a qualidade desejada".into(), "Defina, escolha, teste e itere.".into()),
+            ("#infografico Impacto da IA no trabalho em 2025 | Produtividade=40%: ganho médio em tarefas de escrita [chart]; Empresas=72%: já adotam alguma ferramenta de IA [check]; Empregos [shield]: novas funções surgem enquanto outras desaparecem".into(), "Produtividade sobe 40%, 72% das empresas adotam.".into()),
+            ("#anotacao projeto/src/main.rs: ponto de entrada da aplicação que inicializa o servidor; projeto/Cargo.toml: dependências e metadados do pacote Rust; projeto/tests/integracao.rs: testes de integração ponta a ponta".into(), "O main inicializa, o Cargo lista dependencias, os testes cobrem.".into()),
+            ("#arquitetura Frontend/Interface web em React; Frontend/Aplicativo móvel nativo; Backend/API REST de autenticação; Backend/Fila de processamento assíncrono; Interface web em React -> API REST de autenticação; Aplicativo móvel nativo -> Fila de processamento assíncrono".into(), "A interface fala com a API e o app com a fila.".into()),
+            ("#personagem apresentador | explicar | Uma skill é como uma receita detalhada que o agente segue passo a passo sempre que encontra aquela tarefa específica".into(), "Uma skill e uma receita.".into()),
+            ("#fluxo Coleta de dados brutos de várias fontes heterogêneas -> Limpeza e normalização dos registros duplicados -> Treinamento do modelo com validação cruzada -> Avaliação em conjunto de teste independente -> Implantação em produção com monitoramento contínuo -> Retreino periódico com dados novos".into(), "Coleta, limpeza, treinamento, avaliacao, implantacao e retreino.".into()),
+            ("#linha-do-tempo 1943: McCulloch e Pitts descrevem o primeiro modelo matemático de neurônio artificial; 1958: Rosenblatt apresenta o perceptron como máquina capaz de aprender; 1986: Rumelhart populariza a retropropagação do erro em redes multicamadas; 2006: Hinton reacende o interesse em redes profundas pré-treinadas; 2012: AlexNet vence o ImageNet por larga margem; 2017: o artigo Attention Is All You Need apresenta o Transformer".into(), "Em 1943, 1958, 1986, 2006, 2012 e 2017.".into()),
+            ("#personagem cientista | explicar | Quando treinamos uma rede neural, ajustamos milhões de pesos para reduzir o erro medido em exemplos que o modelo nunca viu antes".into(), "Treinar e ajustar pesos.".into()),
+            ("#citacao A ciência é muito mais uma maneira de pensar do que um corpo de conhecimentos, e essa maneira de pensar exige ceticismo constante | Carl Sagan".into(), "A ciencia e uma maneira de pensar.".into()),
+        ];
+        for format in [
+            VideoFormat::Vertical,
+            VideoFormat::Horizontal,
+            VideoFormat::X,
+        ] {
+            let canvas = Canvas::for_format(format);
+            for (brief, narration) in &briefs {
+                let scene = narrated(brief, narration);
+                let composed = compose_scene(&typesetter, &canvas, &scene, 1, 6);
+                assert!(
+                    composed.issues.is_empty(),
+                    "{format:?} {}: {:?}",
+                    scene.composition.kind_name(),
+                    composed.issues
+                );
+            }
+        }
+    }
+
+    fn freeform_scene(elements: serde_json::Value, narration: &str) -> StoryboardScene {
+        let mut scene = narrated("#pergunta Cena livre?", narration);
+        scene.composition = serde_json::from_value(serde_json::json!({
+            "kind": "freeform",
+            "elements": elements,
+        }))
+        .unwrap();
+        scene.animations.clear();
+        scene.captions.emphasis.clear();
+        framechester_core::planner::complete_scene(&mut scene);
+        scene.validate().unwrap();
+        scene
+    }
+
+    #[test]
+    fn the_freeform_example_composes_in_every_format_and_reveals_on_the_spoken_word() {
+        let typesetter = Typesetter::new().unwrap();
+        let mut example: Storyboard =
+            serde_json::from_str(include_str!("../../../examples/freeform.storyboard.json"))
+                .unwrap();
+        for scene in &mut example.scenes {
+            framechester_core::planner::complete_scene(scene);
+        }
+        example.validate().unwrap();
+        for format in [
+            VideoFormat::Vertical,
+            VideoFormat::Horizontal,
+            VideoFormat::X,
+        ] {
+            example.format = format;
+            let issues = layout_preflight(&example, &typesetter);
+            assert!(issues.is_empty(), "{format:?}: {issues:?}");
+        }
+        let terra = example.scenes[0]
+            .animations
+            .iter()
+            .find(|animation| animation.target == "terra")
+            .unwrap();
+        assert_eq!(
+            terra.at,
+            Cue::Word {
+                word: "terra".into(),
+                occurrence: 0
+            },
+            "an element enters when its text is spoken"
+        );
+        assert!(example.scenes[0]
+            .animations
+            .iter()
+            .any(|animation| animation.target == "luz" && animation.motion == Motion::Draw));
+    }
+
+    #[test]
+    fn freeform_text_that_does_not_fit_or_overlaps_is_reported() {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Vertical);
+        let cramped = freeform_scene(
+            serde_json::json!([{ "id": "nota", "shape": { "kind": "text", "area": { "x": 0, "y": 0, "w": 8, "h": 3 }, "text": "Um texto longo demais para uma caixa minuscula" } }]),
+            "Um texto longo demais.",
+        );
+        let composed = compose_scene(&typesetter, &canvas, &cramped, 1, 2);
+        assert!(
+            composed
+                .issues
+                .iter()
+                .any(|issue| issue.code == "text_overflow"),
+            "{:?}",
+            composed.issues
+        );
+        let stacked = freeform_scene(
+            serde_json::json!([
+                { "id": "a", "shape": { "kind": "text", "area": { "x": 0, "y": 10, "w": 100, "h": 20 }, "text": "Primeira frase aqui" } },
+                { "id": "b", "shape": { "kind": "text", "area": { "x": 0, "y": 10, "w": 100, "h": 20 }, "text": "Segunda frase aqui" } }
+            ]),
+            "Primeira frase e segunda frase.",
+        );
+        let composed = compose_scene(&typesetter, &canvas, &stacked, 1, 2);
+        assert!(
+            composed
+                .issues
+                .iter()
+                .any(|issue| issue.code == "text_intersection"),
+            "{:?}",
+            composed.issues
+        );
+    }
+
+    #[test]
+    fn layout_preflight_finds_overflow_before_narration() {
+        let typesetter = Typesetter::new().unwrap();
+        let lines = (0..18)
+            .map(|index| format!("linha_{index} = calcula(valor_{index})"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let mut ok = narrated(
+            "#passos Confira a amostra; Leia o intervalo",
+            "Confira a amostra e leia o intervalo.",
+        );
+        let mut bad = narrated(
+            &format!("#codigo python | demo.py\n{lines}"),
+            "Dezoito linhas sao demais.",
+        );
+        for scene in [&mut ok, &mut bad] {
+            scene.segments.clear();
+            scene.duration_secs = 0.0;
+        }
+        bad.id = 2;
+        let storyboard = |scenes: Vec<StoryboardScene>| Storyboard {
+            version: SCHEMA_VERSION,
+            title: "Preflight".into(),
+            channel: "Canal".into(),
+            format: VideoFormat::X,
+            language: "pt-BR".into(),
+            scenes,
+            look: None,
+            source_hash: None,
+        };
+        assert!(layout_preflight(&storyboard(vec![ok.clone()]), &typesetter).is_empty());
+        let storyboard = storyboard(vec![ok, bad]);
+        let issues = layout_preflight(&storyboard, &typesetter);
+        assert!(
+            issues
+                .iter()
+                .any(|issue| issue.scene_id == 2 && issue.code == "code_overflow"),
+            "{issues:?}"
+        );
+    }
+
+    #[test]
+    fn consecutive_scenes_enter_differently() {
+        let kinds: Vec<Entrance> = (1..=3).map(Entrance::for_scene).collect();
+        assert_ne!(kinds[0], kinds[1]);
+        assert_ne!(kinds[1], kinds[2]);
+        assert_ne!(kinds[0], kinds[2]);
+    }
+
+    #[test]
+    fn vertical_text_stays_above_the_platform_overlay() {
+        // Shorts/Reels/TikTok draw title, handle and audio over everything below 1330 px.
+        let canvas = Canvas::for_format(VideoFormat::Vertical);
+        assert!(canvas.content.bottom() <= 1330.0);
+        assert!(canvas.captions.bottom() <= 1330.0);
+        assert!(canvas.content.y >= 168.0);
+    }
+
+    #[test]
+    fn every_component_composes_in_every_look_and_format() {
+        let typesetter = Typesetter::new().unwrap();
+        for look in Look::ALL {
+            for format in [
+                VideoFormat::Vertical,
+                VideoFormat::Horizontal,
+                VideoFormat::X,
+            ] {
+                let canvas = Canvas::for_storyboard(format, look);
+                for (brief, narration) in sample_briefs() {
+                    let scene = narrated(brief, narration);
+                    let composed = compose_scene(&typesetter, &canvas, &scene, 1, 6);
+                    assert!(
+                        composed.issues.is_empty(),
+                        "{look:?} {format:?} {}: {:?}",
+                        scene.composition.kind_name(),
+                        composed.issues
+                    );
+                    let svg =
+                        composed
+                            .graph
+                            .svg(2.0, canvas.width, canvas.height, tokens::FONT_SANS);
+                    assert!(
+                        !svg.contains("'@") && !svg.contains("\"@"),
+                        "{look:?} {format:?} {}: unresolved paint",
+                        scene.composition.kind_name()
+                    );
+                    assert!(resvg::usvg::Tree::from_str(&svg, typesetter.options()).is_ok());
+                }
+            }
+        }
+    }
+
+    fn seam(transition: Transition) -> (Composed, f32) {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Horizontal);
+        let first = narrated(
+            "#fluxo Objetivo -> Decidir -> Agir -> Observar",
+            "O agente recebe o objetivo, decide, age e observa.",
+        );
+        let mut second = narrated("#pergunta E se a skill decidir?", "E se a skill decidir?");
+        second.id = 2;
+        second.transition = transition;
+        second.start_secs = first.duration_secs;
+        let seam = first.duration_secs;
+        (
+            Composed {
+                canvas,
+                scenes: vec![
+                    compose_scene(&typesetter, &canvas, &first, 1, 3),
+                    compose_scene(&typesetter, &canvas, &second, 2, 3),
+                ],
+            },
+            seam,
+        )
+    }
+
+    #[test]
+    fn the_focal_object_is_the_last_card_to_enter() {
+        let (composed, _) = seam(Transition::Iris);
+        let focal = composed.scenes[0]
+            .focal
+            .as_ref()
+            .expect("a flow has a focal card");
+        let observar = composed.scenes[0].graph.object_bbox("observar").unwrap();
+        assert!(
+            focal.rect.intersects(&observar),
+            "{focal:?} vs {observar:?}"
+        );
+        assert_eq!(
+            focal
+                .paint
+                .as_deref()
+                .map(|paint| paint.starts_with("@fill-top-")),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn caused_transitions_start_from_what_is_on_screen() {
+        // Iris: the clip circle is centred on the outgoing focal object.
+        let (composed, at) = seam(Transition::Iris);
+        let focal = composed.scenes[0].focal.clone().unwrap();
+        let svg = frame_svg(&composed, at + 0.2, tokens::FONT_SANS);
+        assert!(
+            svg.contains(&format!(
+                "<circle cx='{:.1}' cy='{:.1}'",
+                focal.rect.cx(),
+                focal.rect.cy()
+            )),
+            "iris opens from the focal point"
+        );
+        // Expand: the focal card's own colour floods the frame.
+        let (composed, at) = seam(Transition::Expand);
+        let theme = crate::look::theme(composed.canvas.look);
+        let paint = composed.scenes[0].focal.as_ref().unwrap().paint.as_deref();
+        let flood = theme.flood(paint);
+        assert_eq!(
+            Some(flood),
+            paint.map(|paint| theme.paint(paint)),
+            "the card's own colour"
+        );
+        let svg = frame_svg(&composed, at + 0.45, tokens::FONT_SANS);
+        assert!(
+            svg.contains(&format!("fill='{flood}'")),
+            "expand floods with the card"
+        );
+        // Blur swap: content blurs; the ground is drawn once and never fades.
+        let (composed, at) = seam(Transition::BlurSwap);
+        let svg = frame_svg(&composed, at + 0.1, tokens::FONT_SANS);
+        assert!(svg.contains("feGaussianBlur"));
+        assert_eq!(svg.matches("id='fc-bg'").count(), 1);
+        // Dip cut: three darkened frames of the outgoing scene, then the hard cut.
+        let (composed, at) = seam(Transition::DipCut);
+        assert!(frame_svg(&composed, at + 0.05, tokens::FONT_SANS).contains("opacity='0.4'"));
+        assert!(!frame_svg(&composed, at + 0.12, tokens::FONT_SANS)
+            .contains("fill='#000000' opacity='0.4'"));
+        for transition in [
+            Transition::Expand,
+            Transition::Iris,
+            Transition::BlurSwap,
+            Transition::DipCut,
+        ] {
+            let (composed, at) = seam(transition);
+            let svg = frame_svg(
+                &composed,
+                at + transition_secs(transition) * 0.5,
+                tokens::FONT_SANS,
+            );
+            assert!(
+                resvg::usvg::Tree::from_str(&svg, Typesetter::new().unwrap().options()).is_ok()
+            );
+        }
+    }
+
+    fn sample_film(format: VideoFormat, look: Look) -> (Storyboard, Composed) {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_storyboard(format, look);
+        let mut scenes = Vec::new();
+        let mut start = 0.0;
+        for (index, (brief, narration)) in sample_briefs().into_iter().enumerate() {
+            let mut scene = narrated(brief, narration);
+            scene.id = index as u32 + 1;
+            scene.start_secs = start;
+            start += scene.duration_secs;
+            scenes.push(scene);
+        }
+        let storyboard = Storyboard {
+            version: SCHEMA_VERSION,
+            title: "Filme".into(),
+            channel: "Canal".into(),
+            format,
+            language: "pt-BR".into(),
+            scenes,
+            look: Some(look),
+            source_hash: None,
+        };
+        let total = storyboard.scenes.len();
+        let composed = Composed {
+            canvas,
+            scenes: storyboard
+                .scenes
+                .iter()
+                .enumerate()
+                .map(|(index, scene)| compose_scene(&typesetter, &canvas, scene, index, total))
+                .collect(),
+        };
+        (storyboard, composed)
+    }
+
+    #[test]
+    fn every_layout_meets_the_measured_craft_in_every_look_and_format() {
+        for look in Look::ALL {
+            for format in [
+                VideoFormat::Vertical,
+                VideoFormat::Horizontal,
+                VideoFormat::X,
+            ] {
+                let (storyboard, composed) = sample_film(format, look);
+                for check in crate::qa::craft_checks(&storyboard, &composed) {
+                    assert_eq!(
+                        check.status,
+                        framechester_core::domain::QaStatus::Pass,
+                        "{look:?} {format:?} {}: {}",
+                        check.id,
+                        check.detail
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_craft_guards_catch_what_the_engine_cannot_fix() {
+        use framechester_core::domain::QaStatus;
+        let (mut storyboard, mut composed) = sample_film(VideoFormat::Horizontal, Look::Noite);
+        // A scene too short for its own text: nothing can make it readable.
+        storyboard.scenes[2].duration_secs = 0.6;
+        composed.scenes[2].duration_secs = 0.6;
+        // Text drawn under the floor by hand (not through `Ctx::fit`).
+        composed.scenes[0]
+            .graph
+            .nodes
+            .push(Typesetter::new().unwrap().line(
+                "tiny",
+                "letra miuda",
+                200.0,
+                300.0,
+                12.0,
+                400,
+                tokens::FONT_SANS,
+                tokens::INK,
+                Anchor::Start,
+            ));
+        let checks = crate::qa::craft_checks(&storyboard, &composed);
+        let status = |id: &str| checks.iter().find(|check| check.id == id).unwrap().status;
+        assert_eq!(status("text_below_floor"), QaStatus::Fail);
+        assert_eq!(status("line_unread"), QaStatus::NeedsHuman);
+    }
+
+    #[test]
+    fn words_sharpen_in_from_a_blur_and_land_dead_sharp() {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Vertical);
+        let mut scene = narrated(
+            "#pergunta Skill ou agente: qual a diferença na prática?",
+            "Skill ou agente: qual a diferenca na pratica? Vamos ver.",
+        );
+        // Scene 1 enters with the no-translate entrance (`Entrance::for_scene`).
+        scene.id = 1;
+        assert_eq!(Entrance::for_scene(1), Entrance::Fade);
+        let composed = compose_scene(&typesetter, &canvas, &scene, 1, 3);
+        let word = composed
+            .graph
+            .nodes
+            .iter()
+            .filter(|node| node.object == "title" && node.is_text())
+            .nth(3)
+            .unwrap();
+        let entry = (0..200)
+            .map(|step| step as f32 * 0.01)
+            .find(|t| word.props.opacity.eval(*t) > 0.0)
+            .unwrap();
+        assert!(word.props.blur.eval(entry + 0.01) > 2.0, "arrives blurred");
+        assert_eq!(word.props.blur.eval(entry + 0.2), 0.0, "lands sharp");
+        assert_eq!(word.props.dx.eval(entry + 0.05), 0.0, "no translate");
+        assert_eq!(word.props.dy.eval(entry + 0.05), 0.0, "no translate");
+        let during =
+            composed
+                .graph
+                .svg(entry + 0.03, canvas.width, canvas.height, tokens::FONT_SANS);
+        assert!(during.contains("feGaussianBlur"));
+        let landed = composed.graph.svg(
+            scene.duration_secs,
+            canvas.width,
+            canvas.height,
+            tokens::FONT_SANS,
+        );
+        assert!(
+            !landed.contains("feGaussianBlur"),
+            "no filter once everything landed"
+        );
+    }
+
+    #[test]
+    fn a_morph_reshapes_the_focal_card_into_the_next_opening_card() {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Horizontal);
+        let first = narrated(
+            "#fluxo Objetivo -> Decidir -> Agir -> Observar",
+            "O agente recebe o objetivo, decide, age e observa.",
+        );
+        let mut second = narrated(
+            "#passos Confira a amostra; Leia o intervalo; Veja as condicoes",
+            "Confira a amostra, leia o intervalo e veja as condicoes.",
+        );
+        second.id = 2;
+        second.transition = Transition::Morph;
+        second.start_secs = first.duration_secs;
+        let composed = Composed {
+            canvas,
+            scenes: vec![
+                compose_scene(&typesetter, &canvas, &first, 1, 3),
+                compose_scene(&typesetter, &canvas, &second, 2, 3),
+            ],
+        };
+        let from = composed.scenes[0].focal.clone().unwrap().rect;
+        let to = composed.scenes[1].opening.clone().unwrap().rect;
+        let seam = first.duration_secs;
+        let shell_x = |t: f32| {
+            let svg = frame_svg(&composed, t, tokens::FONT_SANS);
+            let marker = "<rect id='fc-morph' x='";
+            let at = svg.find(marker).unwrap() + marker.len();
+            svg[at..]
+                .split('\'')
+                .next()
+                .unwrap()
+                .parse::<f32>()
+                .unwrap()
+        };
+        // It starts on the outgoing card and travels to the incoming one.
+        assert!((shell_x(seam) - from.x).abs() < 1.0);
+        assert!((shell_x(seam + 0.38) - to.x).abs() < 25.0);
+        // Without a card on the incoming side it hands over as a blur swap.
+        let mut plain = composed.clone();
+        plain.scenes[1].opening = None;
+        assert!(frame_svg(&plain, seam + 0.1, tokens::FONT_SANS).contains("feGaussianBlur"));
+    }
+
+    #[test]
+    fn a_flood_keeps_the_shared_hero_on_screen_while_the_ground_floods() {
+        let typesetter = Typesetter::new().unwrap();
+        let canvas = Canvas::for_format(VideoFormat::Horizontal);
+        let first = narrated(
+            "#fluxo Objetivo -> Decidir -> Agir -> Observar",
+            "O agente recebe o objetivo, decide, age e observa.",
+        );
+        let mut second = narrated(
+            "#passos Observar; Ajustar o plano; Repetir",
+            "Observar o resultado, ajustar o plano e repetir.",
+        );
+        second.id = 2;
+        second.transition = Transition::Flood;
+        second.start_secs = first.duration_secs;
+        let composed = Composed {
+            canvas,
+            scenes: vec![
+                compose_scene(&typesetter, &canvas, &first, 1, 3),
+                compose_scene(&typesetter, &canvas, &second, 2, 3),
+            ],
+        };
+        assert!(composed.scenes[0]
+            .followable
+            .contains(&"observar".to_string()));
+        let seam = first.duration_secs;
+        let span = transition_secs(Transition::Flood);
+        for fraction in [0.05f32, 0.3, 0.55, 0.8, 0.95] {
+            let svg = frame_svg(&composed, seam + span * fraction, tokens::FONT_SANS);
+            assert!(
+                svg.contains(">Observar<"),
+                "the hero is on screen at {fraction}"
+            );
+        }
+        let mid = frame_svg(&composed, seam + span * 0.5, tokens::FONT_SANS);
+        let wash = mid.find("id='fc-flood'").expect("the ground floods");
+        let opacity: f32 = mid[wash..]
+            .split("opacity='")
+            .nth(1)
+            .unwrap()
+            .split('\'')
+            .next()
+            .unwrap()
+            .parse()
+            .unwrap();
+        assert!(opacity > 0.2, "{opacity}");
+        // The rest of the old scene has left by then.
+        assert!(!mid.contains(">Objetivo<"));
+        // Without a shared object a flood hands over as a blur swap.
+        let mut alone = composed.clone();
+        alone.scenes[1].followable.clear();
+        assert!(frame_svg(&alone, seam + 0.1, tokens::FONT_SANS).contains("feGaussianBlur"));
     }
 }

@@ -14,19 +14,29 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, objects: &[VisualObject]) -> Vec<Nod
     let scale = ctx.canvas.type_scale;
     if ctx.canvas.vertical {
         let rail_x = area.x + dot;
-        let step = area.h / count as f32;
+        // Milestones sit close together (a big accent marker over up to three lines of
+        // text) instead of spreading thin over the whole frame; the block is centred
+        // vertically by `compose`.
+        // Big markers for a few milestones; long timelines keep the room for their text.
+        let marker = if count <= 4 {
+            scale.heading
+        } else {
+            scale.label
+        };
+        let step = (area.h / count as f32)
+            .min(marker * 1.1 + scale.body * tokens::LINE_HEIGHT * 3.0 + gap * 1.5);
         nodes.push(
             Node::new(
                 "rail",
                 Shape::Path {
                     d: format!(
                         "M{rail_x:.1} {:.1} L{rail_x:.1} {:.1}",
-                        area.y,
-                        area.y + step * (count as f32 - 0.5)
+                        area.y + marker * 0.55,
+                        area.y + marker * 0.55 + step * (count as f32 - 1.0)
                     ),
                     stroke: tokens::RULE.into(),
                     width: ctx.canvas.stroke,
-                    length: step * (count as f32 - 0.5),
+                    length: step * (count as f32 - 1.0),
                     fill: None,
                     dashed: false,
                 },
@@ -34,7 +44,8 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, objects: &[VisualObject]) -> Vec<Nod
             .decorative(),
         );
         for (index, object) in objects.iter().enumerate() {
-            let y = area.y + index as f32 * step + dot;
+            // The marker is centred on the dot, so the first one starts inside the area.
+            let y = area.y + index as f32 * step + marker * 0.55;
             nodes.push(
                 Node::new(
                     &object.id,
@@ -50,24 +61,40 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, objects: &[VisualObject]) -> Vec<Nod
             );
             let text_x = rail_x + dot + gap * 1.2;
             let text_w = area.right() - text_x;
-            let label = ctx.ts.line(
+            // A long timeline sets the marker inline, left of its text, so each
+            // milestone keeps every line of its row for the text.
+            let inline = count > 4;
+            let label_w = if inline {
+                let (family, weight) = ctx.display();
+                ctx.ts
+                    .measure(&object.label, marker, weight, family)
+                    .min(text_w * 0.3)
+            } else {
+                text_w
+            };
+            let (label_nodes, label_bottom) = ctx.fitted_display(
                 &object.id,
                 &object.label,
-                text_x,
-                y + scale.label * 0.35,
-                scale.label,
-                tokens::WEIGHT_BOLD,
-                tokens::FONT_SANS,
+                Rect::new(text_x, y - marker * 0.55, label_w, marker * 1.25),
+                marker,
+                scale.small,
                 tokens::ACCENT,
                 Anchor::Start,
+                0.0,
             );
-            nodes.push(label);
+            nodes.extend(label_nodes);
             if let Some(detail) = &object.detail {
+                let (detail_x, detail_top) = if inline {
+                    (text_x + label_w + gap * 0.6, y - marker * 0.55)
+                } else {
+                    (text_x, label_bottom + gap * 0.2)
+                };
                 let detail_area = Rect::new(
-                    text_x,
-                    y + scale.label * 0.9,
-                    text_w,
-                    step - scale.label * 1.4 - gap * 0.5,
+                    detail_x,
+                    detail_top,
+                    area.right() - detail_x,
+                    // Never stretched past the milestone's row: overflow is reported.
+                    (area.y + (index + 1) as f32 * step - detail_top - gap * 0.4).max(0.0),
                 );
                 let (detail_nodes, _) = ctx.fitted(
                     &object.id,
@@ -122,13 +149,12 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, objects: &[VisualObject]) -> Vec<Nod
             );
             let label_area =
                 Rect::new(x + gap * 0.4, area.y, column - gap * 0.8, scale.label * 1.6);
-            let (label_nodes, _) = ctx.fitted(
+            let (label_nodes, _) = ctx.fitted_display(
                 &object.id,
                 &object.label,
                 label_area,
                 scale.label,
                 scale.small,
-                tokens::WEIGHT_BOLD,
                 tokens::ACCENT,
                 Anchor::Middle,
                 1.0,

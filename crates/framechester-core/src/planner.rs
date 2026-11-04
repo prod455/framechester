@@ -30,9 +30,9 @@ use crate::error::{FramechesterError, Result};
 use crate::narration::segment_narration;
 use crate::presets;
 use crate::storyboard::{
-    narration_words, Animation, CaptionPlan, Character, Composition, Cue, Icon, Motion, Pose,
-    Relation, RelationKind, Role, Storyboard, StoryboardScene, Transition, ValidationCriteria,
-    VideoFormat, VisualObject, SCHEMA_VERSION,
+    narration_words, shared_hero, Animation, CaptionPlan, Character, Composition, Cue,
+    ElementShape, Icon, Motion, Pose, Relation, RelationKind, Role, Storyboard, StoryboardScene,
+    Transition, ValidationCriteria, VideoFormat, VisualObject, SCHEMA_VERSION,
 };
 
 const MAX_FIELD: usize = 160;
@@ -839,6 +839,15 @@ pub fn plan_animations(composition: &Composition, narration: &str) -> Vec<Animat
     let labels: Vec<(String, String)> = match composition {
         Composition::Title { .. } => vec![("title".into(), String::new())],
         Composition::Character { .. } => vec![("speech".into(), String::new())],
+        Composition::Freeform { elements } => elements
+            .iter()
+            .map(|element| {
+                (
+                    element.id.clone(),
+                    element.shape.text().unwrap_or_default().to_string(),
+                )
+            })
+            .collect(),
         Composition::Code { lines, .. } => (0..lines.len())
             .map(|index| (format!("line:{index}"), String::new()))
             .collect(),
@@ -872,6 +881,7 @@ pub fn plan_animations(composition: &Composition, narration: &str) -> Vec<Animat
             | Composition::Steps { .. }
             | Composition::Annotation { .. }
             | Composition::Architecture { .. }
+            | Composition::Freeform { .. }
     );
     let before_count = match composition {
         Composition::Transformation { before, .. } => before.len(),
@@ -886,6 +896,11 @@ pub fn plan_animations(composition: &Composition, narration: &str) -> Vec<Animat
     let mut last_position = 0usize;
     for (index, (id, label)) in labels.iter().enumerate() {
         let motion = match composition {
+            Composition::Freeform { elements } => match elements[index].shape {
+                ElementShape::Arrow { .. } => Motion::Draw,
+                ElementShape::Text { .. } => Motion::Reveal,
+                _ => Motion::Pop,
+            },
             Composition::Chart { .. } => Motion::Grow,
             Composition::Code { .. } => Motion::Type,
             Composition::FlowDiagram { .. }
@@ -991,6 +1006,10 @@ fn plan_emphasis(composition: &Composition, narration: &str) -> Vec<String> {
         Composition::Title { .. } | Composition::Code { .. } | Composition::Character { .. } => {
             Vec::new()
         }
+        Composition::Freeform { elements } => elements
+            .iter()
+            .filter_map(|element| element.shape.text().map(str::to_string))
+            .collect(),
         Composition::FlowDiagram { objects, .. }
         | Composition::Comparison { objects, .. }
         | Composition::Timeline { objects }
@@ -1021,6 +1040,65 @@ fn plan_emphasis(composition: &Composition, narration: &str) -> Vec<String> {
         }
     }
     emphasis
+}
+
+/// Fills what a hand- or agent-written storyboard scene left out: without animations it
+/// gets the planner's narration-cued ones, without caption emphasis the mentioned labels.
+/// Anything the author wrote is kept as is.
+pub fn complete_scene(scene: &mut StoryboardScene) {
+    if scene.animations.is_empty() {
+        scene.animations = plan_animations(&scene.composition, &scene.narration);
+    }
+    if scene.captions.emphasis.is_empty() {
+        scene.captions.emphasis = plan_emphasis(&scene.composition, &scene.narration);
+    }
+}
+
+/// Whether a composition lays out cards (a focal card to leave from or arrive at).
+fn has_cards(composition: &Composition) -> bool {
+    matches!(
+        composition,
+        Composition::FlowDiagram { .. }
+            | Composition::Architecture { .. }
+            | Composition::Infographic { .. }
+            | Composition::CauseEffect { .. }
+            | Composition::Steps { .. }
+            | Composition::Transformation { .. }
+    )
+}
+
+/// The transition into scene `index`, caused by what is on screen: a card the next
+/// scene also opens with morphs into it; a focal card otherwise grows into the next world
+/// or opens it as an iris; a title or a character hands over on the same stage (blur
+/// swap) or with a dip cut. Consecutive seams never repeat, worlds never crossfade, and
+/// the opening cuts in.
+pub fn transition_into(
+    previous: Option<&Composition>,
+    next: Option<&Composition>,
+    index: usize,
+    before: Option<Transition>,
+) -> Transition {
+    if index == 0 {
+        return Transition::Cut;
+    }
+    // An object both scenes share is the strongest cause: it stays as the hero.
+    if let (Some(previous), Some(next)) = (previous, next) {
+        if shared_hero(previous, next).is_some() && before != Some(Transition::Flood) {
+            return Transition::Flood;
+        }
+    }
+    let focal_card = previous.is_some_and(has_cards);
+    let candidates = match (focal_card, next.is_some_and(has_cards)) {
+        (true, true) => [Transition::Morph, Transition::Expand, Transition::Iris],
+        (true, false) => [Transition::Expand, Transition::Iris, Transition::BlurSwap],
+        _ => [Transition::BlurSwap, Transition::DipCut, Transition::Iris],
+    };
+    let pick = candidates[index % 3];
+    if Some(pick) == before {
+        candidates[(index + 1) % 3]
+    } else {
+        pick
+    }
 }
 
 /// Plans one scene. The note after the directive becomes the learning goal when present.
@@ -1055,13 +1133,8 @@ pub fn plan_scene(scene: &Scene, index: usize) -> Result<StoryboardScene> {
             max_still_secs: 5.0,
             readable_without_audio: true,
         },
-        // The opening cuts in; later scenes rotate push, zoom and fade so no two
-        // consecutive changes look the same.
-        transition: if index == 0 {
-            Transition::Cut
-        } else {
-            [Transition::Fade, Transition::Push, Transition::Zoom][index % 3]
-        },
+        // Provisional: `plan_script` sets each transition from the scene before it.
+        transition: transition_into(None, None, index, None),
     };
     planned.validate()?;
     Ok(planned)
@@ -1139,6 +1212,31 @@ pub fn plan_script(
             }
         }
     }
+    for index in 1..scenes.len() {
+        let (before, after) = scenes.split_at_mut(index);
+        let previous = &before[index - 1];
+        let next = after[0].composition.clone();
+        after[0].transition = transition_into(
+            Some(&previous.composition),
+            Some(&next),
+            index,
+            Some(previous.transition),
+        );
+        // The hero is already on screen when the seam ends: it enters at the start.
+        if after[0].transition == Transition::Flood {
+            if let Some(hero) = shared_hero(&previous.composition, &next) {
+                for animation in after[0].animations.iter_mut().filter(|animation| {
+                    animation.target == hero
+                        && matches!(
+                            animation.motion,
+                            Motion::Reveal | Motion::Pop | Motion::Grow | Motion::Draw
+                        )
+                }) {
+                    animation.at = Cue::Start;
+                }
+            }
+        }
+    }
     let storyboard = Storyboard {
         version: SCHEMA_VERSION,
         title: script.title.clone(),
@@ -1146,6 +1244,7 @@ pub fn plan_script(
         format,
         language: "pt-BR".into(),
         scenes,
+        look: None,
         source_hash: None,
     };
     storyboard.validate()?;
@@ -1372,27 +1471,89 @@ mod tests {
             Cue::Word { word, .. } if word == "decide"
         )));
         assert!(planned.captions.emphasis.contains(&"decide".to_string()));
-        assert_eq!(planned.transition, Transition::Push);
+        assert_eq!(planned.transition, Transition::DipCut);
     }
 
     #[test]
-    fn transitions_rotate_after_the_opening_cut() {
-        let transitions: Vec<Transition> = (0..5)
-            .map(|index| {
-                plan_scene(&scene("#destaque", "Uma frase."), index)
-                    .unwrap()
-                    .transition
-            })
-            .collect();
-        assert_eq!(
-            transitions,
+    fn transitions_have_a_cause_and_never_repeat_or_crossfade() {
+        let flow = plan_scene(&scene("#fluxo A -> B -> C", "A, depois B, depois C."), 1)
+            .unwrap()
+            .composition;
+        let other_flow = plan_scene(&scene("#fluxo D -> E -> F", "D, depois E, depois F."), 1)
+            .unwrap()
+            .composition;
+        let title = plan_scene(&scene("#destaque", "Uma frase."), 1)
+            .unwrap()
+            .composition;
+        assert_eq!(transition_into(None, None, 0, None), Transition::Cut);
+        let mut kinds = Vec::new();
+        for index in 1..7 {
+            // Card to card: the shared container morphs (or the card causes the seam).
+            let card_to_card = transition_into(Some(&flow), Some(&other_flow), index, None);
+            assert!(matches!(
+                card_to_card,
+                Transition::Morph | Transition::Expand | Transition::Iris
+            ));
+            // Card to title: the focal card causes the change.
+            let card_to_title = transition_into(Some(&flow), Some(&title), index, None);
+            assert!(matches!(
+                card_to_title,
+                Transition::Expand | Transition::Iris | Transition::BlurSwap
+            ));
+            // After a title, the same stage hands over.
+            let after_title = transition_into(Some(&title), Some(&flow), index, None);
+            assert!(matches!(
+                after_title,
+                Transition::BlurSwap | Transition::DipCut | Transition::Iris
+            ));
+            // The same seam twice in a row is replaced.
+            assert_ne!(
+                transition_into(Some(&flow), Some(&other_flow), index, Some(card_to_card)),
+                card_to_card
+            );
+            kinds.extend([card_to_card, card_to_title, after_title]);
+        }
+        kinds.sort_by_key(|kind| format!("{kind:?}"));
+        kinds.dedup();
+        // Several kinds over a film, none of them a crossfade.
+        assert!(kinds.len() >= 5, "{kinds:?}");
+        assert!(!kinds.contains(&Transition::Fade));
+    }
+
+    #[test]
+    fn a_shared_object_floods_the_seam_and_is_on_screen_when_it_ends() {
+        let mut script = script(
+            "Skill e agente",
             vec![
-                Transition::Cut,
-                Transition::Push,
-                Transition::Zoom,
-                Transition::Fade,
-                Transition::Push
-            ]
+                scene(
+                    "#fluxo Agente -> Skill -> Resultado",
+                    "O agente chama a skill e entrega o resultado.",
+                ),
+                scene(
+                    "#passos Skill; Testes; Entrega",
+                    "Primeiro a skill, depois os testes, depois a entrega.",
+                ),
+            ],
+        );
+        script.scenes[1].id = 1;
+        let (storyboard, _) = plan_script(&script, "canal", VideoFormat::Vertical).unwrap();
+        let next = &storyboard.scenes[1];
+        assert_eq!(next.transition, Transition::Flood);
+        let hero = shared_hero(&storyboard.scenes[0].composition, &next.composition).unwrap();
+        assert!(next
+            .animations
+            .iter()
+            .filter(|animation| animation.target == hero)
+            .any(|animation| animation.at == Cue::Start));
+        // Two floods in a row are not allowed.
+        assert_ne!(
+            transition_into(
+                Some(&storyboard.scenes[0].composition),
+                Some(&next.composition),
+                2,
+                Some(Transition::Flood)
+            ),
+            Transition::Flood
         );
     }
 

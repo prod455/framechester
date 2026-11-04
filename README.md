@@ -123,6 +123,23 @@ publicação. Documentação: [docs/STORYBOARD.md](docs/STORYBOARD.md),
 [docs/MOTOR_MOTION.md](docs/MOTOR_MOTION.md) e
 [docs/BENCHMARK_SKILLS_VS_AGENTES.md](docs/BENCHMARK_SKILLS_VS_AGENTES.md).
 
+### Cena livre e agentes
+
+Quando nenhum layout pronto expressa a ideia, uma cena `freeform` posiciona cartões,
+círculos, textos, ícones e setas em porcentagem da área de conteúdo; cada elemento entra
+na palavra narrada que o nomeia e passa pelo mesmo QA de layout nos três formatos.
+`plan` checa o layout em segundos (sai com código 2 e diz a cena e o texto):
+
+```bash
+cargo run -p framechester-cli -- plan --storyboard examples/freeform.storyboard.json --format x --output artifacts/freeform.json
+```
+
+Para agentes (Claude Code, Codex, Cursor), a skill pública
+[`skills/framechester-video`](skills/framechester-video/SKILL.md) ensina o ciclo
+plan → produce → QA → corrigir. Instale copiando a pasta para o diretório de skills do
+agente ou com `npx skills add prod455/framechester --skill framechester-video`.
+Decisão e escopo: [docs/ESPEC_COMPETIR_HYPERFRAMES.md](docs/ESPEC_COMPETIR_HYPERFRAMES.md).
+
 ## Produção autoral e vários canais
 
 Use `examples/canais.exemplo.toml` como base privada de configuração. Cada `[[channels]]` tem um `id` local e pode declarar `youtube_channel_id` no arquivo privado. Quando há canais cadastrados, `run` exige `--channel`; um canal desconhecido ou duplicado falha antes da produção.

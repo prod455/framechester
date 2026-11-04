@@ -63,18 +63,18 @@ pub struct SceneQa {
     pub caption_chunks: usize,
 }
 
-/// `blackdetect` threshold for the dark theme. FFmpeg counts a pixel as black when its
-/// luma sits below `pix_th` of the video range; the design background (#0B0F17, about 6%)
-/// would count as black at the usual 8%, flagging every sparse frame and transition. Half of
-/// the background luma keeps true black (encoder gaps, failed frames) detectable.
-fn black_threshold() -> f32 {
-    let hex = crate::tokens::BACKGROUND.trim_start_matches('#');
+/// `blackdetect` threshold for `look`. FFmpeg counts a pixel as black when its luma sits
+/// below `pix_th` of the video range; the night ground (#070B14, about 4%) would count as
+/// black at the usual 8%, flagging every sparse frame and transition. Half of the ground
+/// luma keeps true black (encoder gaps, failed frames) detectable; light grounds keep
+/// FFmpeg's own 10%.
+fn black_threshold(look: framechester_core::storyboard::Look) -> f32 {
+    let hex = crate::look::theme(look).ground.trim_start_matches('#');
     let channel = |index: usize| {
-        u8::from_str_radix(&hex[index..index + 2], 16).expect("design token is #RRGGBB") as f32
-            / 255.0
+        u8::from_str_radix(&hex[index..index + 2], 16).expect("ground is #RRGGBB") as f32 / 255.0
     };
     let luma = 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
-    luma / 2.0
+    (luma / 2.0).min(0.10)
 }
 
 fn run(program: &str, args: &[&str]) -> Result<std::process::Output> {
@@ -211,6 +211,118 @@ fn motion_checks(storyboard: &Storyboard, composed: &Composed) -> (Vec<QaCheck>,
         },
     ));
     (checks, scenes)
+}
+
+/// Longest tolerated stretch with nothing changing on screen (measured craft: more than
+/// 3 s reads as a dead frame).
+pub const DEAD_STRETCH_SECS: f32 = 3.0;
+
+/// Craft measured on reference films, checked on what is actually drawn: no readable text
+/// under the legibility floor, every line on screen long enough to be read, no dead
+/// stretch. The engine is built to meet them (`Ctx::fit` floors text, `compose` brings
+/// late entries forward); these checks are the guard.
+pub(crate) fn craft_checks(storyboard: &Storyboard, composed: &Composed) -> Vec<QaCheck> {
+    let floor = composed.canvas.text_floor();
+    let mut small = Vec::new();
+    let mut unread = Vec::new();
+    let mut dead = Vec::new();
+    for (scene, composed_scene) in storyboard.scenes.iter().zip(&composed.scenes) {
+        let graph = &composed_scene.graph;
+        for node in graph.nodes.iter().filter(|node| node.readable) {
+            if let crate::scene::Shape::Text { size, content, .. } = &node.shape {
+                if *size + 0.01 < floor {
+                    small.push(format!(
+                        "cena {}: '{content}' em {size:.0} px (piso {floor:.0} px)",
+                        scene.id
+                    ));
+                }
+            }
+        }
+        let duration = scene.duration_secs;
+        for ((object, baseline), words) in crate::compose::text_lines(graph) {
+            let first = graph
+                .nodes
+                .iter()
+                .filter(|node| {
+                    node.object == object
+                        && matches!(&node.shape, crate::scene::Shape::Text { y, .. }
+                            if ((y + node.offset.1).round() as i32) == baseline)
+                })
+                .filter_map(|node| {
+                    (0..=(duration / 0.05).ceil() as usize)
+                        .map(|step| step as f32 * 0.05)
+                        .find(|t| node.props.opacity.eval(*t) >= 0.5)
+                })
+                .fold(f32::MAX, f32::min);
+            if first == f32::MAX {
+                continue;
+            }
+            let need = crate::compose::reading_hold(words);
+            if duration - first + 0.05 < need {
+                unread.push(format!(
+                    "cena {}: linha de '{object}' ({words} palavras) fica {:.1}s; precisa {need:.1}s",
+                    scene.id,
+                    (duration - first).max(0.0)
+                ));
+            }
+        }
+        let mut times: Vec<f32> = composed_scene
+            .change_times
+            .iter()
+            .copied()
+            .filter(|t| *t <= duration)
+            .collect();
+        times.insert(0, 0.0);
+        times.push(duration);
+        times.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let longest = times
+            .windows(2)
+            .map(|pair| pair[1] - pair[0])
+            .fold(0.0f32, f32::max);
+        if longest > DEAD_STRETCH_SECS + 0.01 {
+            dead.push(format!("cena {}: {longest:.1}s sem nada mudar", scene.id));
+        }
+    }
+    let summary = |items: &[String]| {
+        if items.is_empty() {
+            "ok".to_string()
+        } else {
+            items
+                .iter()
+                .take(3)
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(" | ")
+        }
+    };
+    vec![
+        check(
+            "text_below_floor",
+            "nenhum texto abaixo do piso de leitura (2,6% do lado menor)",
+            pass_or_fail(small.is_empty()),
+            summary(&small),
+        ),
+        check(
+            "line_unread",
+            "cada linha fica na tela o tempo de ser lida (0,5 s + 0,3 s por palavra)",
+            if unread.is_empty() {
+                QaStatus::Pass
+            } else {
+                QaStatus::NeedsHuman
+            },
+            summary(&unread),
+        ),
+        check(
+            "dead_stretch",
+            "nenhum trecho de mais de 3 s sem mudanca na tela",
+            if dead.is_empty() {
+                QaStatus::Pass
+            } else {
+                QaStatus::NeedsHuman
+            },
+            summary(&dead),
+        ),
+    ]
 }
 
 /// The hook: frame 0 already shows readable content (it is the cover of a Short and the
@@ -467,7 +579,10 @@ fn media_checks(
             stderr_of(&decode).chars().take(200).collect::<String>()
         },
     ));
-    let black_filter = format!("blackdetect=d=0.4:pix_th={:.3}", black_threshold());
+    let black_filter = format!(
+        "blackdetect=d=0.4:pix_th={:.3}",
+        black_threshold(storyboard.look.unwrap_or_default())
+    );
     let black = run(
         input.ffmpeg,
         &[
@@ -676,6 +791,7 @@ pub fn audit(
     let (motion, scenes) = motion_checks(storyboard, composed);
     checks.extend(motion);
     checks.extend(hook_checks(storyboard, composed));
+    checks.extend(craft_checks(storyboard, composed));
     checks.extend(consistency_checks(storyboard));
     checks.extend(caption_checks(storyboard, input.srt));
     checks.extend(media_checks(input, storyboard, composed)?);
@@ -713,9 +829,12 @@ impl QaDocument {
 mod tests {
     #[test]
     fn black_threshold_sits_between_true_black_and_the_design_background() {
-        let threshold = black_threshold();
-        // #0B0F17 is about 5.8% luma: the background must stay above the threshold.
-        assert!(threshold > 0.02 && threshold < 0.04, "{threshold}");
+        let threshold = black_threshold(framechester_core::storyboard::Look::Noite);
+        // #070B14 is about 4% luma: the ground must stay above the threshold.
+        assert!(threshold > 0.01 && threshold < 0.04, "{threshold}");
+        for look in framechester_core::storyboard::Look::ALL {
+            assert!(black_threshold(look) <= 0.10, "{look:?}");
+        }
     }
 
     #[test]
@@ -725,7 +844,9 @@ mod tests {
         let video = directory.path().join("background-then-black.mp4");
         let background = format!(
             "color=c=0x{}:s=320x568:d=2,format=yuv420p",
-            crate::tokens::BACKGROUND.trim_start_matches('#')
+            crate::look::theme(framechester_core::storyboard::Look::Noite)
+                .ground
+                .trim_start_matches('#')
         );
         let encoded = run(
             "ffmpeg",
@@ -751,7 +872,10 @@ mod tests {
         )
         .unwrap();
         assert!(encoded.status.success(), "{}", stderr_of(&encoded));
-        let filter = format!("blackdetect=d=0.4:pix_th={:.3}", black_threshold());
+        let filter = format!(
+            "blackdetect=d=0.4:pix_th={:.3}",
+            black_threshold(framechester_core::storyboard::Look::Noite)
+        );
         let scan = run(
             "ffmpeg",
             &[

@@ -314,6 +314,7 @@ mod tests {
             format: VideoFormat::Horizontal,
             language: "pt-BR".into(),
             scenes,
+            look: None,
             source_hash: None,
         }
     }

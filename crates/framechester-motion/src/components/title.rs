@@ -42,7 +42,7 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, text: &str, kicker: Option<&str>) ->
         size,
         tokens::WEIGHT_BOLD,
         family,
-        tokens::INK,
+        tokens::HEADLINE,
         Anchor::Start,
     ));
     let rule_y = bottom + scale.body * 0.8;

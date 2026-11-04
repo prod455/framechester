@@ -81,8 +81,8 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, elements: &[Element]) -> Vec<Node> {
                             cx: rect.cx(),
                             cy: rect.cy(),
                             r,
-                            fill: colours.fill.into(),
-                            stroke: Some((colours.stroke.into(), ctx.canvas.stroke)),
+                            fill: tokens::card_fill(*role),
+                            stroke: Some((tokens::card_edge(*role), ctx.canvas.stroke * 0.5)),
                         },
                     )
                     .with_glow(colours.glow)

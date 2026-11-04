@@ -407,20 +407,74 @@ impl Graph {
         times
     }
 
-    /// Layered frame background: vertical gradient, a soft accent glow in the
-    /// upper third and a vignette that darkens the edges. Decorative only; it is
-    /// never a readable node, so layout QA is unaffected. `base` overrides the
-    /// gradient mid-tone (per-graph background colour).
-    pub fn background_svg(width: u32, height: u32, base: Option<&str>) -> String {
+    /// Layered frame background at instant `t`: vertical gradient, three cool aurora
+    /// fields drifting slowly (so a still layout still breathes) and a vignette; plus
+    /// the shared paints (`tokens::card_fill`, `tokens::card_edge`, `tokens::HEADLINE`)
+    /// every frame may reference. Decorative only; it is never a
+    /// readable node, so layout QA is unaffected. `base` overrides the gradient mid-tone
+    /// (per-graph background colour).
+    pub fn background_svg(width: u32, height: u32, base: Option<&str>, t: f32) -> String {
         let base = base.unwrap_or(tokens::BACKGROUND);
-        format!(
-            "<defs><linearGradient id='fc-bg' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='{}'/><stop offset='0.55' stop-color='{base}'/><stop offset='1' stop-color='{}'/></linearGradient><radialGradient id='fc-glow' cx='0.5' cy='0.22' r='0.75'><stop offset='0' stop-color='{}' stop-opacity='{}'/><stop offset='1' stop-color='{}' stop-opacity='0'/></radialGradient><radialGradient id='fc-vig' cx='0.5' cy='0.5' r='0.85'><stop offset='0.62' stop-color='#000000' stop-opacity='0'/><stop offset='1' stop-color='#000000' stop-opacity='0.38'/></radialGradient></defs><rect width='{width}' height='{height}' fill='url(#fc-bg)'/><rect width='{width}' height='{height}' fill='url(#fc-glow)'/><rect width='{width}' height='{height}' fill='url(#fc-vig)'/>",
+        let mut svg = String::with_capacity(4096);
+        svg.push_str(&format!(
+            "<defs><linearGradient id='fc-bg' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='{}'/><stop offset='0.5' stop-color='{base}'/><stop offset='1' stop-color='{}'/></linearGradient>",
             tokens::BACKGROUND_TOP,
             tokens::BACKGROUND_BOTTOM,
-            tokens::ACCENT,
-            tokens::BACKGROUND_GLOW_OPACITY,
-            tokens::ACCENT,
-        )
+        ));
+        let (w, h) = (width as f32, height as f32);
+        let span = w.max(h);
+        let mut fields = Vec::with_capacity(tokens::AURORA.len());
+        for (index, (colour, opacity, cx, cy, r)) in tokens::AURORA.iter().enumerate() {
+            // Slow Lissajous drift, a few percent of the frame per ten seconds.
+            let phase = index as f32 * 2.1;
+            let x = (cx + 0.05 * (t * 0.11 + phase).sin()) * w;
+            let y = (cy + 0.04 * (t * 0.09 + phase * 1.3).cos()) * h;
+            svg.push_str(&format!(
+                "<radialGradient id='fc-aurora-{index}' gradientUnits='userSpaceOnUse' cx='{}' cy='{}' r='{}'><stop offset='0' stop-color='{colour}' stop-opacity='{opacity}'/><stop offset='0.45' stop-color='{colour}' stop-opacity='{}'/><stop offset='1' stop-color='{colour}' stop-opacity='0'/></radialGradient>",
+                fmt(x),
+                fmt(y),
+                fmt(r * span),
+                fmt(opacity * 0.35),
+            ));
+            // Paint only the field's own square: the gradient is transparent beyond it.
+            let radius = r * span;
+            let (left, top) = ((x - radius).max(0.0), (y - radius).max(0.0));
+            let (right, bottom) = ((x + radius).min(w), (y + radius).min(h));
+            if right > left && bottom > top {
+                fields.push((index, left, top, right - left, bottom - top));
+            }
+        }
+        svg.push_str(
+            "<radialGradient id='fc-vig' cx='0.5' cy='0.5' r='0.8'><stop offset='0.55' stop-color='#000000' stop-opacity='0'/><stop offset='1' stop-color='#000000' stop-opacity='0.5'/></radialGradient><linearGradient id='fc-headline' x1='0' y1='0' x2='0' y2='1'><stop offset='0.2' stop-color='#FFFFFF'/><stop offset='1' stop-color='#BFD0FF'/></linearGradient>",
+        );
+        for role in tokens::ROLES {
+            let colours = tokens::palette(role);
+            let name = tokens::role_name(role);
+            let edge = match role {
+                framechester_core::storyboard::Role::Neutral => "#55688C",
+                _ => colours.stroke,
+            };
+            svg.push_str(&format!(
+                "<linearGradient id='fc-card-{name}' x1='0' y1='0' x2='0.35' y2='1'><stop offset='0' stop-color='{}'/><stop offset='1' stop-color='{}'/></linearGradient><linearGradient id='fc-edge-{name}' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='{edge}' stop-opacity='1'/><stop offset='1' stop-color='{edge}' stop-opacity='0.3'/></linearGradient>",
+                colours.fill_top, colours.fill,
+            ));
+        }
+        svg.push_str(&format!(
+            "</defs><rect width='{width}' height='{height}' fill='url(#fc-bg)'/>"
+        ));
+        for (index, x, y, field_w, field_h) in fields {
+            svg.push_str(&format!(
+                "<rect x='{}' y='{}' width='{}' height='{}' fill='url(#fc-aurora-{index})'/>",
+                fmt(x),
+                fmt(y),
+                fmt(field_w),
+                fmt(field_h)
+            ));
+        }
+        svg.push_str(&format!(
+            "<rect width='{width}' height='{height}' fill='url(#fc-vig)'/>"
+        ));
+        svg
     }
 
     /// The SVG document for instant `t`.
@@ -428,7 +482,7 @@ impl Graph {
         let mut svg = String::with_capacity(16 * 1024);
         svg.push_str(&format!(
             "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>{}<g font-family='{}'>",
-            Self::background_svg(width, height, self.background.as_deref()),
+            Self::background_svg(width, height, self.background.as_deref(), t),
             xml(font_family)
         ));
         self.svg_inner(&mut svg, t, 0.0, 0.0, 1.0, 1.0);
@@ -935,7 +989,8 @@ mod tests {
         let graph = Graph::default();
         let svg = graph.svg(0.0, 100, 100, "Inter");
         assert!(svg.contains("id='fc-bg'"), "{svg}");
-        assert!(svg.contains("id='fc-glow'"), "{svg}");
+        assert!(svg.contains("id='fc-aurora-0'"), "{svg}");
+        assert!(svg.contains("id='fc-card-primary'"), "{svg}");
         assert!(svg.contains("id='fc-vig'"), "{svg}");
         assert!(svg.contains("fill='url(#fc-bg)'"), "{svg}");
     }

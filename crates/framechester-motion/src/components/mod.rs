@@ -139,8 +139,9 @@ impl<'a> Ctx<'a> {
             Shape::Rect {
                 rect,
                 rx: self.canvas.radius,
-                fill: colours.fill.into(),
-                stroke: Some((colours.stroke.into(), self.canvas.stroke)),
+                fill: tokens::card_fill(role),
+                // Thin lit edge: the gradient does the work a heavy outline used to.
+                stroke: Some((tokens::card_edge(role), self.canvas.stroke * 0.5)),
             },
         )
         .with_glow(colours.glow)

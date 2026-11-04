@@ -245,6 +245,48 @@ fn motion_preview_still_refuses_a_contradicted_claim() {
 }
 
 #[test]
+fn plan_takes_the_look_flag_and_checks_its_layout() {
+    let directory = tempfile::tempdir().unwrap();
+    for look in ["papel", "planta"] {
+        let output = directory.path().join(format!("{look}.json"));
+        let run = binary()
+            .args([
+                "plan",
+                "--format",
+                "vertical",
+                "--look",
+                look,
+                "--storyboard",
+            ])
+            .arg(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../examples/freeform.storyboard.json"
+            ))
+            .arg("--output")
+            .arg(&output)
+            .output()
+            .unwrap();
+        assert!(
+            run.status.success(),
+            "{look}: {}",
+            String::from_utf8_lossy(&run.stderr)
+        );
+        let planned: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&output).unwrap()).unwrap();
+        assert_eq!(planned["look"], look);
+    }
+    let rejected = binary()
+        .args(["plan", "--look", "neon", "--storyboard"])
+        .arg(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../examples/freeform.storyboard.json"
+        ))
+        .output()
+        .unwrap();
+    assert!(!rejected.status.success());
+}
+
+#[test]
 fn plan_turns_a_malformed_motion_directive_into_a_reported_title_scene() {
     let directory = tempfile::tempdir().unwrap();
     let mut script: serde_json::Value = serde_json::from_str(

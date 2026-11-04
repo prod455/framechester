@@ -63,18 +63,18 @@ pub struct SceneQa {
     pub caption_chunks: usize,
 }
 
-/// `blackdetect` threshold for the dark theme. FFmpeg counts a pixel as black when its
-/// luma sits below `pix_th` of the video range; the design background (#0B0F17, about 6%)
-/// would count as black at the usual 8%, flagging every sparse frame and transition. Half of
-/// the background luma keeps true black (encoder gaps, failed frames) detectable.
-fn black_threshold() -> f32 {
-    let hex = crate::tokens::BACKGROUND.trim_start_matches('#');
+/// `blackdetect` threshold for `look`. FFmpeg counts a pixel as black when its luma sits
+/// below `pix_th` of the video range; the night ground (#070B14, about 4%) would count as
+/// black at the usual 8%, flagging every sparse frame and transition. Half of the ground
+/// luma keeps true black (encoder gaps, failed frames) detectable; light grounds keep
+/// FFmpeg's own 10%.
+fn black_threshold(look: framechester_core::storyboard::Look) -> f32 {
+    let hex = crate::look::theme(look).ground.trim_start_matches('#');
     let channel = |index: usize| {
-        u8::from_str_radix(&hex[index..index + 2], 16).expect("design token is #RRGGBB") as f32
-            / 255.0
+        u8::from_str_radix(&hex[index..index + 2], 16).expect("ground is #RRGGBB") as f32 / 255.0
     };
     let luma = 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
-    luma / 2.0
+    (luma / 2.0).min(0.10)
 }
 
 fn run(program: &str, args: &[&str]) -> Result<std::process::Output> {
@@ -467,7 +467,10 @@ fn media_checks(
             stderr_of(&decode).chars().take(200).collect::<String>()
         },
     ));
-    let black_filter = format!("blackdetect=d=0.4:pix_th={:.3}", black_threshold());
+    let black_filter = format!(
+        "blackdetect=d=0.4:pix_th={:.3}",
+        black_threshold(storyboard.look.unwrap_or_default())
+    );
     let black = run(
         input.ffmpeg,
         &[
@@ -713,9 +716,12 @@ impl QaDocument {
 mod tests {
     #[test]
     fn black_threshold_sits_between_true_black_and_the_design_background() {
-        let threshold = black_threshold();
-        // #0B0F17 is about 5.8% luma: the background must stay above the threshold.
-        assert!(threshold > 0.02 && threshold < 0.04, "{threshold}");
+        let threshold = black_threshold(framechester_core::storyboard::Look::Noite);
+        // #070B14 is about 4% luma: the ground must stay above the threshold.
+        assert!(threshold > 0.01 && threshold < 0.04, "{threshold}");
+        for look in framechester_core::storyboard::Look::ALL {
+            assert!(black_threshold(look) <= 0.10, "{look:?}");
+        }
     }
 
     #[test]
@@ -725,7 +731,9 @@ mod tests {
         let video = directory.path().join("background-then-black.mp4");
         let background = format!(
             "color=c=0x{}:s=320x568:d=2,format=yuv420p",
-            crate::tokens::BACKGROUND.trim_start_matches('#')
+            crate::look::theme(framechester_core::storyboard::Look::Noite)
+                .ground
+                .trim_start_matches('#')
         );
         let encoded = run(
             "ffmpeg",
@@ -751,7 +759,10 @@ mod tests {
         )
         .unwrap();
         assert!(encoded.status.success(), "{}", stderr_of(&encoded));
-        let filter = format!("blackdetect=d=0.4:pix_th={:.3}", black_threshold());
+        let filter = format!(
+            "blackdetect=d=0.4:pix_th={:.3}",
+            black_threshold(framechester_core::storyboard::Look::Noite)
+        );
         let scan = run(
             "ffmpeg",
             &[

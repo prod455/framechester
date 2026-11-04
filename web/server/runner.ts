@@ -21,6 +21,7 @@ import type {
   WebConfig,
   QaStatus,
   PreparedVisuals,
+  Look,
 } from '../shared/types.ts';
 import { canPublish, crossReferences, platformLabels, publishingPlatforms } from '../shared/publishing.ts';
 
@@ -172,13 +173,14 @@ function shortTitle(title: string): string {
  */
 /** The channel's production settings, spoken in the channel's language: the voice and the
  * speech check follow it, so an English channel never narrates with a Portuguese voice. */
-type JobConfig = WebConfig & { language: string };
+type JobConfig = WebConfig & { language: string; look?: Look };
 function jobConfig(state: AppState, channelId: string, repositoryRoot: string): JobConfig {
   const config = productionConfig(
     Object.hasOwn(state.channelConfigs, channelId) ? state.channelConfigs[channelId]! : state.config,
     repositoryRoot,
   );
-  const tag = state.channels.find((item) => item.id === channelId)?.language ?? 'pt-BR';
+  const channel = state.channels.find((item) => item.id === channelId);
+  const tag = channel?.language ?? 'pt-BR';
   const language = productionLanguage(tag);
   if (!language)
     throw new RunnerError(
@@ -186,11 +188,13 @@ function jobConfig(state: AppState, channelId: string, repositoryRoot: string): 
     );
   config.tts.voiceName = voiceFor(config.tts.voiceName, language);
   config.asr.language = language.asr;
-  return { ...config, language: language.tag };
+  return { ...config, language: language.tag, ...(channel?.look ? { look: channel.look } : {}) };
 }
 function rustConfig(config: JobConfig, channelId: string, workdir: string): string {
   const q = (value: string) => JSON.stringify(value);
-  return `[[channels]]\nid = ${q(channelId)}\nlanguage = ${q(config.language)}\n[app]\nworkdir = ${q(workdir)}\ndry_run = true\ntelemetry = false\n[render]\nwidth = ${config.render.width}\nheight = ${config.render.height}\nfps = ${config.render.fps}\ncrf = ${config.render.crf}\npreset = ${q(config.render.preset)}\nvideo_codec = "libx264"\n[tts]\nengine = "kokoro"\npython_path = ${q(config.tts.pythonPath!)}\nvoice_styles = ${q(config.tts.voiceStyles!)}\nvoice_model = ${q(config.tts.voiceModel)}\nvoice_name = ${q(config.tts.voiceName)}\n[asr]\nenabled = ${config.asr.enabled}\nmodel = ${q(config.asr.model)}\nlanguage = ${q(config.asr.language)}\nmin_coverage = ${config.asr.minCoverage}\n[publish]\nenabled = false\nprivacy = "private"\n`;
+  // The channel's look travels with its identity: every video of the channel shares it.
+  const look = config.look ? `look = ${q(config.look)}\n` : '';
+  return `[[channels]]\nid = ${q(channelId)}\nlanguage = ${q(config.language)}\n${look}[app]\nworkdir = ${q(workdir)}\ndry_run = true\ntelemetry = false\n[render]\nwidth = ${config.render.width}\nheight = ${config.render.height}\nfps = ${config.render.fps}\ncrf = ${config.render.crf}\npreset = ${q(config.render.preset)}\nvideo_codec = "libx264"\n[tts]\nengine = "kokoro"\npython_path = ${q(config.tts.pythonPath!)}\nvoice_styles = ${q(config.tts.voiceStyles!)}\nvoice_model = ${q(config.tts.voiceModel)}\nvoice_name = ${q(config.tts.voiceName)}\n[asr]\nenabled = ${config.asr.enabled}\nmodel = ${q(config.asr.model)}\nlanguage = ${q(config.asr.language)}\nmin_coverage = ${config.asr.minCoverage}\n[publish]\nenabled = false\nprivacy = "private"\n`;
 }
 function checkScript(script: Script, previewOnly = false) {
   if (!previewOnly && !script.crossChecked)

@@ -15,6 +15,10 @@ const INTER_BOLD: &[u8] = include_bytes!("../../../assets/fonts/inter/Inter-Bold
 const MONO_REGULAR: &[u8] =
     include_bytes!("../../../assets/fonts/liberation/LiberationMono-Regular.ttf");
 const MONO_BOLD: &[u8] = include_bytes!("../../../assets/fonts/liberation/LiberationMono-Bold.ttf");
+/// Display faces of the looks (OFL-1.1): `papel` and `planta`.
+const ARCHIVO_BLACK: &[u8] =
+    include_bytes!("../../../assets/fonts/archivo-black/ArchivoBlack-Regular.ttf");
+const BEBAS_NEUE: &[u8] = include_bytes!("../../../assets/fonts/bebas-neue/BebasNeue-Regular.ttf");
 
 /// Names and SHA-256 of the bundled fonts, recorded in the render manifest.
 pub fn bundled_fonts() -> Vec<(&'static str, String)> {
@@ -25,6 +29,8 @@ pub fn bundled_fonts() -> Vec<(&'static str, String)> {
         ("Inter-Bold.otf", INTER_BOLD),
         ("LiberationMono-Regular.ttf", MONO_REGULAR),
         ("LiberationMono-Bold.ttf", MONO_BOLD),
+        ("ArchivoBlack-Regular.ttf", ARCHIVO_BLACK),
+        ("BebasNeue-Regular.ttf", BEBAS_NEUE),
     ]
     .into_iter()
     .map(|(name, bytes)| {
@@ -57,6 +63,8 @@ impl Typesetter {
                 INTER_BOLD,
                 MONO_REGULAR,
                 MONO_BOLD,
+                ARCHIVO_BLACK,
+                BEBAS_NEUE,
             ] {
                 db.load_font_data(bytes.to_vec());
             }
@@ -366,7 +374,7 @@ mod tests {
             tokens::FONT_SANS,
         );
         assert!(impossible.is_none(), "never truncated, reported instead");
-        assert_eq!(bundled_fonts().len(), 5);
+        assert_eq!(bundled_fonts().len(), 7);
     }
 
     #[test]

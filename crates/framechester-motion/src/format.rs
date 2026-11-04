@@ -82,6 +82,8 @@ pub struct Canvas {
     /// Icon size in pixels.
     pub icon: f32,
     pub vertical: bool,
+    /// Look the scene is drawn in: its paints and its display face (`crate::look`).
+    pub look: framechester_core::storyboard::Look,
 }
 
 impl Canvas {
@@ -105,6 +107,14 @@ impl Canvas {
                 number: scale.number * zoom,
             },
             ..*self
+        }
+    }
+
+    /// The format's canvas drawn in `look`.
+    pub fn for_storyboard(format: VideoFormat, look: framechester_core::storyboard::Look) -> Self {
+        Canvas {
+            look,
+            ..Self::for_format(format)
         }
     }
 
@@ -139,6 +149,7 @@ impl Canvas {
                 },
                 icon: 64.0,
                 vertical: true,
+                look: Default::default(),
             },
             VideoFormat::Horizontal => Canvas {
                 format,
@@ -163,6 +174,7 @@ impl Canvas {
                 },
                 icon: 56.0,
                 vertical: false,
+                look: Default::default(),
             },
             // X feed: small on the timeline, so type is larger relative to the frame and
             // captions are shorter.
@@ -189,6 +201,7 @@ impl Canvas {
                 },
                 icon: 42.0,
                 vertical: false,
+                look: Default::default(),
             },
         }
     }

@@ -12,6 +12,7 @@
     "channel": { "type": "string" },
     "format": { "enum": ["vertical", "horizontal", "x"] },
     "language": { "type": "string" },
+    "look": { "enum": ["noite", "papel", "planta"], "description": "Visual look; absent means noite. The channel's look applies when the storyboard has none." },
     "source_hash": { "type": "string" },
     "scenes": {
       "type": "array",

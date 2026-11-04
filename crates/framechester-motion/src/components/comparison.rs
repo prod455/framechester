@@ -48,13 +48,12 @@ pub fn build(
     let mut title_bottom = area.y + title_size * 1.2;
     for (index, (group, title, role)) in sides.iter().enumerate() {
         let column = columns[index];
-        let (title_nodes, bottom) = ctx.fitted(
+        let (title_nodes, bottom) = ctx.fitted_display(
             &format!("{group}-title"),
             title,
             Rect::new(column.x, column.y, column.w, title_room),
             title_size,
             ctx.canvas.type_scale.body,
-            tokens::WEIGHT_BOLD,
             palette(*role).stroke,
             Anchor::Start,
             0.0,

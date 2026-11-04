@@ -11,6 +11,9 @@ pub struct ChannelProfile {
     /// Narration and publishing language; absent means pt-BR, the language channels started with.
     #[serde(default)]
     pub language: Option<String>,
+    /// Visual look of the channel's videos; absent means the default (`noite`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub look: Option<crate::storyboard::Look>,
 }
 
 /// Languages with a reviewed commercial voice; the description template follows the same list.
@@ -76,6 +79,7 @@ mod tests {
             id: id.into(),
             youtube_channel_id: None,
             language: None,
+            look: None,
         }
     }
 
@@ -85,6 +89,7 @@ mod tests {
         for language in LANGUAGES {
             let channel = ChannelProfile {
                 language: Some(language.into()),
+                look: None,
                 ..profile("tech")
             };
             assert!(channel.validate().is_ok());
@@ -93,6 +98,7 @@ mod tests {
         for language in ["de-DE", "en", "pt-br", ""] {
             let channel = ChannelProfile {
                 language: Some(language.into()),
+                look: None,
                 ..profile("tech")
             };
             assert!(channel.validate().is_err(), "{language}");

@@ -35,13 +35,10 @@ layout escolhe o maior tamanho que passa no QA.
 
 ## O que eles ainda fazem melhor (próximas fatias, por impacto)
 
-1. **Looks a partir de um meio, não de um tema.** A lista deles bane por padrão: fundo
-   azul-marinho escuro com coisas pequenas flutuando, gradientes azul/roxo, cartões de
-   vidro, brilho. O tema atual do Framechester (rodada de 2026-11-04) cai nesses itens. A
-   correção é um sistema de looks por canal (papel risografado, editorial, blueprint…),
-   cada um com chão, tintas, acento racionado e fonte próprios; exige trocar os
-   `tokens` constantes por um tema em runtime e embutir fontes de display OFL (Inter é
-   "onde o design gerado cai", segundo eles).
+1. ~~Looks a partir de um meio.~~ Feito em 2026-11-04: `papel` (risografia) e `planta`
+   (blueprint) ao lado do `noite`, por canal, com fontes de título OFL embutidas e
+   contraste WCAG verificado em teste para cada par texto/fundo — o que os presets deles
+   não garantem. Próximos looks possíveis: editorial em duas cores, lousa.
 2. **Transições com causa** (3–5 tipos por filme): objeto vira o mundo, morph de
    container, inundação de cor, whip, troca com blur, dip cut. Hoje: corte, fade, push,
    zoom, whip.

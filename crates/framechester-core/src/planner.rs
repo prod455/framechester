@@ -1177,6 +1177,7 @@ pub fn plan_script(
         format,
         language: "pt-BR".into(),
         scenes,
+        look: None,
         source_hash: None,
     };
     storyboard.validate()?;

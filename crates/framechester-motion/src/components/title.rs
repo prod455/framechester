@@ -22,15 +22,14 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, text: &str, kicker: Option<&str>) ->
     // exactly the one `Ctx::fitted` would produce, but the text is emitted
     // as one node per word so `compose` can reveal word by word. Word boxes
     // stay inside the fitted line boxes, so overflow QA is unchanged.
-    let family = tokens::FONT_SANS;
-    let (size, lines) = ctx.fit(
+    let (family, weight) = ctx.display();
+    let (size, lines) = ctx.fit_display(
         "title",
         text,
         text_area.w,
         text_area.h,
         scale.title,
         scale.body,
-        tokens::WEIGHT_BOLD,
     );
     let height = crate::text::Typesetter::block_height(size, lines.len());
     let bottom = text_area.y + height;
@@ -40,7 +39,7 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, text: &str, kicker: Option<&str>) ->
         text_area.x,
         text_area.y,
         size,
-        tokens::WEIGHT_BOLD,
+        weight,
         family,
         tokens::HEADLINE,
         Anchor::Start,

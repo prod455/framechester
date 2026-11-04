@@ -17,16 +17,9 @@ fn counter_node(
 ) -> Node {
     let value = object.value.unwrap_or(0.0);
     let text = format_value(value, object.unit.as_deref());
+    let (family, weight) = ctx.display();
     let mut node = ctx.ts.line(
-        &object.id,
-        &text,
-        x,
-        baseline,
-        size,
-        tokens::WEIGHT_BOLD,
-        tokens::FONT_SANS,
-        colour,
-        anchor,
+        &object.id, &text, x, baseline, size, weight, family, colour, anchor,
     );
     if let Shape::Text { counter, .. } = &mut node.shape {
         *counter = Some((value, object.unit.clone()));
@@ -45,13 +38,12 @@ pub fn build(
     let scale = ctx.canvas.type_scale;
     let gap = ctx.canvas.gap;
     let title_height = scale.heading * 1.5;
-    let (title_nodes, _) = ctx.fitted(
+    let (title_nodes, _) = ctx.fitted_display(
         "chart-title",
         title,
         Rect::new(area.x, area.y, area.w, title_height),
         scale.heading * 0.8,
         scale.body,
-        tokens::WEIGHT_SEMIBOLD,
         tokens::INK_SOFT,
         Anchor::Start,
         0.0,
@@ -66,13 +58,9 @@ pub fn build(
     if objects.len() == 1 {
         let object = &objects[0];
         let text = format_value(object.value.unwrap_or(0.0), object.unit.as_deref());
-        let mut size = scale.number;
-        while size > scale.heading
-            && ctx
-                .ts
-                .measure(&text, size, tokens::WEIGHT_BOLD, tokens::FONT_SANS)
-                > body.w
-        {
+        let mut size = ctx.display_size(scale.number);
+        let (family, weight) = ctx.display();
+        while size > scale.heading && ctx.ts.measure(&text, size, weight, family) > body.w {
             size -= 8.0;
         }
         let baseline = body.y + size * 0.95;
@@ -119,12 +107,10 @@ pub fn build(
     } else {
         body.w * 0.26
     };
-    let value_width = ctx.ts.measure(
-        "000.000%",
-        scale.body,
-        tokens::WEIGHT_BOLD,
-        tokens::FONT_SANS,
-    );
+    let (display_family, display_weight) = ctx.display();
+    let value_width = ctx
+        .ts
+        .measure("000.000%", scale.body, display_weight, display_family);
     let bar_x = body.x + label_width + gap;
     let bar_w = (body.w - label_width - value_width - gap * 2.5).max(40.0);
     for (object, row) in objects.iter().zip(rows(rows_area, objects.len(), 0.0)) {

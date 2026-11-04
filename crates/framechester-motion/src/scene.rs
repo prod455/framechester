@@ -2,6 +2,7 @@
 //! Components build graphs; the rasterizer turns `graph.svg(t)` into frames.
 use crate::anim::Track;
 use crate::format::Rect;
+use crate::look::{theme, Headline, Shadow, Theme};
 use crate::tokens;
 use framechester_core::storyboard::Easing;
 
@@ -291,6 +292,8 @@ pub struct Graph {
     /// a group is a reusable bundle of objects, not a new node type.
     pub groups: std::collections::BTreeMap<String, Vec<String>>,
     pub background: Option<String>,
+    /// Look whose paints the frame resolves (`crate::look`).
+    pub look: framechester_core::storyboard::Look,
     /// The scene asked for continuous motion between its events (amplitude px,
     /// period s). It is carried by the drifting background (`background_svg`), never
     /// by floating the content: text and cards that bob while they are read are a
@@ -419,19 +422,30 @@ impl Graph {
     /// every frame may reference. Decorative only; it is never a
     /// readable node, so layout QA is unaffected. `base` overrides the gradient mid-tone
     /// (per-graph background colour).
-    pub fn background_svg(width: u32, height: u32, base: Option<&str>, t: f32) -> String {
-        let base = base.unwrap_or(tokens::BACKGROUND);
+    pub fn background_svg(
+        width: u32,
+        height: u32,
+        base: Option<&str>,
+        t: f32,
+        theme: &Theme,
+    ) -> String {
+        let base = theme.paint(base.unwrap_or(tokens::BACKGROUND));
         let mut svg = String::with_capacity(4096);
-        svg.push_str(&format!(
+        svg.push_str("<defs>");
+        if let Some((lift, opacity)) = theme.lift {
             // A full-frame linear gradient on a dark ground bands under H.264: a solid
             // base with a radial lift from the top reads the same and stays smooth.
-            "<defs><radialGradient id='fc-bg' cx='0.5' cy='0' r='1.1'><stop offset='0' stop-color='{}'/><stop offset='1' stop-color='{base}' stop-opacity='0'/></radialGradient>",
-            tokens::BACKGROUND_TOP,
-        ));
+            svg.push_str(&format!(
+                "<radialGradient id='fc-bg' cx='0.5' cy='0' r='1.1'><stop offset='0' stop-color='{}' stop-opacity='{}'/><stop offset='1' stop-color='{base}' stop-opacity='0'/></radialGradient>",
+                theme.paint(lift),
+                fmt(opacity),
+            ));
+        }
         let (w, h) = (width as f32, height as f32);
         let span = w.max(h);
-        let mut fields = Vec::with_capacity(tokens::AURORA.len());
-        for (index, (colour, opacity, cx, cy, r)) in tokens::AURORA.iter().enumerate() {
+        let mut fields = Vec::with_capacity(theme.atmosphere.len());
+        for (index, (colour, opacity, cx, cy, r)) in theme.atmosphere.iter().enumerate() {
+            let colour = theme.paint(colour);
             // Slow Lissajous drift, a few percent of the frame per ten seconds.
             let phase = index as f32 * 2.1;
             let x = (cx + 0.05 * (t * 0.11 + phase).sin()) * w;
@@ -451,24 +465,47 @@ impl Graph {
                 fields.push((index, left, top, right - left, bottom - top));
             }
         }
-        svg.push_str(
-            "<radialGradient id='fc-vig' cx='0.5' cy='0.5' r='0.8'><stop offset='0.55' stop-color='#000000' stop-opacity='0'/><stop offset='1' stop-color='#000000' stop-opacity='0.5'/></radialGradient><linearGradient id='fc-headline' x1='0' y1='0' x2='0' y2='1'><stop offset='0.2' stop-color='#FFFFFF'/><stop offset='1' stop-color='#BFD0FF'/></linearGradient>",
-        );
+        if theme.vignette > 0.0 {
+            svg.push_str(&format!(
+                "<radialGradient id='fc-vig' cx='0.5' cy='0.5' r='0.8'><stop offset='0.55' stop-color='#000000' stop-opacity='0'/><stop offset='1' stop-color='#000000' stop-opacity='{}'/></radialGradient>",
+                fmt(theme.vignette)
+            ));
+        }
+        match theme.headline {
+            Headline::Gradient(top, bottom) => svg.push_str(&format!(
+                "<linearGradient id='fc-headline' x1='0' y1='0' x2='0' y2='1'><stop offset='0.2' stop-color='{}'/><stop offset='1' stop-color='{}'/></linearGradient>",
+                theme.paint(top),
+                theme.paint(bottom)
+            )),
+            Headline::Solid(paint) => {
+                let colour = theme.paint(paint);
+                svg.push_str(&format!(
+                    "<linearGradient id='fc-headline'><stop offset='0' stop-color='{colour}'/><stop offset='1' stop-color='{colour}'/></linearGradient>"
+                ))
+            }
+        }
         for role in tokens::ROLES {
             let colours = tokens::palette(role);
             let name = tokens::role_name(role);
-            let edge = match role {
-                framechester_core::storyboard::Role::Neutral => "#55688C",
+            let edge = theme.paint(match role {
+                framechester_core::storyboard::Role::Neutral => "@edge-neutral",
                 _ => colours.stroke,
-            };
+            });
             svg.push_str(&format!(
-                "<linearGradient id='fc-card-{name}' x1='0' y1='0' x2='0.35' y2='1'><stop offset='0' stop-color='{}'/><stop offset='1' stop-color='{}'/></linearGradient><linearGradient id='fc-edge-{name}' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='{edge}' stop-opacity='1'/><stop offset='1' stop-color='{edge}' stop-opacity='0.3'/></linearGradient>",
-                colours.fill_top, colours.fill,
+                "<linearGradient id='fc-card-{name}' x1='0' y1='0' x2='0.35' y2='1'><stop offset='0' stop-color='{}'/><stop offset='1' stop-color='{}'/></linearGradient><linearGradient id='fc-edge-{name}' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='{edge}' stop-opacity='1'/><stop offset='1' stop-color='{edge}' stop-opacity='{}'/></linearGradient>",
+                theme.paint(colours.fill_top),
+                theme.paint(colours.fill),
+                fmt(theme.edge_fade),
             ));
         }
         svg.push_str(&format!(
-            "</defs><rect width='{width}' height='{height}' fill='{base}'/><rect width='{width}' height='{height}' fill='url(#fc-bg)'/>"
+            "</defs><rect width='{width}' height='{height}' fill='{base}'/>"
         ));
+        if theme.lift.is_some() {
+            svg.push_str(&format!(
+                "<rect width='{width}' height='{height}' fill='url(#fc-bg)'/>"
+            ));
+        }
         for (index, x, y, field_w, field_h) in fields {
             svg.push_str(&format!(
                 "<rect x='{}' y='{}' width='{}' height='{}' fill='url(#fc-aurora-{index})'/>",
@@ -478,9 +515,29 @@ impl Graph {
                 fmt(field_h)
             ));
         }
-        svg.push_str(&format!(
-            "<rect width='{width}' height='{height}' fill='url(#fc-vig)'/>"
-        ));
+        if let Some((step, paint)) = theme.grid {
+            // One path for the whole ruled sheet: far cheaper to raster than a pattern.
+            let mut d = String::new();
+            let mut x = step;
+            while x < w {
+                d.push_str(&format!("M{x:.0} 0V{h:.0}"));
+                x += step;
+            }
+            let mut y = step;
+            while y < h {
+                d.push_str(&format!("M0 {y:.0}H{w:.0}"));
+                y += step;
+            }
+            svg.push_str(&format!(
+                "<path d='{d}' stroke='{}' stroke-width='1.5' fill='none'/>",
+                theme.paint(paint)
+            ));
+        }
+        if theme.vignette > 0.0 {
+            svg.push_str(&format!(
+                "<rect width='{width}' height='{height}' fill='url(#fc-vig)'/>"
+            ));
+        }
         svg
     }
 
@@ -489,7 +546,7 @@ impl Graph {
         let mut svg = String::with_capacity(16 * 1024);
         svg.push_str(&format!(
             "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>{}<g font-family='{}'>",
-            Self::background_svg(width, height, self.background.as_deref(), t),
+            Self::background_svg(width, height, self.background.as_deref(), t, theme(self.look)),
             xml(font_family)
         ));
         self.svg_inner(&mut svg, t, 0.0, 0.0, 1.0, 1.0);
@@ -541,6 +598,7 @@ impl Graph {
         sy: f32,
         opacity: f32,
     ) {
+        let palette = theme(self.look);
         let mut order: Vec<&Node> = self.nodes.iter().collect();
         order.sort_by_key(|node| node.z);
         let outer = dx.abs() > 1e-3
@@ -638,11 +696,11 @@ impl Graph {
                 svg.push_str(&format!(" opacity='{}'", fmt(node_opacity)));
             }
             svg.push('>');
-            node.shadow_svg(svg);
+            node.shadow_svg(svg, palette);
             if glow > 0.01 {
-                node.glow_svg(svg, glow);
+                node.glow_svg(svg, glow, palette);
             }
-            node.shape_svg(svg, t);
+            node.shape_svg(svg, t, palette);
             svg.push_str("</g>");
         }
         if open_band.is_some() {
@@ -659,7 +717,7 @@ impl Node {
     /// than an SVG blur filter at 30 fps and stable across rasterizers.
     /// Captions and tiny chips are excluded; full-canvas backgrounds are not
     /// nodes, so every rounded rect here is scene content.
-    fn shadow_svg(&self, svg: &mut String) {
+    fn shadow_svg(&self, svg: &mut String, theme: &Theme) {
         if self.z >= Z_CAPTIONS {
             return;
         }
@@ -670,22 +728,33 @@ impl Node {
             if fill == tokens::CAPTION_BOX {
                 return;
             }
-            for (dy, opacity) in [(16.0, 0.16), (8.0, 0.22)] {
+            let layers: &[(f32, f32, &str, f32)] = match theme.shadow {
+                Shadow::Soft => &[(0.0, 16.0, "#000000", 0.16), (0.0, 8.0, "#000000", 0.22)],
+                Shadow::Offset {
+                    paint,
+                    dx,
+                    dy,
+                    opacity,
+                } => &[(dx, dy, paint, opacity)],
+                Shadow::None => &[],
+            };
+            for (dx, dy, paint, opacity) in layers {
                 svg.push_str(&format!(
-                    "<rect x='{}' y='{}' width='{}' height='{}' rx='{}' fill='#000000' opacity='{}'/>",
-                    fmt(rect.x),
+                    "<rect x='{}' y='{}' width='{}' height='{}' rx='{}' fill='{}' opacity='{}'/>",
+                    fmt(rect.x + dx),
                     fmt(rect.y + dy),
                     fmt(rect.w),
                     fmt(rect.h),
                     fmt(*rx),
-                    fmt(opacity)
+                    theme.paint(paint),
+                    fmt(*opacity)
                 ));
             }
         }
     }
 
-    fn glow_svg(&self, svg: &mut String, glow: f32) {
-        let colour = &self.glow_colour;
+    fn glow_svg(&self, svg: &mut String, glow: f32, theme: &Theme) {
+        let colour = theme.paint(&self.glow_colour);
         match &self.shape {
             Shape::Rect { rect, rx, .. } => {
                 let pad = 6.0 + 6.0 * glow;
@@ -724,7 +793,7 @@ impl Node {
         }
     }
 
-    fn shape_svg(&self, svg: &mut String, t: f32) {
+    fn shape_svg(&self, svg: &mut String, t: f32, theme: &Theme) {
         match &self.shape {
             Shape::Rect {
                 rect,
@@ -733,16 +802,18 @@ impl Node {
                 stroke,
             } => {
                 svg.push_str(&format!(
-                    "<rect x='{}' y='{}' width='{}' height='{}' rx='{}' fill='{fill}'",
+                    "<rect x='{}' y='{}' width='{}' height='{}' rx='{}' fill='{}'",
                     fmt(rect.x),
                     fmt(rect.y),
                     fmt(rect.w),
                     fmt(rect.h),
-                    fmt(*rx)
+                    fmt(*rx),
+                    theme.paint(fill)
                 ));
                 if let Some((colour, width)) = stroke {
                     svg.push_str(&format!(
-                        " stroke='{colour}' stroke-width='{}'",
+                        " stroke='{}' stroke-width='{}'",
+                        theme.paint(colour),
                         fmt(*width)
                     ));
                 }
@@ -756,14 +827,16 @@ impl Node {
                 stroke,
             } => {
                 svg.push_str(&format!(
-                    "<circle cx='{}' cy='{}' r='{}' fill='{fill}'",
+                    "<circle cx='{}' cy='{}' r='{}' fill='{}'",
                     fmt(*cx),
                     fmt(*cy),
-                    fmt(*r)
+                    fmt(*r),
+                    theme.paint(fill)
                 ));
                 if let Some((colour, width)) = stroke {
                     svg.push_str(&format!(
-                        " stroke='{colour}' stroke-width='{}'",
+                        " stroke='{}' stroke-width='{}'",
+                        theme.paint(colour),
                         fmt(*width)
                     ));
                 }
@@ -782,9 +855,10 @@ impl Node {
                     return;
                 }
                 svg.push_str(&format!(
-                    "<path d='{}' fill='{}' stroke='{stroke}' stroke-width='{}' stroke-linecap='round' stroke-linejoin='round'",
+                    "<path d='{}' fill='{}' stroke='{}' stroke-width='{}' stroke-linecap='round' stroke-linejoin='round'",
                     xml(d),
-                    fill.as_deref().unwrap_or("none"),
+                    fill.as_deref().map_or("none", |fill| theme.paint(fill)),
+                    theme.paint(stroke),
                     fmt(*width)
                 ));
                 if draw < 0.999 {
@@ -839,11 +913,12 @@ impl Node {
                     Anchor::End => "end",
                 };
                 svg.push_str(&format!(
-                    "<text x='{}' y='{}' font-size='{}' font-weight='{weight}' font-family='{}' fill='{fill}' text-anchor='{anchor}' xml:space='preserve'>{}</text>",
+                    "<text x='{}' y='{}' font-size='{}' font-weight='{weight}' font-family='{}' fill='{}' text-anchor='{anchor}' xml:space='preserve'>{}</text>",
                     fmt(*x),
                     fmt(*y),
                     fmt(*size),
                     xml(family),
+                    theme.paint(fill),
                     xml(&shown)
                 ));
             }

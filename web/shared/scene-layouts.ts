@@ -22,7 +22,9 @@ export const motionDirectives = [
   'infografico',
   'causa',
   'personagem',
+  'palco',
 ] as const;
+export type MotionDirective = (typeof motionDirectives)[number];
 
 const maxSlot = 160,
   maxValue = 16;
@@ -150,5 +152,12 @@ Diretivas animadas do motor motion (framechester produce), quando o vídeo for r
 #personagem PERSONAGEM | POSE | FALA — personagem animado (apresentador, dev, cientista ou robo; explicar, apontar, pensar ou comemorar) ao lado de um balão; a fala tem até 140 caracteres. Sem diretiva ou com #pergunta, a cena já usa o personagem que combina com a pauta.
 Personagens da pauta: em vez de um personagem pronto, descreva quem fala na primeira vez que aparece, como Nome (traço, traço, …), com até 10 traços deste vocabulário e nada mais: pele clara|media|morena|escura; careca ou cabelo curto|longo|cacheado|coque mais cor preto|castanho|loiro|ruivo|grisalho|branco; bigode|cavanhaque|barba curta|barba longa mais cor; camisa|terno|toga|jaleco|moletom|vestido|uniforme mais cor azul|vermelho|verde|amarelo|branco|preto|roxo|laranja|cinza e número de 1 a 99; um objeto: pergaminho|livro|bola|apito|microfone|notebook|frasco|trofeu; oculos; louros. Exemplo: #personagem Sócrates (careca, barba longa branca, toga branca, pergaminho) | explicar | Só sei que nada sei. Nas cenas seguintes, use só o nome: #personagem Sócrates | pensar. O primeiro personagem descrito também apresenta as cenas sem diretiva. Monte o elenco da pauta: em filosofia, os filósofos; em futebol, jogador, goleiro, técnico, árbitro.
 Pessoas reais: figuras históricas podem falar com frases documentadas ou claramente ilustrativas. Pessoa viva aparece só por arquétipo (Camisa 10, Goleiro, Técnico) ou com fala em terceira pessoa ou citação que esteja nas fontes; nunca invente fala em primeira pessoa de alguém vivo. Uniforme é só cor e número: sem nome, escudo ou patrocinador de clube.
+#palco TÍTULO DO BLOCO com *palavra* de destaque — palco contínuo com mascote, metáfora e medidor. Linhas abaixo da diretiva, uma por chave:
+  ator: Nome (capacete|bone|oculos|coroa) — até 2 por cena; descreva o acessório na primeira vez, depois só o nome.
+  objeto: moeda RÓTULO | rival RÓTULO · funil RÓTULO | nota · muro · tabela TÍTULO | rótulo=valor; *rótulo=valor* (o *marcado* ganha círculo) · envelope COMENTÁRIO (chamada final).
+  medidor: RÓTULO | 90 -> 20 % (| selo para o estilo pílula) — de 0 a 100; sem o valor inicial (| -> 20 %) continua de onde parou na cena anterior; o número só aparece se for dito na narração.
+  tarefas: tarefa; tarefa -> Nome; tarefa -> objeto — até 8 rótulos curtos (24 caracteres) que voam e batem no ator ou no objeto quando a narração fala deles; cada batida move o medidor, morde a moeda ou põe um tijolo.
+  selo: TEXTO — adesivo curto (24 caracteres); números nele precisam ser ditos.
+Como usar #palco: escolha UMA metáfora física e UM número que muda para o vídeo inteiro antes de escrever as cenas; cada cena só mexe nesse estado. Cenas seguidas com o mesmo título formam um bloco e são cortadas sem emenda; troque o título só quando a ideia mudar (3 a 6 blocos por Short). O mesmo elenco atravessa o vídeo. A última cena pode ser objeto: envelope com a palavra que o espectador deve comentar.
 Cada campo tem até 160 caracteres. Não use outras diretivas.
 Toda cena vira composição gerada localmente: não peça gravação real, gravação de tela, captura de tela nem CAPTURA PENDENTE.`;

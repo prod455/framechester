@@ -144,6 +144,24 @@ export default {
     'Explicador direto': 'Straight explainer',
     'Uma pergunta concreta respondida com mecanismo, analogia e consequência.':
       'A concrete question answered with mechanism, analogy and consequence.',
+    'Mito ou fato': 'Myth or fact',
+    'Uma crença comum testada contra a evidência, com o veredito no fim.':
+      'A common belief tested against the evidence, with the verdict at the end.',
+    'Erro comum': 'Common mistake',
+    'Algo que quase todo mundo faz errado, o custo disso e o jeito certo em passos.':
+      'Something almost everyone does wrong, what it costs and the right way in steps.',
+    'Como funciona por dentro': 'How it works inside',
+    'Abre a caixa de algo cotidiano: entrada, mecanismo e saída, uma peça por vez.':
+      'Opens up something everyday: input, mechanism and output, one part at a time.',
+    'E se…?': 'What if…?',
+    'Uma hipótese levada passo a passo até a consequência, cada passo com base nas fontes.':
+      'A hypothesis followed step by step to its consequence, each step backed by the sources.',
+    Escala: 'Scale',
+    'Um número grande ou pequeno demais traduzido em algo que dá para ver e comparar.':
+      'A number too big or too small turned into something you can see and compare.',
+    'Teste na prática': 'Hands-on test',
+    'Uma pergunta respondida com um teste que o próprio canal fez, com método e resultado medidos.':
+      'A question answered with a test the channel ran itself, with measured method and results.',
     'Palco com mascote': 'Mascot stage',
     'Uma metáfora física e um número que muda, contados por um elenco fixo em blocos contínuos.':
       'One physical metaphor and one changing number, told by a fixed cast in continuous blocks.',
@@ -357,6 +375,24 @@ export default {
     'Explicador direto': 'Explicador directo',
     'Uma pergunta concreta respondida com mecanismo, analogia e consequência.':
       'Una pregunta concreta respondida con mecanismo, analogía y consecuencia.',
+    'Mito ou fato': 'Mito o realidad',
+    'Uma crença comum testada contra a evidência, com o veredito no fim.':
+      'Una creencia común puesta a prueba con la evidencia, con el veredicto al final.',
+    'Erro comum': 'Error común',
+    'Algo que quase todo mundo faz errado, o custo disso e o jeito certo em passos.':
+      'Algo que casi todos hacen mal, lo que cuesta y la forma correcta en pasos.',
+    'Como funciona por dentro': 'Cómo funciona por dentro',
+    'Abre a caixa de algo cotidiano: entrada, mecanismo e saída, uma peça por vez.':
+      'Abre algo cotidiano: entrada, mecanismo y salida, una pieza a la vez.',
+    'E se…?': '¿Y si…?',
+    'Uma hipótese levada passo a passo até a consequência, cada passo com base nas fontes.':
+      'Una hipótesis llevada paso a paso hasta la consecuencia, cada paso respaldado por las fuentes.',
+    Escala: 'Escala',
+    'Um número grande ou pequeno demais traduzido em algo que dá para ver e comparar.':
+      'Un número demasiado grande o pequeño convertido en algo que se puede ver y comparar.',
+    'Teste na prática': 'Prueba práctica',
+    'Uma pergunta respondida com um teste que o próprio canal fez, com método e resultado medidos.':
+      'Una pregunta respondida con una prueba hecha por el propio canal, con método y resultados medidos.',
     'Palco com mascote': 'Escenario con mascota',
     'Uma metáfora física e um número que muda, contados por um elenco fixo em blocos contínuos.':
       'Una metáfora física y un número que cambia, contados por un elenco fijo en bloques continuos.',

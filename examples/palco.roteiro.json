@@ -1,0 +1,63 @@
+{
+  "topic_id": "skills-vs-agentes",
+  "script": {
+    "title": "Pare de queimar o seu limite",
+    "hook": "O limite acaba no braçal",
+    "series": "ia",
+    "format": "short",
+    "cross_checked": false,
+    "scenes": [
+      {
+        "id": 0,
+        "heading": "Gancho: o limite acaba no braçal",
+        "narration": "Todo mundo que usa o modelo grande bate no limite rápido. Listar pasta, ler log, renomear arquivo: tudo sai da mesma moeda, e o limite cai para 40%. Um modelo leve, o Haiku, faria isso mais barato.",
+        "visual_brief": "#palco Pare de queimar o seu *limite*\nator: Opus (oculos)\nobjeto: moeda Opus | rival Haiku\nmedidor: limite | 100 -> 40 % | selo\ntarefas: listar pasta -> moeda; ler log -> moeda; renomear arquivo -> moeda\nselo: mais barato\nGancho: mostrar o limite sendo comido por tarefa simples.",
+        "duration_hint_secs": 6.0
+      },
+      {
+        "id": 1,
+        "heading": "Cada tarefa simples come o plano",
+        "narration": "Porque hoje o Opus faz tudo, até renomear arquivo, listar pasta e ler log. Cada tarefa dessas come o plano, que despenca para 20%.",
+        "visual_brief": "#palco Até o *fácil*\nator: Opus (capacete)\nmedidor: Uso do plano restante | 90 -> 20 %\ntarefas: renomear arquivo; listar pasta; ler log",
+        "duration_hint_secs": 6.0
+      },
+      {
+        "id": 2,
+        "heading": "A skill separa as tarefas",
+        "narration": "Então a skill separa cada tarefa. Buscar arquivo, ler log e editar linha vão pro Haiku.",
+        "visual_brief": "#palco O Haiku pega o *braçal*\nator: Haiku (bone)\nator: Opus\nobjeto: funil Skill | separa as tarefas\ntarefas: buscar arquivo -> Haiku; ler log -> Haiku; editar linha -> Haiku",
+        "duration_hint_secs": 6.0
+      },
+      {
+        "id": 3,
+        "heading": "Só o pesado fica no grande",
+        "narration": "E só o raciocínio pesado fica com o Opus.",
+        "visual_brief": "#palco O Haiku pega o *braçal*\nator: Haiku\nator: Opus\nobjeto: funil Skill | separa as tarefas\ntarefas: raciocínio pesado -> Opus",
+        "duration_hint_secs": 6.0
+      },
+      {
+        "id": 4,
+        "heading": "O custo relativo",
+        "narration": "Num exemplo hipotético, se o Opus custa 100, o Haiku custa 10 pela mesma tarefa simples: 90% a menos.",
+        "visual_brief": "#palco Do grande pro *leve*\nator: Haiku\nobjeto: tabela Custo relativo (exemplo hipotético) | Opus=100; *Haiku=10*\nselo: -90%",
+        "duration_hint_secs": 6.0
+      },
+      {
+        "id": 5,
+        "heading": "O plano rende mais",
+        "narration": "Resumindo: o mesmo plano rende muito mais. O Haiku busca, lê, edita e lista, e o plano ainda fica em 81%.",
+        "visual_brief": "#palco Mesmo plano, *mais trabalho*\nator: Haiku\nobjeto: muro\nmedidor: Uso do plano restante | 92 -> 81 %\ntarefas: buscar; ler; editar; listar",
+        "duration_hint_secs": 6.0
+      },
+      {
+        "id": 6,
+        "heading": "Chamada",
+        "narration": "Quer a skill? Comenta skill que eu te mando o link.",
+        "visual_brief": "#palco O link da *skill*\nator: Haiku\nobjeto: envelope skill",
+        "duration_hint_secs": 6.0
+      }
+    ],
+    "sources": [],
+    "claims": []
+  }
+}

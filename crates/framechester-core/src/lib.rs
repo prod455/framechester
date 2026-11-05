@@ -15,6 +15,7 @@ pub mod presets;
 pub mod qa;
 pub mod security;
 pub mod shorts;
+pub mod stage_script;
 pub mod storyboard;
 
 pub use error::{FramechesterError, Result};

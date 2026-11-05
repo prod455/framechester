@@ -144,6 +144,9 @@ export default {
     'Explicador direto': 'Straight explainer',
     'Uma pergunta concreta respondida com mecanismo, analogia e consequência.':
       'A concrete question answered with mechanism, analogy and consequence.',
+    'Palco com mascote': 'Mascot stage',
+    'Uma metáfora física e um número que muda, contados por um elenco fixo em blocos contínuos.':
+      'One physical metaphor and one changing number, told by a fixed cast in continuous blocks.',
     'Mistério documental': 'Documentary mystery',
     'Um fato estranho e verificável investigado até a explicação documentada.':
       'A strange, verifiable fact investigated until the documented explanation.',
@@ -354,6 +357,9 @@ export default {
     'Explicador direto': 'Explicador directo',
     'Uma pergunta concreta respondida com mecanismo, analogia e consequência.':
       'Una pregunta concreta respondida con mecanismo, analogía y consecuencia.',
+    'Palco com mascote': 'Escenario con mascota',
+    'Uma metáfora física e um número que muda, contados por um elenco fixo em blocos contínuos.':
+      'Una metáfora física y un número que cambia, contados por un elenco fijo en bloques continuos.',
     'Mistério documental': 'Misterio documental',
     'Um fato estranho e verificável investigado até a explicação documentada.':
       'Un hecho extraño y verificable investigado hasta la explicación documentada.',

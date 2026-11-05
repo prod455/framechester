@@ -1,4 +1,4 @@
-import type { SceneLayout } from './scene-layouts.ts';
+import type { MotionDirective, SceneLayout } from './scene-layouts.ts';
 
 // Editorial conventions of faceless tech/science channels, written as rules a model can follow.
 // They are recurring genre patterns, not measured retention data: validate each one against the
@@ -8,7 +8,7 @@ export interface VideoStyle {
   name: string;
   summary: string;
   beats: string[];
-  layouts: SceneLayout[];
+  layouts: (SceneLayout | MotionDirective)[];
 }
 
 export const videoStyles = [
@@ -76,6 +76,20 @@ export const videoStyles = [
       'Veredito por perfil de uso, nunca um vencedor absoluto sem evidência.',
     ],
     layouts: ['comparacao', 'numero', 'lista'],
+  },
+  {
+    id: 'palco',
+    name: 'Palco com mascote',
+    summary: 'Uma metáfora física e um número que muda, contados por um elenco fixo em blocos contínuos.',
+    beats: [
+      'Antes das cenas, escolha uma metáfora física (moeda que é mordida, funil que separa, muro que cresce) e um número de 0 a 100 que conta a história.',
+      'Gancho: o número caindo ou subindo por causa do problema, já na primeira cena.',
+      'Um elenco de até 2 mascotes que atravessa o vídeo, cada um com seu acessório; cada tarefa citada voa até quem a executa.',
+      'Blocos com título fixo de até 6 palavras e uma palavra de destaque; o título só muda quando a ideia muda.',
+      'Virada: a solução entra como objeto (funil, rival, tabela) e o número passa a se comportar diferente.',
+      'Fechamento: o número final e um envelope com a palavra que o espectador deve comentar.',
+    ],
+    layouts: ['palco'],
   },
 ] as const satisfies readonly VideoStyle[];
 export type VideoStyleId = (typeof videoStyles)[number]['id'];

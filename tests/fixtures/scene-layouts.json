@@ -153,5 +153,10 @@
 "brief": "#grafico3d x",
 "narration": "x",
 "layout": null
+},
+{
+"brief": "#palco Até o *fácil*\nator: Opus (capacete)\nmedidor: Uso do plano | 90 -> 20 %",
+"narration": "O plano cai para 20%.",
+"layout": "destaque"
 }
 ]

@@ -31,7 +31,9 @@ roteiro (visualBrief) ──► diretiva #layout ──► parser Rust ──►
 As diretivas abaixo continuam valendo para o renderizador de imagens estáticas. O
 motor motion (`framechester produce`) usa um storyboard semântico com cenas
 animadas e aceita, além delas, `#fluxo`, `#grafico`, `#arquitetura`, `#codigo`,
-`#transformacao`, `#anotacao`, `#infografico`, `#causa` e `#personagem`. No caminho
+`#transformacao`, `#anotacao`, `#infografico`, `#causa`, `#personagem` e `#palco`
+(palco contínuo com mascotes, uma metáfora e um medidor que atravessa as cenas; veja
+abaixo). No caminho
 antigo essas diretivas viram o layout padrão, sem erro. No motor motion, uma cena sem
 diretiva ou com `#pergunta` é contada por um personagem animado que combina com a pauta (robô, dev,
 cientista ou apresentador); `#destaque` mantém o título tipográfico. Gramática completa em
@@ -117,6 +119,7 @@ prompt do sistema e não depende do provedor. O catálogo fica em
 | Ranking | critério → itens do menor para o maior → primeiro lugar por último | lista, numero |
 | Linha do tempo | gancho no presente → origem → marcos → virada → pergunta em aberto | linha-do-tempo, citacao |
 | Comparativo | decisão real → critérios → um critério por cena → veredito por perfil | comparacao, numero, lista |
+| Palco com mascote | metáfora e número escolhidos antes → gancho com o número mudando → elenco fixo → blocos com título fixo → virada como objeto → número final e chamada de comentário | palco |
 
 Regras por duração, somadas ao formato:
 
@@ -130,6 +133,23 @@ formato como vencedor, compare a retenção por formato no analytics do
 próprio canal (skills `youtube-channel-analysis` e `marketing-experiments`).
 Para um teste interpretável, mantenha o assunto e a duração e mude só o
 formato.
+
+### Palco com mascote
+
+Quando todo vídeo sai com a mesma cara e só o roteiro muda, o problema costuma ser a
+estrutura: um diagrama novo por cena não cria estado que o espectador acompanhe. O formato
+**Palco com mascote** (`#palco`, formato editorial `palco` no Studio) conta o vídeo com:
+
+1. **uma metáfora física** (moeda mordida, funil que separa, muro que cresce, tabela, envelope);
+2. **um número de 0 a 100** que muda a cada tarefa e continua de uma cena para a outra;
+3. **um elenco fixo** de até 2 mascotes, diferenciados por acessório e crachá;
+4. **blocos** com título fixo e uma palavra em destaque, com trilha de progresso no topo;
+5. **tarefas** que voam como etiquetas e batem em quem as executa no momento em que são ditas;
+6. uma **chamada de comentário** no fim (envelope com a palavra digitada).
+
+Gramática em [STORYBOARD.md](STORYBOARD.md#palco-stage). Mesmo limite honesto dos outros
+formatos: é uma convenção do gênero, não um resultado medido neste projeto; compare a
+retenção no analytics do canal antes de adotá-lo como padrão.
 
 ## Precisa de um LLM próprio?
 

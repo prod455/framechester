@@ -1361,7 +1361,12 @@ mod tests {
         let scenes = &storyboard.scenes;
         assert_eq!(scenes[0].learning_goal, "O plano acaba no braçal.");
         assert!(scenes[0].animations.is_empty(), "a stage animates itself");
-        let Composition::Stage { meter: Some(meter), actors, .. } = &scenes[1].composition else {
+        let Composition::Stage {
+            meter: Some(meter),
+            actors,
+            ..
+        } = &scenes[1].composition
+        else {
             panic!("{:?}", scenes[1].composition)
         };
         assert_eq!((meter.from, meter.to), (40.0, 20.0));
@@ -1373,13 +1378,19 @@ mod tests {
     #[test]
     fn a_malformed_stage_falls_back_and_says_why() {
         let (storyboard, fallbacks) = plan_script(
-            &script("Palco", vec![scene("#palco X\nobjeto: foguete", "Uma frase qualquer.")]),
+            &script(
+                "Palco",
+                vec![scene("#palco X\nobjeto: foguete", "Uma frase qualquer.")],
+            ),
             "canal",
             VideoFormat::Vertical,
         )
         .unwrap();
         assert!(fallbacks[0].contains("foguete"), "{fallbacks:?}");
-        assert!(!matches!(storyboard.scenes[0].composition, Composition::Stage { .. }));
+        assert!(!matches!(
+            storyboard.scenes[0].composition,
+            Composition::Stage { .. }
+        ));
     }
 
     #[test]

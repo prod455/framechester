@@ -158,6 +158,6 @@ Pessoas reais: figuras históricas podem falar com frases documentadas ou claram
   medidor: RÓTULO | 90 -> 20 % (| selo para o estilo pílula) — de 0 a 100; sem o valor inicial (| -> 20 %) continua de onde parou na cena anterior; o número só aparece se for dito na narração.
   tarefas: tarefa; tarefa -> Nome; tarefa -> objeto — até 8 rótulos curtos (24 caracteres) que voam e batem no ator ou no objeto quando a narração fala deles; cada batida move o medidor, morde a moeda ou põe um tijolo.
   selo: TEXTO — adesivo curto (24 caracteres); números nele precisam ser ditos.
-Como usar #palco: escolha UMA metáfora física e UM número que muda para o vídeo inteiro antes de escrever as cenas; cada cena só mexe nesse estado. Cenas seguidas com o mesmo título formam um bloco e são cortadas sem emenda; troque o título só quando a ideia mudar (3 a 6 blocos por Short). O mesmo elenco atravessa o vídeo. A última cena pode ser objeto: envelope com a palavra que o espectador deve comentar.
+Cenas seguidas de #palco com o mesmo título formam um bloco contínuo, cortado sem emenda; o elenco e os medidores continuam de uma cena para a outra.
 Cada campo tem até 160 caracteres. Não use outras diretivas.
 Toda cena vira composição gerada localmente: não peça gravação real, gravação de tela, captura de tela nem CAPTURA PENDENTE.`;

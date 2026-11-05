@@ -947,14 +947,24 @@ fn meter_states(scene: &StoryboardScene, meter: &Meter, hits: &[Hit]) -> Vec<(f3
     states
 }
 
-fn meter_colour(value: f64) -> &'static str {
+/// Bar paint by value: green, amber, red in every look (a look's warning ink can be its
+/// accent red, which would read as critical at 40%).
+const BAR_PAINTS: [&str; 3] = ["#3BA55C", "#E8A317", "#D7263D"];
+
+fn meter_band(value: f64) -> usize {
     if value > 50.0 {
-        tokens::SUCCESS
+        0
     } else if value > 25.0 {
-        tokens::WARNING
+        1
     } else {
-        tokens::DANGER
+        2
     }
+}
+
+/// Ink of the printed value on the light card: amber is too light for text, so the
+/// middle band prints in ink.
+fn meter_colour(value: f64) -> &'static str {
+    [tokens::SUCCESS, tokens::INK, tokens::DANGER][meter_band(value)]
 }
 
 fn meter_text(meter: &Meter, value: f64) -> String {
@@ -1066,7 +1076,7 @@ fn meter_bar(
     for (at, value) in states.iter().skip(1) {
         sx.to(*at, 0.35, (*value / 100.0) as f32, Easing::EaseOut);
     }
-    for colour in [tokens::SUCCESS, tokens::WARNING, tokens::DANGER] {
+    for (band, colour) in BAR_PAINTS.into_iter().enumerate() {
         let mut fill = Node::new(
             "meter",
             Shape::Rect {
@@ -1079,7 +1089,7 @@ fn meter_bar(
         .decorative()
         .with_origin((bar.x, bar.cy()));
         fill.props.sx = sx.clone();
-        let initial = meter_colour(states[0].1) == colour;
+        let initial = meter_band(states[0].1) == band;
         fill.props.opacity = Track::constant(if initial && enter.is_none() { 1.0 } else { 0.0 });
         if let Some(at) = enter {
             fill.props.opacity.key(at, 0.0, Easing::Linear);
@@ -1088,11 +1098,7 @@ fn meter_bar(
                 .key(at + 0.02, if initial { 1.0 } else { 0.0 }, Easing::Linear);
         }
         for (at, value) in states.iter().skip(1) {
-            let shown = if meter_colour(*value) == colour {
-                1.0
-            } else {
-                0.0
-            };
+            let shown = if meter_band(*value) == band { 1.0 } else { 0.0 };
             fill.props.opacity.to(*at, 0.15, shown, Easing::Linear);
         }
         timed.push(fill);

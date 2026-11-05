@@ -119,6 +119,22 @@ pub struct StageMemory {
 }
 
 impl StageMemory {
+    /// A memory that already knows the channel's recurring cast, so a script can name them
+    /// without describing them; a script that describes them again wins for that video.
+    pub fn with_cast(cast: &[crate::storyboard::CastMember]) -> Self {
+        let mut memory = Self::default();
+        for member in cast {
+            let role = CAST_ROLES[memory.cast.len() % CAST_ROLES.len()];
+            memory.cast.push((
+                fold(&member.name),
+                member.name.trim().to_string(),
+                member.hat,
+                role,
+            ));
+        }
+        memory
+    }
+
     /// Parses one `#palco` scene; on success, records its cast and where its gauge ends.
     pub fn parse(
         &mut self,
@@ -475,6 +491,22 @@ mod tests {
         assert!(!meter.numeric, "15 is not spoken, so it is not printed");
         assert_eq!(tasks[1].to.as_deref(), Some("opus"));
         assert!(matches!(prop, Some(Prop::Funnel { note: Some(_), .. })));
+    }
+
+    #[test]
+    fn the_channel_cast_is_known_before_the_script_names_it() {
+        let mut memory = StageMemory::with_cast(&[crate::storyboard::CastMember {
+            name: "Bit".into(),
+            hat: Hat::Glasses,
+        }]);
+        let Composition::Stage { actors, .. } = memory.parse(1, "X", "ator: Bit", "x").unwrap()
+        else {
+            panic!()
+        };
+        assert_eq!(
+            (actors[0].id.as_str(), actors[0].hat, actors[0].role),
+            ("bit", Hat::Glasses, Role::Primary)
+        );
     }
 
     #[test]

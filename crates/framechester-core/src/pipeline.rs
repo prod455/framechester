@@ -861,6 +861,7 @@ mod tests {
                 youtube_channel_id: Some(format!("synthetic-{id}")),
                 language: None,
                 look: None,
+                identity: None,
             };
             let mut adapters = providers();
             adapters.publisher = Box::new(ChannelPublisher(format!("synthetic-{id}")));
@@ -903,6 +904,7 @@ mod tests {
                     youtube_channel_id: None,
                     language: None,
                     look: None,
+                    identity: None,
                 }),
                 workdir: root.clone(),
                 ..PipelineOptions::default()

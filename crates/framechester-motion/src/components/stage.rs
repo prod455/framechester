@@ -10,8 +10,8 @@ use crate::format::Rect;
 use crate::scene::{Anchor, Node, Shape};
 use crate::tokens::{self, palette};
 use framechester_core::storyboard::{
-    format_value, narration_words, plain_headline, Actor, Composition, Easing, Hat, Meter,
-    MeterStyle, Prop, StoryboardScene, Task, TimedWord,
+    format_value, narration_words, plain_headline, Actor, Composition, Easing, Hat, Identity,
+    MascotBody, MascotShape, Meter, MeterStyle, Prop, StoryboardScene, Task, TimedWord,
 };
 
 /// What a stage scene inherits from the stage scenes before it.
@@ -30,10 +30,40 @@ pub struct StageContext {
     pub hits_before: usize,
     /// First scene of the video: entries in the hook are already on screen at frame 0.
     pub hook: bool,
+    /// How the channel's mascot is drawn.
+    pub mascot: MascotStyle,
+}
+
+/// The channel's mascot: body colour and silhouette (`Identity` in the storyboard).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct MascotStyle {
+    pub body: MascotBody,
+    pub shape: MascotShape,
+}
+
+impl MascotStyle {
+    pub fn of(identity: Option<&Identity>) -> Self {
+        identity.map_or_else(Self::default, |identity| Self {
+            body: identity.body,
+            shape: identity.shape,
+        })
+    }
+}
+
+/// Body, edge, face and feet inks of a mascot colour.
+fn body_inks(body: MascotBody) -> [&'static str; 4] {
+    match body {
+        MascotBody::Coral => ["#E07A55", "#9C4A2E", "#EE9671", "#B85A3A"],
+        MascotBody::Blue => ["#4F86E8", "#2C559F", "#7EA8F0", "#3A68B8"],
+        MascotBody::Green => ["#4CB36B", "#2A7442", "#7DCC93", "#388A52"],
+        MascotBody::Purple => ["#9468D8", "#5B3A94", "#B392E8", "#7550B3"],
+        MascotBody::Yellow => ["#EDBE3A", "#A47B14", "#F6D879", "#C99A22"],
+        MascotBody::Graphite => ["#5D6470", "#33383F", "#828A97", "#474D56"],
+    }
 }
 
 /// Computes each scene's [`StageContext`]; `None` for scenes that are not stages.
-pub fn contexts(scenes: &[StoryboardScene]) -> Vec<Option<StageContext>> {
+pub fn contexts(scenes: &[StoryboardScene], mascot: MascotStyle) -> Vec<Option<StageContext>> {
     let headline_of = |scene: &StoryboardScene| match &scene.composition {
         Composition::Stage { headline, .. } => Some(plain_headline(headline)),
         _ => None,
@@ -92,6 +122,7 @@ pub fn contexts(scenes: &[StoryboardScene]) -> Vec<Option<StageContext>> {
             carried_actors,
             hits_before,
             hook: index == 0,
+            mascot,
         }));
         hits_before += prop_hits(prop.as_ref(), tasks, actors);
     }
@@ -112,10 +143,8 @@ fn prop_hits(prop: Option<&Prop>, tasks: &[Task], actors: &[Actor]) -> usize {
 
 // Mascot and prop inks: drawn objects, the same in every look (like an illustration
 // pasted on the page); text on them is checked against these.
+/// The envelope stamp keeps the default body ink.
 const BODY: &str = "#E07A55";
-const BODY_EDGE: &str = "#9C4A2E";
-const FACE: &str = "#EE9671";
-const FEET: &str = "#B85A3A";
 const EYE: &str = "#1D1A18";
 const HARD_HAT: &str = "#F2B630";
 const HARD_HAT_EDGE: &str = "#B9851A";
@@ -574,16 +603,32 @@ struct Spot {
     x: f32,
     feet: f32,
     size: f32,
+    shape: MascotShape,
 }
 
 impl Spot {
+    fn new(x: f32, feet: f32, size: f32, shape: MascotShape) -> Self {
+        Self {
+            x,
+            feet,
+            size,
+            shape,
+        }
+    }
+
+    /// Width and height of the body per unit of size, and its corner radius per width.
+    fn proportions(shape: MascotShape) -> (f32, f32, f32) {
+        match shape {
+            MascotShape::Block => (1.0, 0.8, 0.18),
+            MascotShape::Round => (1.0, 0.92, 0.5),
+            MascotShape::Tall => (0.72, 1.05, 0.32),
+        }
+    }
+
     fn body(&self) -> Rect {
-        Rect::new(
-            self.x - self.size / 2.0,
-            self.feet - self.size * 0.92,
-            self.size,
-            self.size * 0.8,
-        )
+        let (w, h, _) = Self::proportions(self.shape);
+        let (w, h) = (self.size * w, self.size * h);
+        Rect::new(self.x - w / 2.0, self.feet - self.size * 0.12 - h, w, h)
     }
 
     /// Where a task lands on it.
@@ -595,15 +640,22 @@ impl Spot {
 
 /// Height a mascot takes above its feet, per unit of body width (with its hat), and
 /// below them in pixels (its badge).
-fn mascot_extent(ctx: &Ctx<'_>) -> (f32, f32) {
+fn mascot_extent(ctx: &Ctx<'_>, shape: MascotShape) -> (f32, f32) {
+    let (_, h, _) = Spot::proportions(shape);
     (
-        1.25,
+        h + 0.45,
         ctx.canvas.gap * 0.35 + ctx.canvas.type_scale.small * 1.5,
     )
 }
 
 /// One mascot. Eyes come as three sets (open, blinking, tired) that the animation swaps.
-fn mascot(ctx: &mut Ctx<'_>, actor: &Actor, spot: Spot) -> (Vec<Node>, [Vec<Node>; 3]) {
+fn mascot(
+    ctx: &mut Ctx<'_>,
+    actor: &Actor,
+    spot: Spot,
+    style: MascotStyle,
+) -> (Vec<Node>, [Vec<Node>; 3]) {
+    let [body_ink, edge_ink, face_ink, feet_ink] = body_inks(style.body);
     let canvas = ctx.canvas;
     let id = actor.id.as_str();
     let s = spot.size;
@@ -619,7 +671,12 @@ fn mascot(ctx: &mut Ctx<'_>, actor: &Actor, spot: Spot) -> (Vec<Node>, [Vec<Node
         )
         .with_z(-2),
     );
-    for offset in [-0.3f32, 0.0, 0.3] {
+    let feet_at: &[f32] = match spot.shape {
+        MascotShape::Block => &[-0.3, 0.0, 0.3],
+        MascotShape::Round => &[-0.22, 0.22],
+        MascotShape::Tall => &[-0.17, 0.17],
+    };
+    for offset in feet_at.iter().copied() {
         let foot = Rect::new(
             spot.x + offset * s - s * 0.07,
             body.bottom() - s * 0.02,
@@ -629,20 +686,30 @@ fn mascot(ctx: &mut Ctx<'_>, actor: &Actor, spot: Spot) -> (Vec<Node>, [Vec<Node
         nodes.push(fill_path(
             id,
             rounded_d(foot, s * 0.04),
-            FEET,
-            Some((BODY_EDGE, edge * 0.6)),
+            feet_ink,
+            Some((edge_ink, edge * 0.6)),
         ));
     }
     nodes.push(fill_path(
         id,
         rounded_d(body, s * 0.18),
-        BODY,
-        Some((BODY_EDGE, edge)),
+        body_ink,
+        Some((edge_ink, edge)),
     ));
-    let face = Rect::new(body.x + s * 0.1, body.y + s * 0.12, s * 0.8, s * 0.46);
-    nodes.push(fill_path(id, rounded_d(face, s * 0.14), FACE, None));
+    let face = Rect::new(
+        body.x + body.w * 0.1,
+        body.y + body.h * 0.15,
+        body.w * 0.8,
+        body.h * 0.575,
+    );
+    nodes.push(fill_path(
+        id,
+        rounded_d(face, face.w * 0.18),
+        face_ink,
+        None,
+    ));
     let eye_y = face.y + face.h * 0.52;
-    let eye_dx = s * 0.17;
+    let eye_dx = body.w * 0.17;
     let mut open = Vec::new();
     let mut blink = Vec::new();
     let mut tired = Vec::new();
@@ -1405,7 +1472,8 @@ pub fn build(
     let zone = Rect::new(area.x, top, area.w, area.bottom() - top);
     // Cast placement depends on the metaphor: next to a coin, under a funnel, in front of
     // a wall, beside a card, or centre stage alone.
-    let (above, below_px) = mascot_extent(ctx);
+    let style = stage.mascot;
+    let (above, below_px) = mascot_extent(ctx, style.shape);
     let cast_size =
         |share_w: f32, share_h: f32| (zone.w * share_w).min((zone.h - below_px) * share_h / above);
     let feet = zone.bottom() - below_px;
@@ -1413,67 +1481,49 @@ pub fn build(
         (_, 0) => Vec::new(),
         (None, 1) => {
             let size = cast_size(0.36, 0.95);
-            vec![Spot {
-                x: zone.cx(),
-                feet,
-                size,
-            }]
+            vec![Spot::new(zone.cx(), feet, size, style.shape)]
         }
         (None, _) => {
             let size = cast_size(0.28, 0.9);
             vec![
-                Spot {
-                    x: zone.x + zone.w * 0.27,
-                    feet,
-                    size,
-                },
-                Spot {
-                    x: zone.x + zone.w * 0.73,
-                    feet,
-                    size,
-                },
+                Spot::new(zone.x + zone.w * 0.27, feet, size, style.shape),
+                Spot::new(zone.x + zone.w * 0.73, feet, size, style.shape),
             ]
         }
         (Some(Prop::Coin { .. }), count) => {
             let size = cast_size(0.2, 0.55);
             (0..count)
-                .map(|index| Spot {
-                    x: zone.right() - size * 0.75 - index as f32 * size * 1.5,
-                    feet,
-                    size,
+                .map(|index| {
+                    Spot::new(
+                        zone.right() - size * 0.75 - index as f32 * size * 1.5,
+                        feet,
+                        size,
+                        style.shape,
+                    )
                 })
                 .collect()
         }
         (Some(Prop::Funnel { .. }), 1) => {
             let size = cast_size(0.26, 0.58);
-            vec![Spot {
-                x: zone.cx(),
-                feet,
-                size,
-            }]
+            vec![Spot::new(zone.cx(), feet, size, style.shape)]
         }
         (Some(Prop::Funnel { .. }), _) => {
             let size = cast_size(0.24, 0.58);
             vec![
-                Spot {
-                    x: zone.x + zone.w * 0.2,
-                    feet,
-                    size,
-                },
-                Spot {
-                    x: zone.x + zone.w * 0.8,
-                    feet,
-                    size,
-                },
+                Spot::new(zone.x + zone.w * 0.2, feet, size, style.shape),
+                Spot::new(zone.x + zone.w * 0.8, feet, size, style.shape),
             ]
         }
         (Some(Prop::Wall), count) => {
             let size = cast_size(0.26, 0.62);
             (0..count)
-                .map(|index| Spot {
-                    x: zone.x + zone.w * (0.3 - 0.18 * index as f32).max(0.12),
-                    feet,
-                    size,
+                .map(|index| {
+                    Spot::new(
+                        zone.x + zone.w * (0.3 - 0.18 * index as f32).max(0.12),
+                        feet,
+                        size,
+                        style.shape,
+                    )
                 })
                 .collect()
         }
@@ -1481,20 +1531,26 @@ pub fn build(
             // The card spans the top; the cast stands under it, larger.
             let size = cast_size(0.26, 0.6);
             (0..count)
-                .map(|index| Spot {
-                    x: zone.x + zone.w * (0.3 + 0.4 * index as f32),
-                    feet,
-                    size,
+                .map(|index| {
+                    Spot::new(
+                        zone.x + zone.w * (0.3 + 0.4 * index as f32),
+                        feet,
+                        size,
+                        style.shape,
+                    )
                 })
                 .collect()
         }
         (Some(Prop::Envelope { .. }), count) => {
             let size = cast_size(0.2, 0.5);
             (0..count)
-                .map(|index| Spot {
-                    x: zone.x + size * 0.75 + index as f32 * size * 1.5,
-                    feet,
-                    size,
+                .map(|index| {
+                    Spot::new(
+                        zone.x + size * 0.75 + index as f32 * size * 1.5,
+                        feet,
+                        size,
+                        style.shape,
+                    )
                 })
                 .collect()
         }
@@ -2049,7 +2105,7 @@ pub fn build(
     for (index, (actor, spot)) in actors.iter().zip(spots.iter()).enumerate() {
         let carried = stage.carried_actors.contains(&actor.id);
         let enter = entrance(stage, carried, 0.35 + 0.12 * index as f32);
-        let (mut body, mut eyes) = mascot(ctx, actor, *spot);
+        let (mut body, mut eyes) = mascot(ctx, actor, *spot, style);
         let own_hits = actor_hits(&actor.id);
         animate_mascot(&mut body, *spot, enter, &own_hits, duration);
         for set in eyes.iter_mut() {
@@ -2271,7 +2327,7 @@ mod tests {
             .unwrap()
         };
         let scenes = vec![stage("A *b*", 2), stage("A b", 3), stage("C", 1)];
-        let contexts = contexts(&scenes);
+        let contexts = contexts(&scenes, MascotStyle::default());
         let [Some(first), Some(second), Some(third)] = &contexts[..] else {
             panic!("{contexts:?}");
         };
@@ -2297,7 +2353,9 @@ mod tests {
 mod layout_tests {
     use crate::compose::layout_preflight;
     use crate::text::Typesetter;
-    use framechester_core::storyboard::{Look, Storyboard, VideoFormat};
+    use framechester_core::storyboard::{
+        Identity, Look, MascotBody, MascotShape, Storyboard, VideoFormat,
+    };
 
     #[test]
     fn the_stage_example_lays_out_cleanly_in_every_format_and_look() {
@@ -2316,6 +2374,18 @@ mod layout_tests {
                 storyboard.look = Some(look);
                 let issues = layout_preflight(&storyboard, &typesetter);
                 assert!(issues.is_empty(), "{format:?} {look:?}: {issues:?}");
+            }
+            // Every silhouette a channel can pick fits the same stage.
+            for shape in [MascotShape::Block, MascotShape::Round, MascotShape::Tall] {
+                let mut storyboard = example.clone();
+                storyboard.format = format;
+                storyboard.identity = Some(Identity {
+                    body: MascotBody::Purple,
+                    shape,
+                    cast: Vec::new(),
+                });
+                let issues = layout_preflight(&storyboard, &typesetter);
+                assert!(issues.is_empty(), "{format:?} {shape:?}: {issues:?}");
             }
         }
     }

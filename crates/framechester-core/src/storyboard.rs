@@ -575,6 +575,76 @@ impl Task {
     }
 }
 
+/// Body colour of the channel's mascot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum MascotBody {
+    #[default]
+    Coral,
+    Blue,
+    Green,
+    Purple,
+    Yellow,
+    Graphite,
+}
+
+/// Silhouette of the channel's mascot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum MascotShape {
+    /// Rounded block on three feet.
+    #[default]
+    Block,
+    /// Soft round blob on two feet.
+    Round,
+    /// Tall, narrow capsule on two feet.
+    Tall,
+}
+
+/// A recurring cast member of a channel: the same name and accessory in every video.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CastMember {
+    pub name: String,
+    #[serde(default)]
+    pub hat: Hat,
+}
+
+/// What makes a channel's videos its own beyond the look: how its mascot is drawn and the
+/// cast that comes back in every video.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+pub struct Identity {
+    #[serde(default)]
+    pub body: MascotBody,
+    #[serde(default)]
+    pub shape: MascotShape,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cast: Vec<CastMember>,
+}
+
+pub const MAX_CAST: usize = 3;
+
+impl Identity {
+    pub fn validate(&self) -> Result<()> {
+        if self.cast.len() > MAX_CAST {
+            return Err(FramechesterError::InvalidInput(format!(
+                "identidade aceita ate {MAX_CAST} personagens no elenco"
+            )));
+        }
+        let mut names = HashSet::new();
+        for member in &self.cast {
+            let name = member.name.trim();
+            if name.is_empty() || name.chars().count() > 16 || !names.insert(name.to_lowercase()) {
+                return Err(FramechesterError::InvalidInput(format!(
+                    "nome do elenco vazio, repetido ou acima de 16 caracteres: '{name}'"
+                )));
+            }
+        }
+        Ok(())
+    }
+}
+
 pub const MAX_STAGE_ACTORS: usize = 2;
 pub const MAX_STAGE_TASKS: usize = 8;
 pub const MAX_HEADLINE_CHARS: usize = 48;
@@ -978,6 +1048,9 @@ pub struct Storyboard {
     /// Visual look; absent means the default (`noite`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub look: Option<Look>,
+    /// The channel's mascot and recurring cast; absent means the default mascot.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity: Option<Identity>,
     /// Hash of the inputs that produced this plan, for caches and reproducibility.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_hash: Option<String>,
@@ -1034,6 +1107,9 @@ impl Storyboard {
             return Err(FramechesterError::InvalidInput(format!(
                 "storyboard precisa de 1 a {MAX_SCENES} cenas"
             )));
+        }
+        if let Some(identity) = &self.identity {
+            identity.validate()?;
         }
         let mut ids = HashSet::new();
         for scene in &self.scenes {
@@ -1850,6 +1926,7 @@ mod tests {
             scenes: vec![scene()],
             look: None,
             source_hash: None,
+            identity: None,
         }
     }
 

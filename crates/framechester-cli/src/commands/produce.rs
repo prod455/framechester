@@ -15,11 +15,11 @@ use framechester_core::domain::{
     ScriptFormat, Stage, Timeline, TimelineScene, Topic,
 };
 use framechester_core::editorial;
-use framechester_core::planner::plan_script;
+use framechester_core::planner::plan_script_for;
 use framechester_core::ports::{
     FactEvidenceProvider, GenerationBudget, LlmProvider, ScriptPrompt, TrendRequest, TrendSource,
 };
-use framechester_core::storyboard::{Look, Storyboard, VideoFormat};
+use framechester_core::storyboard::{Identity, Look, Storyboard, VideoFormat};
 use framechester_motion::audio::LoudnessTarget;
 use framechester_motion::narrate::narrate;
 use framechester_motion::qa::{audit, QaInput};
@@ -84,8 +84,16 @@ pub(crate) fn plan_from_args(
     channel_name: &str,
     language: &str,
     channel_look: Option<Look>,
+    channel_identity: Option<&Identity>,
 ) -> anyhow::Result<Planned> {
-    let mut planned = plan_without_look(config, args, format, channel_name, language)?;
+    let mut planned = plan_without_look(
+        config,
+        args,
+        format,
+        channel_name,
+        language,
+        channel_identity,
+    )?;
     // The flag wins, then what the storyboard says, then the channel's identity.
     let flag = match &args.look {
         Some(value) => Some(
@@ -95,6 +103,10 @@ pub(crate) fn plan_from_args(
         None => None,
     };
     planned.storyboard.look = flag.or(planned.storyboard.look).or(channel_look);
+    // Same order for the mascot and cast: what the storyboard says, then the channel's.
+    if planned.storyboard.identity.is_none() {
+        planned.storyboard.identity = channel_identity.cloned();
+    }
     Ok(planned)
 }
 
@@ -104,6 +116,7 @@ fn plan_without_look(
     format: VideoFormat,
     channel_name: &str,
     language: &str,
+    channel_identity: Option<&Identity>,
 ) -> anyhow::Result<Planned> {
     if let Some(path) = &args.storyboard {
         let text = std::fs::read_to_string(path)
@@ -137,7 +150,8 @@ fn plan_without_look(
     let mut script = provider.generate(&prompt, &GenerationBudget::default())?;
     script.claims = LocalEvidenceProvider.verify(&script.claims)?;
     let _ = config;
-    let (mut storyboard, fallbacks) = plan_script(&script, channel_name, format)?;
+    let (mut storyboard, fallbacks) =
+        plan_script_for(&script, channel_name, format, channel_identity)?;
     storyboard.language = language.to_string();
     Ok(Planned {
         topic: Some(topic),
@@ -177,6 +191,9 @@ pub(crate) fn plan_command(
         &channel_name,
         language,
         channel.as_ref().and_then(|channel| channel.look),
+        channel
+            .as_ref()
+            .and_then(|channel| channel.identity.as_ref()),
     )?;
     let output = args
         .output
@@ -296,6 +313,9 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
         &channel_name,
         language,
         channel.as_ref().and_then(|channel| channel.look),
+        channel
+            .as_ref()
+            .and_then(|channel| channel.identity.as_ref()),
     )?;
     // Same editorial gate as the legacy pipeline: a draft renders without the operator's
     // declaration, never with unsafe inputs or contradictions.

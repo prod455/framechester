@@ -14,6 +14,9 @@ pub struct ChannelProfile {
     /// Visual look of the channel's videos; absent means the default (`noite`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub look: Option<crate::storyboard::Look>,
+    /// The channel's mascot and recurring cast (`[channels.identity]`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity: Option<crate::storyboard::Identity>,
 }
 
 /// Languages with a reviewed commercial voice; the description template follows the same list.
@@ -50,6 +53,11 @@ impl ChannelProfile {
                 ));
             }
         }
+        if let Some(identity) = &self.identity {
+            identity
+                .validate()
+                .map_err(|error| FramechesterError::Config(error.to_string()))?;
+        }
         if let Some(language) = &self.language {
             if !LANGUAGES.contains(&language.as_str()) {
                 return Err(FramechesterError::Config(
@@ -80,6 +88,7 @@ mod tests {
             youtube_channel_id: None,
             language: None,
             look: None,
+            identity: None,
         }
     }
 

@@ -1028,7 +1028,10 @@ pub fn compose(storyboard: &Storyboard, typesetter: &Typesetter) -> Result<Compo
     storyboard.validate()?;
     let canvas = Canvas::for_storyboard(storyboard.format, storyboard.look.unwrap_or_default());
     let total = storyboard.scenes.len();
-    let stages = components::stage::contexts(&storyboard.scenes);
+    let stages = components::stage::contexts(
+        &storyboard.scenes,
+        components::stage::MascotStyle::of(storyboard.identity.as_ref()),
+    );
     let scenes = storyboard
         .scenes
         .iter()
@@ -1049,7 +1052,10 @@ pub fn layout_preflight(storyboard: &Storyboard, typesetter: &Typesetter) -> Vec
     const ESTIMATED_SECS_PER_WORD: f32 = 0.33;
     let canvas = Canvas::for_storyboard(storyboard.format, storyboard.look.unwrap_or_default());
     let total = storyboard.scenes.len();
-    let stages = components::stage::contexts(&storyboard.scenes);
+    let stages = components::stage::contexts(
+        &storyboard.scenes,
+        components::stage::MascotStyle::of(storyboard.identity.as_ref()),
+    );
     let mut issues = Vec::new();
     for (index, scene) in storyboard.scenes.iter().enumerate() {
         let mut scene = scene.clone();
@@ -1694,6 +1700,7 @@ mod tests {
             scenes: vec![first, second],
             look: None,
             source_hash: None,
+            identity: None,
         };
         let checks = crate::qa::hook_checks(&storyboard, &composed);
         assert!(
@@ -2042,6 +2049,7 @@ mod tests {
             scenes,
             look: None,
             source_hash: None,
+            identity: None,
         };
         assert!(layout_preflight(&storyboard(vec![ok.clone()]), &typesetter).is_empty());
         let storyboard = storyboard(vec![ok, bad]);
@@ -2227,6 +2235,7 @@ mod tests {
             language: "pt-BR".into(),
             scenes,
             look: Some(look),
+            identity: None,
             source_hash: None,
         };
         let total = storyboard.scenes.len();

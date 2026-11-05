@@ -1197,6 +1197,17 @@ pub fn plan_script(
     channel: &str,
     format: VideoFormat,
 ) -> Result<(Storyboard, Vec<String>)> {
+    plan_script_for(script, channel, format, None)
+}
+
+/// [`plan_script`] for a channel with its own identity: the storyboard carries it, and the
+/// channel's recurring cast is known to `#palco` scenes before the script names them.
+pub fn plan_script_for(
+    script: &Script,
+    channel: &str,
+    format: VideoFormat,
+    identity: Option<&crate::storyboard::Identity>,
+) -> Result<(Storyboard, Vec<String>)> {
     let mut fallbacks = Vec::new();
     let mut scenes = Vec::with_capacity(script.scenes.len());
     let described = described_cast(script);
@@ -1206,7 +1217,9 @@ pub fn plan_script(
         |(_, spec)| spec.clone(),
     );
     let total = script.scenes.len();
-    let mut stage = crate::stage_script::StageMemory::default();
+    let mut stage = crate::stage_script::StageMemory::with_cast(
+        identity.map_or(&[][..], |identity| identity.cast.as_slice()),
+    );
     for (index, scene) in script.scenes.iter().enumerate() {
         // A scene without a directive, or a question, is told by the character that fits
         // the topic; every other directive keeps its own composition.
@@ -1302,6 +1315,7 @@ pub fn plan_script(
         scenes,
         look: None,
         source_hash: None,
+        identity: identity.cloned(),
     };
     storyboard.validate()?;
     Ok((storyboard, fallbacks))

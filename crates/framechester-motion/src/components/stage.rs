@@ -120,6 +120,8 @@ const EYE: &str = "#1D1A18";
 const HARD_HAT: &str = "#F2B630";
 const HARD_HAT_EDGE: &str = "#B9851A";
 const CAP: &str = "#2A2A2E";
+/// Lit edge of the cap, so it reads on a dark ground too.
+const CAP_EDGE: &str = "#6B6B75";
 const CROWN: &str = "#F2C230";
 const COIN: &str = "#F2B630";
 const COIN_EDGE: &str = "#B9851A";
@@ -744,7 +746,7 @@ fn mascot(ctx: &mut Ctx<'_>, actor: &Actor, spot: Spot) -> (Vec<Node>, [Vec<Node
                     spot.x + r
                 ),
                 CAP,
-                None,
+                Some((CAP_EDGE, edge * 0.8)),
             ));
             nodes.push(fill_path(
                 id,
@@ -753,7 +755,7 @@ fn mascot(ctx: &mut Ctx<'_>, actor: &Actor, spot: Spot) -> (Vec<Node>, [Vec<Node
                     s * 0.04,
                 ),
                 CAP,
-                None,
+                Some((CAP_EDGE, edge * 0.8)),
             ));
         }
         Hat::Glasses => {
@@ -1625,7 +1627,8 @@ pub fn build(
         }
         Some(Prop::Funnel { label, note }) => {
             let height = (cast_top - zone.y - gap - size_note(ctx)).max(gap * 3.0);
-            let top_w = zone.w * if canvas.vertical { 0.42 } else { 0.24 };
+            // Wide enough to read as a funnel, never flatter than its own height.
+            let top_w = (zone.w * if canvas.vertical { 0.42 } else { 0.24 }).min(height * 1.3);
             let spout_w = top_w * 0.26;
             let cx = zone.cx();
             let neck = zone.y + height * 0.55;
@@ -1696,10 +1699,12 @@ pub fn build(
             funnel.push(label_node);
             let mut mouth_y = pill.bottom() + gap * 0.2;
             if let Some(note) = note {
+                // The note reads across the stage, whatever the funnel's width.
+                let note_w = zone.w * if canvas.vertical { 0.8 } else { 0.5 };
                 let note_area = Rect::new(
-                    cx - top_w * 0.6,
+                    cx - note_w / 2.0,
                     pill.bottom() + gap * 0.15,
-                    top_w * 1.2,
+                    note_w,
                     size * 1.25,
                 );
                 let (note_nodes, note_bottom) = ctx.fitted(
@@ -2279,5 +2284,33 @@ mod tests {
             (1, false, 0)
         );
         assert!(third.carried_actors.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod layout_tests {
+    use crate::compose::layout_preflight;
+    use crate::text::Typesetter;
+    use framechester_core::storyboard::{Look, Storyboard, VideoFormat};
+
+    #[test]
+    fn the_stage_example_lays_out_cleanly_in_every_format_and_look() {
+        let example: Storyboard =
+            serde_json::from_str(include_str!("../../../../examples/palco.storyboard.json"))
+                .unwrap();
+        let typesetter = Typesetter::new().unwrap();
+        for format in [
+            VideoFormat::Vertical,
+            VideoFormat::Horizontal,
+            VideoFormat::X,
+        ] {
+            for look in [Look::Noite, Look::Papel, Look::Planta] {
+                let mut storyboard = example.clone();
+                storyboard.format = format;
+                storyboard.look = Some(look);
+                let issues = layout_preflight(&storyboard, &typesetter);
+                assert!(issues.is_empty(), "{format:?} {look:?}: {issues:?}");
+            }
+        }
     }
 }

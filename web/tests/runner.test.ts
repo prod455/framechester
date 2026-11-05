@@ -1489,6 +1489,69 @@ test('a channel saves a known look and refuses any other', async () => {
   }
 });
 
+test("the channel's mascot and cast travel into the engine config, after its look", async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-identity-'));
+  const input = state();
+  input.channels[0].look = 'papel';
+  input.channels[0].identity = { body: 'purple', shape: 'tall', cast: [{ name: 'Bit', hat: 'glasses' }] };
+  let toml = '';
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => structuredClone(input),
+    execute: async (args) => {
+      toml = await readFile(args[args.indexOf('--config') + 1], 'utf8');
+      return { exitCode: 2, stdout: '', stderr: '' };
+    },
+  });
+  try {
+    const asset = await runner.upload('tech', {
+      filename: 'fixture.png',
+      kind: 'image',
+      contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+      license: 'Original',
+      provenance: 'Fixture',
+      restrictions: 'Teste',
+    });
+    await runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } });
+    await runner.idle();
+    assert.match(
+      toml,
+      /look = "papel"\n\[channels\.identity\]\nbody = "purple"\nshape = "tall"\n\[\[channels\.identity\.cast\]\]\nname = "Bit"\nhat = "glasses"\n\[app\]/,
+    );
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('a channel identity keeps a closed catalog and at most three distinct characters', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-identity-store-'));
+  const store = new LocalStore(home);
+  try {
+    const saved = await store.saveChannel({
+      id: 'tech',
+      name: 'Canal sintético',
+      identity: { body: 'green', shape: 'round', cast: [{ name: 'Bit', hat: 'cap' }] },
+    });
+    assert.deepEqual(saved.identity, { body: 'green', shape: 'round', cast: [{ name: 'Bit', hat: 'cap' }] });
+    await assert.rejects(store.saveChannel({ identity: { body: 'neon' } }, 'tech'), /Cor do mascote/);
+    await assert.rejects(store.saveChannel({ identity: { shape: 'star' } }, 'tech'), /Formato do mascote/);
+    await assert.rejects(
+      store.saveChannel({ identity: { cast: [{ name: 'Bit', hat: 'chapeu' }] } }, 'tech'),
+      /Acessório/,
+    );
+    await assert.rejects(
+      store.saveChannel({ identity: { cast: [{ name: 'Bit' }, { name: 'bit' }] } }, 'tech'),
+      /mesmo nome/,
+    );
+    const four = ['A', 'B', 'C', 'D'].map((name) => ({ name }));
+    await assert.rejects(store.saveChannel({ identity: { cast: four } }, 'tech'), /até 3/);
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
 test('only a video that never reached a network is deleted, with its files, and channel files go too', async () => {
   const home = await mkdtemp(join(tmpdir(), 'framechester-web-delete-'));
   const base = { channelId: 'tech', scriptId: 'script-one', createdAt: date, message: 'ok' };

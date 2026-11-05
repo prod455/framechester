@@ -5,6 +5,11 @@ import type { AreaCatalog } from './index.ts';
 export default {
   en: {
     'Visual inválido: use noite, papel ou planta.': 'Invalid look: use noite, papel or planta.',
+    'Cor do mascote inválida.': 'Invalid mascot colour.',
+    'Formato do mascote inválido.': 'Invalid mascot shape.',
+    'O elenco do canal aceita até 3 personagens.': 'The channel cast takes up to 3 characters.',
+    'Acessório do personagem inválido.': 'Invalid character accessory.',
+    'Dois personagens do elenco têm o mesmo nome.': 'Two cast characters have the same name.',
     'Tentar de novo não está disponível.': 'Try again is not available.',
     'O Instagram recusou o arquivo (ProcessingFailedError) e não processou o vídeo; nada foi publicado. Publique este vídeo pelo app do Instagram.':
       'Instagram rejected the file (ProcessingFailedError) and did not process the video; nothing was published. Publish this video from the Instagram app.',
@@ -530,6 +535,11 @@ export default {
   },
   es: {
     'Visual inválido: use noite, papel ou planta.': 'Estilo inválido: usa noite, papel o planta.',
+    'Cor do mascote inválida.': 'Color de mascota inválido.',
+    'Formato do mascote inválido.': 'Forma de mascota inválida.',
+    'O elenco do canal aceita até 3 personagens.': 'El elenco del canal admite hasta 3 personajes.',
+    'Acessório do personagem inválido.': 'Accesorio de personaje inválido.',
+    'Dois personagens do elenco têm o mesmo nome.': 'Dos personajes del elenco tienen el mismo nombre.',
     'Tentar de novo não está disponível.': 'Intentar de nuevo no está disponible.',
     'O Instagram recusou o arquivo (ProcessingFailedError) e não processou o vídeo; nada foi publicado. Publique este vídeo pelo app do Instagram.':
       'Instagram rechazó el archivo (ProcessingFailedError) y no procesó el video; no se publicó nada. Publica este video desde la app de Instagram.',

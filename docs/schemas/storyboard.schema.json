@@ -13,6 +13,12 @@
     "format": { "enum": ["vertical", "horizontal", "x"] },
     "language": { "type": "string" },
     "look": { "enum": ["noite", "papel", "planta"], "description": "Visual look; absent means noite. The channel's look applies when the storyboard has none." },
+    "identity": { "type": "object", "additionalProperties": false, "description": "The channel's mascot and recurring cast; the channel's identity applies when the storyboard has none.", "properties": {
+      "body": { "enum": ["coral", "blue", "green", "purple", "yellow", "graphite"] },
+      "shape": { "enum": ["block", "round", "tall"] },
+      "cast": { "type": "array", "maxItems": 3, "items": { "type": "object", "additionalProperties": false, "required": ["name"], "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 16 },
+        "hat": { "enum": ["none", "hard_hat", "cap", "glasses", "crown"] } } } } } },
     "source_hash": { "type": "string" },
     "scenes": {
       "type": "array",

@@ -93,6 +93,36 @@ mod tests {
     }
 
     #[test]
+    fn the_studio_identity_toml_reads_as_the_channel_mascot_and_cast() {
+        #[derive(Deserialize)]
+        struct File {
+            channels: Vec<ChannelProfile>,
+        }
+        // Exactly what web/server/runner.ts writes.
+        let text = "[[channels]]\nid = \"tech\"\nlanguage = \"pt-BR\"\nlook = \"papel\"\n[channels.identity]\nbody = \"purple\"\nshape = \"tall\"\n[[channels.identity.cast]]\nname = \"Bit\"\nhat = \"glasses\"\n";
+        let file: File = toml::from_str(text).unwrap();
+        let identity = file.channels[0].identity.clone().unwrap();
+        assert_eq!(identity.body, crate::storyboard::MascotBody::Purple);
+        assert_eq!(identity.shape, crate::storyboard::MascotShape::Tall);
+        assert_eq!(identity.cast[0].hat, crate::storyboard::Hat::Glasses);
+        assert!(file.channels[0].validate().is_ok());
+        let crowded = ChannelProfile {
+            identity: Some(crate::storyboard::Identity {
+                cast: ["a", "b", "c", "d"]
+                    .iter()
+                    .map(|name| crate::storyboard::CastMember {
+                        name: (*name).into(),
+                        hat: Default::default(),
+                    })
+                    .collect(),
+                ..Default::default()
+            }),
+            ..profile("tech")
+        };
+        assert!(crowded.validate().is_err());
+    }
+
+    #[test]
     fn a_channel_speaks_one_of_the_languages_with_a_reviewed_voice() {
         assert_eq!(profile("tech").language(), "pt-BR");
         for language in LANGUAGES {

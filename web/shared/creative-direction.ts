@@ -13,4 +13,5 @@ Cada vídeo é uma ideia própria do canal. Não siga um molde fixo e não copie
 7. Virada: a solução entra como algo novo na tela, e o estado passa a se comportar diferente.
 8. Fechamento que responde ao gancho: a última imagem é a primeira resolvida; a chamada final, quando houver, é específica do assunto.
 9. Continuidade: o mesmo elenco e a mesma metáfora atravessam o vídeo; mude o título do bloco só quando a ideia mudar.
+10. Identidade do canal: quando channel.cast existir, esse é o elenco fixo do canal; use esses nomes (só o nome, em ator: Nome) sempre que o vídeo tiver personagens, e não invente outros no lugar deles. O visual dos mascotes é do canal; a ideia de cada vídeo continua nova.
 Combine livremente os componentes que servem à ideia (#palco para estado contínuo com elenco, #fluxo, #grafico, #comparacao, #personagem e os demais), cena a cena. Nenhum componente é obrigatório.`;

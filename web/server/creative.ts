@@ -242,6 +242,9 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
         niche: channel.niche,
         audience: channel.audience,
         language: channel.language,
+        ...(channel.identity?.cast.length
+          ? { cast: channel.identity.cast.map((member) => ({ name: member.name, accessory: member.hat })) }
+          : {}),
       },
       referenceData: references,
       ...(prepared ? { editorContext: prepared.context } : {}),

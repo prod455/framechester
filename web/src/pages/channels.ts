@@ -3,7 +3,7 @@ import { createDialog, empty, formWithSave, heading, iconButton } from '../compo
 import { button, el, field, input, select, textarea } from '../dom.ts';
 import { currentChannel, go, refresh, render, save, state, studio } from '../studio/state.ts';
 import { toast } from '../studio/toast.ts';
-import type { Channel, Look, Platform } from '../../shared/types.ts';
+import type { Channel, Hat, Look, MascotBody, MascotShape, Platform } from '../../shared/types.ts';
 import { platformLabels, publicPlatforms, publishingPlatforms } from '../../shared/publishing.ts';
 import { t } from '../../shared/i18n.ts';
 import { productionLanguages } from '../../shared/voices.ts';
@@ -157,6 +157,38 @@ export function editChannel(record?: Channel): void {
     (Object.keys(lookLabels) as Look[]).map((item): [string, string] => [item, lookLabels[item]]),
     record?.look || 'noite',
   );
+  // The channel's own mascot and cast: what makes every video recognisably this channel's.
+  const bodyLabels: Record<MascotBody, string> = {
+    coral: t('Coral'),
+    blue: t('Azul'),
+    green: t('Verde'),
+    purple: t('Roxo'),
+    yellow: t('Amarelo'),
+    graphite: t('Grafite'),
+  };
+  const shapeLabels: Record<MascotShape, string> = {
+    block: t('Bloco com três pés'),
+    round: t('Redondo'),
+    tall: t('Alto e estreito'),
+  };
+  const hatLabels: Record<Hat, string> = {
+    none: t('Sem acessório'),
+    hard_hat: t('Capacete'),
+    cap: t('Boné'),
+    glasses: t('Óculos'),
+    crown: t('Coroa'),
+  };
+  const options = <K extends string>(labels: Record<K, string>) =>
+    (Object.keys(labels) as K[]).map((item): [string, string] => [item, labels[item]]);
+  const mascotBody = select('mascotBody', options(bodyLabels), record?.identity?.body || 'coral');
+  const mascotShape = select('mascotShape', options(shapeLabels), record?.identity?.shape || 'block');
+  const cast = [0, 1, 2].map((index) => {
+    const member = record?.identity?.cast[index];
+    const name = input(`castName-${index}`, member?.name || '');
+    name.maxLength = 16;
+    name.placeholder = t('Nome do personagem');
+    return { name, hat: select(`castHat-${index}`, options(hatLabels), member?.hat || 'none') };
+  });
   const youtubeChannelId = input('youtubeChannelId', record?.youtubeChannelId || '');
   const autoUpload = publishingPlatforms.map((network) => {
     const box = input(`autoUpload-${network}`, '', 'checkbox');
@@ -178,6 +210,13 @@ export function editChannel(record?: Channel): void {
           audience: audience.value.trim(),
           language: language.value.trim(),
           look: look.value,
+          identity: {
+            body: mascotBody.value,
+            shape: mascotShape.value,
+            cast: cast
+              .filter((member) => member.name.value.trim())
+              .map((member) => ({ name: member.name.value.trim(), hat: member.hat.value })),
+          },
           youtubeChannelId: youtubeChannelId.value.trim() || undefined,
           autoUpload: autoUpload.filter((item) => item.box.checked).map((item) => item.network),
         },
@@ -207,6 +246,30 @@ export function editChannel(record?: Channel): void {
     ),
   );
   fields.append(field(t('Descrição e proposta editorial'), description));
+  fields.append(
+    el(
+      'div',
+      { className: 'form-grid' },
+      field(t('Cor do mascote'), mascotBody),
+      field(t('Formato do mascote'), mascotShape, t('Todos os vídeos do canal usam este mascote.')),
+    ),
+  );
+  fields.append(
+    el(
+      'div',
+      { className: 'form-grid' },
+      ...cast.flatMap((member, index) => [
+        field(
+          t('Personagem {number} do elenco', { number: String(index + 1) }),
+          member.name,
+          index === 0
+            ? t('Opcional. A IA usa estes nomes em todo vídeo; o roteiro só escreve o nome.')
+            : undefined,
+        ),
+        field(t('Acessório do personagem {number}', { number: String(index + 1) }), member.hat),
+      ]),
+    ),
+  );
   const autoUploadLabels: Record<Platform, string> = {
     youtube: t(
       'Enviar cada versão final aprovada ao YouTube como vídeo privado (exige o YouTube conectado com permissão de envio)',

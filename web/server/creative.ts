@@ -19,6 +19,7 @@ import type { AIUsageStore } from './ai-usage.ts';
 import type { AIUsageSnapshot } from '../shared/ai-usage-types.ts';
 import { sceneLayoutGrammar } from '../shared/scene-layouts.ts';
 import { videoStyle, videoStyleGuide } from '../shared/video-styles.ts';
+import { creativeDirection } from '../shared/creative-direction.ts';
 import {
   DURATION_ATTEMPTS,
   DURATION_RULES,
@@ -224,6 +225,7 @@ export function createCreativeService(options: CreativeOptions): CreativeApi {
     const format = prepared?.context.task === 'script' ? prepared.context.values.format : undefined;
     const taskGuide = [
       guides[task].instruction,
+      ...(task === 'research' ? [] : [creativeDirection]),
       ...(style ? [videoStyleGuide(style, format)] : []),
       ...(task === 'script' ? [`Layouts visuais (visualBrief):\n${sceneLayoutGrammar}`] : []),
       ...(format ? [durationInstruction(format)] : []),

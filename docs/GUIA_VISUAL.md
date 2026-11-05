@@ -119,13 +119,6 @@ prompt do sistema e não depende do provedor. O catálogo fica em
 | Ranking | critério → itens do menor para o maior → primeiro lugar por último | lista, numero |
 | Linha do tempo | gancho no presente → origem → marcos → virada → pergunta em aberto | linha-do-tempo, citacao |
 | Comparativo | decisão real → critérios → um critério por cena → veredito por perfil | comparacao, numero, lista |
-| Mito ou fato | crença como o espectador conhece → por que parece verdade → evidência por cena → veredito e condição → regra prática | pergunta, comparacao, citacao, palco |
-| Erro comum | o erro na segunda pessoa → o custo como perda → a causa → o jeito certo em até 3 passos → o gancho sem a perda | palco, lista, numero |
-| Como funciona por dentro | objeto cotidiano → entra/sai → mecanismo em ordem com analogias → a peça que surpreende → volta ao objeto | fluxo, palco, lista |
-| E se…? | hipótese declarada → efeito imediato → escalada com fonte por passo → onde quebra → lição sobre o mundo real | pergunta, linha-do-tempo, numero, palco |
-| Escala | número cru com fonte → falta referência → comparações em escada com a conta → a que fica na memória → o que muda | numero, grafico, palco |
-| Teste na prática | pergunta e resultado parcial → método → resultados medidos → o que o teste não prova → recomendação por perfil | numero, grafico, comparacao |
-| Palco com mascote | metáfora e número escolhidos antes → gancho com o número mudando → elenco fixo → blocos com título fixo → virada como objeto → número final e chamada de comentário | palco |
 
 Regras por duração, somadas ao formato:
 
@@ -137,8 +130,8 @@ editoriais por retenção: as fontes sobre Shorts que circulam são blogs de fer
 percentuais sem dataset publicado, e só concordam em dois pontos: o gancho precisa estar
 nos primeiros 1 a 3 segundos, e quem decide é a curva de retenção do próprio canal (desde
 31/03/2025 a visualização de Short conta sem tempo mínimo, então views não medem retenção).
-Os formatos acima são padrões recorrentes em canais educativos grandes, escritos como
-regras que a IA consegue seguir; o "Teste na prática" exige dados medidos pelo próprio canal.
+Por isso a direção criativa traz princípios, não formatos de sucesso: o que funciona no
+canal se mede na curva de retenção dele.
 
 **Limite honesto:** esses formatos reúnem convenções recorrentes do gênero
 faceless de tecnologia e ciência. Ninguém mediu o desempenho deles neste
@@ -148,22 +141,26 @@ próprio canal (skills `youtube-channel-analysis` e `marketing-experiments`).
 Para um teste interpretável, mantenha o assunto e a duração e mude só o
 formato.
 
-### Palco com mascote
+### Direção criativa livre
 
-Quando todo vídeo sai com a mesma cara e só o roteiro muda, o problema costuma ser a
-estrutura: um diagrama novo por cena não cria estado que o espectador acompanhe. O formato
-**Palco com mascote** (`#palco`, formato editorial `palco` no Studio) conta o vídeo com:
+Formato editorial é opcional ("Sem formato definido" é o padrão). Em roteiro e narrativa, a
+IA sempre recebe uma **direção criativa livre** (`web/shared/creative-direction.ts`): os
+princípios que se repetem nos explicadores que seguram atenção, sem molde de cenas. Cada
+vídeo inventa a própria ideia e combina os componentes do motor que servem a ela:
 
-1. **uma metáfora física** (moeda mordida, funil que separa, muro que cresce, tabela, envelope);
-2. **um número de 0 a 100** que muda a cada tarefa e continua de uma cena para a outra;
-3. **um elenco fixo** de até 2 mascotes, diferenciados por acessório e crachá;
-4. **blocos** com título fixo e uma palavra em destaque, com trilha de progresso no topo;
-5. **tarefas** que voam como etiquetas e batem em quem as executa no momento em que são ditas;
-6. uma **chamada de comentário** no fim (envelope com a palavra digitada).
+1. uma ideia visual por vídeo: metáfora física própria do assunto e algo que muda de estado;
+2. o primeiro segundo já é o conflito;
+3. o que a narração cita aparece na tela quando é dito;
+4. causa e efeito visível;
+5. mudança na tela a cada 2–3 s, frases curtas;
+6. cada bloco termina numa tensão que o próximo resolve;
+7. a solução entra como algo novo e o estado muda de comportamento;
+8. a última imagem responde à primeira;
+9. elenco e metáfora contínuos.
 
-Gramática em [STORYBOARD.md](STORYBOARD.md#palco-stage). Mesmo limite honesto dos outros
-formatos: é uma convenção do gênero, não um resultado medido neste projeto; compare a
-retenção no analytics do canal antes de adotá-lo como padrão.
+A regra explícita é não copiar estrutura, títulos, personagens, metáforas ou sequência de
+cenas de vídeos de outros canais. `#palco` é o componente para estado contínuo com elenco
+([STORYBOARD.md](STORYBOARD.md#palco-stage)); nenhum componente é obrigatório.
 
 ## Precisa de um LLM próprio?
 

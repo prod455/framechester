@@ -837,6 +837,8 @@ pub fn plan_animations(composition: &Composition, narration: &str) -> Vec<Animat
     let mut animations = Vec::new();
     let mut used = Vec::new();
     let labels: Vec<(String, String)> = match composition {
+        // A stage times its own cast, gauge and tasks from the narration.
+        Composition::Stage { .. } => return Vec::new(),
         Composition::Title { .. } => vec![("title".into(), String::new())],
         Composition::Character { .. } => vec![("speech".into(), String::new())],
         Composition::Freeform { elements } => elements
@@ -1009,6 +1011,19 @@ fn plan_emphasis(composition: &Composition, narration: &str) -> Vec<String> {
         Composition::Freeform { elements } => elements
             .iter()
             .filter_map(|element| element.shape.text().map(str::to_string))
+            .collect(),
+        Composition::Stage {
+            headline,
+            actors,
+            tasks,
+            ..
+        } => headline
+            .split('*')
+            .skip(1)
+            .step_by(2)
+            .map(str::to_string)
+            .chain(actors.iter().map(|actor| actor.name.clone()))
+            .chain(tasks.iter().map(|task| task.label.clone()))
             .collect(),
         Composition::FlowDiagram { objects, .. }
         | Composition::Comparison { objects, .. }

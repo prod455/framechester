@@ -11,6 +11,7 @@ pub mod comparison;
 pub mod flow;
 pub mod freeform;
 pub mod infographic;
+pub mod stage;
 pub mod steps;
 pub mod timeline;
 pub mod title;

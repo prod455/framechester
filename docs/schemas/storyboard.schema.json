@@ -216,7 +216,34 @@
         { "type": "object", "additionalProperties": false, "required": ["kind", "objects"], "properties": { "kind": { "const": "cause_effect" }, "objects": { "type": "array", "minItems": 2, "maxItems": 8, "items": { "$ref": "#/$defs/object" } } } },
         { "type": "object", "additionalProperties": false, "required": ["kind", "objects"], "properties": { "kind": { "const": "steps" }, "objects": { "type": "array", "minItems": 2, "maxItems": 6, "items": { "$ref": "#/$defs/object" } } } },
         { "type": "object", "additionalProperties": false, "required": ["kind", "character", "pose", "text"], "properties": { "kind": { "const": "character" }, "character": { "enum": ["presenter", "developer", "scientist", "robot"] }, "pose": { "enum": ["explain", "point", "think", "celebrate"] }, "text": { "type": "string", "minLength": 1, "maxLength": 140 }, "persona": { "$ref": "#/$defs/persona" } } },
-        { "type": "object", "additionalProperties": false, "required": ["kind", "elements"], "properties": { "kind": { "const": "freeform" }, "elements": { "type": "array", "minItems": 1, "maxItems": 24, "items": { "$ref": "#/$defs/element" } } } }
+        { "type": "object", "additionalProperties": false, "required": ["kind", "elements"], "properties": { "kind": { "const": "freeform" }, "elements": { "type": "array", "minItems": 1, "maxItems": 24, "items": { "$ref": "#/$defs/element" } } } },
+        { "type": "object", "additionalProperties": false, "required": ["kind", "headline"], "properties": {
+          "kind": { "const": "stage" },
+          "headline": { "type": "string", "minLength": 1, "maxLength": 48, "description": "Titulo fixo do bloco; *palavra* sai na cor de destaque." },
+          "actors": { "type": "array", "maxItems": 2, "items": { "type": "object", "additionalProperties": false, "required": ["id", "name"], "properties": {
+            "id": { "type": "string", "minLength": 1, "maxLength": 60 },
+            "name": { "type": "string", "minLength": 1, "maxLength": 16 },
+            "hat": { "enum": ["none", "hard_hat", "cap", "glasses", "crown"] },
+            "role": { "enum": ["neutral", "primary", "secondary", "accent", "success", "warning", "danger"] } } } },
+          "prop": { "oneOf": [
+            { "type": "object", "additionalProperties": false, "required": ["kind", "label"], "properties": { "kind": { "const": "coin" }, "label": { "type": "string", "minLength": 1, "maxLength": 12 }, "rival": { "type": "string", "minLength": 1, "maxLength": 12 } } },
+            { "type": "object", "additionalProperties": false, "required": ["kind", "label"], "properties": { "kind": { "const": "funnel" }, "label": { "type": "string", "minLength": 1, "maxLength": 12 }, "note": { "type": "string", "minLength": 1, "maxLength": 24 } } },
+            { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "const": "wall" } } },
+            { "type": "object", "additionalProperties": false, "required": ["kind", "title", "rows"], "properties": { "kind": { "const": "table" }, "title": { "type": "string", "minLength": 1, "maxLength": 40 }, "rows": { "type": "array", "minItems": 1, "maxItems": 3, "items": { "type": "object", "additionalProperties": false, "required": ["label", "value"], "properties": { "label": { "type": "string", "minLength": 1, "maxLength": 20 }, "value": { "type": "string", "minLength": 1, "maxLength": 12 } } } }, "mark": { "type": "integer", "minimum": 0, "maximum": 2 } } },
+            { "type": "object", "additionalProperties": false, "required": ["kind", "comment"], "properties": { "kind": { "const": "envelope" }, "comment": { "type": "string", "minLength": 1, "maxLength": 24 } } }
+          ] },
+          "meter": { "type": "object", "additionalProperties": false, "required": ["label", "from", "to"], "properties": {
+            "label": { "type": "string", "minLength": 1, "maxLength": 32 },
+            "from": { "type": "number", "minimum": 0, "maximum": 100 },
+            "to": { "type": "number", "minimum": 0, "maximum": 100 },
+            "unit": { "type": "string", "maxLength": 4 },
+            "numeric": { "type": "boolean", "default": true },
+            "style": { "enum": ["bar", "badge"] } } },
+          "tasks": { "type": "array", "maxItems": 8, "items": { "type": "object", "additionalProperties": false, "required": ["label"], "properties": {
+            "label": { "type": "string", "minLength": 1, "maxLength": 24 },
+            "to": { "type": "string", "minLength": 1 },
+            "at": { "type": "string", "minLength": 1 } } } },
+          "stamp": { "type": "string", "minLength": 1, "maxLength": 24 } } }
       ]
     }
   }

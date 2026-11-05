@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "title": "Pare de queimar o seu limite",
+  "channel": "exemplo",
+  "format": "vertical",
+  "language": "pt-BR",
+  "look": "papel",
+  "scenes": [
+    {
+      "id": 1,
+      "concept": "O modelo grande gasta o limite em tarefa simples",
+      "learning_goal": "Ver que tarefa braçal consome o mesmo limite",
+      "narration": "Todo mundo que usa o modelo grande bate no limite rápido. Listar pasta, ler log, renomear arquivo: tudo sai da mesma moeda, e o limite cai para 40%. Um modelo leve, o Haiku, faria isso mais barato.",
+      "composition": {
+        "kind": "stage",
+        "headline": "Pare de queimar o seu *limite*",
+        "actors": [{ "id": "opus", "name": "Opus", "hat": "glasses", "role": "primary" }],
+        "prop": { "kind": "coin", "label": "Opus", "rival": "Haiku" },
+        "meter": { "label": "limite", "from": 100, "to": 40, "unit": "%", "style": "badge" },
+        "tasks": [
+          { "label": "listar pasta", "to": "prop" },
+          { "label": "ler log", "to": "prop" },
+          { "label": "renomear arquivo", "to": "prop" }
+        ],
+        "stamp": "mais barato"
+      },
+      "transition": "cut"
+    },
+    {
+      "id": 2,
+      "concept": "Cada tarefa simples come o plano",
+      "learning_goal": "Associar cada tarefa a uma queda no plano",
+      "narration": "Porque hoje o Opus faz tudo, até renomear arquivo, listar pasta e ler log. Cada tarefa dessas come o plano, que despenca para 20%.",
+      "composition": {
+        "kind": "stage",
+        "headline": "Até o *fácil*",
+        "actors": [{ "id": "opus", "name": "Opus", "hat": "hard_hat", "role": "primary" }],
+        "meter": { "label": "Uso do plano restante", "from": 90, "to": 20, "unit": "%" },
+        "tasks": [
+          { "label": "renomear arquivo" },
+          { "label": "listar pasta" },
+          { "label": "ler log" }
+        ]
+      },
+      "transition": "blur_swap"
+    },
+    {
+      "id": 3,
+      "concept": "A skill manda o braçal para o modelo leve",
+      "learning_goal": "Entender que a skill separa as tarefas",
+      "narration": "Então a skill separa cada tarefa. Buscar arquivo, ler log e editar linha vão pro Haiku.",
+      "composition": {
+        "kind": "stage",
+        "headline": "O Haiku pega o *braçal*",
+        "actors": [
+          { "id": "haiku", "name": "Haiku", "hat": "cap", "role": "secondary" },
+          { "id": "opus", "name": "Opus", "hat": "hard_hat", "role": "primary" }
+        ],
+        "prop": { "kind": "funnel", "label": "Skill", "note": "separa as tarefas" },
+        "tasks": [
+          { "label": "buscar arquivo", "to": "haiku" },
+          { "label": "ler log", "to": "haiku" },
+          { "label": "editar linha", "to": "haiku" }
+        ]
+      },
+      "transition": "blur_swap"
+    },
+    {
+      "id": 4,
+      "concept": "Só o raciocínio pesado fica com o modelo grande",
+      "learning_goal": "Ver o que continua no modelo grande",
+      "narration": "E só o raciocínio pesado fica com o Opus.",
+      "composition": {
+        "kind": "stage",
+        "headline": "O Haiku pega o *braçal*",
+        "actors": [
+          { "id": "haiku", "name": "Haiku", "hat": "cap", "role": "secondary" },
+          { "id": "opus", "name": "Opus", "hat": "hard_hat", "role": "primary" }
+        ],
+        "prop": { "kind": "funnel", "label": "Skill", "note": "separa as tarefas" },
+        "tasks": [{ "label": "raciocínio pesado", "to": "opus" }]
+      },
+      "transition": "cut"
+    },
+    {
+      "id": 5,
+      "concept": "O mesmo trabalho custa bem menos",
+      "learning_goal": "Comparar o custo relativo num exemplo",
+      "narration": "Num exemplo hipotético, se o Opus custa 100, o Haiku custa 10 pela mesma tarefa simples: 90% a menos.",
+      "composition": {
+        "kind": "stage",
+        "headline": "Do grande pro *leve*",
+        "actors": [{ "id": "haiku", "name": "Haiku", "hat": "cap", "role": "secondary" }],
+        "prop": {
+          "kind": "table",
+          "title": "Custo relativo (exemplo hipotético)",
+          "rows": [{ "label": "Opus", "value": "100" }, { "label": "Haiku", "value": "10" }],
+          "mark": 1
+        },
+        "stamp": "-90%"
+      },
+      "transition": "blur_swap"
+    },
+    {
+      "id": 6,
+      "concept": "O mesmo plano rende mais trabalho",
+      "learning_goal": "Ver o plano durar mais com o modelo leve",
+      "narration": "Resumindo: o mesmo plano rende muito mais. O Haiku busca, lê, edita e lista, e o plano ainda fica em 81%.",
+      "composition": {
+        "kind": "stage",
+        "headline": "Mesmo plano, *mais trabalho*",
+        "actors": [{ "id": "haiku", "name": "Haiku", "hat": "cap", "role": "secondary" }],
+        "prop": { "kind": "wall" },
+        "meter": { "label": "Uso do plano restante", "from": 92, "to": 81, "unit": "%" },
+        "tasks": [
+          { "label": "buscar", "at": "busca" },
+          { "label": "ler", "at": "lê" },
+          { "label": "editar", "at": "edita" },
+          { "label": "listar", "at": "lista" }
+        ]
+      },
+      "transition": "blur_swap"
+    },
+    {
+      "id": 7,
+      "concept": "Chamada para pedir a skill",
+      "learning_goal": "Saber como receber a skill",
+      "narration": "Quer a skill? Comenta skill que eu te mando o link.",
+      "composition": {
+        "kind": "stage",
+        "headline": "O link da *skill*",
+        "actors": [{ "id": "haiku", "name": "Haiku", "hat": "cap", "role": "secondary" }],
+        "prop": { "kind": "envelope", "comment": "skill" }
+      },
+      "transition": "blur_swap"
+    }
+  ]
+}

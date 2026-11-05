@@ -119,12 +119,26 @@ prompt do sistema e não depende do provedor. O catálogo fica em
 | Ranking | critério → itens do menor para o maior → primeiro lugar por último | lista, numero |
 | Linha do tempo | gancho no presente → origem → marcos → virada → pergunta em aberto | linha-do-tempo, citacao |
 | Comparativo | decisão real → critérios → um critério por cena → veredito por perfil | comparacao, numero, lista |
+| Mito ou fato | crença como o espectador conhece → por que parece verdade → evidência por cena → veredito e condição → regra prática | pergunta, comparacao, citacao, palco |
+| Erro comum | o erro na segunda pessoa → o custo como perda → a causa → o jeito certo em até 3 passos → o gancho sem a perda | palco, lista, numero |
+| Como funciona por dentro | objeto cotidiano → entra/sai → mecanismo em ordem com analogias → a peça que surpreende → volta ao objeto | fluxo, palco, lista |
+| E se…? | hipótese declarada → efeito imediato → escalada com fonte por passo → onde quebra → lição sobre o mundo real | pergunta, linha-do-tempo, numero, palco |
+| Escala | número cru com fonte → falta referência → comparações em escada com a conta → a que fica na memória → o que muda | numero, grafico, palco |
+| Teste na prática | pergunta e resultado parcial → método → resultados medidos → o que o teste não prova → recomendação por perfil | numero, grafico, comparacao |
 | Palco com mascote | metáfora e número escolhidos antes → gancho com o número mudando → elenco fixo → blocos com título fixo → virada como objeto → número final e chamada de comentário | palco |
 
 Regras por duração, somadas ao formato:
 
 - **Short:** a 1ª cena dura até 3 s e já mostra a pergunta ou o fato. Uma ideia por vídeo, frases curtas, e a última fala retoma o gancho.
 - **Longo:** a promessa aparece nos primeiros 30 s, um dado ou virada novo a cada 60–90 s, e há uma recapitulação antes da conclusão.
+
+**De onde vêm (pesquisa de 05/11/2026).** Não há estudo público que compare formatos
+editoriais por retenção: as fontes sobre Shorts que circulam são blogs de ferramentas com
+percentuais sem dataset publicado, e só concordam em dois pontos: o gancho precisa estar
+nos primeiros 1 a 3 segundos, e quem decide é a curva de retenção do próprio canal (desde
+31/03/2025 a visualização de Short conta sem tempo mínimo, então views não medem retenção).
+Os formatos acima são padrões recorrentes em canais educativos grandes, escritos como
+regras que a IA consegue seguir; o "Teste na prática" exige dados medidos pelo próprio canal.
 
 **Limite honesto:** esses formatos reúnem convenções recorrentes do gênero
 faceless de tecnologia e ciência. Ninguém mediu o desempenho deles neste

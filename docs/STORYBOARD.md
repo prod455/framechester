@@ -89,6 +89,15 @@ Cada objeto tem `id`, `label` (≤ 60 caracteres), `detail` (≤ 120), `role`
 (`neutral`, `primary`, `secondary`, `accent`, `success`, `warning`, `danger`), `icon`
 (catálogo fechado de 22 ícones vetoriais próprios), `value`/`unit`, `group`, `parent`.
 
+### Identidade
+
+`"identity": { "body", "shape", "cast" }` no topo do storyboard (ausente = a do canal, em
+`[channels.identity]`, depois o mascote padrão) define o mascote do canal e o elenco que
+volta em todo vídeo. `body` ∈ `coral`, `blue`, `green`, `purple`, `yellow`, `graphite`;
+`shape` ∈ `block` (bloco com três pés), `round` (redondo), `tall` (alto e estreito);
+`cast`: até 3 `{name ≤ 16, hat}`. Um `ator: Nome` do elenco não precisa de acessório no
+roteiro: o planner já o conhece.
+
 ### Look
 
 `"look": "noite" | "papel" | "planta"` no topo do storyboard escolhe o visual (ausente =

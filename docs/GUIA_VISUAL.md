@@ -158,6 +158,12 @@ vídeo inventa a própria ideia e combina os componentes do motor que servem a e
 8. a última imagem responde à primeira;
 9. elenco e metáfora contínuos.
 
+**Identidade do canal.** No cadastro do canal (Studio → Canais), **Cor do mascote**,
+**Formato do mascote** e até 3 **personagens do elenco** com acessório valem para todos os
+vídeos dele. O motor desenha o mascote com essa cor e silhueta, o planner já conhece o
+elenco (o roteiro escreve só `ator: Nome`) e a IA recebe o elenco como fixo do canal. A ideia
+de cada vídeo continua nova; o que se repete é quem conta.
+
 A regra explícita é não copiar estrutura, títulos, personagens, metáforas ou sequência de
 cenas de vídeos de outros canais. `#palco` é o componente para estado contínuo com elenco
 ([STORYBOARD.md](STORYBOARD.md#palco-stage)); nenhum componente é obrigatório.

@@ -31,7 +31,7 @@ Storyboard
    └─ transition (cut | fade | push | zoom)
 ```
 
-### Composições (14)
+### Composições (15)
 
 | `kind` | Uso | Campos |
 |---|---|---|
@@ -49,6 +49,7 @@ Storyboard
 | `steps` | checklist vertical numerada (espinha + cartões) | `objects` (2–6) |
 | `character` | personagem que fala ao lado de um balão | `character` (`presenter`, `developer`, `scientist`, `robot`), `pose` (`explain`, `point`, `think`, `celebrate`), `text` (≤ 140), `persona` opcional (personagem descrito: `name`, `skin`, `hair`, `hair_colour`, `beard`, `beard_colour`, `outfit`, `colour`, `number`, `prop`, `glasses`, `laurel`) |
 | `freeform` | cena livre, quando nenhum layout acima expressa a ideia | `elements` (1–24), ver abaixo |
+| `stage` | palco contínuo: mascotes, uma metáfora física, um medidor que atravessa as cenas e tarefas que voam | `headline`, `actors`, `prop`, `meter`, `tasks`, `stamp`, ver abaixo |
 
 #### Cena livre (`freeform`)
 
@@ -64,9 +65,38 @@ desenhadas. Texto que não cabe, sai da área segura ou se sobrepõe a outro rep
 mesmo QA de layout — rode `plan --storyboard` para ver em segundos. Exemplo:
 [`examples/freeform.storyboard.json`](../examples/freeform.storyboard.json).
 
+#### Palco (`stage`)
+
+Em vez de um layout por cena, o vídeo vira **um plano contínuo** com estado: o que muda de
+uma cena para a outra é o estado da metáfora, não o diagrama. Exemplo completo, nos dois
+caminhos: [`examples/palco.storyboard.json`](../examples/palco.storyboard.json) (storyboard)
+e [`examples/palco.roteiro.json`](../examples/palco.roteiro.json) (roteiro com `#palco`).
+
+| Campo | Regra |
+|---|---|
+| `headline` | título fixo do bloco (≤ 48), em caixa alta; `*palavra*` sai na cor de destaque. Cenas seguidas com o mesmo título formam um **bloco**: corte sem emenda, sem câmera, nada entra de novo |
+| `actors` | até 2 mascotes `{id, name ≤ 16, hat, role}`; `hat` ∈ `none`, `hard_hat`, `cap`, `glasses`, `crown`. O mesmo `id` na cena seguinte do bloco continua no lugar |
+| `prop` | uma metáfora: `coin` (`label`, `rival` opcional que entra quando é dito; perde uma mordida por tarefa), `funnel` (`label`, `note`; as tarefas caem dele), `wall` (um tijolo por tarefa concluída), `table` (`title`, 1–3 `rows` `{label, value}`, `mark` circulado quando o valor é dito), `envelope` (`comment` digitado no campo de comentário: a chamada final) |
+| `meter` | `{label, from, to, unit, numeric, style}` de 0 a 100; anda um passo por tarefa (ou no número dito, sem tarefas). `bar`: cartão com barra verde → amarela → vermelha, e o mascote cansa abaixo de 25; `badge`: pílula escura sob a moeda. Com `numeric` (padrão), o `to` **precisa ser dito**; `numeric: false` mostra só a barra |
+| `tasks` | até 8 `{label ≤ 24, to, at}`: o rótulo aparece na palavra (`at`, ou a primeira palavra do rótulo dita), voa até `to` (um ator ou `prop`; padrão: o primeiro ator) e, ao bater, move o medidor, morde a moeda ou põe um tijolo |
+| `stamp` | adesivo (≤ 24) que entra na palavra; dígitos precisam ser ditos (o sinal não: `-90%` vale com "90% a menos") |
+
+Uma trilha no topo marca os blocos (feitos com ✓, o atual aceso). O palco se anima sozinho
+a partir do tempo das palavras: `animations` fica vazio e o planner não planeja nada para ele.
+Mascotes e objetos são desenhos vetoriais próprios do motor, iguais em todos os looks.
+
 Cada objeto tem `id`, `label` (≤ 60 caracteres), `detail` (≤ 120), `role`
 (`neutral`, `primary`, `secondary`, `accent`, `success`, `warning`, `danger`), `icon`
 (catálogo fechado de 22 ícones vetoriais próprios), `value`/`unit`, `group`, `parent`.
+
+### Identidade
+
+`"identity": { "body", "shape", "cast" }` no topo do storyboard (ausente = a do canal, em
+`[channels.identity]`, depois o mascote padrão) define o mascote do canal e o elenco que
+volta em todo vídeo. `body` ∈ `coral`, `blue`, `green`, `purple`, `yellow`, `graphite`;
+`shape` ∈ `block` (bloco com três pés), `round` (redondo), `tall` (alto e estreito);
+`cast`: até 3 `{name ≤ 16, hat}`. Um `ator: Nome` do elenco não precisa de acessório no
+roteiro: o planner já o conhece.
 
 ### Look
 
@@ -129,6 +159,7 @@ O autor do roteiro (pessoa ou modelo) escreve uma diretiva na primeira linha de
 | `#causa A => B => C` · `#lista A; B; C` | `cause_effect` |
 | `#passos A; B; C` | `steps` |
 | `#personagem PERSONAGEM \| POSE \| FALA` (fala opcional; padrão: título da cena) | `character` |
+| `#palco TÍTULO *destaque*` + linhas `ator:`, `objeto:`, `medidor:`, `tarefas:`, `selo:` | `stage` |
 
 Qualquer rótulo aceita um ícone `[agent]` e um papel `{primary}`. A linha seguinte do
 `visual_brief` vira o `learning_goal` da cena.
@@ -169,6 +200,29 @@ tipográfico. Os personagens são figuras vetoriais genéricas desenhadas pelo m
 arquivo externo nem semelhança com pessoas reais; enquanto a narração toca, a boca mexe,
 os olhos piscam e o braço do gesto balança. Cada pose tem a sua expressão (sobrancelhas e
 boca), e o dev, a cientista e o apresentador seguram um objeto do ofício.
+
+**Palco.** As linhas abaixo de `#palco` descrevem a cena; qualquer outra linha é a nota
+livre (vira o `learning_goal`).
+
+```text
+#palco Pare de queimar o seu *limite*
+ator: Opus (capacete)
+objeto: moeda Opus | rival Haiku
+medidor: limite | 100 -> 40 % | selo
+tarefas: listar pasta -> moeda; ler log -> moeda; raciocínio pesado -> Opus
+selo: mais barato
+```
+
+| Linha | Forma |
+|---|---|
+| `ator:` | `Nome (capacete\|bone\|oculos\|coroa\|nenhum) {papel}`; até 2. Descreva o acessório uma vez; depois, o nome basta. O papel (cor do crachá) segue a ordem de entrada: `primary`, `secondary`, `accent`… |
+| `objeto:` | `moeda RÓTULO \| rival RÓTULO` · `funil RÓTULO \| nota` · `muro` · `tabela TÍTULO \| a=1; *b=2*` (a linha entre `*` é circulada) · `envelope COMENTÁRIO` |
+| `medidor:` | `RÓTULO \| 90 -> 20 % [\| selo]`. Sem o início (`\| -> 20 %`), começa onde o mesmo medidor parou na cena anterior (ou em 100). O número só é impresso quando a narração o diz; senão, só a barra |
+| `tarefas:` | `a; b -> Nome; c -> objeto` |
+| `selo:` | texto do adesivo |
+
+Linha errada (acessório, objeto ou destino inexistente) faz a cena cair no layout padrão
+com o motivo no relatório, como qualquer diretiva.
 
 ### Como o planner escolhe os tempos
 

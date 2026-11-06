@@ -1,0 +1,285 @@
+{
+  "version": 1,
+  "title": "Toda requisição paga pedágio",
+  "channel": "exemplo",
+  "format": "vertical",
+  "language": "pt-BR",
+  "scenes": [
+    {
+      "id": 0,
+      "concept": "Cada requisição paga pedágio",
+      "learning_goal": "Gancho: o tempo do servidor sumindo antes do trabalho de verdade.",
+      "narration": "Toda requisição que chega abre uma conexão nova com o banco. Abrir conexão, fazer o handshake, autenticar: cada passo morde o tempo do servidor antes de a consulta começar.",
+      "composition": {
+        "kind": "stage",
+        "headline": "Toda requisição *paga pedágio*",
+        "actors": [
+          {
+            "id": "servidor",
+            "name": "Servidor",
+            "hat": "hard_hat",
+            "role": "primary"
+          }
+        ],
+        "prop": {
+          "kind": "coin",
+          "label": "Tempo"
+        },
+        "meter": {
+          "label": "tempo livre",
+          "from": 100.0,
+          "to": 35.0,
+          "unit": "%",
+          "numeric": false,
+          "style": "badge"
+        },
+        "tasks": [
+          {
+            "label": "abrir conexão",
+            "to": "prop"
+          },
+          {
+            "label": "handshake",
+            "to": "prop"
+          },
+          {
+            "label": "autenticar",
+            "to": "prop"
+          }
+        ]
+      },
+      "animations": [],
+      "captions": {
+        "emphasis": [
+          "servidor",
+          "conexão",
+          "handshake",
+          "autenticar"
+        ],
+        "hidden": false
+      },
+      "resources": [],
+      "validation": {
+        "spoken_terms": [],
+        "min_visual_changes": 2,
+        "max_still_secs": 5.0,
+        "readable_without_audio": true
+      },
+      "transition": "cut"
+    },
+    {
+      "id": 1,
+      "concept": "O servidor cansa no repetitivo",
+      "learning_goal": "Entender: O servidor cansa no repetitivo",
+      "narration": "Com muito acesso, o servidor passa mais tempo abrindo conexão do que respondendo. Ele cansa no trabalho repetido.",
+      "composition": {
+        "kind": "stage",
+        "headline": "Toda requisição *paga pedágio*",
+        "actors": [
+          {
+            "id": "servidor",
+            "name": "Servidor",
+            "hat": "hard_hat",
+            "role": "primary"
+          }
+        ],
+        "prop": {
+          "kind": "coin",
+          "label": "Tempo"
+        },
+        "meter": {
+          "label": "tempo livre",
+          "from": 35.0,
+          "to": 15.0,
+          "unit": "%",
+          "numeric": false,
+          "style": "badge"
+        },
+        "tasks": [
+          {
+            "label": "abrir conexão",
+            "to": "prop"
+          },
+          {
+            "label": "abrir conexão",
+            "to": "prop"
+          }
+        ]
+      },
+      "animations": [],
+      "captions": {
+        "emphasis": [
+          "servidor",
+          "conexão"
+        ],
+        "hidden": false
+      },
+      "resources": [],
+      "validation": {
+        "spoken_terms": [],
+        "min_visual_changes": 2,
+        "max_still_secs": 5.0,
+        "readable_without_audio": true
+      },
+      "transition": "cut"
+    },
+    {
+      "id": 2,
+      "concept": "O pool reaproveita conexões",
+      "learning_goal": "Entender: O pool reaproveita conexões",
+      "narration": "Um pool de conexões resolve. Ele abre poucas conexões uma vez só e empresta para cada consulta, que vai direto para o banco.",
+      "composition": {
+        "kind": "stage",
+        "headline": "Um *pool* resolve",
+        "actors": [
+          {
+            "id": "servidor",
+            "name": "Servidor",
+            "hat": "hard_hat",
+            "role": "primary"
+          },
+          {
+            "id": "banco",
+            "name": "Banco",
+            "hat": "glasses",
+            "role": "secondary"
+          }
+        ],
+        "prop": {
+          "kind": "funnel",
+          "label": "Pool",
+          "note": "reaproveita conexões"
+        },
+        "tasks": [
+          {
+            "label": "consulta",
+            "to": "banco"
+          },
+          {
+            "label": "consulta",
+            "to": "banco"
+          },
+          {
+            "label": "consulta",
+            "to": "banco"
+          }
+        ]
+      },
+      "animations": [],
+      "captions": {
+        "emphasis": [
+          "pool",
+          "banco",
+          "consulta"
+        ],
+        "hidden": false
+      },
+      "resources": [],
+      "validation": {
+        "spoken_terms": [],
+        "min_visual_changes": 2,
+        "max_still_secs": 5.0,
+        "readable_without_audio": true
+      },
+      "transition": "blur_swap"
+    },
+    {
+      "id": 3,
+      "concept": "Sobra capacidade",
+      "learning_goal": "Entender: Sobra capacidade",
+      "narration": "Resultado: o mesmo servidor atende muito mais pedidos, porque o tempo vai para responder e não para abrir porta.",
+      "composition": {
+        "kind": "stage",
+        "headline": "Mesmo servidor, *mais pedidos*",
+        "actors": [
+          {
+            "id": "servidor",
+            "name": "Servidor",
+            "hat": "hard_hat",
+            "role": "primary"
+          }
+        ],
+        "prop": {
+          "kind": "wall"
+        },
+        "meter": {
+          "label": "capacidade livre",
+          "from": 30.0,
+          "to": 80.0,
+          "unit": "%",
+          "numeric": false,
+          "style": "bar"
+        },
+        "tasks": [
+          {
+            "label": "pedido"
+          },
+          {
+            "label": "pedido"
+          },
+          {
+            "label": "pedido"
+          },
+          {
+            "label": "pedido"
+          }
+        ]
+      },
+      "animations": [],
+      "captions": {
+        "emphasis": [
+          "mais",
+          "servidor",
+          "pedidos"
+        ],
+        "hidden": false
+      },
+      "resources": [],
+      "validation": {
+        "spoken_terms": [],
+        "min_visual_changes": 2,
+        "max_still_secs": 5.0,
+        "readable_without_audio": true
+      },
+      "transition": "blur_swap"
+    },
+    {
+      "id": 4,
+      "concept": "Chamada",
+      "learning_goal": "Entender: Chamada",
+      "narration": "Quer o exemplo de configuração? Comenta pool que eu te mando.",
+      "composition": {
+        "kind": "stage",
+        "headline": "O exemplo do *pool*",
+        "actors": [
+          {
+            "id": "servidor",
+            "name": "Servidor",
+            "hat": "hard_hat",
+            "role": "primary"
+          }
+        ],
+        "prop": {
+          "kind": "envelope",
+          "comment": "pool"
+        }
+      },
+      "animations": [],
+      "captions": {
+        "emphasis": [
+          "pool"
+        ],
+        "hidden": false
+      },
+      "resources": [],
+      "validation": {
+        "spoken_terms": [],
+        "min_visual_changes": 2,
+        "max_still_secs": 5.0,
+        "readable_without_audio": true
+      },
+      "transition": "blur_swap"
+    }
+  ],
+  "look": "papel"
+}

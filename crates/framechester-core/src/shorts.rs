@@ -316,6 +316,7 @@ mod tests {
             scenes,
             look: None,
             source_hash: None,
+            identity: None,
         }
     }
 

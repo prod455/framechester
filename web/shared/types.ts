@@ -8,6 +8,23 @@ export interface Timestamped {
 /** Visual look of a channel's videos, rendered by the engine (`Look` in Rust). */
 export type Look = 'noite' | 'papel' | 'planta';
 export const looks: readonly Look[] = ['noite', 'papel', 'planta'];
+/** The channel's mascot and recurring cast, drawn by the engine (`Identity` in Rust). */
+export type MascotBody = 'coral' | 'blue' | 'green' | 'purple' | 'yellow' | 'graphite';
+export const mascotBodies: readonly MascotBody[] = ['coral', 'blue', 'green', 'purple', 'yellow', 'graphite'];
+export type MascotShape = 'block' | 'round' | 'tall';
+export const mascotShapes: readonly MascotShape[] = ['block', 'round', 'tall'];
+export type Hat = 'none' | 'hard_hat' | 'cap' | 'glasses' | 'crown';
+export const hats: readonly Hat[] = ['none', 'hard_hat', 'cap', 'glasses', 'crown'];
+export interface CastMember {
+  name: string;
+  hat: Hat;
+}
+export interface ChannelIdentity {
+  body: MascotBody;
+  shape: MascotShape;
+  /** Up to 3 recurring characters, the same in every video of the channel. */
+  cast: CastMember[];
+}
 export interface Channel extends Timestamped {
   name: string;
   description: string;
@@ -17,6 +34,8 @@ export interface Channel extends Timestamped {
   youtubeChannelId?: string;
   /** Visual look of the channel's videos; absent means `noite`. */
   look?: Look;
+  /** Mascot and recurring cast; absent means the engine's default mascot and no fixed cast. */
+  identity?: ChannelIdentity;
   /** Opt-in per network: send each approved final version there without making it public. */
   autoUpload?: Platform[];
 }

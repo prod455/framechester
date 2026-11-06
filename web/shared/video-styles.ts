@@ -1,4 +1,4 @@
-import type { SceneLayout } from './scene-layouts.ts';
+import type { MotionDirective, SceneLayout } from './scene-layouts.ts';
 
 // Editorial conventions of faceless tech/science channels, written as rules a model can follow.
 // They are recurring genre patterns, not measured retention data: validate each one against the
@@ -8,7 +8,7 @@ export interface VideoStyle {
   name: string;
   summary: string;
   beats: string[];
-  layouts: SceneLayout[];
+  layouts: (SceneLayout | MotionDirective)[];
 }
 
 export const videoStyles = [

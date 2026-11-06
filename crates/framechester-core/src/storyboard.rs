@@ -442,6 +442,219 @@ pub struct Element {
     pub shape: ElementShape,
 }
 
+/// What tells two cast members of a stage apart: the body is the same mascot, the
+/// accessory and the badge say who is who.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Hat {
+    #[default]
+    None,
+    /// The heavy worker (the expensive model doing every job).
+    HardHat,
+    /// The light worker.
+    Cap,
+    /// The thinker.
+    Glasses,
+    Crown,
+}
+
+/// A cast member of a stage scene. The same `id` in consecutive stage scenes is the same
+/// mascot: it stays in place instead of entering again.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Actor {
+    pub id: String,
+    /// Badge under the mascot (up to 16 characters).
+    pub name: String,
+    #[serde(default)]
+    pub hat: Hat,
+    /// Colour of the badge and the accessory.
+    #[serde(default)]
+    pub role: Role,
+}
+
+/// One row of a stage price/data table; `value` must be spoken when it has digits.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TableRow {
+    pub label: String,
+    pub value: String,
+}
+
+/// The physical metaphor of a stage scene: an object whose state changes with each task.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "kind", deny_unknown_fields)]
+pub enum Prop {
+    /// A coin that loses a bite for every task aimed at it; `rival` is a second coin
+    /// that enters when its name is spoken.
+    Coin {
+        label: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        rival: Option<String>,
+    },
+    /// A funnel that sorts the tasks: each one drops out of it towards its actor.
+    Funnel {
+        label: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        note: Option<String>,
+    },
+    /// A wall that gains a brick for every task an actor finishes.
+    Wall,
+    /// A small data card; the `mark` row is circled when its value is spoken.
+    Table {
+        title: String,
+        rows: Vec<TableRow>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        mark: Option<usize>,
+    },
+    /// Call to action: an envelope gets a notification and a comment is typed.
+    Envelope { comment: String },
+}
+
+impl Prop {
+    pub fn kind_name(&self) -> &'static str {
+        match self {
+            Prop::Coin { .. } => "coin",
+            Prop::Funnel { .. } => "funnel",
+            Prop::Wall => "wall",
+            Prop::Table { .. } => "table",
+            Prop::Envelope { .. } => "envelope",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum MeterStyle {
+    /// Card with a label, the value and a bar that turns yellow, then red.
+    #[default]
+    Bar,
+    /// Dark pill with the label and the value (under a coin).
+    Badge,
+}
+
+/// A gauge from 0 to 100 that a stage scene moves from `from` to `to`, one step per task.
+/// The next stage scene usually starts at this scene's `to`, so the number carries the
+/// story. With `numeric`, the `to` value is printed and must be spoken in the narration.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Meter {
+    pub label: String,
+    pub from: f64,
+    pub to: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unit: Option<String>,
+    #[serde(default = "default_true")]
+    pub numeric: bool,
+    #[serde(default)]
+    pub style: MeterStyle,
+}
+
+/// A job that flies in as a label and hits an actor (or the prop): the hit moves the
+/// meter one step, bites the coin or lays a brick.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Task {
+    pub label: String,
+    /// Actor id or `prop`; absent means the first actor (or the prop when there is none).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub to: Option<String>,
+    /// Narration word that launches it; absent means the first word sharing a stem with
+    /// the label, else evenly spread over the scene.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub at: Option<String>,
+}
+
+impl Task {
+    /// The id the task hits, given the scene's actors.
+    pub fn target<'a>(&'a self, actors: &'a [Actor]) -> &'a str {
+        match &self.to {
+            Some(to) => to,
+            None => actors.first().map_or("prop", |actor| actor.id.as_str()),
+        }
+    }
+}
+
+/// Body colour of the channel's mascot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum MascotBody {
+    #[default]
+    Coral,
+    Blue,
+    Green,
+    Purple,
+    Yellow,
+    Graphite,
+}
+
+/// Silhouette of the channel's mascot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum MascotShape {
+    /// Rounded block on three feet.
+    #[default]
+    Block,
+    /// Soft round blob on two feet.
+    Round,
+    /// Tall, narrow capsule on two feet.
+    Tall,
+}
+
+/// A recurring cast member of a channel: the same name and accessory in every video.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CastMember {
+    pub name: String,
+    #[serde(default)]
+    pub hat: Hat,
+}
+
+/// What makes a channel's videos its own beyond the look: how its mascot is drawn and the
+/// cast that comes back in every video.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+pub struct Identity {
+    #[serde(default)]
+    pub body: MascotBody,
+    #[serde(default)]
+    pub shape: MascotShape,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cast: Vec<CastMember>,
+}
+
+pub const MAX_CAST: usize = 3;
+
+impl Identity {
+    pub fn validate(&self) -> Result<()> {
+        if self.cast.len() > MAX_CAST {
+            return Err(FramechesterError::InvalidInput(format!(
+                "identidade aceita ate {MAX_CAST} personagens no elenco"
+            )));
+        }
+        let mut names = HashSet::new();
+        for member in &self.cast {
+            let name = member.name.trim();
+            if name.is_empty() || name.chars().count() > 16 || !names.insert(name.to_lowercase()) {
+                return Err(FramechesterError::InvalidInput(format!(
+                    "nome do elenco vazio, repetido ou acima de 16 caracteres: '{name}'"
+                )));
+            }
+        }
+        Ok(())
+    }
+}
+
+pub const MAX_STAGE_ACTORS: usize = 2;
+pub const MAX_STAGE_TASKS: usize = 8;
+pub const MAX_HEADLINE_CHARS: usize = 48;
+pub const MAX_TASK_CHARS: usize = 24;
+
+/// The headline without its `*accent*` markers.
+pub fn plain_headline(headline: &str) -> String {
+    headline.replace('*', "")
+}
+
 /// A reusable composition. The renderer owns its look and layout per format.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "kind", deny_unknown_fields)]
@@ -521,6 +734,23 @@ pub enum Composition {
     /// Free layout for ideas no fixed layout expresses: elements placed in percent of
     /// the content area. Text is fitted and checked by the same layout QA.
     Freeform { elements: Vec<Element> },
+    /// A continuing stage: a fixed block headline (`*word*` in the accent), a mascot cast,
+    /// one physical metaphor, a gauge that carries over between scenes and tasks that fly
+    /// in and change them. Consecutive stage scenes with the same headline read as one shot.
+    Stage {
+        headline: String,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        actors: Vec<Actor>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        prop: Option<Prop>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        meter: Option<Meter>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        tasks: Vec<Task>,
+        /// A sticker slapped on the scene ("90% MAIS BARATO"); digits must be spoken.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        stamp: Option<String>,
+    },
 }
 
 impl Composition {
@@ -540,10 +770,11 @@ impl Composition {
             Composition::Steps { .. } => "steps",
             Composition::Character { .. } => "character",
             Composition::Freeform { .. } => "freeform",
+            Composition::Stage { .. } => "stage",
         }
     }
 
-    pub const KINDS: [&'static str; 14] = [
+    pub const KINDS: [&'static str; 15] = [
         "title",
         "flow_diagram",
         "comparison",
@@ -558,6 +789,7 @@ impl Composition {
         "steps",
         "character",
         "freeform",
+        "stage",
     ];
 
     /// Every object id the composition defines, in order.
@@ -567,6 +799,11 @@ impl Composition {
             Composition::Character { .. } => vec!["character", "speech"],
             Composition::Freeform { elements } => {
                 elements.iter().map(|element| element.id.as_str()).collect()
+            }
+            Composition::Stage { actors, .. } => {
+                let mut ids = vec!["headline", "prop", "meter", "stamp"];
+                ids.extend(actors.iter().map(|actor| actor.id.as_str()));
+                ids
             }
             Composition::FlowDiagram { objects, .. }
             | Composition::Comparison { objects, .. }
@@ -610,7 +847,8 @@ impl Composition {
             Composition::Title { .. }
             | Composition::Code { .. }
             | Composition::Character { .. }
-            | Composition::Freeform { .. } => Vec::new(),
+            | Composition::Freeform { .. }
+            | Composition::Stage { .. } => Vec::new(),
             Composition::FlowDiagram { objects, .. }
             | Composition::Comparison { objects, .. }
             | Composition::Timeline { objects }
@@ -765,7 +1003,16 @@ pub enum Transition {
 }
 
 /// Ids of composition objects that are layout parts, not named things a viewer follows.
-const GENERIC_OBJECT_IDS: [&str; 4] = ["title", "character", "speech", "line"];
+const GENERIC_OBJECT_IDS: [&str; 8] = [
+    "title",
+    "character",
+    "speech",
+    "line",
+    "headline",
+    "prop",
+    "meter",
+    "stamp",
+];
 
 /// Ids of the named things a viewer can follow across scenes (layout parts excluded).
 pub fn followable_ids(composition: &Composition) -> Vec<String> {
@@ -801,6 +1048,9 @@ pub struct Storyboard {
     /// Visual look; absent means the default (`noite`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub look: Option<Look>,
+    /// The channel's mascot and recurring cast; absent means the default mascot.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity: Option<Identity>,
     /// Hash of the inputs that produced this plan, for caches and reproducibility.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_hash: Option<String>,
@@ -858,6 +1108,9 @@ impl Storyboard {
                 "storyboard precisa de 1 a {MAX_SCENES} cenas"
             )));
         }
+        if let Some(identity) = &self.identity {
+            identity.validate()?;
+        }
         let mut ids = HashSet::new();
         for scene in &self.scenes {
             if !ids.insert(scene.id) {
@@ -867,6 +1120,174 @@ impl Storyboard {
         }
         Ok(())
     }
+}
+
+struct StageParts<'a> {
+    headline: &'a str,
+    actors: &'a [Actor],
+    prop: Option<&'a Prop>,
+    meter: Option<&'a Meter>,
+    tasks: &'a [Task],
+    stamp: Option<&'a str>,
+}
+
+fn text_between(scene: u32, what: &str, text: &str, max: usize) -> Result<()> {
+    if text.trim().is_empty() || text.chars().count() > max {
+        return Err(invalid(
+            scene,
+            format!("{what} vazio ou acima de {max} caracteres"),
+        ));
+    }
+    Ok(())
+}
+
+/// Every token of `text` that carries a digit must be a word of the narration, so a
+/// number shown on a stage reaches the claims review like any other number.
+fn digits_spoken(scene: u32, what: &str, text: &str, words: &[String]) -> Result<()> {
+    for token in narration_words(text) {
+        // A sign is shown, not spoken: "-90%" is said "90% a menos".
+        let token = token.trim_matches('-').to_string();
+        if token.chars().any(|c| c.is_ascii_digit()) && !words.contains(&token) {
+            return Err(invalid(
+                scene,
+                format!("o numero '{text}' {what} precisa ser dito na narracao"),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_stage(
+    scene: u32,
+    words: &[String],
+    parts: StageParts<'_>,
+    narration: &str,
+) -> Result<()> {
+    text_between(scene, "titulo do palco", parts.headline, MAX_HEADLINE_CHARS)?;
+    if parts.headline.matches('*').count() % 2 != 0
+        || plain_headline(parts.headline).trim().is_empty()
+    {
+        return Err(invalid(
+            scene,
+            "titulo do palco com destaque *assim* desbalanceado",
+        ));
+    }
+    digits_spoken(scene, "do titulo", parts.headline, words)?;
+    if parts.actors.is_empty() && parts.prop.is_none() {
+        return Err(invalid(scene, "palco exige ao menos um ator ou um objeto"));
+    }
+    if parts.actors.len() > MAX_STAGE_ACTORS {
+        return Err(invalid(
+            scene,
+            format!("palco aceita ate {MAX_STAGE_ACTORS} atores"),
+        ));
+    }
+    let reserved = ["headline", "prop", "meter", "stamp", "*"];
+    let mut ids = HashSet::new();
+    for actor in parts.actors {
+        let name = actor.id.as_str();
+        if name.trim().is_empty()
+            || name.contains(char::is_whitespace)
+            || reserved.contains(&name)
+            || name.starts_with("group:")
+            || name.chars().count() > MAX_LABEL_CHARS
+            || !ids.insert(name)
+        {
+            return Err(invalid(
+                scene,
+                format!("ator com id vazio, reservado ou duplicado '{name}'"),
+            ));
+        }
+        text_between(scene, "nome do ator", &actor.name, 16)?;
+    }
+    match parts.prop {
+        Some(Prop::Coin { label, rival }) => {
+            text_between(scene, "rotulo da moeda", label, 12)?;
+            if let Some(rival) = rival {
+                text_between(scene, "moeda rival", rival, 12)?;
+            }
+        }
+        Some(Prop::Funnel { label, note }) => {
+            text_between(scene, "rotulo do funil", label, 12)?;
+            if let Some(note) = note {
+                text_between(scene, "nota do funil", note, 24)?;
+            }
+        }
+        Some(Prop::Table { title, rows, mark }) => {
+            text_between(scene, "titulo da tabela", title, 40)?;
+            if rows.is_empty() || rows.len() > 3 {
+                return Err(invalid(scene, "tabela do palco exige 1 a 3 linhas"));
+            }
+            for row in rows {
+                text_between(scene, "rotulo da linha", &row.label, 20)?;
+                text_between(scene, "valor da linha", &row.value, 12)?;
+                digits_spoken(scene, "da tabela", &row.value, words)?;
+            }
+            if mark.is_some_and(|mark| mark >= rows.len()) {
+                return Err(invalid(scene, "mark aponta para linha inexistente"));
+            }
+        }
+        Some(Prop::Envelope { comment }) => text_between(scene, "comentario", comment, 24)?,
+        Some(Prop::Wall) | None => {}
+    }
+    if let Some(meter) = parts.meter {
+        text_between(scene, "rotulo do medidor", &meter.label, 32)?;
+        for value in [meter.from, meter.to] {
+            if !value.is_finite() || !(0.0..=100.0).contains(&value) {
+                return Err(invalid(scene, "medidor vai de 0 a 100"));
+            }
+        }
+        if meter
+            .unit
+            .as_ref()
+            .is_some_and(|unit| unit.chars().count() > 4)
+        {
+            return Err(invalid(scene, "unidade do medidor acima de 4 caracteres"));
+        }
+        if meter.numeric {
+            let shown = format_value(meter.to.round(), meter.unit.as_deref());
+            if !number_is_spoken(&shown, meter.to.round(), narration) {
+                return Err(invalid(
+                    scene,
+                    format!("o numero '{shown}' do medidor precisa ser dito na narracao (ou use numeric: false)"),
+                ));
+            }
+        }
+    }
+    if parts.tasks.len() > MAX_STAGE_TASKS {
+        return Err(invalid(
+            scene,
+            format!("palco aceita ate {MAX_STAGE_TASKS} tarefas"),
+        ));
+    }
+    for task in parts.tasks {
+        text_between(scene, "tarefa", &task.label, MAX_TASK_CHARS)?;
+        let target = task.target(parts.actors);
+        let known = target == "prop" && parts.prop.is_some() || ids.contains(target);
+        if !known {
+            return Err(invalid(
+                scene,
+                format!("tarefa '{}' aponta para '{target}' inexistente", task.label),
+            ));
+        }
+        if let Some(word) = &task.at {
+            let wanted = narration_words(word).join(" ");
+            if wanted.is_empty() || !words.contains(&wanted) {
+                return Err(invalid(
+                    scene,
+                    format!(
+                        "tarefa '{}' espera a palavra '{word}' ausente na narracao",
+                        task.label
+                    ),
+                ));
+            }
+        }
+    }
+    if let Some(stamp) = parts.stamp {
+        text_between(scene, "selo", stamp, 24)?;
+        digits_spoken(scene, "do selo", stamp, words)?;
+    }
+    Ok(())
 }
 
 fn validate_freeform(scene: u32, elements: &[Element]) -> Result<()> {
@@ -1230,6 +1651,26 @@ impl StoryboardScene {
                 }
             }
             Composition::Freeform { elements } => validate_freeform(id, elements)?,
+            Composition::Stage {
+                headline,
+                actors,
+                prop,
+                meter,
+                tasks,
+                stamp,
+            } => validate_stage(
+                id,
+                &narration_words(narration),
+                StageParts {
+                    headline,
+                    actors,
+                    prop: prop.as_ref(),
+                    meter: meter.as_ref(),
+                    tasks,
+                    stamp: stamp.as_deref(),
+                },
+                narration,
+            )?,
             Composition::Chart {
                 objects, max_value, ..
             } => {
@@ -1485,6 +1926,7 @@ mod tests {
             scenes: vec![scene()],
             look: None,
             source_hash: None,
+            identity: None,
         }
     }
 
@@ -1623,6 +2065,84 @@ mod tests {
         assert_eq!(format_value(3.5, Some(" ms")), "3,5 ms");
     }
 
+    fn stage(narration: &str, composition: serde_json::Value) -> Result<()> {
+        let mut scene = scene();
+        scene.animations.clear();
+        scene.captions.emphasis.clear();
+        scene.narration = narration.into();
+        let mut composition = composition;
+        composition["kind"] = "stage".into();
+        scene.composition = serde_json::from_value(composition).unwrap();
+        scene.validate()
+    }
+
+    #[test]
+    fn a_stage_carries_cast_gauge_tasks_and_a_prop() {
+        let narration = "O Opus faz tudo, até renomear arquivo. Sobra 20% do plano.";
+        stage(
+            narration,
+            serde_json::json!({
+                "headline": "ATÉ O *FÁCIL*",
+                "actors": [{ "id": "opus", "name": "Opus", "hat": "hard_hat" }],
+                "meter": { "label": "Uso do plano restante", "from": 90, "to": 20, "unit": "%" },
+                "tasks": [{ "label": "renomear arquivo", "at": "renomear" }, { "label": "ler log" }],
+            }),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn a_stage_rejects_unspoken_numbers_and_dangling_targets() {
+        let actors = serde_json::json!([{ "id": "opus", "name": "Opus" }]);
+        let unspoken = stage(
+            "O plano acaba rapido.",
+            serde_json::json!({ "headline": "x", "actors": actors, "meter": { "label": "plano", "from": 90, "to": 20 } }),
+        );
+        assert!(unspoken.unwrap_err().to_string().contains("numeric: false"));
+        stage(
+            "O plano acaba rapido.",
+            serde_json::json!({ "headline": "x", "actors": actors, "meter": { "label": "plano", "from": 90, "to": 20, "numeric": false } }),
+        )
+        .unwrap();
+        let dangling = stage(
+            "O plano acaba.",
+            serde_json::json!({ "headline": "x", "actors": actors, "tasks": [{ "label": "ler", "to": "haiku" }] }),
+        );
+        assert!(dangling.unwrap_err().to_string().contains("haiku"));
+        let no_prop = stage(
+            "O plano acaba.",
+            serde_json::json!({ "headline": "x", "actors": actors, "tasks": [{ "label": "ler", "to": "prop" }] }),
+        );
+        assert!(no_prop.is_err());
+        let stamp = stage(
+            "Um modelo mais barato.",
+            serde_json::json!({ "headline": "x", "actors": actors, "stamp": "90% MAIS BARATO" }),
+        );
+        assert!(stamp.unwrap_err().to_string().contains("90%"));
+        stage(
+            "Um modelo 90% mais barato.",
+            serde_json::json!({ "headline": "x", "actors": actors, "stamp": "90% MAIS BARATO" }),
+        )
+        .unwrap();
+        let unbalanced = stage(
+            "x y.",
+            serde_json::json!({ "headline": "*x", "actors": actors }),
+        );
+        assert!(unbalanced.is_err());
+        let empty = stage("x y.", serde_json::json!({ "headline": "x" }));
+        assert!(empty.unwrap_err().to_string().contains("ator"));
+        let table = stage(
+            "Custa US$ 0,10 agora.",
+            serde_json::json!({ "headline": "x", "prop": { "kind": "table", "title": "Preço", "rows": [{ "label": "Haiku", "value": "US$ 0,10" }, { "label": "Antes", "value": "US$ 1,00" }] } }),
+        );
+        assert!(table.unwrap_err().to_string().contains("1,00"));
+        let wrong_word = stage(
+            "x y.",
+            serde_json::json!({ "headline": "x", "actors": actors, "tasks": [{ "label": "ler", "at": "log" }] }),
+        );
+        assert!(wrong_word.unwrap_err().to_string().contains("log"));
+    }
+
     #[test]
     fn kinds_list_matches_the_enum() {
         for kind in Composition::KINDS {
@@ -1640,6 +2160,7 @@ mod tests {
                 }
                 "transformation" => serde_json::json!({"kind": kind, "before": [], "after": []}),
                 "freeform" => serde_json::json!({"kind": kind, "elements": []}),
+                "stage" => serde_json::json!({"kind": kind, "headline": "x"}),
                 "flow_diagram" | "architecture" => {
                     serde_json::json!({"kind": kind, "objects": [], "relations": []})
                 }

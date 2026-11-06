@@ -68,6 +68,7 @@ impl AnalyticsSnapshot {
             youtube_channel_id: None,
             language: None,
             look: None,
+            identity: None,
         }
         .validate()?;
         if self.channel_id != channel_id {

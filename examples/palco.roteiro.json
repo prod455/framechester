@@ -1,0 +1,49 @@
+{
+  "topic_id": "skills-vs-agentes",
+  "script": {
+    "title": "Toda requisição paga pedágio",
+    "hook": "O servidor gasta tempo antes de trabalhar",
+    "series": "ia",
+    "format": "short",
+    "cross_checked": false,
+    "scenes": [
+      {
+        "id": 0,
+        "heading": "Cada requisição paga pedágio",
+        "narration": "Toda requisição que chega abre uma conexão nova com o banco. Abrir conexão, fazer o handshake, autenticar: cada passo morde o tempo do servidor antes de a consulta começar.",
+        "visual_brief": "#palco Toda requisição *paga pedágio*\nator: Servidor (capacete)\nobjeto: moeda Tempo\nmedidor: tempo livre | 100 -> 35 % | selo\ntarefas: abrir conexão -> moeda; handshake -> moeda; autenticar -> moeda\nGancho: o tempo do servidor sumindo antes do trabalho de verdade.",
+        "duration_hint_secs": 6.0
+      },
+      {
+        "id": 1,
+        "heading": "O servidor cansa no repetitivo",
+        "narration": "Com muito acesso, o servidor passa mais tempo abrindo conexão do que respondendo. Ele cansa no trabalho repetido.",
+        "visual_brief": "#palco Toda requisição *paga pedágio*\nator: Servidor\nobjeto: moeda Tempo\nmedidor: tempo livre | -> 15 % | selo\ntarefas: abrir conexão -> moeda; abrir conexão -> moeda",
+        "duration_hint_secs": 6.0
+      },
+      {
+        "id": 2,
+        "heading": "O pool reaproveita conexões",
+        "narration": "Um pool de conexões resolve. Ele abre poucas conexões uma vez só e empresta para cada consulta, que vai direto para o banco.",
+        "visual_brief": "#palco Um *pool* resolve\nator: Servidor (capacete)\nator: Banco (oculos)\nobjeto: funil Pool | reaproveita conexões\ntarefas: consulta -> Banco; consulta -> Banco; consulta -> Banco",
+        "duration_hint_secs": 6.0
+      },
+      {
+        "id": 3,
+        "heading": "Sobra capacidade",
+        "narration": "Resultado: o mesmo servidor atende muito mais pedidos, porque o tempo vai para responder e não para abrir porta.",
+        "visual_brief": "#palco Mesmo servidor, *mais pedidos*\nator: Servidor\nobjeto: muro\nmedidor: capacidade livre | 30 -> 80 %\ntarefas: pedido; pedido; pedido; pedido",
+        "duration_hint_secs": 6.0
+      },
+      {
+        "id": 4,
+        "heading": "Chamada",
+        "narration": "Quer o exemplo de configuração? Comenta pool que eu te mando.",
+        "visual_brief": "#palco O exemplo do *pool*\nator: Servidor\nobjeto: envelope pool",
+        "duration_hint_secs": 6.0
+      }
+    ],
+    "sources": [],
+    "claims": []
+  }
+}

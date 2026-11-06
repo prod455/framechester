@@ -201,6 +201,23 @@ nada e comemorar levanta as duas mãos, então não há objeto.
 | braço do gesto | balança 6 px a cada 0,7 s |
 | sobrancelhas | sobem 4 px no começo de cada frase |
 
+## Palco (2026-11-05)
+
+- **Um plano, não slides.** Cenas seguidas com o mesmo título de bloco não têm câmera,
+  transição nem entrada repetida: o título, o medidor, o objeto e os mascotes ficam onde
+  estavam, e só o que a cena muda se mexe. Bloco novo entra com `blur_swap`.
+- **Mascote.** Corpo coral arredondado com face clara, olhos em pílula, três pés e crachá na
+  cor do papel; o acessório (capacete, boné, óculos, coroa) diz quem é. Balança 2,5% da
+  largura a cada 0,6 s, pisca a cada 2,7 s, achata 12% ao receber uma tarefa e fica cansado
+  (olhos semicerrados e gota) quando o medidor em barra passa de 25 para baixo.
+- **Tarefas.** Etiqueta clara de 95% do corpo `small`, visível 0,35 s onde aparece, voa
+  0,4 s até o alvo (encolhe a 45% e some na batida), inclinada ±6°.
+- **Medidor.** Verde acima de 50, amarelo até 25, vermelho abaixo; o número troca na batida,
+  a barra anda em 0,35 s.
+- **Cores dos desenhos** (moeda dourada, moeda rival azul, tijolo, funil cinza, mascote)
+  são fixas em todos os looks, como uma ilustração colada na página; textos e cartões
+  seguem o look.
+
 ## Thumbnail
 
 `render/thumbnail.png`, 1280 × 720: o personagem do vídeo (ou o da pauta) ocupa a coluna

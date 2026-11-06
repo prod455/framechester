@@ -14,6 +14,9 @@ pub struct ChannelProfile {
     /// Visual look of the channel's videos; absent means the default (`noite`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub look: Option<crate::storyboard::Look>,
+    /// The channel's mascot and recurring cast (`[channels.identity]`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity: Option<crate::storyboard::Identity>,
 }
 
 /// Languages with a reviewed commercial voice; the description template follows the same list.
@@ -50,6 +53,11 @@ impl ChannelProfile {
                 ));
             }
         }
+        if let Some(identity) = &self.identity {
+            identity
+                .validate()
+                .map_err(|error| FramechesterError::Config(error.to_string()))?;
+        }
         if let Some(language) = &self.language {
             if !LANGUAGES.contains(&language.as_str()) {
                 return Err(FramechesterError::Config(
@@ -80,7 +88,38 @@ mod tests {
             youtube_channel_id: None,
             language: None,
             look: None,
+            identity: None,
         }
+    }
+
+    #[test]
+    fn the_studio_identity_toml_reads_as_the_channel_mascot_and_cast() {
+        #[derive(Deserialize)]
+        struct File {
+            channels: Vec<ChannelProfile>,
+        }
+        // Exactly what web/server/runner.ts writes.
+        let text = "[[channels]]\nid = \"tech\"\nlanguage = \"pt-BR\"\nlook = \"papel\"\n[channels.identity]\nbody = \"purple\"\nshape = \"tall\"\n[[channels.identity.cast]]\nname = \"Bit\"\nhat = \"glasses\"\n";
+        let file: File = toml::from_str(text).unwrap();
+        let identity = file.channels[0].identity.clone().unwrap();
+        assert_eq!(identity.body, crate::storyboard::MascotBody::Purple);
+        assert_eq!(identity.shape, crate::storyboard::MascotShape::Tall);
+        assert_eq!(identity.cast[0].hat, crate::storyboard::Hat::Glasses);
+        assert!(file.channels[0].validate().is_ok());
+        let crowded = ChannelProfile {
+            identity: Some(crate::storyboard::Identity {
+                cast: ["a", "b", "c", "d"]
+                    .iter()
+                    .map(|name| crate::storyboard::CastMember {
+                        name: (*name).into(),
+                        hat: Default::default(),
+                    })
+                    .collect(),
+                ..Default::default()
+            }),
+            ..profile("tech")
+        };
+        assert!(crowded.validate().is_err());
     }
 
     #[test]

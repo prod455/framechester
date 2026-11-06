@@ -1933,6 +1933,72 @@ mod tests {
         }
     }
 
+    #[test]
+    fn long_lists_split_into_columns_instead_of_overflowing() {
+        let typesetter = Typesetter::new().unwrap();
+        let labels = [
+            "Write the brief",
+            "Add CLAUDE.md rules",
+            "Run the agent",
+            "Review the diff",
+            "Ship the change",
+            "Measure results",
+            "Iterate",
+            "Repeat",
+        ];
+        let compose = |format: VideoFormat, brief: &str, narration: &str| {
+            let mut scene = plan_scene(
+                &Scene {
+                    id: 11,
+                    heading: "Como fazer".into(),
+                    narration: narration.into(),
+                    visual_brief: brief.into(),
+                    duration_hint_secs: 5.0,
+                },
+                11,
+            )
+            .unwrap();
+            scene.duration_secs = 6.0;
+            let canvas = Canvas::for_format(format);
+            compose_scene(&typesetter, &canvas, &scene, 1, 2).issues
+        };
+        for format in [
+            VideoFormat::Vertical,
+            VideoFormat::Horizontal,
+            VideoFormat::X,
+        ] {
+            for count in 2..=8 {
+                let items = &labels[..count];
+                let narration = items.join(". ") + ".";
+                let detailed: Vec<String> = items
+                    .iter()
+                    .map(|label| format!("{label}: um detalhe curto aqui"))
+                    .collect();
+                let mut briefs = vec![
+                    format!("#lista {}", items.join("; ")),
+                    format!("#causa {}", items.join(" => ")),
+                    format!("#lista {}", detailed.join("; ")),
+                ];
+                if count <= 6 {
+                    briefs.push(format!("#passos {}", items.join("; ")));
+                    briefs.push(format!("#passos {}", detailed.join("; ")));
+                    if format == VideoFormat::Vertical || count <= 5 {
+                        briefs.push(format!("#transformacao {} => Pronto", items.join("; ")));
+                    }
+                }
+                for brief in briefs {
+                    let issues = compose(format, &brief, &narration);
+                    assert!(
+                        issues
+                            .iter()
+                            .all(|issue| issue.severity != Severity::Critical),
+                        "{format:?} {brief}: {issues:?}"
+                    );
+                }
+            }
+        }
+    }
+
     fn freeform_scene(elements: serde_json::Value, narration: &str) -> StoryboardScene {
         let mut scene = narrated("#pergunta Cena livre?", narration);
         scene.composition = serde_json::from_value(serde_json::json!({

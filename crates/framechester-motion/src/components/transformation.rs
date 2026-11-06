@@ -88,7 +88,28 @@ pub fn build(
             group_area.w,
             group_area.h - scale.small * 1.8,
         );
-        let cells = if ctx.canvas.vertical || items.len() > 2 {
+        // Past four cards a tall frame's stack leaves each too short for its label: two
+        // columns.
+        let cells = if ctx.canvas.vertical && items.len() > 4 {
+            let grid_rows = items.len().div_ceil(2);
+            let card_h = (scale.body * 2.6).min(list_area.h / grid_rows as f32 - gap * 0.5);
+            let bands = rows(
+                Rect::new(
+                    list_area.x,
+                    list_area.y,
+                    list_area.w,
+                    (card_h + gap * 0.5) * grid_rows as f32 - gap * 0.5,
+                ),
+                grid_rows,
+                gap * 0.5,
+            );
+            let mut cells: Vec<Rect> = bands
+                .iter()
+                .flat_map(|band| cols(*band, 2, gap * 0.5))
+                .collect();
+            cells.truncate(items.len());
+            cells
+        } else if ctx.canvas.vertical || items.len() > 2 {
             let card_h =
                 (scale.body * 2.6).min(list_area.h / items.len().max(1) as f32 - gap * 0.5);
             rows(

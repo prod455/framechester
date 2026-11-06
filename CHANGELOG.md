@@ -68,6 +68,8 @@ podem quebrar a compatibilidade e avisam isso aqui.
 - Um briefing visual que pede uma gravação não bloqueia mais a versão final: toda cena recebe a composição explicativa (renderizador `framechester-editorial-v3`), um arquivo próprio continua opcional por cena e o assistente de roteiro é orientado a não pedir gravações. `requires_capture`, `PreparedVisuals.pending` e o atalho de adaptar roteiro foram removidos.
 
 ### Corrigido
+- **Listas longas não estouram mais o texto**: `#lista`/`#causa` com mais de 5 itens no horizontal serpenteiam em duas linhas em vez de empilhar cartões sem altura para uma linha; no vertical, `#lista`/`#causa`, `#passos` e `#transformacao` (mais de 4 itens) dividem em duas colunas quando o cartão empilhado não comporta o texto.
+- **Número pequeno dito por extenso conta como dito**: inteiro de 0 a 20 sem unidade passa na checagem de narração quando é falado em palavras (pt-BR ou inglês: "tres", "três", "three"); com unidade ou fração continua exigindo dígitos.
 - "Não cabe": textos longos mas válidos deixam de reprovar (título que saía da área segura no horizontal/X, títulos de comparação de uma linha só, cartões de fluxo vertical, caixas de arquitetura, infográfico); o texto encolhe até o piso de legibilidade antes de reprovar.
 - Linha de retorno do fluxo horizontal atravessava a legenda; cores fixas na legenda, barra de progresso e janela de código ignoravam o look.
 - Traduções en/es das mensagens de "tentar de novo".

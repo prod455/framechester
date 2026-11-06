@@ -1798,12 +1798,48 @@ fn number_is_spoken(shown: &str, value: f64, narration: &str) -> bool {
         .collect();
     let plain = (value.round() as i64).to_string();
     let compact = shown.replace('.', "");
+    let spelled = number_words(shown, value);
     narration.contains(&normalize(shown))
         || narration.contains(&compact.to_lowercase())
         || narration.contains(&digits)
         || narration
             .split(|c: char| !c.is_alphanumeric())
-            .any(|token| token == plain)
+            .any(|token| token == plain || spelled.contains(&token))
+}
+
+/// How a small whole number with no unit is said in words, in Portuguese and English
+/// ("3" is said "tres", "três" or "three"); empty for any other number, which must be
+/// spoken in digits.
+fn number_words(shown: &str, value: f64) -> &'static [&'static str] {
+    const WORDS: [&[&str]; 21] = [
+        &["zero"],
+        &["um", "uma", "one"],
+        &["dois", "duas", "two"],
+        &["tres", "três", "three"],
+        &["quatro", "four"],
+        &["cinco", "five"],
+        &["seis", "six"],
+        &["sete", "seven"],
+        &["oito", "eight"],
+        &["nove", "nine"],
+        &["dez", "ten"],
+        &["onze", "eleven"],
+        &["doze", "twelve"],
+        &["treze", "thirteen"],
+        &["quatorze", "catorze", "fourteen"],
+        &["quinze", "fifteen"],
+        &["dezesseis", "sixteen"],
+        &["dezessete", "seventeen"],
+        &["dezoito", "eighteen"],
+        &["dezenove", "nineteen"],
+        &["vinte", "twenty"],
+    ];
+    let whole = value.fract() == 0.0 && (0.0..=20.0).contains(&value);
+    if whole && shown == (value as i64).to_string() {
+        WORDS[value as usize]
+    } else {
+        &[]
+    }
 }
 
 #[cfg(test)]
@@ -2074,6 +2110,28 @@ mod tests {
         composition["kind"] = "stage".into();
         scene.composition = serde_json::from_value(composition).unwrap();
         scene.validate()
+    }
+
+    #[test]
+    fn a_small_whole_number_may_be_spoken_in_words() {
+        let narration = normalize("Escolha três cores e duas fontes. Pick three colors.");
+        assert!(number_is_spoken("3", 3.0, &narration));
+        assert!(number_is_spoken("2", 2.0, &narration));
+        assert!(number_is_spoken("3", 3.0, &normalize("Use tres cores.")));
+        assert!(
+            !number_is_spoken("4", 4.0, &narration),
+            "another number is not spoken"
+        );
+        assert!(
+            !number_is_spoken("3%", 3.0, &normalize("Sobram três.")),
+            "a number with a unit is said in digits"
+        );
+        assert!(!number_is_spoken("2,5", 2.5, &normalize("Dois e meio.")));
+        assert!(!number_is_spoken("30", 30.0, &normalize("Trinta dias.")));
+        assert!(
+            !number_is_spoken("3", 3.0, &normalize("Os trestes falham.")),
+            "a word only counts whole"
+        );
     }
 
     #[test]

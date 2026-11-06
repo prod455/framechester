@@ -31,7 +31,9 @@ roteiro (visualBrief) ──► diretiva #layout ──► parser Rust ──►
 As diretivas abaixo continuam valendo para o renderizador de imagens estáticas. O
 motor motion (`framechester produce`) usa um storyboard semântico com cenas
 animadas e aceita, além delas, `#fluxo`, `#grafico`, `#arquitetura`, `#codigo`,
-`#transformacao`, `#anotacao`, `#infografico`, `#causa` e `#personagem`. No caminho
+`#transformacao`, `#anotacao`, `#infografico`, `#causa`, `#personagem` e `#palco`
+(palco contínuo com mascotes, uma metáfora e um medidor que atravessa as cenas; veja
+abaixo). No caminho
 antigo essas diretivas viram o layout padrão, sem erro. No motor motion, uma cena sem
 diretiva ou com `#pergunta` é contada por um personagem animado que combina com a pauta (robô, dev,
 cientista ou apresentador); `#destaque` mantém o título tipográfico. Gramática completa em
@@ -123,6 +125,14 @@ Regras por duração, somadas ao formato:
 - **Short:** a 1ª cena dura até 3 s e já mostra a pergunta ou o fato. Uma ideia por vídeo, frases curtas, e a última fala retoma o gancho.
 - **Longo:** a promessa aparece nos primeiros 30 s, um dado ou virada novo a cada 60–90 s, e há uma recapitulação antes da conclusão.
 
+**De onde vêm (pesquisa de 05/11/2026).** Não há estudo público que compare formatos
+editoriais por retenção: as fontes sobre Shorts que circulam são blogs de ferramentas com
+percentuais sem dataset publicado, e só concordam em dois pontos: o gancho precisa estar
+nos primeiros 1 a 3 segundos, e quem decide é a curva de retenção do próprio canal (desde
+31/03/2025 a visualização de Short conta sem tempo mínimo, então views não medem retenção).
+Por isso a direção criativa traz princípios, não formatos de sucesso: o que funciona no
+canal se mede na curva de retenção dele.
+
 **Limite honesto:** esses formatos reúnem convenções recorrentes do gênero
 faceless de tecnologia e ciência. Ninguém mediu o desempenho deles neste
 projeto, e eles não foram treinados em dados de canais. Antes de tratar um
@@ -130,6 +140,33 @@ formato como vencedor, compare a retenção por formato no analytics do
 próprio canal (skills `youtube-channel-analysis` e `marketing-experiments`).
 Para um teste interpretável, mantenha o assunto e a duração e mude só o
 formato.
+
+### Direção criativa livre
+
+Formato editorial é opcional ("Sem formato definido" é o padrão). Em roteiro e narrativa, a
+IA sempre recebe uma **direção criativa livre** (`web/shared/creative-direction.ts`): os
+princípios que se repetem nos explicadores que seguram atenção, sem molde de cenas. Cada
+vídeo inventa a própria ideia e combina os componentes do motor que servem a ela:
+
+1. uma ideia visual por vídeo: metáfora física própria do assunto e algo que muda de estado;
+2. o primeiro segundo já é o conflito;
+3. o que a narração cita aparece na tela quando é dito;
+4. causa e efeito visível;
+5. mudança na tela a cada 2–3 s, frases curtas;
+6. cada bloco termina numa tensão que o próximo resolve;
+7. a solução entra como algo novo e o estado muda de comportamento;
+8. a última imagem responde à primeira;
+9. elenco e metáfora contínuos.
+
+**Identidade do canal.** No cadastro do canal (Studio → Canais), **Cor do mascote**,
+**Formato do mascote** e até 3 **personagens do elenco** com acessório valem para todos os
+vídeos dele. O motor desenha o mascote com essa cor e silhueta, o planner já conhece o
+elenco (o roteiro escreve só `ator: Nome`) e a IA recebe o elenco como fixo do canal. A ideia
+de cada vídeo continua nova; o que se repete é quem conta.
+
+A regra explícita é não copiar estrutura, títulos, personagens, metáforas ou sequência de
+cenas de vídeos de outros canais. `#palco` é o componente para estado contínuo com elenco
+([STORYBOARD.md](STORYBOARD.md#palco-stage)); nenhum componente é obrigatório.
 
 ## Precisa de um LLM próprio?
 

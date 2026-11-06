@@ -3,6 +3,7 @@
 //! captions and records layout issues for QA.
 use crate::anim::Track;
 use crate::captions;
+use crate::components::stage::StageContext;
 use crate::components::{self, edge_id, Ctx, LayoutIssue, Severity};
 use crate::format::{Canvas, Rect};
 use crate::scene::{Anchor, Camera, Graph, Node, Shape, Z_CAPTIONS};
@@ -242,8 +243,17 @@ fn build_component(
     scene: &StoryboardScene,
     area: Rect,
     index: usize,
+    stage: Option<&StageContext>,
 ) -> Vec<Node> {
     match &scene.composition {
+        Composition::Stage { .. } => {
+            let alone = StageContext {
+                chapters: 1,
+                hook: index == 0,
+                ..StageContext::default()
+            };
+            components::stage::build(ctx, area, scene, stage.unwrap_or(&alone))
+        }
         Composition::Title { text, kicker } => {
             components::title::build(ctx, area, text, kicker.as_deref())
         }
@@ -861,7 +871,19 @@ pub fn compose_scene(
     index: usize,
     total: usize,
 ) -> ComposedScene {
-    let base = compose_at(typesetter, canvas, scene, index, total, 1.0);
+    compose_scene_on(typesetter, canvas, scene, index, total, None)
+}
+
+/// [`compose_scene`] with what a stage scene inherits from the stage scenes before it.
+pub fn compose_scene_on(
+    typesetter: &Typesetter,
+    canvas: &Canvas,
+    scene: &StoryboardScene,
+    index: usize,
+    total: usize,
+    stage: Option<&StageContext>,
+) -> ComposedScene {
+    let base = compose_at(typesetter, canvas, scene, index, total, 1.0, stage);
     let zoomable = matches!(
         scene.composition,
         Composition::FlowDiagram { .. }
@@ -887,7 +909,7 @@ pub fn compose_scene(
         return base.0;
     }
     for zoom in ZOOMS {
-        let (composed, fits) = compose_at(typesetter, canvas, scene, index, total, zoom);
+        let (composed, fits) = compose_at(typesetter, canvas, scene, index, total, zoom, stage);
         if fits && composed.issues.is_empty() {
             return composed;
         }
@@ -904,17 +926,20 @@ fn compose_at(
     index: usize,
     total: usize,
     zoom: f32,
+    stage: Option<&StageContext>,
 ) -> (ComposedScene, bool) {
     let mut ctx = Ctx::new(canvas, typesetter, scene.id);
     let mut graph = Graph {
         look: canvas.look,
         ..Graph::default()
     };
-    // A title or a character speaks for itself: no heading bar above it.
-    let is_title = matches!(
-        scene.composition,
-        Composition::Title { .. } | Composition::Character { .. }
-    );
+    // A title, a character or a stage speaks for itself: no heading bar above it.
+    let is_stage = matches!(scene.composition, Composition::Stage { .. });
+    let is_title = is_stage
+        || matches!(
+            scene.composition,
+            Composition::Title { .. } | Composition::Character { .. }
+        );
     let area = if is_title {
         canvas.content
     } else {
@@ -923,11 +948,11 @@ fn compose_at(
         area
     };
     let component = if zoom == 1.0 {
-        build_component(&mut ctx, scene, area, index)
+        build_component(&mut ctx, scene, area, index, stage)
     } else {
         let zoomed = canvas.zoomed(zoom);
         let mut zoomed_ctx = Ctx::new(&zoomed, typesetter, scene.id);
-        let nodes = build_component(&mut zoomed_ctx, scene, area, index);
+        let nodes = build_component(&mut zoomed_ctx, scene, area, index, stage);
         ctx.issues.extend(zoomed_ctx.issues);
         nodes
     };
@@ -936,7 +961,12 @@ fn compose_at(
         .map(Node::bbox)
         .filter(|bbox| bbox.w > 0.0 || bbox.h > 0.0)
         .all(|bbox| area.inset(-2.0).contains(&bbox));
-    graph.extend(centre_vertically(component, area));
+    // A stage fills its area on purpose: moving it would break the shot between scenes.
+    if is_stage {
+        graph.extend(component);
+    } else {
+        graph.extend(centre_vertically(component, area));
+    }
     graph.extend(captions::build(&mut ctx, scene));
     let mut entries: HashMap<String, f32> = HashMap::new();
     let mut animated_objects = Vec::new();
@@ -961,12 +991,15 @@ fn compose_at(
     if matches!(scene.composition, Composition::Character { .. }) {
         components::character::animate(&mut graph.nodes, scene, canvas.motion_scale(), hook);
     }
-    // Every scene gets a slow camera move, cycling so consecutive scenes differ.
-    graph.camera = Some((
-        Camera::for_scene(index),
-        scene.duration_secs.max(1.0),
-        (canvas.width as f32, canvas.height as f32),
-    ));
+    // Every scene gets a slow camera move, cycling so consecutive scenes differ; a stage
+    // is one locked shot across its scenes, so its cuts stay invisible.
+    graph.camera = (!is_stage).then(|| {
+        (
+            Camera::for_scene(index),
+            scene.duration_secs.max(1.0),
+            (canvas.width as f32, canvas.height as f32),
+        )
+    });
     check_layout(&mut ctx, &graph);
     let change_times = graph.change_times();
     let focal = focal_of(&graph, &entries, true);
@@ -995,11 +1028,18 @@ pub fn compose(storyboard: &Storyboard, typesetter: &Typesetter) -> Result<Compo
     storyboard.validate()?;
     let canvas = Canvas::for_storyboard(storyboard.format, storyboard.look.unwrap_or_default());
     let total = storyboard.scenes.len();
+    let stages = components::stage::contexts(
+        &storyboard.scenes,
+        components::stage::MascotStyle::of(storyboard.identity.as_ref()),
+    );
     let scenes = storyboard
         .scenes
         .iter()
+        .zip(&stages)
         .enumerate()
-        .map(|(index, scene)| compose_scene(typesetter, &canvas, scene, index, total))
+        .map(|(index, (scene, stage))| {
+            compose_scene_on(typesetter, &canvas, scene, index, total, stage.as_ref())
+        })
         .collect();
     Ok(Composed { canvas, scenes })
 }
@@ -1012,6 +1052,10 @@ pub fn layout_preflight(storyboard: &Storyboard, typesetter: &Typesetter) -> Vec
     const ESTIMATED_SECS_PER_WORD: f32 = 0.33;
     let canvas = Canvas::for_storyboard(storyboard.format, storyboard.look.unwrap_or_default());
     let total = storyboard.scenes.len();
+    let stages = components::stage::contexts(
+        &storyboard.scenes,
+        components::stage::MascotStyle::of(storyboard.identity.as_ref()),
+    );
     let mut issues = Vec::new();
     for (index, scene) in storyboard.scenes.iter().enumerate() {
         let mut scene = scene.clone();
@@ -1031,10 +1075,17 @@ pub fn layout_preflight(storyboard: &Storyboard, typesetter: &Typesetter) -> Vec
         scene.segments = segments;
         scene.duration_secs = duration;
         issues.extend(
-            compose_scene(typesetter, &canvas, &scene, index, total)
-                .issues
-                .into_iter()
-                .filter(|issue| issue.severity == Severity::Critical),
+            compose_scene_on(
+                typesetter,
+                &canvas,
+                &scene,
+                index,
+                total,
+                stages[index].as_ref(),
+            )
+            .issues
+            .into_iter()
+            .filter(|issue| issue.severity == Severity::Critical),
         );
     }
     issues
@@ -1649,6 +1700,7 @@ mod tests {
             scenes: vec![first, second],
             look: None,
             source_hash: None,
+            identity: None,
         };
         let checks = crate::qa::hook_checks(&storyboard, &composed);
         assert!(
@@ -1997,6 +2049,7 @@ mod tests {
             scenes,
             look: None,
             source_hash: None,
+            identity: None,
         };
         assert!(layout_preflight(&storyboard(vec![ok.clone()]), &typesetter).is_empty());
         let storyboard = storyboard(vec![ok, bad]);
@@ -2182,6 +2235,7 @@ mod tests {
             language: "pt-BR".into(),
             scenes,
             look: Some(look),
+            identity: None,
             source_hash: None,
         };
         let total = storyboard.scenes.len();

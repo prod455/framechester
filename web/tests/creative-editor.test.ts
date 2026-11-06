@@ -474,6 +474,9 @@ test('a selected video style and the layout grammar reach the system prompt; unk
     assert.equal(ctx.calls(), 0);
     const draft = await ctx.service.draft('tech', { ...request, style: 'misterio' });
     assert.match(system, /Mistério documental/);
+    // Free creative direction always comes with the script, format or not.
+    assert.match(system, /Direção criativa \(livre, sem fôrma\)/);
+    assert.match(system, /não copie estrutura/);
     assert.match(system, /#linha-do-tempo/);
     assert.match(system, /primeira cena dura até 3 segundos/);
     assert.ok(draft.fields && 'scenes' in draft.fields);

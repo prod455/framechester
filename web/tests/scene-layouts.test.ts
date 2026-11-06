@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import {
   parseSceneLayout,
   sceneLayoutOrFallback,
+  motionDirectives,
   sceneLayouts,
   SceneLayoutError,
 } from '../shared/scene-layouts.ts';
@@ -26,7 +27,12 @@ test('the Studio validator accepts exactly what the Rust renderer accepts', asyn
 test('every style guide only recommends layouts from the closed catalog and keeps format rules', () => {
   for (const style of videoStyles) {
     const guide = videoStyleGuide(style, 'short');
-    for (const layout of style.layouts) assert.ok(sceneLayouts.includes(layout));
+    for (const layout of style.layouts)
+      assert.ok(
+        (sceneLayouts as readonly string[]).includes(layout) ||
+          (motionDirectives as readonly string[]).includes(layout),
+        layout,
+      );
     assert.match(guide, /primeira cena dura até 3 segundos/);
     assert.doesNotMatch(videoStyleGuide(style), /Short de 65/);
   }

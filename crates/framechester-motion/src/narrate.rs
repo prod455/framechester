@@ -203,6 +203,7 @@ mod tests {
             ],
             look: None,
             source_hash: None,
+            identity: None,
         }
     }
 

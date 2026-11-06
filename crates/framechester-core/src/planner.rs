@@ -243,7 +243,7 @@ fn pose_name(pose: Pose) -> &'static str {
     }
 }
 
-fn parse_role(name: &str) -> Option<Role> {
+pub(crate) fn parse_role(name: &str) -> Option<Role> {
     Some(match name {
         "neutral" | "neutro" => Role::Neutral,
         "primary" | "primario" => Role::Primary,
@@ -390,6 +390,12 @@ pub fn parse_composition(scene: &Scene) -> Result<Composition> {
         });
     };
     let composition = match name {
+        "palco" => crate::stage_script::StageMemory::default().parse(
+            id,
+            args,
+            rest,
+            &scene.narration,
+        )?,
         "destaque" => Composition::Title {
             text: scene.heading.clone(),
             kicker: None,
@@ -837,6 +843,8 @@ pub fn plan_animations(composition: &Composition, narration: &str) -> Vec<Animat
     let mut animations = Vec::new();
     let mut used = Vec::new();
     let labels: Vec<(String, String)> = match composition {
+        // A stage times its own cast, gauge and tasks from the narration.
+        Composition::Stage { .. } => return Vec::new(),
         Composition::Title { .. } => vec![("title".into(), String::new())],
         Composition::Character { .. } => vec![("speech".into(), String::new())],
         Composition::Freeform { elements } => elements
@@ -1010,6 +1018,19 @@ fn plan_emphasis(composition: &Composition, narration: &str) -> Vec<String> {
             .iter()
             .filter_map(|element| element.shape.text().map(str::to_string))
             .collect(),
+        Composition::Stage {
+            headline,
+            actors,
+            tasks,
+            ..
+        } => headline
+            .split('*')
+            .skip(1)
+            .step_by(2)
+            .map(str::to_string)
+            .chain(actors.iter().map(|actor| actor.name.clone()))
+            .chain(tasks.iter().map(|task| task.label.clone()))
+            .collect(),
         Composition::FlowDiagram { objects, .. }
         | Composition::Comparison { objects, .. }
         | Composition::Timeline { objects }
@@ -1081,6 +1102,20 @@ pub fn transition_into(
     if index == 0 {
         return Transition::Cut;
     }
+    // A stage continues as one shot: the same block cuts invisibly; a new block hands over
+    // on one stage.
+    if let Some(Composition::Stage { headline, .. }) = next {
+        return match previous {
+            Some(Composition::Stage {
+                headline: before, ..
+            }) if crate::storyboard::plain_headline(before)
+                == crate::storyboard::plain_headline(headline) =>
+            {
+                Transition::Cut
+            }
+            _ => Transition::BlurSwap,
+        };
+    }
     // An object both scenes share is the strongest cause: it stays as the hero.
     if let (Some(previous), Some(next)) = (previous, next) {
         if shared_hero(previous, next).is_some() && before != Some(Transition::Flood) {
@@ -1103,9 +1138,22 @@ pub fn transition_into(
 
 /// Plans one scene. The note after the directive becomes the learning goal when present.
 pub fn plan_scene(scene: &Scene, index: usize) -> Result<StoryboardScene> {
-    let composition = parse_composition(scene)?;
+    plan_scene_with(scene, index, parse_composition(scene)?)
+}
+
+/// [`plan_scene`] with the composition already parsed (a stage scene needs the script's
+/// earlier scenes to be parsed, see `stage_script::StageMemory`).
+fn plan_scene_with(
+    scene: &Scene,
+    index: usize,
+    composition: Composition,
+) -> Result<StoryboardScene> {
     let (_, note) = split_brief(&scene.visual_brief);
-    let note = note.trim();
+    let note = match composition {
+        // Stage lines are the scene, not its note.
+        Composition::Stage { .. } => crate::stage_script::note(note).unwrap_or(""),
+        _ => note.trim(),
+    };
     let learning_goal = if note.is_empty() || matches!(composition, Composition::Code { .. }) {
         format!("Entender: {}", scene.heading)
     } else {
@@ -1149,6 +1197,17 @@ pub fn plan_script(
     channel: &str,
     format: VideoFormat,
 ) -> Result<(Storyboard, Vec<String>)> {
+    plan_script_for(script, channel, format, None)
+}
+
+/// [`plan_script`] for a channel with its own identity: the storyboard carries it, and the
+/// channel's recurring cast is known to `#palco` scenes before the script names them.
+pub fn plan_script_for(
+    script: &Script,
+    channel: &str,
+    format: VideoFormat,
+    identity: Option<&crate::storyboard::Identity>,
+) -> Result<(Storyboard, Vec<String>)> {
     let mut fallbacks = Vec::new();
     let mut scenes = Vec::with_capacity(script.scenes.len());
     let described = described_cast(script);
@@ -1158,6 +1217,9 @@ pub fn plan_script(
         |(_, spec)| spec.clone(),
     );
     let total = script.scenes.len();
+    let mut stage = crate::stage_script::StageMemory::with_cast(
+        identity.map_or(&[][..], |identity| identity.cast.as_slice()),
+    );
     for (index, scene) in script.scenes.iter().enumerate() {
         // A scene without a directive, or a question, is told by the character that fits
         // the topic; every other directive keeps its own composition.
@@ -1199,7 +1261,14 @@ pub fn plan_script(
             },
             None => scene.clone(),
         };
-        match plan_scene(scene, index) {
+        // A stage scene reads the cast and gauges the script described before it.
+        let planned = match split_brief(&scene.visual_brief) {
+            (Some(("palco", headline)), rest) => stage
+                .parse(scene.id, headline, rest, &scene.narration)
+                .and_then(|composition| plan_scene_with(scene, index, composition)),
+            _ => plan_scene(scene, index),
+        };
+        match planned {
             Ok(planned) => scenes.push(planned),
             Err(error) => {
                 let (_, note) = split_brief(&scene.visual_brief);
@@ -1246,6 +1315,7 @@ pub fn plan_script(
         scenes,
         look: None,
         source_hash: None,
+        identity: identity.cloned(),
     };
     storyboard.validate()?;
     Ok((storyboard, fallbacks))
@@ -1276,6 +1346,65 @@ mod tests {
             claims: Vec::new(),
             cross_checked: false,
         }
+    }
+
+    #[test]
+    fn stage_scenes_carry_cast_and_gauge_and_cut_inside_a_block() {
+        let mut first = scene(
+            "#palco Até o *fácil*\nator: Opus (capacete)\nmedidor: Uso do plano | 90 -> 40 %\ntarefas: ler log; listar pasta\nO plano acaba no braçal.",
+            "O Opus faz tudo: ler log, listar pasta. O plano cai para 40%.",
+        );
+        first.id = 1;
+        let mut second = scene(
+            "#palco Até o *fácil*\nator: Opus\nmedidor: Uso do plano | -> 20 %\ntarefas: renomear",
+            "E renomear arquivo derruba o plano para 20%.",
+        );
+        second.id = 2;
+        let mut third = scene(
+            "#palco O Haiku pega o *braçal*\nator: Haiku (boné)\nator: Opus\nobjeto: funil Skill\ntarefas: ler log -> Haiku",
+            "A skill manda ler log pro Haiku.",
+        );
+        third.id = 3;
+        let (storyboard, fallbacks) = plan_script(
+            &script("Palco", vec![first, second, third]),
+            "canal",
+            VideoFormat::Vertical,
+        )
+        .unwrap();
+        assert!(fallbacks.is_empty(), "{fallbacks:?}");
+        let scenes = &storyboard.scenes;
+        assert_eq!(scenes[0].learning_goal, "O plano acaba no braçal.");
+        assert!(scenes[0].animations.is_empty(), "a stage animates itself");
+        let Composition::Stage {
+            meter: Some(meter),
+            actors,
+            ..
+        } = &scenes[1].composition
+        else {
+            panic!("{:?}", scenes[1].composition)
+        };
+        assert_eq!((meter.from, meter.to), (40.0, 20.0));
+        assert_eq!(actors[0].hat, crate::storyboard::Hat::HardHat);
+        assert_eq!(scenes[1].transition, Transition::Cut);
+        assert_eq!(scenes[2].transition, Transition::BlurSwap);
+    }
+
+    #[test]
+    fn a_malformed_stage_falls_back_and_says_why() {
+        let (storyboard, fallbacks) = plan_script(
+            &script(
+                "Palco",
+                vec![scene("#palco X\nobjeto: foguete", "Uma frase qualquer.")],
+            ),
+            "canal",
+            VideoFormat::Vertical,
+        )
+        .unwrap();
+        assert!(fallbacks[0].contains("foguete"), "{fallbacks:?}");
+        assert!(!matches!(
+            storyboard.scenes[0].composition,
+            Composition::Stage { .. }
+        ));
     }
 
     #[test]

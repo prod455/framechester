@@ -11,7 +11,8 @@ import type {
   Platform,
   Look,
 } from '../shared/types.ts';
-import { looks } from '../shared/types.ts';
+import { hats, looks, mascotBodies, mascotShapes } from '../shared/types.ts';
+import type { ChannelIdentity, Hat, MascotBody, MascotShape } from '../shared/types.ts';
 import { readFile, mkdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -217,6 +218,31 @@ export function normalizeConfig(value: unknown, previous = defaultConfig()): Web
     },
   };
 }
+/** Mascot colour, silhouette and up to 3 recurring characters (`Identity` in Rust). */
+function channelIdentity(value: unknown): ChannelIdentity {
+  const item = object(value);
+  keys(item, ['body', 'shape', 'cast']);
+  const body = item.body ?? 'coral';
+  const shape = item.shape ?? 'block';
+  if (!mascotBodies.includes(body as MascotBody)) throw new HttpError(400, 'Cor do mascote inválida.');
+  if (!mascotShapes.includes(shape as MascotShape)) throw new HttpError(400, 'Formato do mascote inválido.');
+  const raw = item.cast ?? [];
+  if (!Array.isArray(raw) || raw.length > 3)
+    throw new HttpError(400, 'O elenco do canal aceita até 3 personagens.');
+  const seen = new Set<string>();
+  const cast = raw.map((entry) => {
+    const member = object(entry);
+    keys(member, ['name', 'hat']);
+    const name = text(member.name, 'name', 16, true);
+    const hat = member.hat ?? 'none';
+    if (!hats.includes(hat as Hat)) throw new HttpError(400, 'Acessório do personagem inválido.');
+    if (seen.has(name.toLowerCase()))
+      throw new HttpError(400, 'Dois personagens do elenco têm o mesmo nome.');
+    seen.add(name.toLowerCase());
+    return { name, hat: hat as Hat };
+  });
+  return { body: body as MascotBody, shape: shape as MascotShape, cast };
+}
 function normalizeChannel(value: unknown, previous?: Channel): Channel {
   const item = object(value);
   keys(item, [
@@ -228,6 +254,7 @@ function normalizeChannel(value: unknown, previous?: Channel): Channel {
     'language',
     'youtubeChannelId',
     'look',
+    'identity',
     'youtubeAutoUpload',
     'autoUpload',
     'createdAt',
@@ -257,6 +284,7 @@ function normalizeChannel(value: unknown, previous?: Channel): Channel {
   if (item.look !== undefined && !looks.includes(item.look as Look))
     throw new HttpError(400, 'Visual inválido: use noite, papel ou planta.');
   const look = item.look as Look | undefined;
+  const identity = item.identity === undefined ? undefined : channelIdentity(item.identity);
   const now = new Date().toISOString();
   return {
     id,
@@ -267,6 +295,7 @@ function normalizeChannel(value: unknown, previous?: Channel): Channel {
     language,
     ...(youtubeChannelId ? { youtubeChannelId } : {}),
     ...(look ? { look } : {}),
+    ...(identity ? { identity } : {}),
     ...(autoUpload.length ? { autoUpload } : {}),
     createdAt: previous?.createdAt ?? now,
     updatedAt: now,

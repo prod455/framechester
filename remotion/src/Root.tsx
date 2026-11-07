@@ -47,7 +47,7 @@ const calcular: CalculateMetadataFunction<Props> = async ({ props }) => {
   const resposta = await fetch(staticFile(anuncio.palavras));
   if (!resposta.ok || !(resposta.headers.get('content-type') ?? '').includes('json'))
     throw new Error(
-      `public/${anuncio.palavras} não existe: rode npm run palavras:estimar ou scripts/transcrever.py`,
+      `public/${anuncio.palavras} não existe: rode npm run palavras:estimar ou npm run transcrever`,
     );
   const transcricao = validarTranscricao(await resposta.json());
   const linha = linhaDoTempo(

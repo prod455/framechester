@@ -35,14 +35,14 @@ if (!existsSync(join(PUBLICO, 'sfx', 'pop.wav')))
 for (const c of anuncio.cenas) {
   if (c.tipo !== 'personagem') continue;
   const caminho = join(PUBLICO, c.imagem);
-  if (!existsSync(caminho)) falta(`public/${c.imagem} ausente: gere no Higgsfield (npm run prompts)`);
+  if (!existsSync(caminho)) falta(`public/${c.imagem} ausente: rode npm run personagens`);
   else if (!temTransparencia(caminho)) erros.push(`public/${c.imagem} não tem fundo transparente`);
 }
 
 let duracaoAudio = null;
 if (!anuncio.audio) falta('anúncio sem narração ("audio": null)');
 else if (!existsSync(join(PUBLICO, anuncio.audio)))
-  falta(`public/${anuncio.audio} ausente: grave ou clone a narração`);
+  falta(`public/${anuncio.audio} ausente: grave em public/referencia.wav uns 20 s seus e rode npm run voz`);
 else
   duracaoAudio = Number(
     execFileSync('ffprobe', [
@@ -60,11 +60,10 @@ else
 
 const arquivoPalavras = join(PUBLICO, anuncio.palavras);
 if (!existsSync(arquivoPalavras))
-  erros.push(`public/${anuncio.palavras} ausente: rode scripts/transcrever.py ou npm run palavras:estimar`);
+  erros.push(`public/${anuncio.palavras} ausente: rode npm run transcrever ou npm run palavras:estimar`);
 else {
   const t = validarTranscricao(JSON.parse(readFileSync(arquivoPalavras, 'utf8')));
-  if (t.fonte === 'estimativa')
-    falta('tempo das palavras é estimado: transcreva a narração com scripts/transcrever.py');
+  if (t.fonte === 'estimativa') falta('tempo das palavras é estimado: rode npm run transcrever');
   const roteiro = anuncio.cenas.flatMap((c) => tokens(c.frase));
   const fala = t.palavras.map((p) => normalizar(p.texto));
   const acertos = parear(roteiro, fala).filter((j, i) => j >= 0 && fala[j] === roteiro[i]).length;

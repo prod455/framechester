@@ -2,47 +2,58 @@
 
 Caminho separado do motor Rust para anúncios curtos no formato **Dor e solução**
 ([GUIA_VISUAL.md](../docs/GUIA_VISUAL.md#formatos-de-roteiro)): composição de 1080×1920 a 60 fps,
-cada animação presa a uma palavra da narração, personagens 3D gerados no Higgsfield e a sua
-voz clonada. O motor `framechester produce` continua sendo o caminho dos vídeos do canal.
+cada animação presa a uma palavra da narração, personagens 3D e a sua voz clonada. Tudo é
+gerado na sua máquina com modelos abertos de licença comercial; nenhuma API paga, nenhum
+crédito. O motor `framechester produce` continua sendo o caminho dos vídeos do canal.
+
+| Etapa | Modelo | Licença |
+|---|---|---|
+| Personagens 3D | FLUX.1 [schnell] | Apache-2.0 |
+| Fundo transparente | BiRefNet via rembg | MIT |
+| Narração base | Kokoro-82M (a mesma voz revisada do projeto) | Apache-2.0 |
+| Seu timbre | conversor do OpenVoice V2 | MIT |
+| Tempo de cada palavra | faster-whisper | MIT |
+
+Os scripts conferem no Hugging Face a licença declarada do FLUX.1 [schnell] e do OpenVoice V2
+antes de baixar os pesos e param se ela mudar.
 
 ## O que você precisa
 
 | Item | Onde fica |
 |---|---|
 | Roteiro | `remotion/anuncio.json` (copie de `anuncio.exemplo.json`) |
-| Narração com a sua voz, gravada ou clonada | `remotion/public/narracao.wav` |
-| Tempo de cada palavra | `remotion/public/palavras.json` (gerado) |
-| Um PNG com fundo transparente por personagem | `remotion/public/personagens/` |
-| Node.js 22.12+, FFmpeg e, para transcrever, Python com `faster-whisper` | |
+| Uns 20 s de você falando, sem música | `remotion/public/referencia.wav` |
+| Node.js 22.12+, FFmpeg, Python 3.10 a 3.13 | |
+| Kokoro do projeto | `npm run voices:setup` na raiz |
+| Para os personagens: GPU com ~16 GB ou Mac com 32 GB | em CPU funciona, mas leva minutos por imagem |
 
-Nada disso vai para o Git: `public/`, `out/` e `anuncio.json` ficam no `.gitignore`.
+Nada disso vai para o Git: `public/`, `out/`, `.venv-ia/` e `anuncio.json` ficam no `.gitignore`.
 
 ## Passo a passo
 
-1. Instale e prepare as fontes e os efeitos (pop, whoosh, notificação, papel, caixa,
-   sintetizados com o FFmpeg):
+1. Instale (uma vez):
    ```bash
    npm --prefix remotion ci
-   npm --prefix remotion run preparar
+   npm --prefix remotion run preparar      # fontes e efeitos sonoros
+   npm --prefix remotion run ia:preparar   # ambiente Python com os modelos abertos
    ```
 2. Escreva o roteiro em `remotion/anuncio.json`. Uma cena por frase. A narração vai em
    `frase`, com os números por extenso e sem reticências; o validador recusa algarismos e "...".
-   Cada `em` é a palavra dita em que a animação acontece.
-3. Gere os prompts do Higgsfield e o texto da voz:
+   Cada `em` é a palavra dita em que a animação acontece. Em cada `personagem`, `prompt` é o
+   personagem em inglês (o estilo comum é adicionado sozinho).
+3. Gere os personagens (PNG transparente em `public/personagens/`, mesma semente por prompt):
    ```bash
-   npm --prefix remotion run prompts
+   npm --prefix remotion run personagens
    ```
-   Abra `remotion/out/higgsfield.md`. Gere cada personagem no app do Higgsfield (GPT Image,
-   qualidade média, fundo transparente) e salve com o nome indicado. Clone **a sua** voz a
-   partir de uns 20 s seus sem música, cole `out/narracao.txt` e salve como
-   `public/narracao.wav`.
-4. Transcreva a narração para prender as animações nas palavras:
+4. Grave a referência em `public/referencia.wav` e gere a narração com a sua voz:
    ```bash
-   pip install faster-whisper==1.1.1
-   python remotion/scripts/transcrever.py
+   npm --prefix remotion run voz
    ```
-   Antes de ter a narração, `npm --prefix remotion run palavras:estimar` gera um tempo
-   estimado; a prévia sai com a marca PRÉVIA · TEMPO ESTIMADO.
+   A Kokoro lê o roteiro, o OpenVoice troca o timbre pelo seu e o faster-whisper marca o tempo
+   de cada palavra (`public/narracao.wav` e `public/palavras.json`). Clone só a sua própria voz.
+   Antes de ter a voz, `npm --prefix remotion run palavras:estimar` gera um tempo estimado; a
+   prévia sai com a marca PRÉVIA · TEMPO ESTIMADO. Gravou a narração você mesmo? Salve como
+   `public/narracao.wav` e rode só `npm --prefix remotion run transcrever`.
 5. Confira e revise:
    ```bash
    npm --prefix remotion run checar
@@ -67,7 +78,7 @@ Num servidor sem o Chrome do Remotion, aponte para um navegador instalado:
 |---|---|---|
 | `numero` | número grande que rola com borrão vertical e pousa na palavra | `titulo`, `valor`, `prefixo`, `sufixo`, `em` |
 | `titulo` | título grosso, cada palavra entra quando é dita, uma `*palavra*` em destaque | `texto` |
-| `personagem` | personagem 3D que cai quicando, flutua, treme em `em` e tem sombra macia | `texto`, `imagem`, `prompt` (SUBJECT do Higgsfield), `em` |
+| `personagem` | personagem 3D que cai quicando, flutua, treme em `em` e tem sombra macia | `texto`, `imagem`, `prompt` (o personagem, em inglês), `em` |
 | `extrato` | extrato que desenrola de cima para baixo, linha por linha, com total | `titulo`, `linhas` |
 | `app` | tela com gráfico de rosca por linha e uma tesoura que corta as linhas `cortar` a partir de `em` | `titulo`, `linhas`, `em` |
 | `palavras` | três palavras que entram quando são ditas | `palavras`, `slogan` |
@@ -85,6 +96,6 @@ sempre a transição whip (borrão horizontal forte, 20 frames) com whoosh.
 - A solução do anúncio precisa existir e todo número precisa de fonte ou de conta dita. O
   exemplo é hipotético ("Imagine") e as contas fecham: 187 × 12 = 2.244; 187 − 42 = 145.
 - Clone só a sua própria voz e diga no vídeo que é um clone. A virada só funciona se for verdade.
-- Os créditos do Higgsfield são gastos no app, pela sua conta. Este projeto não chama a API dele.
+- O OpenVoice sai sem a marca d'água de áudio: a declaração de clone fica na própria narração.
 - Licença do Remotion: grátis para pessoa física e empresas de até 3 pessoas; acima disso,
   precisa de licença da empresa ([remotion.dev/license](https://www.remotion.dev/license)).

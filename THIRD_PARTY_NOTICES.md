@@ -37,9 +37,25 @@ O caminho opcional de anúncio usa o Remotion **4.0.534** (`remotion`, `@remotio
 `remotion/package-lock.json`. O Remotion não é software livre: a [licença](https://www.remotion.dev/license)
 é gratuita para pessoa física, organizações sem fins lucrativos e empresas de até 3 pessoas;
 acima disso, quem renderiza precisa de uma licença de empresa. O pacote não é redistribuído
-neste repositório; o operador instala com `npm --prefix remotion ci`. Personagens gerados no
-Higgsfield e a narração clonada ficam em `remotion/public/`, fora do Git, sob os termos da
-conta do operador. Os efeitos sonoros são sintetizados localmente pelo FFmpeg.
+neste repositório; o operador instala com `npm --prefix remotion ci`. Os efeitos sonoros são
+sintetizados localmente pelo FFmpeg.
+
+A IA local do anúncio (`remotion/ia/`, instalada por `npm --prefix remotion run ia:preparar`,
+versões em `remotion/ia/requirements.txt`) usa, conferido em **2026-11-07**:
+
+| Componente | Licença | Onde foi conferido |
+|---|---|---|
+| OpenVoice, commit `74a1d147`, só o conversor de timbre | MIT | `LICENSE` e README do repositório ("Free for commercial use", desde abril de 2024) |
+| Pesos `myshell-ai/OpenVoiceV2` | MIT | conferido em tempo de execução no Hugging Face; a clonagem para se mudar |
+| Pesos `black-forest-labs/FLUX.1-schnell` | Apache-2.0 | conferido em tempo de execução no Hugging Face; a geração para se mudar |
+| rembg 2.0.85 e o modelo BiRefNet | MIT | metadados do PyPI |
+| diffusers 0.41.0, transformers 5.20.2, accelerate 1.15.0, torch 2.14.1 | Apache-2.0 / BSD | metadados do PyPI |
+| faster-whisper 1.2.1 | MIT | metadados do PyPI |
+
+O OpenVoice é instalado com `--no-deps` e o front-end de texto dele não é carregado, então
+`unidecode` (GPL) e as dependências de texto chinês não entram. Nada disso é redistribuído:
+os pesos ficam no cache local do Hugging Face, e os personagens e a narração clonada ficam em
+`remotion/public/`, fora do Git.
 
 ## Dependências web do Framechester Studio
 

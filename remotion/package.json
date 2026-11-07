@@ -3,14 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Anúncio vertical em Remotion: roteiro Dor e solução, personagens 3D do Higgsfield e voz clonada do próprio operador",
+  "description": "Anúncio vertical em Remotion: roteiro Dor e solução, personagens 3D e voz clonada gerados localmente com modelos abertos",
   "license": "Apache-2.0",
   "engines": {
     "node": ">=22.12.0"
   },
   "scripts": {
     "preparar": "node scripts/preparar.mjs",
-    "prompts": "node scripts/prompts-higgsfield.mjs",
+    "ia:preparar": "node scripts/ia.mjs preparar",
+    "personagens": "node scripts/ia.mjs personagens",
+    "voz": "node scripts/ia.mjs voz",
+    "transcrever": "node scripts/ia.mjs transcrever",
     "palavras:estimar": "node scripts/estimar-palavras.mjs",
     "checar": "node scripts/checar.mjs",
     "studio": "remotion studio src/index.ts",
@@ -18,7 +21,7 @@
     "render": "node scripts/render.mjs",
     "render:final": "node scripts/render.mjs --final",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/*.test.ts"
+    "test": "node --test tests/*.test.ts && python -m unittest discover -s tests -p \"test_*.py\""
   },
   "dependencies": {
     "@remotion/bundler": "4.0.534",

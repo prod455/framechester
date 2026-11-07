@@ -1,8 +1,8 @@
 """Transcreve a narração com o tempo de cada palavra (faster-whisper) para public/palavras.json.
 
-Uso: python scripts/transcrever.py [--audio public/narracao.wav] [--modelo small]
+Uso: python ia/transcrever.py [--audio public/narracao.wav] [--modelo small]
 
-Instale antes: pip install faster-whisper==1.1.1
+Instale antes: npm --prefix remotion run ia:preparar
 O modelo é baixado do Hugging Face na primeira vez e fica no cache local.
 O roteiro entra como initial_prompt: ajuda a acertar nomes e a grafia das palavras.
 """
@@ -12,20 +12,13 @@ import json
 import pathlib
 import sys
 
-RAIZ = pathlib.Path(__file__).resolve().parent.parent
-
-
-def roteiro() -> str:
-    proprio = RAIZ / "anuncio.json"
-    arquivo = proprio if proprio.exists() else RAIZ / "anuncio.exemplo.json"
-    anuncio = json.loads(arquivo.read_text(encoding="utf-8"))
-    return " ".join(cena["frase"] for cena in anuncio["cenas"])
+from comum import PUBLICO, ler_anuncio, narracao
 
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    p.add_argument("--audio", default=str(RAIZ / "public" / "narracao.wav"))
-    p.add_argument("--saida", default=str(RAIZ / "public" / "palavras.json"))
+    p.add_argument("--audio", default=str(PUBLICO / "narracao.wav"))
+    p.add_argument("--saida", default=str(PUBLICO / "palavras.json"))
     p.add_argument("--modelo", default="small")
     p.add_argument("--idioma", default="pt")
     a = p.parse_args()
@@ -37,7 +30,7 @@ def main() -> int:
         a.audio,
         language=a.idioma,
         word_timestamps=True,
-        initial_prompt=roteiro(),
+        initial_prompt=narracao(ler_anuncio()),
         beam_size=5,
     )
     palavras = [

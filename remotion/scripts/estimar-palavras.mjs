@@ -1,5 +1,5 @@
 // Tempo estimado das palavras, sem áudio: serve para a prévia antes da narração existir.
-// Com a narracao.wav pronta, use scripts/transcrever.py (faster-whisper) no lugar.
+// Com a narracao.wav pronta, use npm run transcrever (faster-whisper) no lugar.
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { estimarPalavras } from '../src/alinhar.ts';

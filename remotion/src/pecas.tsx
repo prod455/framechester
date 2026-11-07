@@ -210,7 +210,7 @@ export function Marca({ tamanho }: { tamanho: number }) {
   );
 }
 
-/** Personagem que ainda não veio do Higgsfield: só para prévia; o render final recusa. */
+/** Personagem que ainda não foi gerado (npm run personagens): só para prévia; o render final recusa. */
 export function PersonagemPendente({ tamanho, tons, nome }: { tamanho: number; tons: Tons; nome: string }) {
   return (
     <div style={{ position: 'relative', width: tamanho, height: tamanho }}>

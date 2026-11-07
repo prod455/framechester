@@ -1,4 +1,4 @@
-import { AbsoluteFill, Html5Audio, Sequence, staticFile, useCurrentFrame } from 'remotion';
+import { AbsoluteFill, Som, Sequence, staticFile, useCurrentFrame } from './quadro.tsx';
 import type { Anuncio as DadosDoAnuncio, Cena } from './anuncio.ts';
 import type { CenaNoTempo } from './alinhar.ts';
 import { ConteudoDaCena } from './cenas.tsx';
@@ -65,7 +65,7 @@ function Palco(props: {
 
 export function Anuncio(props: Props) {
   const { calculado, ...dados } = props;
-  if (!calculado) throw new Error('calculateMetadata não rodou: abra pelo Remotion Studio ou pelo render');
+  if (!calculado) throw new Error('anúncio não preparado: abra pelo Studio (npm run studio) ou pelo render');
   const tons = gerarTons(dados.cor);
   const ultima = calculado.cenas.length - 1;
   return (
@@ -96,11 +96,11 @@ export function Anuncio(props: Props) {
               durationInFrames={FPS}
               layout="none"
             >
-              <Html5Audio src={staticFile('sfx/whoosh.wav')} volume={0.22} />
+              <Som src={staticFile('sfx/whoosh.wav')} volume={0.22} />
             </Sequence>
           ))
         : null}
-      {calculado.audio && dados.audio ? <Html5Audio src={staticFile(dados.audio)} /> : null}
+      {calculado.audio && dados.audio ? <Som src={staticFile(dados.audio)} /> : null}
       <Grao />
       {calculado.fonteDasPalavras === 'estimativa' || !calculado.audio ? (
         <div

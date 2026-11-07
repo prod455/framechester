@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { validarAnuncio, AnuncioInvalido } from '../src/anuncio.ts';
+import { spring } from '../src/mola.ts';
 import {
   estimarPalavras,
   linhaDoTempo,
@@ -101,4 +102,16 @@ test('transcrição fora de ordem ou vazia é recusada', () => {
       }),
     /fora de ordem/,
   );
+});
+
+test('a mola é determinística, parte de 0, passa do alvo e assenta em 1', () => {
+  const config = { damping: 7, stiffness: 120, mass: 0.9 };
+  const valores = Array.from({ length: 240 }, (_, f) => spring({ frame: f, fps: 60, config }));
+  assert.equal(valores[0], 0);
+  assert.deepEqual(
+    valores,
+    Array.from({ length: 240 }, (_, f) => spring({ frame: f, fps: 60, config })),
+  );
+  assert.ok(Math.max(...valores) > 1.05, 'quica: passa do alvo');
+  assert.ok(Math.abs(valores.at(-1)! - 1) < 0.01, 'assenta no alvo');
 });

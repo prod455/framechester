@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { AbsoluteFill, Html5Audio, Img, Sequence, spring, staticFile } from 'remotion';
+import { spring } from './mola.ts';
+import { AbsoluteFill, Som as Audio, Img, Sequence, staticFile } from './quadro.tsx';
 import type { Cena, Linha, Som } from './anuncio.ts';
 import { quando } from './alinhar.ts';
 import { useCena } from './contexto.ts';
@@ -35,7 +36,7 @@ export function Efeito({ nome, em, principal = false }: { nome: Som; em: number;
   const escolhido = principal && cena.som ? cena.som : nome;
   return (
     <Sequence from={deslocamento + Math.max(0, Math.round(em))} durationInFrames={FPS} layout="none">
-      <Html5Audio src={staticFile(`sfx/${escolhido}.wav`)} volume={VOLUME_EFEITO} />
+      <Audio src={staticFile(`sfx/${escolhido}.wav`)} volume={VOLUME_EFEITO} />
     </Sequence>
   );
 }

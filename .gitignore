@@ -33,3 +33,7 @@ node_modules/
 /.impeccable/*
 !/.impeccable/config.json
 
+/remotion/out/
+/remotion/anuncio.json
+/remotion/public/*
+!/remotion/public/.gitkeep

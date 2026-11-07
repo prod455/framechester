@@ -30,6 +30,17 @@ Isso estabelece uma cadeia de licenciamento não resolvida, não uma conclusão 
 
 As vozes Piper agora ficam bloqueadas pelo adaptador de produção. As configurações de voz antigas do Studio migram para a Kokoro Dora, mantendo a identidade do canal e as configurações de geração do vídeo. Só o modelo Kokoro revisado, o pacote de vozes e os IDs de voz PT-BR são aceitos; veja [VOZES_COMERCIAIS.md](docs/VOZES_COMERCIAIS.md). O piloto antigo continua como evidência técnica histórica, não como aprovação comercial.
 
+## Anúncio em Remotion (`remotion/`)
+
+O caminho opcional de anúncio usa o Remotion **4.0.534** (`remotion`, `@remotion/cli`,
+`@remotion/bundler`, `@remotion/renderer`) com React **18.3.1**, travados no
+`remotion/package-lock.json`. O Remotion não é software livre: a [licença](https://www.remotion.dev/license)
+é gratuita para pessoa física, organizações sem fins lucrativos e empresas de até 3 pessoas;
+acima disso, quem renderiza precisa de uma licença de empresa. O pacote não é redistribuído
+neste repositório; o operador instala com `npm --prefix remotion ci`. Personagens gerados no
+Higgsfield e a narração clonada ficam em `remotion/public/`, fora do Git, sob os termos da
+conta do operador. Os efeitos sonoros são sintetizados localmente pelo FFmpeg.
+
 ## Dependências web do Framechester Studio
 
 O renderizador local de visuais explicativos usa o `resvg` **0.49.0** e o grafo de

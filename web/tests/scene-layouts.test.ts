@@ -38,6 +38,15 @@ test('every style guide only recommends layouts from the closed catalog and keep
   }
 });
 
+test('the pain-and-solution style forbids invented products and unsourced numbers', () => {
+  const style = videoStyles.find((item) => item.id === 'dor-solucao');
+  assert.ok(style);
+  const guide = videoStyleGuide(style);
+  assert.match(guide, /nunca um produto inventado apresentado como real/);
+  assert.match(guide, /fonte citada ou de uma conta dita na narração/);
+  assert.match(guide, /não promete resultado/);
+});
+
 test('a script with an invalid directive saves and loads; the directive is advisory', async () => {
   const home = await mkdtemp(join(tmpdir(), 'fc-layout-store-'));
   try {

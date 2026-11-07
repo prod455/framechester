@@ -156,6 +156,9 @@ export default {
     Comparativo: 'Comparison',
     'Duas opções medidas pelos mesmos critérios, com veredito condicionado.':
       'Two options measured by the same criteria, with a conditional verdict.',
+    'Dor e solução': 'Pain and solution',
+    'Uma dor que o público reconhece, quanto ela custa e uma solução real funcionando na tela.':
+      'A pain the audience recognizes, what it costs and a real solution working on screen.',
     // shared/workflow.ts
     'Organize seu primeiro canal': 'Set up your first channel',
     'Defina público e proposta editorial para começar a pesquisa.':
@@ -366,6 +369,9 @@ export default {
     Comparativo: 'Comparativo',
     'Duas opções medidas pelos mesmos critérios, com veredito condicionado.':
       'Dos opciones medidas con los mismos criterios, con veredicto condicionado.',
+    'Dor e solução': 'Dolor y solución',
+    'Uma dor que o público reconhece, quanto ela custa e uma solução real funcionando na tela.':
+      'Un dolor que el público reconoce, cuánto cuesta y una solución real funcionando en pantalla.',
     // shared/workflow.ts
     'Organize seu primeiro canal': 'Organiza tu primer canal',
     'Defina público e proposta editorial para começar a pesquisa.':

@@ -77,6 +77,22 @@ export const videoStyles = [
     ],
     layouts: ['comparacao', 'numero', 'lista'],
   },
+  {
+    id: 'dor-solucao',
+    name: 'Dor e solução',
+    summary: 'Uma dor que o público reconhece, quanto ela custa e uma solução real funcionando na tela.',
+    beats: [
+      'Gancho: um número que assusta, preso a uma situação que o espectador já viveu; o número vem de fonte citada ou de uma conta dita na narração.',
+      'A negação que quase todo mundo faz diante desse número, em uma frase curta.',
+      'Três exemplos concretos e com humor da mesma dor, um por cena; exemplo inventado é dito como hipotético e não leva número sem fonte.',
+      'O custo acumulado por mês ou por ano, calculado só com os números já ditos, com a conta falada.',
+      'A solução: uma ferramenta, técnica ou hábito que existe de verdade; nunca um produto inventado apresentado como real.',
+      'A solução funcionando na tela, com o estado mudando de antes para depois.',
+      'Três palavras que resumem a mudança e uma frase de fechamento.',
+      'Virada: um bastidor verdadeiro que muda o sentido do vídeo, como o fato de ele ter sido feito com IA, e uma chamada para ação que não promete resultado.',
+    ],
+    layouts: ['numero', 'personagem', 'palco', 'transformacao', 'destaque'],
+  },
 ] as const satisfies readonly VideoStyle[];
 export type VideoStyleId = (typeof videoStyles)[number]['id'];
 

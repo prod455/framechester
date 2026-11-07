@@ -30,6 +30,31 @@ Isso estabelece uma cadeia de licenciamento não resolvida, não uma conclusão 
 
 As vozes Piper agora ficam bloqueadas pelo adaptador de produção. As configurações de voz antigas do Studio migram para a Kokoro Dora, mantendo a identidade do canal e as configurações de geração do vídeo. Só o modelo Kokoro revisado, o pacote de vozes e os IDs de voz PT-BR são aceitos; veja [VOZES_COMERCIAIS.md](docs/VOZES_COMERCIAIS.md). O piloto antigo continua como evidência técnica histórica, não como aprovação comercial.
 
+## Anúncio vertical (`anuncio/`)
+
+Só software livre, travado no `anuncio/package-lock.json`: React e React DOM **18.3.1** (MIT),
+Vite **8.3.5** (MIT), Playwright Core **1.63.0** (Apache-2.0), que controla um Chromium (BSD),
+e TypeScript (Apache-2.0). O motor de quadros (`anuncio/src/quadro.tsx`) é próprio. O FFmpeg do
+sistema codifica e mixa. Nenhum pacote é redistribuído neste repositório; o operador instala
+com `npm --prefix anuncio ci`. Os efeitos sonoros são sintetizados localmente pelo FFmpeg.
+
+A IA local do anúncio (`anuncio/ia/`, instalada por `npm --prefix anuncio run ia:preparar`,
+versões em `anuncio/ia/requirements.txt`) usa, conferido em **2026-11-07**:
+
+| Componente | Licença | Onde foi conferido |
+|---|---|---|
+| OpenVoice, commit `74a1d147`, só o conversor de timbre | MIT | `LICENSE` e README do repositório ("Free for commercial use", desde abril de 2024) |
+| Pesos `myshell-ai/OpenVoiceV2` | MIT | conferido em tempo de execução no Hugging Face; a clonagem para se mudar |
+| Pesos `black-forest-labs/FLUX.1-schnell` | Apache-2.0 | conferido em tempo de execução no Hugging Face; a geração para se mudar |
+| rembg 2.0.85 e o modelo BiRefNet | MIT | metadados do PyPI |
+| diffusers 0.41.0, transformers 5.20.2, accelerate 1.15.0, torch 2.14.1 | Apache-2.0 / BSD | metadados do PyPI |
+| faster-whisper 1.2.1 | MIT | metadados do PyPI |
+
+O OpenVoice é instalado com `--no-deps` e o front-end de texto dele não é carregado, então
+`unidecode` (GPL) e as dependências de texto chinês não entram. Nada disso é redistribuído:
+os pesos ficam no cache local do Hugging Face, e os personagens e a narração clonada ficam em
+`anuncio/public/`, fora do Git.
+
 ## Dependências web do Framechester Studio
 
 O renderizador local de visuais explicativos usa o `resvg` **0.49.0** e o grafo de

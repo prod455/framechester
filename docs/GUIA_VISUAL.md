@@ -119,6 +119,7 @@ prompt do sistema e não depende do provedor. O catálogo fica em
 | Ranking | critério → itens do menor para o maior → primeiro lugar por último | lista, numero |
 | Linha do tempo | gancho no presente → origem → marcos → virada → pergunta em aberto | linha-do-tempo, citacao |
 | Comparativo | decisão real → critérios → um critério por cena → veredito por perfil | comparacao, numero, lista |
+| Dor e solução | número que assusta → negação → 3 exemplos da dor → custo por ano → solução real → solução na tela → 3 palavras → virada verdadeira + chamada | numero, personagem, palco, transformacao, destaque |
 
 Regras por duração, somadas ao formato:
 

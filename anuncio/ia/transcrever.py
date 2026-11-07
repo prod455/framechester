@@ -2,7 +2,7 @@
 
 Uso: python ia/transcrever.py [--audio public/narracao.wav] [--modelo small]
 
-Instale antes: npm --prefix remotion run ia:preparar
+Instale antes: npm --prefix anuncio run ia:preparar
 O modelo é baixado do Hugging Face na primeira vez e fica no cache local.
 O roteiro entra como initial_prompt: ajuda a acertar nomes e a grafia das palavras.
 """

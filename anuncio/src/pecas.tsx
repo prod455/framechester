@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { AbsoluteFill, useCurrentFrame } from 'remotion';
+import { AbsoluteFill, useCurrentFrame } from './quadro.tsx';
 import type { Icone as NomeIcone } from './anuncio.ts';
 import { casaTermo, type CenaNoTempo } from './alinhar.ts';
 import { useCena } from './contexto.ts';

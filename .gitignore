@@ -33,8 +33,8 @@ node_modules/
 /.impeccable/*
 !/.impeccable/config.json
 
-/remotion/out/
-/remotion/.venv-ia/
-/remotion/anuncio.json
-/remotion/public/*
-!/remotion/public/.gitkeep
+/anuncio/out/
+/anuncio/.venv-ia/
+/anuncio/anuncio.json
+/anuncio/public/*
+!/anuncio/public/.gitkeep

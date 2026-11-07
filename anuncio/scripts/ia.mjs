@@ -12,7 +12,7 @@ const pythonDoVenv = (venv) => join(venv, windows ? 'Scripts' : 'bin', windows ?
 const VENV_IA = join(RAIZ, '.venv-ia');
 const pythonIa = () => {
   const p = pythonDoVenv(VENV_IA);
-  if (!existsSync(p)) throw new Error('Ambiente de IA ausente: rode npm --prefix remotion run ia:preparar');
+  if (!existsSync(p)) throw new Error('Ambiente de IA ausente: rode npm --prefix anuncio run ia:preparar');
   return p;
 };
 const pythonKokoro = () => {

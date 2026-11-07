@@ -1,9 +1,9 @@
 {
-  "name": "framechester-remotion",
+  "name": "framechester-anuncio",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Anúncio vertical em Remotion: roteiro Dor e solução, personagens 3D e voz clonada gerados localmente com modelos abertos",
+  "description": "Anúncio vertical Dor e solução: cenas em React renderizadas quadro a quadro no Chromium e codificadas com FFmpeg; personagens e voz clonada com modelos abertos",
   "license": "Apache-2.0",
   "engines": {
     "node": ">=22.12.0"
@@ -16,24 +16,23 @@
     "transcrever": "node scripts/ia.mjs transcrever",
     "palavras:estimar": "node scripts/estimar-palavras.mjs",
     "checar": "node scripts/checar.mjs",
-    "studio": "remotion studio src/index.ts",
+    "studio": "vite",
     "quadros": "node scripts/quadros.mjs",
     "render": "node scripts/render.mjs",
     "render:final": "node scripts/render.mjs --final",
-    "typecheck": "tsc --noEmit",
-    "test": "node --test tests/*.test.ts && python -m unittest discover -s tests -p \"test_*.py\""
+    "test": "node --test tests/*.test.ts && python -m unittest discover -s tests -p \"test_*.py\"",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@remotion/bundler": "4.0.534",
-    "@remotion/cli": "4.0.534",
-    "@remotion/renderer": "4.0.534",
     "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "remotion": "4.0.534"
+    "react-dom": "18.3.1"
   },
   "devDependencies": {
-    "@types/node": "22.9.0",
+    "@types/node": "22.19.1",
     "@types/react": "18.3.12",
-    "typescript": "5.9.3"
+    "@types/react-dom": "18.3.1",
+    "playwright-core": "1.63.0",
+    "typescript": "5.9.3",
+    "vite": "8.3.5"
   }
 }

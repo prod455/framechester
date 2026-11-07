@@ -1,4 +1,4 @@
-# Ambiente local de IA do anúncio (Python 3.10 a 3.12). Instale com: npm --prefix remotion run ia:preparar
+# Ambiente local de IA do anúncio (Python 3.10 a 3.12). Instale com: npm --prefix anuncio run ia:preparar
 # Licenças conferidas em 2026-11-07: torch/diffusers/transformers/accelerate/sentencepiece/huggingface-hub
 # Apache-2.0; rembg, onnxruntime, faster-whisper e OpenVoice MIT; librosa ISC; soundfile/numpy/protobuf BSD.
 torch==2.14.1

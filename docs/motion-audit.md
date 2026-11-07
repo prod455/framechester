@@ -280,7 +280,7 @@ deterministico, sem IA/APIs pagas, sem SaaS/telemetria).
 | Candidato | Decisao | Motivo (evidencia) |
 |---|---|---|
 | GSAP / runtime JS (CDN ou embutido) | Nao | Exige JS seekable + rede/CDN no caminho de render; viola offline deterministico. O motor ja e seekable puro (`anim.rs:82-106`, `render.rs:202-207`) |
-| Remotion / Motion Canvas (Node/React) | Nao | Adiciona Node + ecossistema JS ao render que hoje e Rust puro (resvg sem Chrome/Node); custo operacional sem ganho de determinismo |
+| Remotion / Motion Canvas (Node/React) | Nao no motor | Adiciona Node + ecossistema JS ao render que hoje e Rust puro (resvg sem Chrome/Node); custo operacional sem ganho de determinismo. Remotion tambem e source-available, nao livre: o caminho de anuncio (`anuncio/`, 2026-11-07) usa React + motor de quadros proprio + Playwright/Chromium + FFmpeg, sem tocar o motor |
 | WebGL / shaders / GPU no render | Nao (reavaliar so com medicao) | Render atual e CPU (`raster.rs:32`, sem hwaccel); sem evidencia de que GPU seja o gargalo — R1 aponta re-parse/alocacao. Introduzir antes de medir troca determinismo por complexidade |
 | Lottie/Three.js/WAAPI arbitrario | Nao | Superficie de animacao arbitraria nao validavel pelo `Storyboard` (`deny_unknown_fields`, numero falado); quebra a semantica validada que e vantagem preservada |
 | Copiar blocos/codigo do HyperFrames | Nao | Licenca Apache-2.0 permite com NOTICE, mas a restricao do projeto veda copia sem verificacao de licenca; manter composicoes autorais |

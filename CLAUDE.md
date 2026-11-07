@@ -5,7 +5,7 @@ Framechester V4: open-source, self-hosted, single-operator media production engi
 
 Current operator decision (2026-10-27): multiple channels under one local operator. For engineering/marketing work, read `docs/EQUIPES_E_SKILLS.md` and load relevant local `.agents/skills/*/SKILL.md`; prioritize working code and verifiable artifacts.
 
-The local Studio uses TypeScript/Vite and Node.js; Rust remains the production engine. The motion engine (`crates/framechester-motion`, storyboard schema in `docs/STORYBOARD.md`, design system in `docs/DESIGN_SYSTEM_VIDEO.md`, decisions in `docs/MOTOR_MOTION.md`) renders animated explanatory videos from a semantic storyboard; the legacy still-image path in `run` stays available. For web operation/configuration read `docs/WEB_STUDIO.md`; for social connections and API capabilities read `docs/REDES_SOCIAIS_WEB.md`; for video visuals, scene layouts and script styles read `docs/GUIA_VISUAL.md`.
+The local Studio uses TypeScript/Vite and Node.js; Rust remains the production engine. The motion engine (`crates/framechester-motion`, storyboard schema in `docs/STORYBOARD.md`, design system in `docs/DESIGN_SYSTEM_VIDEO.md`, decisions in `docs/MOTOR_MOTION.md`) renders animated explanatory videos from a semantic storyboard; the legacy still-image path in `run` stays available. For web operation/configuration read `docs/WEB_STUDIO.md`; for social connections and API capabilities read `docs/REDES_SOCIAIS_WEB.md`; for video visuals, scene layouts and script styles read `docs/GUIA_VISUAL.md`. Short ads in the pain-and-solution format use the separate path in `anuncio/` (read `anuncio/README.md`): React scenes rendered frame by frame by an in-house frame engine (`anuncio/src/quadro.tsx`) in Playwright/Chromium and encoded with FFmpeg; open-source only, no Remotion or other source-available/proprietary tools. Characters (FLUX.1 schnell + BiRefNet) and the operator's own cloned voice (Kokoro + OpenVoice V2 converter) are generated locally by `anuncio/ia/` into `anuncio/public/`, never committed; the scripts refuse weights whose declared license changed.
 
 ## Source of truth
 - `docs/PLANO_OPERACIONAL_COMPLETO.md`
@@ -29,6 +29,7 @@ The local Studio uses TypeScript/Vite and Node.js; Rust remains the production e
 - Web engine build: `npm --prefix web run engine:build`
 - Web check/test/build: `npm --prefix web run check`, `npm --prefix web test`, `npm --prefix web run build`
 - Web start: `npm --prefix web start` (http://127.0.0.1:4317)
+- Ad: `npm --prefix anuncio ci`, `npm --prefix anuncio run preparar`, `npm --prefix anuncio run ia:preparar`, `npm --prefix anuncio run personagens`, `npm --prefix anuncio run voz`, `npm --prefix anuncio test`, `npm --prefix anuncio run typecheck`, `npm --prefix anuncio run quadros`, `npm --prefix anuncio run render:final`
 
 ## Rules
 - No real credentials, tokens, PII, real media or private URLs in commits/CI/issues/releases.

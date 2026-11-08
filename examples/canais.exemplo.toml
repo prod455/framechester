@@ -12,9 +12,9 @@ id = "science"
 look = "papel"
 
 # Canais monetizaveis em ingles (RPM maior que pt-BR): explicadores originais narrados.
-# money-explained: financas pessoais (primeiro roteiro: examples/juros-compostos.roteiro.json).
+# dollar-mechanics: financas pessoais (primeiro roteiro: examples/juros-compostos.roteiro.json).
 [[channels]]
-id = "money-explained"
+id = "dollar-mechanics"
 language = "en-US"
 look = "papel"
 # Links de afiliado: entram na descricao so dos videos que dizem um dos termos, com aviso no topo.
@@ -24,9 +24,9 @@ label = "The Psychology of Money (book)"
 url = "https://example.com/troque-pelo-seu-link"
 terms = ["compound interest", "invest", "retirement"]
 
-# tech-explained: tecnologia e IA.
+# kernel-clarity: tecnologia e IA.
 [[channels]]
-id = "tech-explained"
+id = "kernel-clarity"
 language = "en-US"
 look = "planta"
 

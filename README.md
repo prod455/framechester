@@ -32,7 +32,6 @@ No Studio, **Produzir com IA** recebe sua orientação, escreve um roteiro novo 
 - Rust 1.85+ (testado com 1.99.1)
 - FFmpeg/ffprobe no `PATH` (testado com o 9.0.1 full build)
 - Python 3.11–3.13 + Kokoro PT-BR: `npm run voices:setup` (runtime e modelos comerciais fixados)
-- Opcional: restic para backup e restauração
 - Opcional: whisper/FFmpeg com modelo para o QA por ASR (`--asr`)
 - Opcional: chave da Anthropic para o adaptador de LLM pago
 
@@ -120,8 +119,7 @@ layout, tipografia e áreas seguras próprias. Saídas em `workdir/`: `storyboar
 `render/render_manifest.json`, `qa_report.json`, `pipeline_report.json` e o pacote de
 publicação. Documentação: [docs/STORYBOARD.md](docs/STORYBOARD.md),
 [docs/DESIGN_SYSTEM_VIDEO.md](docs/DESIGN_SYSTEM_VIDEO.md),
-[docs/MOTOR_MOTION.md](docs/MOTOR_MOTION.md) e
-[docs/BENCHMARK_SKILLS_VS_AGENTES.md](docs/BENCHMARK_SKILLS_VS_AGENTES.md).
+e [docs/MOTOR_MOTION.md](docs/MOTOR_MOTION.md).
 
 ### Cena livre e agentes
 
@@ -138,7 +136,6 @@ Para agentes (Claude Code, Codex, Cursor), a skill pública
 [`skills/framechester-video`](skills/framechester-video/SKILL.md) ensina o ciclo
 plan → produce → QA → corrigir. Instale copiando a pasta para o diretório de skills do
 agente ou com `npx skills add prod455/framechester --skill framechester-video`.
-Decisão e escopo: [docs/ESPEC_COMPETIR_HYPERFRAMES.md](docs/ESPEC_COMPETIR_HYPERFRAMES.md).
 
 ## Produção autoral e vários canais
 
@@ -166,7 +163,7 @@ python scripts/gerar_assets_piloto.py --output-dir artifacts/piloto-multicanal/m
 cargo run -p framechester-cli -- --config examples/canais.exemplo.toml run --channel tech --topic examples/piloto-vertical.topico.json --script examples/piloto-vertical.roteiro.json --assets artifacts/piloto-multicanal/media/assets.json --workdir artifacts/piloto-multicanal/output --burn-subtitles --asr
 ```
 
-Os clipes são diagramas originais de demonstração. O perfil configurado controla a resolução final; a prova registrada nesta entrega usa 360x640 como prévia. O roteiro tem fontes primárias reais e continua em revisão humana. Veja [a validação executada](docs/VALIDACAO_ENTREGA.md) para comandos, resultados e limites.
+Os clipes são diagramas originais de demonstração. O perfil configurado controla a resolução final; a prova registrada nesta entrega usa 360x640 como prévia. O roteiro tem fontes primárias reais e continua em revisão humana.
 
 Para instalar o binário:
 
@@ -179,7 +176,7 @@ framechester doctor
 
 | Comando | O que faz |
 |---|---|
-| `doctor` | Confere FFmpeg, ffprobe, restic, Kokoro/modelos comerciais, variáveis de ambiente, telemetria e dry-run |
+| `doctor` | Confere FFmpeg, ffprobe, Kokoro/modelos comerciais, variáveis de ambiente, telemetria e dry-run |
 | `config-check` | Valida o `framechester.toml` e mostra os valores efetivos |
 | `trends` | Lista e pontua os temas da fixture local, com bloqueios editoriais |
 | `run` | Pipeline completo: roteiro, TTS, timeline, geração do vídeo, QA e publicação em dry-run |
@@ -188,22 +185,18 @@ framechester doctor
 | `short --from PATH` | Corta um Short vertical de até 58 s a partir do storyboard narrado de um vídeo motion |
 | `qa --video PATH` | QA técnico de um MP4 existente |
 | `report --workdir DIR` | Gera o `report.html` offline a partir do `pipeline_report.json` |
-| `backup-check` | Valida o repositório restic via `RESTIC_REPOSITORY`/`RESTIC_PASSWORD` |
-| `backup --path DIR --yes` | Cria um snapshot restic local; bloqueia destino remoto sem `--allow-remote` |
-| `restore --snapshot ID --target DIR --yes` | Restaura para um destino novo ou vazio; exige que o processo termine com sucesso |
-| `finance` | Simula custos e receita em centavos, sem promessa de resultado |
 | `analytics --channel ID --input PATH` | Valida e resume um snapshot JSON local sem misturar canais, formatos ou classes de receita |
 
 Flags úteis em `run`: `--topic arquivo.json`, `--format short|long`, `--max-scenes N`, `--voice NOME`, `--llm template|anthropic`, `--max-cost-cents N` (obrigatório para Anthropic), `--privacy private|unlisted|public`, `--asr` para o QA de fala com whisper local e `--burn-subtitles` para queimar as legendas no MP4.
 
 ## Arquitetura
 
-- `crates/framechester-core`: domínio, etapas, portas (traits), configuração, segurança, editorial, financeiro, QA e pipeline.
-- `crates/framechester-adapters`: fixtures offline, TemplateLlm, AnthropicLlm, KokoroTts, renderizador/QA com FFmpeg + ASR com whisper, publisher em dry-run, métricas e restic.
+- `crates/framechester-core`: domínio, etapas, portas (traits), configuração, segurança, editorial, QA e pipeline.
+- `crates/framechester-adapters`: fixtures offline, TemplateLlm, AnthropicLlm, KokoroTts, renderizador/QA com FFmpeg + ASR com whisper, publisher em dry-run e métricas.
 - `crates/framechester-motion`: motor de animação (storyboard -> componentes -> quadros -> mixagem -> QA).
-- `crates/framechester-cli`: comandos `doctor`, `config-check`, `trends`, `run`, `plan`, `produce`, `short`, `qa`, `report`, `backup-check`, `backup`, `restore`, `finance`.
+- `crates/framechester-cli`: comandos `doctor`, `config-check`, `trends`, `run`, `plan`, `produce`, `short`, `qa`, `report`.
 - `web/`: frontend TypeScript/Vite e backend Node.js local, autenticação, editores, configuração por canal, cofre e integração com o motor Rust.
-- `scripts/`: verificadores Python para Anthropic, YouTube OAuth e backup restic.
+- `scripts/`: verificadores Python para Anthropic e YouTube OAuth.
 - `docs/`: plano operacional, inventário de viabilidade, arquitetura e ADRs.
 
 ## Testes
@@ -246,4 +239,4 @@ Cada tag `vX.Y.Z` gera uma [release no GitHub](https://github.com/prod455/framec
 
 Nunca envie tokens reais, dados pessoais, mídia não autorizada ou URLs privadas.
 
-As [equipes e skills locais](docs/EQUIPES_E_SKILLS.md) apoiam a implementação em Rust e o marketing por canal. Consulte a [auditoria de engenharia](docs/AUDITORIA_ENGENHARIA.md), o [plano de marketing](docs/MARKETING_YOUTUBE_OPERACIONAL.md) e a [curadoria de fontes](docs/skills-sources.lock.md) para evidências e limites.
+As [equipes e skills locais](docs/EQUIPES_E_SKILLS.md) apoiam a implementação em Rust e o marketing por canal. Consulte o [plano de marketing](docs/MARKETING_YOUTUBE_OPERACIONAL.md) e a [curadoria de fontes](docs/skills-sources.lock.md) para evidências e limites.

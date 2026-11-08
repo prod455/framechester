@@ -61,7 +61,6 @@ pub(crate) fn doctor(path: &Option<PathBuf>, json: bool) -> anyhow::Result<i32> 
     let mut checks = Vec::new();
     checks.push(check_command("ffmpeg", &["-version"], true));
     checks.push(check_command("ffprobe", &["-version"], true));
-    checks.push(check_command("restic", &["version"], false));
     match KokoroTts::new(&config.tts) {
         Ok(_) => checks.push(Check {
             name: "commercial_voice".into(),
@@ -96,8 +95,6 @@ pub(crate) fn doctor(path: &Option<PathBuf>, json: bool) -> anyhow::Result<i32> 
     checks.push(check_env("ANTHROPIC_MODEL"));
     checks.push(check_env("YOUTUBE_CLIENT_SECRET"));
     checks.push(check_env("YOUTUBE_TOKEN_FILE"));
-    checks.push(check_env("RESTIC_REPOSITORY"));
-    checks.push(check_env("RESTIC_PASSWORD"));
     checks.push(Check {
         name: "telemetry".into(),
         ok: !config.app.telemetry,
@@ -189,10 +186,6 @@ pub(crate) fn config_check(path: &Option<PathBuf>, json: bool) -> anyhow::Result
         println!(
             "publish: enabled={} rede={} privacidade={}",
             config.publish.enabled, config.publish.network, config.publish.privacy
-        );
-        println!(
-            "backup: enabled={} provider={}",
-            config.backup.enabled, config.backup.provider
         );
     }
     Ok(0)

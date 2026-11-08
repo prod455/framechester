@@ -50,8 +50,8 @@ instala a voz (Kokoro) e baixa os modelos, conferindo cada arquivo.
 ```
 
 `ffmpeg`, `ffprobe` e `commercial_voice` precisam aparecer como `[ok]`. Os
-`[aviso]` de restic, Anthropic e YouTube são opcionais: backup, roteiro por API e
-envio ao YouTube. Configure quando for usar.
+`[aviso]` de Anthropic e YouTube são opcionais: roteiro por API e envio ao
+YouTube. Configure quando for usar.
 
 ### 4. Suba o Studio
 

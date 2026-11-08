@@ -373,16 +373,6 @@ pub struct MetricSample {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BackupReceipt {
-    pub provider: String,
-    pub repository: String,
-    pub status: String,
-    pub snapshot_id: Option<String>,
-    pub bytes: Option<u64>,
-    pub message: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PublishPackage {
     pub subtitles: PathBuf,
     pub description: PathBuf,

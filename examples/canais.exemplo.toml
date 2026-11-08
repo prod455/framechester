@@ -12,9 +12,9 @@ id = "science"
 look = "papel"
 
 # Canais monetizaveis em ingles (RPM maior que pt-BR): explicadores originais narrados.
-# dollar-mechanics: financas pessoais (primeiro roteiro: examples/juros-compostos.roteiro.json).
+# compound-coyote: financas pessoais (primeiro roteiro: examples/juros-compostos.roteiro.json).
 [[channels]]
-id = "dollar-mechanics"
+id = "compound-coyote"
 language = "en-US"
 look = "papel"
 # Links de afiliado: entram na descricao so dos videos que dizem um dos termos, com aviso no topo.

@@ -1,3 +1,4 @@
+use crate::channel::{AffiliateLink, ChannelProfile};
 use crate::domain::{
     now_unix, PublishPackage, PublishPrivacy, QaReport, QaStatus, RenderOutput, Script, Timeline,
     Topic,
@@ -160,6 +161,8 @@ struct DescriptionText {
     license: &'static str,
     none: &'static str,
     disclosure: &'static str,
+    affiliate_disclosure: &'static str,
+    affiliate_links: &'static str,
     tags: [&'static str; 3],
 }
 
@@ -173,6 +176,9 @@ fn description_text(language: &str) -> DescriptionText {
             disclosure: "Disclosure: this video's narration was synthesized locally with Kokoro (Apache-2.0). \
                          The script, facts and sources require human review before publication. \
                          This content does not promise financial results, eligibility or revenue.",
+            affiliate_disclosure: "Some links below are affiliate links: if you buy through them, \
+                                   the channel may earn a commission at no extra cost to you.",
+            affiliate_links: "Links (affiliate):",
             tags: ["technology", "science", "artificial intelligence"],
         },
         "es" => DescriptionText {
@@ -183,6 +189,9 @@ fn description_text(language: &str) -> DescriptionText {
             disclosure: "Transparencia: la narración de este video se sintetizó localmente con Kokoro (Apache-2.0). \
                          El guion, los datos y las fuentes requieren revisión humana antes de publicarse. \
                          Este contenido no promete resultados financieros, elegibilidad ni ingresos.",
+            affiliate_disclosure: "Algunos enlaces de abajo son de afiliado: si compras con ellos, \
+                                   el canal puede recibir una comisión sin costo extra para ti.",
+            affiliate_links: "Enlaces (afiliado):",
             tags: ["tecnología", "ciencia", "inteligencia artificial"],
         },
         _ => DescriptionText {
@@ -193,18 +202,44 @@ fn description_text(language: &str) -> DescriptionText {
             disclosure: "Transparência: a narração deste vídeo foi sintetizada localmente com Kokoro (Apache-2.0). \
                          O roteiro, os fatos e as fontes exigem revisão humana antes da publicação. \
                          Este conteúdo não promete resultados financeiros, elegibilidade ou receita.",
+            affiliate_disclosure: "Alguns links abaixo são de afiliado: se você comprar por eles, \
+                                   o canal pode ganhar uma comissão, sem custo extra para você.",
+            affiliate_links: "Links (afiliado):",
             tags: ["tecnologia", "ciencia", "inteligencia artificial"],
         },
     }
+}
+
+/// The channel's affiliate links that the video talks about: a term in the title, hook,
+/// a heading or the narration.
+pub fn matching_affiliates<'a>(
+    script: &Script,
+    channel: Option<&'a ChannelProfile>,
+) -> Vec<&'a AffiliateLink> {
+    let Some(channel) = channel else {
+        return Vec::new();
+    };
+    let mut said = format!("{}\n{}", script.title, script.hook);
+    for scene in &script.scenes {
+        said.push('\n');
+        said.push_str(&scene.heading);
+        said.push('\n');
+        said.push_str(&scene.narration);
+    }
+    channel
+        .affiliates
+        .iter()
+        .filter(|link| link.matches(&said))
+        .collect()
 }
 
 pub fn build_description(
     script: &Script,
     topic: &Topic,
     timeline: &Timeline,
-    language: &str,
+    channel: Option<&ChannelProfile>,
 ) -> String {
-    let text = description_text(language);
+    let text = description_text(channel.map_or("pt-BR", ChannelProfile::language));
     let mut chapters = String::new();
     let mut cursor = 0.0f32;
     for (index, scene) in script.scenes.iter().enumerate() {
@@ -230,8 +265,23 @@ pub fn build_description(
         })
         .collect::<Vec<_>>()
         .join("\n");
+    let affiliates = matching_affiliates(script, channel);
+    // The disclosure goes first, where it shows before "...more", as the FTC asks of
+    // disclosures that must not be missed.
+    let (affiliate_disclosure, affiliate_links) = if affiliates.is_empty() {
+        (String::new(), String::new())
+    } else {
+        let links: Vec<String> = affiliates
+            .iter()
+            .map(|link| format!("- {}: {}", link.label.trim(), link.url))
+            .collect();
+        (
+            format!("{}\n\n", text.affiliate_disclosure),
+            format!("{}\n{}\n\n", text.affiliate_links, links.join("\n")),
+        )
+    };
     format!(
-        "{hook}\n\n{heading}\n{chapters}\n{sources_heading}\n{sources}\n\n{disclosure}",
+        "{affiliate_disclosure}{hook}\n\n{heading}\n{chapters}\n{affiliate_links}{sources_heading}\n{sources}\n\n{disclosure}",
         hook = script.hook,
         heading = text.chapters,
         chapters = chapters.trim_end(),
@@ -280,9 +330,10 @@ pub fn build_metadata(
     editorial: &QaReport,
     privacy: PublishPrivacy,
     thumbnail: Option<&Path>,
-    language: &str,
+    channel: Option<&ChannelProfile>,
 ) -> serde_json::Value {
-    let description = build_description(script, topic, timeline, language);
+    let language = channel.map_or("pt-BR", ChannelProfile::language);
+    let description = build_description(script, topic, timeline, channel);
     serde_json::json!({
         "title": script.title,
         "description": description,
@@ -356,7 +407,7 @@ pub fn write_package(
     editorial: &QaReport,
     privacy: PublishPrivacy,
     thumbnail: Option<PathBuf>,
-    channel: Option<&crate::channel::ChannelProfile>,
+    channel: Option<&ChannelProfile>,
 ) -> Result<PublishPackage> {
     let directory = workdir.join("publish");
     std::fs::create_dir_all(&directory)?;
@@ -365,10 +416,9 @@ pub fn write_package(
     let metadata = directory.join("metadata.json");
     let sources = directory.join("sources.md");
     std::fs::write(&subtitles, build_srt(script, timeline))?;
-    let language = channel.map_or("pt-BR", |channel| channel.language());
     std::fs::write(
         &description,
-        build_description(script, topic, timeline, language),
+        build_description(script, topic, timeline, channel),
     )?;
     std::fs::write(&sources, build_sources_markdown(topic, script))?;
     let mut metadata_value = build_metadata(
@@ -380,7 +430,7 @@ pub fn write_package(
         editorial,
         privacy,
         thumbnail.as_deref(),
-        language,
+        channel,
     );
     if let Some(channel) = channel {
         metadata_value["channel"] = serde_json::to_value(channel)?;
@@ -406,6 +456,47 @@ mod tests {
         Claim, ClaimStatus, QaCheck, RenderOutput, Scene, ScriptFormat, Source, TimelineScene,
         TrendMetrics,
     };
+
+    fn channel(language: &str) -> ChannelProfile {
+        ChannelProfile {
+            id: "canal".into(),
+            youtube_channel_id: None,
+            language: Some(language.into()),
+            look: None,
+            identity: None,
+            affiliates: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn affiliate_links_appear_only_when_the_video_talks_about_them() {
+        let mut money = channel("en-US");
+        money.affiliates = vec![
+            AffiliateLink {
+                label: "Budget book".into(),
+                url: "https://example.com/book?tag=x-20".into(),
+                terms: vec!["segunda cena".into()],
+            },
+            AffiliateLink {
+                label: "Broker".into(),
+                url: "https://example.com/broker".into(),
+                terms: vec!["index fund".into()],
+            },
+        ];
+        let text = build_description(&script(), &topic(), &timeline(), Some(&money));
+        assert!(
+            text.starts_with("Some links below are affiliate links"),
+            "{text}"
+        );
+        assert!(text.contains(
+            "Links (affiliate):\n- Budget book: https://example.com/book?tag=x-20\n\nSources"
+        ));
+        assert!(!text.contains("Broker"));
+        money.affiliates.remove(0);
+        let text = build_description(&script(), &topic(), &timeline(), Some(&money));
+        assert!(!text.contains("affiliate"));
+        assert!(text.starts_with("Hook"));
+    }
 
     fn script() -> Script {
         Script {
@@ -532,7 +623,7 @@ mod tests {
 
     #[test]
     fn description_contains_sources_and_disclosure() {
-        let text = build_description(&script(), &topic(), &timeline(), "pt-BR");
+        let text = build_description(&script(), &topic(), &timeline(), None);
         assert!(text.contains("https://example.com"));
         assert!(text.contains("Transparência"));
         assert!(text.contains("Neste vídeo"));
@@ -540,12 +631,12 @@ mod tests {
 
     #[test]
     fn description_and_tags_follow_the_channel_language() {
-        let english = build_description(&script(), &topic(), &timeline(), "en-US");
+        let english = build_description(&script(), &topic(), &timeline(), Some(&channel("en-US")));
         assert!(english.contains("In this video:"));
         assert!(english.contains("Sources and licenses:"));
         assert!(english.contains("Disclosure:"));
         assert!(!english.contains("Fontes"));
-        let spanish = build_description(&script(), &topic(), &timeline(), "es");
+        let spanish = build_description(&script(), &topic(), &timeline(), Some(&channel("es")));
         assert!(spanish.contains("En este video:"));
         assert!(spanish.contains("licencia:"));
         assert!(build_tags(&script(), &topic(), "en-US").contains(&"technology".to_string()));
@@ -563,7 +654,7 @@ mod tests {
             &qa(),
             PublishPrivacy::Private,
             None,
-            "pt-BR",
+            None,
         );
         assert_eq!(value["containsSyntheticMedia"], true);
         assert_eq!(value["privacyStatus"], "private");
@@ -581,7 +672,7 @@ mod tests {
             &qa(),
             PublishPrivacy::Private,
             None,
-            "pt-BR",
+            None,
         );
         assert_eq!(value["render"]["subtitlesBurned"], true);
     }

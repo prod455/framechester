@@ -7,6 +7,7 @@ import type { Channel, Hat, Look, MascotBody, MascotShape, Platform } from '../.
 import { platformLabels, publicPlatforms, publishingPlatforms } from '../../shared/publishing.ts';
 import { t } from '../../shared/i18n.ts';
 import { productionLanguages } from '../../shared/voices.ts';
+import { formatAffiliateLines, parseAffiliateLines } from '../../shared/affiliates.ts';
 
 export function requiredChannel(): HTMLElement | undefined {
   if (currentChannel()) return;
@@ -189,6 +190,8 @@ export function editChannel(record?: Channel): void {
     name.placeholder = t('Nome do personagem');
     return { name, hat: select(`castHat-${index}`, options(hatLabels), member?.hat || 'none') };
   });
+  const affiliates = textarea('affiliates', formatAffiliateLines(record?.affiliates), 4);
+  affiliates.placeholder = t('Livro de finanças | https://amzn.to/seu-link | juros compostos, orçamento');
   const youtubeChannelId = input('youtubeChannelId', record?.youtubeChannelId || '');
   const autoUpload = publishingPlatforms.map((network) => {
     const box = input(`autoUpload-${network}`, '', 'checkbox');
@@ -217,6 +220,7 @@ export function editChannel(record?: Channel): void {
               .filter((member) => member.name.value.trim())
               .map((member) => ({ name: member.name.value.trim(), hat: member.hat.value })),
           },
+          affiliates: parseAffiliateLines(affiliates.value),
           youtubeChannelId: youtubeChannelId.value.trim() || undefined,
           autoUpload: autoUpload.filter((item) => item.box.checked).map((item) => item.network),
         },
@@ -268,6 +272,15 @@ export function editChannel(record?: Channel): void {
         ),
         field(t('Acessório do personagem {number}', { number: String(index + 1) }), member.hat),
       ]),
+    ),
+  );
+  fields.append(
+    field(
+      t('Links de afiliado (opcional)'),
+      affiliates,
+      t(
+        'Um por linha: nome | link https | termos separados por vírgula. O link só entra na descrição dos vídeos que falam de um dos termos, com o aviso de afiliado no topo.',
+      ),
     ),
   );
   const autoUploadLabels: Record<Platform, string> = {

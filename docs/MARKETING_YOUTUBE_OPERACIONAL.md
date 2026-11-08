@@ -206,7 +206,7 @@ Para música da Biblioteca de áudio do YouTube, conferir a faixa e a exigência
 
 ### Publicidade, alegações e adequação aos anunciantes
 
-Os arts. 36–38 do Código de Defesa do Consumidor exigem identificação da publicidade, vedam publicidade enganosa/abusiva e tratam da sustentação das alegações. O negócio atual exclui patrocínio negociado, afiliados e venda. Se o escopo mudar, revisar identificação e evidências antes de inserir comunicação comercial. Não apresentar publicidade como avaliação editorial independente. [CDC atualizado](https://www2.camara.leg.br/legin/fed/lei/1990/lei-8078-11-setembro-1990-365086-normaatualizada-pl.html).
+Os arts. 36–38 do Código de Defesa do Consumidor exigem identificação da publicidade, vedam publicidade enganosa/abusiva e tratam da sustentação das alegações. Desde 08/11/2026 o negócio inclui links de afiliado: a descrição gerada abre com o aviso de afiliado e lista só os links dos produtos de que o vídeo fala. Patrocínio negociado e venda continuam fora. Para público dos EUA, a FTC exige o aviso de forma clara e antes do link. Não apresentar publicidade como avaliação editorial independente. [CDC atualizado](https://www2.camara.leg.br/legin/fed/lei/1990/lei-8078-11-setembro-1990-365086-normaatualizada-pl.html).
 
 Adequação a anunciantes alcança vídeo e metadados; conteúdo permitido na plataforma pode ter anúncios limitados. Revisar também título e thumbnail, especialmente violência, alegações nocivas ou não confiáveis, eventos sensíveis e temas controversos. [Diretrizes oficiais de publicidade](https://support.google.com/youtube/answer/6162278?hl=pt-BR).
 

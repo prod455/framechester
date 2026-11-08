@@ -7,7 +7,7 @@ Skill pública (para agentes de fora, não para a equipe interna): [`skills/fram
 ## Contrato compartilhado
 
 - A instrução atual do operador prevalece sobre planos históricos de um único canal. O alvo imediato é um operador com vários canais locais. Diretórios separados não equivalem a autenticação e isolamento de múltiplos usuários SaaS.
-- O negócio permanece monetização oficial por audiência nos canais do operador. Marketing não introduz clientes, serviços, produtos, afiliados ou patrocínios negociados no modelo estabelecido.
+- O negócio é monetização oficial por audiência nos canais do operador mais **links de afiliado** (decisão do operador em 08/11/2026): cadastrados por canal, listados só na descrição de vídeos que falam do produto e sempre com o aviso de afiliado no topo. O roteiro continua editorial: não vira propaganda nem recomenda o produto sem base. Marketing não introduz clientes, serviços, produtos próprios ou patrocínios negociados.
 - Toda tarefa declara canal, entrada, saída, responsável e aceite. Infraestrutura compartilhada identifica os canais afetados; conteúdo e finanças conservam a identidade do canal.
 - Uma skill é um procedimento reutilizável, não um empregado permanente ou serviço em segundo plano. Carregar somente os procedimentos necessários e delegar trabalhos independentes com reserva de arquivos.
 - Stack existente: Rust core/ports, adapters e CLI, verificadores Python, FFmpeg/Kokoro e relatório HTML locais. React, Kubernetes, microsserviços, VPS e API paga não são pré-requisitos.

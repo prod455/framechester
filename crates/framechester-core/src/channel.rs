@@ -17,6 +17,65 @@ pub struct ChannelProfile {
     /// The channel's mascot and recurring cast (`[channels.identity]`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub identity: Option<crate::storyboard::Identity>,
+    /// Affiliate links the description may carry (`[[channels.affiliates]]`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub affiliates: Vec<AffiliateLink>,
+}
+
+/// An affiliate link and the terms that make it relevant: the description lists it only
+/// when one of `terms` is said or written in the video, so a link never appears on a
+/// video that does not talk about it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AffiliateLink {
+    pub label: String,
+    pub url: String,
+    pub terms: Vec<String>,
+}
+
+pub const MAX_AFFILIATES: usize = 10;
+pub const MAX_AFFILIATE_TERMS: usize = 10;
+
+fn single_line(text: &str, min: usize, max: usize) -> bool {
+    let length = text.trim().chars().count();
+    (min..=max).contains(&length) && !text.chars().any(char::is_control)
+}
+
+impl AffiliateLink {
+    pub fn validate(&self) -> Result<()> {
+        let url_ok = self.url.starts_with("https://")
+            && self.url.len() > "https://".len()
+            && self.url.len() <= 500
+            && !self
+                .url
+                .chars()
+                .any(|c| c.is_whitespace() || c.is_control());
+        if !single_line(&self.label, 1, 80)
+            || !url_ok
+            || self.terms.is_empty()
+            || self.terms.len() > MAX_AFFILIATE_TERMS
+            || !self.terms.iter().all(|term| single_line(term, 2, 40))
+        {
+            return Err(FramechesterError::Config(format!(
+                "link de afiliado invalido: nome de 1 a 80 caracteres, URL https de ate 500 e 1 a {MAX_AFFILIATE_TERMS} termos de 2 a 40"
+            )));
+        }
+        Ok(())
+    }
+
+    /// Whether any term appears in `text` as whole words, ignoring case.
+    pub fn matches(&self, text: &str) -> bool {
+        let text = text.to_lowercase();
+        self.terms.iter().any(|term| {
+            let term = term.trim().to_lowercase();
+            text.match_indices(&term).any(|(start, found)| {
+                let before = text[..start].chars().next_back();
+                let after = text[start + found.len()..].chars().next();
+                !before.is_some_and(char::is_alphanumeric)
+                    && !after.is_some_and(char::is_alphanumeric)
+            })
+        })
+    }
 }
 
 /// Languages with a reviewed commercial voice; the description template follows the same list.
@@ -58,6 +117,14 @@ impl ChannelProfile {
                 .validate()
                 .map_err(|error| FramechesterError::Config(error.to_string()))?;
         }
+        if self.affiliates.len() > MAX_AFFILIATES {
+            return Err(FramechesterError::Config(format!(
+                "no maximo {MAX_AFFILIATES} links de afiliado por canal"
+            )));
+        }
+        for link in &self.affiliates {
+            link.validate()?;
+        }
         if let Some(language) = &self.language {
             if !LANGUAGES.contains(&language.as_str()) {
                 return Err(FramechesterError::Config(
@@ -89,6 +156,7 @@ mod tests {
             language: None,
             look: None,
             identity: None,
+            affiliates: Vec::new(),
         }
     }
 
@@ -179,5 +247,65 @@ mod tests {
         }
         assert!(profile(&"a".repeat(65)).validate().is_err());
         assert!(profile("tech-2").validate().is_ok());
+    }
+
+    #[test]
+    fn affiliate_links_match_whole_words_and_validate() {
+        let link = AffiliateLink {
+            label: "The Psychology of Money (book)".into(),
+            url: "https://www.amazon.com/dp/0857197681?tag=example-20".into(),
+            terms: vec!["compound interest".into(), "Rule of 72".into()],
+        };
+        assert!(link.validate().is_ok());
+        assert!(link.matches("By the rule of 72, money doubles."));
+        assert!(link.matches("Compound interest, explained"));
+        assert!(!link.matches("Rule of 720 is not a thing"));
+        assert!(!link.matches("Simple interest only"));
+        for bad in [
+            AffiliateLink {
+                url: "http://amazon.com/x".into(),
+                ..link.clone()
+            },
+            AffiliateLink {
+                url: "https://a b".into(),
+                ..link.clone()
+            },
+            AffiliateLink {
+                label: String::new(),
+                ..link.clone()
+            },
+            AffiliateLink {
+                label: "a\nb".into(),
+                ..link.clone()
+            },
+            AffiliateLink {
+                terms: vec![],
+                ..link.clone()
+            },
+            AffiliateLink {
+                terms: vec!["x".into()],
+                ..link.clone()
+            },
+        ] {
+            assert!(bad.validate().is_err(), "{bad:?}");
+        }
+        let mut channel = profile("money");
+        channel.affiliates = vec![link.clone(); MAX_AFFILIATES + 1];
+        assert!(channel.validate().is_err());
+        channel.affiliates.truncate(1);
+        assert!(channel.validate().is_ok());
+    }
+
+    #[test]
+    fn the_studio_affiliates_toml_reads_as_channel_links() {
+        #[derive(Deserialize)]
+        struct File {
+            channels: Vec<ChannelProfile>,
+        }
+        // Exactly what web/server/runner.ts writes.
+        let text = "[[channels]]\nid = \"money\"\nlanguage = \"en-US\"\n[[channels.affiliates]]\nlabel = \"Book\"\nurl = \"https://example.com/b\"\nterms = [\"budget\", \"index fund\"]\n";
+        let file: File = toml::from_str(text).unwrap();
+        assert_eq!(file.channels[0].affiliates[0].terms[1], "index fund");
+        assert!(file.channels[0].validate().is_ok());
     }
 }

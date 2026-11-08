@@ -35,6 +35,7 @@ The local Studio uses TypeScript/Vite and Node.js; Rust remains the production e
 - Telemetry off by default; secrets only via local secret manager.
 - No publishing if QA fails; dry_run default true; publish opt-in per network.
 - No fabricating facts, revenue, eligibility or verification.
+- Affiliate links (operator decision 2026-11-08) live per channel (`[[channels.affiliates]]`, Studio channel form); the description lists only links whose terms the video says, under an affiliate disclosure at the top. Scripts stay editorial, never ad copy.
 - Keep the Studio bound to loopback, preserve authentication/CSRF and channel identity, and keep credentials in the local vault rather than frontend/config JSON. Web publication remains disabled.
 
 ## Testing

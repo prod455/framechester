@@ -25,6 +25,12 @@ export interface ChannelIdentity {
   /** Up to 3 recurring characters, the same in every video of the channel. */
   cast: CastMember[];
 }
+/** An affiliate link and the terms that make a video about it (see shared/affiliates.ts). */
+export interface AffiliateLink {
+  label: string;
+  url: string;
+  terms: string[];
+}
 export interface Channel extends Timestamped {
   name: string;
   description: string;
@@ -36,6 +42,8 @@ export interface Channel extends Timestamped {
   look?: Look;
   /** Mascot and recurring cast; absent means the engine's default mascot and no fixed cast. */
   identity?: ChannelIdentity;
+  /** Affiliate links the generated description carries when the video talks about them. */
+  affiliates?: AffiliateLink[];
   /** Opt-in per network: send each approved final version there without making it public. */
   autoUpload?: Platform[];
 }

@@ -69,6 +69,7 @@ impl AnalyticsSnapshot {
             language: None,
             look: None,
             identity: None,
+            affiliates: Vec::new(),
         }
         .validate()?;
         if self.channel_id != channel_id {

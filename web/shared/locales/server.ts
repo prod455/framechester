@@ -4,6 +4,9 @@ import type { AreaCatalog } from './index.ts';
 
 export default {
   en: {
+    'Link de afiliado inválido: use nome | https://link | termos, com nome de até 80 caracteres e de 1 a 10 termos de 2 a 40 caracteres.':
+      'Invalid affiliate link: use name | https://link | terms, with a name of up to 80 characters and 1 to 10 terms of 2 to 40 characters.',
+    'O canal aceita até 10 links de afiliado.': 'A channel takes up to 10 affiliate links.',
     'Visual inválido: use noite, papel ou planta.': 'Invalid look: use noite, papel or planta.',
     'Cor do mascote inválida.': 'Invalid mascot colour.',
     'Formato do mascote inválido.': 'Invalid mascot shape.',
@@ -534,6 +537,9 @@ export default {
       'Voice without commercial approval in this installation. Choose a Kokoro voice from the catalog (PT-BR, EN-US or ES) in Settings. Legacy Piper voices are blocked.',
   },
   es: {
+    'Link de afiliado inválido: use nome | https://link | termos, com nome de até 80 caracteres e de 1 a 10 termos de 2 a 40 caracteres.':
+      'Enlace de afiliado inválido: usa nombre | https://enlace | términos, con un nombre de hasta 80 caracteres y de 1 a 10 términos de 2 a 40 caracteres.',
+    'O canal aceita até 10 links de afiliado.': 'El canal admite hasta 10 enlaces de afiliado.',
     'Visual inválido: use noite, papel ou planta.': 'Estilo inválido: usa noite, papel o planta.',
     'Cor do mascote inválida.': 'Color de mascota inválido.',
     'Formato do mascote inválido.': 'Forma de mascota inválida.',

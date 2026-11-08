@@ -43,16 +43,12 @@ export const studioRoutes: Route[] = [
       const jobs = optional.runner
         ? (await Promise.all(state.channels.map((channel) => optional.runner!.list(channel.id)))).flat()
         : [];
-      const assets = optional.runner
-        ? (await Promise.all(state.channels.map((channel) => optional.runner!.assets(channel.id)))).flat()
-        : [];
       const data: Bootstrap = {
         ...state,
         csrfToken: session.csrfToken,
         connections,
         capabilities: optional.social?.capabilities() ?? [],
         jobs,
-        assets,
         engine: optional.runner?.engineStatus() ?? {
           available: false,
           message: 'Motor local ainda não configurado.',
@@ -105,9 +101,8 @@ export const studioRoutes: Route[] = [
       const id = await requireChannel(context);
       const { store, optional, social, response } = context;
       const jobs = optional.runner ? await optional.runner.list(id) : [];
-      const assets = optional.runner ? await optional.runner.assets(id) : [];
       const connections = optional.social ? await optional.social.listConnections(id) : [];
-      if (jobs.length || assets.length || connections.some((row) => row.status !== 'disconnected'))
+      if (jobs.length || connections.some((row) => row.status !== 'disconnected'))
         throw new HttpError(
           409,
           'O canal possui produção ou conexões; preserve o histórico e desconecte as contas antes de excluir.',

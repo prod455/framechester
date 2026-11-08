@@ -1,10 +1,10 @@
 import { spawn } from 'node:child_process';
 import { commercialVoiceError, productionLanguage, voiceFor } from '../shared/voices.ts';
 import { HttpError } from './auth.ts';
-import { randomUUID, createHash } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { existsSync, statSync } from 'node:fs';
-import { mkdir, readFile, writeFile, rename, copyFile, realpath, rm, stat } from 'node:fs/promises';
-import { basename, extname, join, relative, resolve, sep, delimiter, isAbsolute } from 'node:path';
+import { mkdir, readFile, writeFile, rename, realpath, rm, stat } from 'node:fs/promises';
+import { extname, join, relative, resolve, sep, delimiter, isAbsolute } from 'node:path';
 import type {
   AppState,
   Platform,
@@ -15,28 +15,20 @@ import type {
   RunnerApi,
   Script,
   StartJobInput,
-  UploadAssetInput,
-  WebAsset,
   WebJob,
   WebConfig,
   QaStatus,
-  PreparedVisuals,
   Look,
   AffiliateLink,
   ChannelIdentity,
 } from '../shared/types.ts';
 import { canPublish, crossReferences, platformLabels, publishingPlatforms } from '../shared/publishing.ts';
 
-interface StoredAsset extends WebAsset {
-  diskName: string;
-}
 interface EngineResult {
   exitCode: number;
   stdout: string;
   stderr: string;
 }
-/** Renderer id reported by `framechester visuals`; bump together with editorial_visuals.rs. */
-const visualRenderer = 'framechester-editorial-v3';
 export class RunnerError extends Error {
   constructor(
     message: string,
@@ -81,7 +73,6 @@ const id = (value: string) => {
     throw new RunnerError('Identificador inválido.');
   return value;
 };
-const hash = (data: Buffer) => createHash('sha256').update(data).digest('hex');
 function isFile(path: string | undefined): boolean {
   try {
     return !!path && statSync(path).isFile();
@@ -139,25 +130,6 @@ function source(value: Script['sources'][number]) {
     retrieved_at: value.retrievedAt,
     license: value.license,
   };
-}
-function visualFingerprint(state: AppState, channelId: string, script: Script): string {
-  return hash(
-    Buffer.from(
-      JSON.stringify({
-        renderer: visualRenderer,
-        previewRevision: 2,
-        channelId,
-        channel: state.channels.find((channel) => channel.id === channelId)?.name,
-        script: {
-          id: script.id,
-          title: script.title,
-          format: script.format,
-          scenes: script.scenes,
-          sources: script.sources,
-        },
-      }),
-    ),
-  );
 }
 /** A Short's title carries #Shorts when it fits YouTube's 100 characters. */
 /** A video split into several Shorts numbers them, so the same title is told apart. */
@@ -319,15 +291,41 @@ function pendingChecks(report: { technical_qa?: unknown; editorial_qa?: unknown 
   }
   return names;
 }
+/**
+ * The `framechester run` argv of a video: the motion engine, with only the flags it accepts.
+ * The Short path has its own command (`short`).
+ */
+export function runArgs(
+  directory: string,
+  job: Pick<WebJob, 'channelId' | 'previewOnly'>,
+  format: Script['format'],
+) {
+  const args = [
+    '--config',
+    join(directory, 'config.toml'),
+    'run',
+    '--channel',
+    job.channelId,
+    '--topic',
+    join(directory, 'topic.json'),
+    '--script',
+    join(directory, 'script.json'),
+    '--workdir',
+    join(directory, 'output'),
+    '--format',
+    format,
+    '--json',
+  ];
+  if (job.previewOnly) args.push('--preview-only');
+  return args;
+}
 
 export class LocalRunner implements RunnerApi {
   private jobs: WebJob[] = [];
-  private media: StoredAsset[] = [];
   private queue = Promise.resolve();
   private writes = Promise.resolve();
-  private preparations = Promise.resolve();
   private uploads = Promise.resolve();
-  private visualControllers = new Set<AbortController>();
+  private controllers = new Set<AbortController>();
   private stopped = false;
   private active: AbortController | undefined;
   private readonly root: string;
@@ -346,7 +344,6 @@ export class LocalRunner implements RunnerApi {
   async initialize() {
     await mkdir(this.root, { recursive: true, mode: 0o700 });
     this.jobs = await load(join(this.root, 'jobs.json'), []);
-    this.media = await load(join(this.root, 'assets.json'), []);
     for (const job of this.jobs)
       if (job.status === 'running' || job.status === 'queued') {
         job.status = 'blocked';
@@ -364,6 +361,10 @@ export class LocalRunner implements RunnerApi {
           ...job.publications,
         };
       }
+      // Every video is made by the motion engine now: the scene files, switches and engine
+      // choice that older runs recorded no longer mean anything.
+      for (const field of ['assetIds', 'asr', 'burnSubtitles', 'engine'])
+        delete (job as WebJob & Record<string, unknown>)[field];
       for (const [network, publication] of Object.entries(job.publications ?? {}))
         if (publication.status === 'uploading')
           job.publications![network as Platform] = {
@@ -393,15 +394,10 @@ export class LocalRunner implements RunnerApi {
   }
   private async persist() {
     const task = this.writes.then(async () => {
-      for (const [name, value] of [
-        ['jobs', this.jobs],
-        ['assets', this.media],
-      ] as const) {
-        const path = join(this.root, `${name}.json`);
-        const temporary = `${path}.${randomUUID()}.tmp`;
-        await writeFile(temporary, JSON.stringify(value, null, 2), { mode: 0o600 });
-        await rename(temporary, path);
-      }
+      const path = join(this.root, 'jobs.json');
+      const temporary = `${path}.${randomUUID()}.tmp`;
+      await writeFile(temporary, JSON.stringify(this.jobs, null, 2), { mode: 0o600 });
+      await rename(temporary, path);
     });
     this.writes = task.catch(() => {});
     await task;
@@ -409,296 +405,6 @@ export class LocalRunner implements RunnerApi {
   async list(channelId: string) {
     await this.channel(channelId);
     return structuredClone(this.jobs.filter((item) => item.channelId === channelId));
-  }
-  async assets(channelId: string) {
-    await this.channel(channelId);
-    return this.media
-      .filter((item) => item.channelId === channelId)
-      .map(({ diskName: _, ...asset }) => structuredClone(asset));
-  }
-  prepareVisuals(channelId: string, scriptId: string): Promise<PreparedVisuals> {
-    const task = this.preparations.then(() => this.prepareScriptVisuals(channelId, scriptId));
-    this.preparations = task.then(
-      () => {},
-      () => {},
-    );
-    return task;
-  }
-  private async prepareScriptVisuals(channelId: string, scriptId: string): Promise<PreparedVisuals> {
-    const state = await this.channel(channelId);
-    id(scriptId);
-    if (this.stopped) throw new RunnerError('Servidor encerrando.');
-    if (!this.engineStatus().available) throw new RunnerError(this.engineStatus().message, 503);
-    const script = state.scripts.find(
-      (item) => item.id === scriptId && item.channelId === channelId && item.status !== 'archived',
-    );
-    if (!script) throw new RunnerError('Roteiro não encontrado neste canal.');
-    if (
-      !script.scenes.length ||
-      script.scenes.length > 32 ||
-      script.scenes.some(
-        (scene) =>
-          !scene.heading.trim() || !scene.narration.trim() || !Number.isSafeInteger(scene.id) || scene.id < 0,
-      ) ||
-      new Set(script.scenes.map((scene) => scene.id)).size !== script.scenes.length
-    )
-      throw new RunnerError(
-        'Complete os títulos e as falas das cenas no roteiro antes de preparar os visuais.',
-      );
-    const fingerprint = visualFingerprint(state, channelId, script);
-    const bindings: Record<string, string> = {};
-    const previews: Record<string, string> = {};
-    for (const asset of this.media.filter(
-      (asset) =>
-        asset.channelId === channelId &&
-        asset.generated?.scriptId === scriptId &&
-        asset.generated.fingerprint === fingerprint,
-    )) {
-      if (await this.assetFile(channelId, asset.id)) {
-        const sceneId = asset.generated!.sceneId;
-        previews[String(sceneId)] = asset.id;
-        bindings[String(sceneId)] = asset.id;
-      }
-    }
-    if (Object.keys(previews).length === script.scenes.length)
-      return { scriptId, assets: await this.assets(channelId), bindings, previews };
-    const directory = join(this.root, 'visuals', channelId, randomUUID());
-    await mkdir(directory, { recursive: true, mode: 0o700 });
-    const input = join(directory, 'plan.json'),
-      output = join(directory, 'images');
-    const plan = {
-      channel: state.channels.find((channel) => channel.id === channelId)!.name,
-      title: script.title,
-      format: script.format,
-      scenes: script.scenes.map((scene) => ({
-        id: scene.id,
-        heading: scene.heading,
-        narration: scene.narration,
-        visual_brief: scene.visualBrief,
-        duration_hint_secs: scene.durationHintSecs,
-      })),
-    };
-    if (Buffer.byteLength(JSON.stringify(plan)) > 1_048_576)
-      throw new RunnerError('O plano visual excede 1 MB. Reduza o texto das cenas.');
-    await writeFile(input, JSON.stringify(plan), { mode: 0o600 });
-    const controller = new AbortController();
-    this.visualControllers.add(controller);
-    const timer = setTimeout(() => controller.abort(), 120_000);
-    try {
-      const result = await (this.options.execute ?? this.execute.bind(this))(
-        ['visuals', '--input', input, '--output', output],
-        resolve(this.options.repositoryRoot),
-        controller.signal,
-      );
-      if (result.exitCode !== 0)
-        throw new RunnerError(
-          'Não foi possível criar os visuais locais. Confira os títulos e as falas das cenas e reconstrua o motor com npm run engine:build se necessário.',
-        );
-      let report: unknown;
-      try {
-        report = JSON.parse(result.stdout);
-      } catch {
-        throw new RunnerError('O motor retornou um plano visual inválido.');
-      }
-      if (report && typeof report === 'object' && 'renderer' in report && report.renderer !== visualRenderer)
-        throw new RunnerError(
-          `O motor Rust está desatualizado (respondeu ${String(report.renderer).slice(0, 60)}; esperado ${visualRenderer}). Encerre o Studio e rode npm --prefix web start, que recompila o motor antes de subir.`,
-          503,
-        );
-      if (
-        !report ||
-        typeof report !== 'object' ||
-        !('renderer' in report) ||
-        !('scenes' in report) ||
-        !Array.isArray(report.scenes) ||
-        report.scenes.length !== script.scenes.length
-      )
-        throw new RunnerError('O motor retornou um plano visual inválido.');
-      const seen = new Set<number>(),
-        imports: Array<{ sceneId: number; bytes: Buffer }> = [];
-      for (const item of report.scenes) {
-        if (
-          !item ||
-          typeof item !== 'object' ||
-          !Number.isSafeInteger(item.scene_id) ||
-          seen.has(item.scene_id) ||
-          !script.scenes.some((scene) => scene.id === item.scene_id)
-        )
-          throw new RunnerError('O motor retornou cenas visuais incompatíveis.');
-        seen.add(item.scene_id);
-        if (item.status !== 'generated' || item.file !== `scene-${item.scene_id}.png`)
-          throw new RunnerError(
-            'O motor retornou um arquivo visual inválido. Reconstrua o motor local se necessário.',
-          );
-        if (previews[String(item.scene_id)]) continue;
-        const actual = await realpath(join(output, item.file)),
-          base = await realpath(output),
-          rel = relative(base, actual);
-        const info = await stat(actual);
-        if (
-          rel.startsWith(`..${sep}`) ||
-          rel === '..' ||
-          resolve(base, rel) !== actual ||
-          !info.isFile() ||
-          info.nlink !== 1 ||
-          info.size < 24 ||
-          info.size > 20 * 1024 * 1024
-        )
-          throw new RunnerError('O arquivo visual saiu da área permitida ou tem tamanho inválido.');
-        const bytes = await readFile(actual);
-        if (
-          !bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) ||
-          bytes.subarray(12, 16).toString() !== 'IHDR' ||
-          !bytes.readUInt32BE(16) ||
-          !bytes.readUInt32BE(20) ||
-          bytes.readUInt32BE(16) > 7680 ||
-          bytes.readUInt32BE(20) > 7680
-        )
-          throw new RunnerError('O motor não produziu uma imagem PNG válida.');
-        imports.push({ sceneId: item.scene_id, bytes });
-      }
-      // All output is validated before any new asset enters the channel library.
-      const mediaDirectory = join(this.root, 'media', channelId);
-      await mkdir(mediaDirectory, { recursive: true, mode: 0o700 });
-      const created: StoredAsset[] = [];
-      for (const { sceneId, bytes } of imports) {
-        const scene = script.scenes.find((scene) => scene.id === sceneId)!;
-        const asset: StoredAsset = {
-          id: randomUUID(),
-          channelId,
-          name: `${scene.heading.slice(0, 100)}.png`,
-          kind: 'image',
-          bytes: bytes.length,
-          checksum: hash(bytes),
-          license: 'Original — visual explicativo gerado localmente pelo Framechester',
-          provenance:
-            'Composição própria com título e trecho do roteiro; sem busca de imagens, API paga ou mídia de terceiros.',
-          restrictions:
-            'Ilustração editorial; não representa captura real, experimento ou comprovação das alegações.',
-          createdAt: new Date().toISOString(),
-          generated: { scriptId, sceneId, fingerprint },
-          diskName: '',
-        };
-        asset.diskName = `${asset.id}.png`;
-        await writeFile(join(mediaDirectory, asset.diskName), bytes, { flag: 'wx', mode: 0o600 });
-        created.push(asset);
-        previews[String(sceneId)] = asset.id;
-        bindings[String(sceneId)] = asset.id;
-      }
-      this.media.push(...created);
-      await this.persist();
-      return { scriptId, assets: await this.assets(channelId), bindings, previews };
-    } finally {
-      clearTimeout(timer);
-      this.visualControllers.delete(controller);
-    }
-  }
-  async assetFile(channelId: string, assetId: string) {
-    await this.channel(channelId);
-    id(assetId);
-    const asset = this.media.find(
-      (item) => item.id === assetId && item.channelId === channelId && item.kind === 'image',
-    );
-    if (!asset) return undefined;
-    try {
-      const directory = await realpath(join(this.root, 'media', channelId)),
-        path = await realpath(join(directory, asset.diskName)),
-        rel = relative(directory, path),
-        info = await stat(path);
-      if (
-        rel.startsWith(`..${sep}`) ||
-        rel === '..' ||
-        resolve(directory, rel) !== path ||
-        !info.isFile() ||
-        info.nlink !== 1 ||
-        info.size > 20 * 1024 * 1024 ||
-        hash(await readFile(path)) !== asset.checksum
-      )
-        return undefined;
-      const contentType: Record<string, string> = {
-        '.png': 'image/png',
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.webp': 'image/webp',
-        '.bmp': 'image/bmp',
-      };
-      return contentType[extname(asset.diskName)]
-        ? { path, contentType: contentType[extname(asset.diskName)] }
-        : undefined;
-    } catch {
-      return undefined;
-    }
-  }
-  async upload(channelId: string, input: UploadAssetInput): Promise<WebAsset> {
-    await this.channel(channelId);
-    if (
-      typeof input.filename !== 'string' ||
-      basename(input.filename) !== input.filename ||
-      /[\\/\x00-\x1f]/.test(input.filename)
-    )
-      throw new RunnerError('Nome de arquivo inválido.');
-    const extension = extname(input.filename).toLowerCase();
-    const valid =
-      input.kind === 'image'
-        ? ['.png', '.jpg', '.jpeg', '.webp', '.bmp']
-        : input.kind === 'video'
-          ? ['.mp4', '.mov', '.m4v', '.mkv', '.webm', '.avi']
-          : [];
-    if (
-      !valid.includes(extension) ||
-      ![input.license, input.provenance, input.restrictions].every(
-        (value) => typeof value === 'string' && value.trim() && value.length <= 2000,
-      )
-    )
-      throw new RunnerError('Declare tipo, licença, origem e restrições da mídia.');
-    if (
-      typeof input.contentBase64 !== 'string' ||
-      input.contentBase64.length > 28_000_000 ||
-      !/^[A-Za-z0-9+/]*={0,2}$/.test(input.contentBase64)
-    )
-      throw new RunnerError('Arquivo muito grande ou conteúdo inválido. Limite: 20 MB.');
-    const bytes = Buffer.from(input.contentBase64, 'base64');
-    if (bytes.length < 12 || bytes.length > 20 * 1024 * 1024)
-      throw new RunnerError('Tamanho de mídia inválido.');
-    const header = bytes.subarray(0, 12);
-    const png =
-      extension === '.png' && header.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
-    const jpg = ['.jpg', '.jpeg'].includes(extension) && header[0] === 255 && header[1] === 216;
-    const webp =
-      extension === '.webp' &&
-      header.subarray(0, 4).toString() === 'RIFF' &&
-      header.subarray(8, 12).toString() === 'WEBP';
-    const bmp = extension === '.bmp' && header.subarray(0, 2).toString() === 'BM';
-    const mp4 = ['.mp4', '.mov', '.m4v'].includes(extension) && header.subarray(4, 8).toString() === 'ftyp';
-    const mkv =
-      ['.mkv', '.webm'].includes(extension) && header.subarray(0, 4).equals(Buffer.from([26, 69, 223, 163]));
-    const avi =
-      extension === '.avi' &&
-      header.subarray(0, 4).toString() === 'RIFF' &&
-      header.subarray(8, 12).toString() === 'AVI ';
-    if (!(png || jpg || webp || bmp || mp4 || mkv || avi))
-      throw new RunnerError('O conteúdo do arquivo não corresponde ao formato declarado.');
-    const asset: StoredAsset = {
-      id: randomUUID(),
-      channelId,
-      name: input.filename,
-      kind: input.kind,
-      bytes: bytes.length,
-      checksum: hash(bytes),
-      license: input.license.trim(),
-      provenance: input.provenance.trim(),
-      restrictions: input.restrictions.trim(),
-      createdAt: new Date().toISOString(),
-      diskName: '',
-    };
-    asset.diskName = `${asset.id}${extension}`;
-    const directory = join(this.root, 'media', channelId);
-    await mkdir(directory, { recursive: true, mode: 0o700 });
-    await writeFile(join(directory, asset.diskName), bytes, { flag: 'wx', mode: 0o600 });
-    this.media.push(asset);
-    await this.persist();
-    const { diskName: _, ...publicAsset } = asset;
-    return structuredClone(publicAsset);
   }
   async start(channelId: string, input: StartJobInput): Promise<WebJob> {
     if (input.previewOnly !== undefined && typeof input.previewOnly !== 'boolean')
@@ -709,26 +415,6 @@ export class LocalRunner implements RunnerApi {
     const script = state.scripts.find((item) => item.id === input.scriptId && item.channelId === channelId);
     if (!script || script.status === 'archived') throw new RunnerError('Roteiro não encontrado neste canal.');
     checkScript(script, input.previewOnly === true);
-    if (!input.assetIds || Object.keys(input.assetIds).length !== script.scenes.length)
-      throw new RunnerError('Selecione uma mídia deste canal para cada cena.');
-    const assets = script.scenes.map((scene) =>
-      this.media.find(
-        (asset) => asset.id === input.assetIds[String(scene.id)] && asset.channelId === channelId,
-      ),
-    );
-    if (assets.some((asset) => !asset)) throw new RunnerError('Mídia ausente ou pertencente a outro canal.');
-    if (
-      assets.some(
-        (asset, index) =>
-          asset?.generated &&
-          (asset.generated.scriptId !== script.id ||
-            asset.generated.sceneId !== script.scenes[index].id ||
-            asset.generated.fingerprint !== visualFingerprint(state, channelId, script)),
-      )
-    )
-      throw new RunnerError(
-        'O roteiro mudou ou este visual foi preparado para outra cena. Prepare os visuais novamente antes de gerar o vídeo.',
-      );
     const config = jobConfig(state, channelId, this.options.repositoryRoot);
     const voiceError = commercialVoiceError(config.tts);
     if (voiceError) throw new RunnerError(voiceError);
@@ -741,13 +427,10 @@ export class LocalRunner implements RunnerApi {
       message: 'Aguardando o motor local.',
       videoAvailable: false,
       ...(input.previewOnly ? { previewOnly: true } : {}),
-      assetIds: { ...input.assetIds },
-      ...(input.asr !== undefined ? { asr: input.asr } : {}),
-      ...(input.burnSubtitles !== undefined ? { burnSubtitles: input.burnSubtitles } : {}),
     };
     this.jobs.unshift(job);
     await this.persist();
-    const work = () => this.run(job, structuredClone(script), config, assets as StoredAsset[], input);
+    const work = () => this.run(job, structuredClone(script), config);
     this.queue = this.queue.then(work, work);
     return structuredClone(job);
   }
@@ -816,24 +499,8 @@ export class LocalRunner implements RunnerApi {
         if (!script) throw new RunnerError('O roteiro gerado não pertence a este canal.');
         checkScript(script, true);
         job.scriptId = script.id;
-        job.message = 'Roteiro salvo. Preparando os visuais de todas as cenas.';
         await this.persist();
-        const prepared = await this.prepareVisuals(channelId, script.id),
-          assetIds = prepared.previews ?? prepared.bindings;
-        const assets = script.scenes.map((scene) =>
-          this.media.find(
-            (asset) => asset.id === assetIds[String(scene.id)] && asset.channelId === channelId,
-          ),
-        );
-        if (assets.some((asset) => !asset))
-          throw new RunnerError('A preparação automática não entregou um visual para cada cena.');
-        await this.run(job, structuredClone(script), config, assets as StoredAsset[], {
-          scriptId: script.id,
-          assetIds,
-          burnSubtitles: true,
-          asr: config.asr.enabled,
-          previewOnly: true,
-        });
+        await this.run(job, structuredClone(script), config);
       } catch (error) {
         job.status = 'failed';
         job.message =
@@ -847,13 +514,8 @@ export class LocalRunner implements RunnerApi {
     this.queue = this.queue.then(work, work);
     return structuredClone(job);
   }
-  private async run(
-    job: WebJob,
-    script: Script,
-    config: JobConfig,
-    assets: StoredAsset[],
-    input: StartJobInput,
-  ) {
+  /** Runs a job with the motion engine; a preview or a final version follows `job.previewOnly`. */
+  private async run(job: WebJob, script: Script, config: JobConfig) {
     if (this.stopped) return;
     const directory = join(this.root, 'jobs', id(job.channelId), id(job.id));
     this.active = new AbortController();
@@ -865,7 +527,6 @@ export class LocalRunner implements RunnerApi {
       if (job.kind === 'short') {
         // A Short re-edits the narrated storyboard of an approved video: same words, cut and
         // reframed vertically. The narration comes back from the engine's cache.
-        job.engine = 'motion';
         job.message = 'Cortando o Short: abertura, fechamento e as cenas que mais prendem.';
         await this.persist();
         await mkdir(directory, { recursive: true, mode: 0o700 });
@@ -889,32 +550,10 @@ export class LocalRunner implements RunnerApi {
           '--json',
         ];
       } else {
-        // The motion engine draws every scene from the storyboard; it cannot embed the operator's own files.
-        job.engine = assets.some((asset) => !asset.generated) ? 'legacy' : 'motion';
-        job.message =
-          job.engine === 'motion'
-            ? 'Motor motion: gerando a voz, animando as cenas e executando o QA local.'
-            : 'Gerando a voz, montando as cenas com seus arquivos e executando o QA local.';
+        // The motion engine draws every scene from the storyboard: no scene file goes in.
+        job.message = 'Motor motion: gerando a voz, animando as cenas e executando o QA local.';
         await this.persist();
-        await mkdir(join(directory, 'assets'), { recursive: true, mode: 0o700 });
-        const manifest = [];
-        for (let index = 0; index < assets.length; index++) {
-          const asset = assets[index];
-          const original = join(this.root, 'media', job.channelId, asset.diskName);
-          const contents = await readFile(original);
-          if (hash(contents) !== asset.checksum)
-            throw new RunnerError('A integridade de uma mídia mudou; produção bloqueada.');
-          await copyFile(original, join(directory, 'assets', asset.diskName));
-          manifest.push({
-            scene_id: script.scenes[index].id,
-            kind: asset.kind,
-            path: asset.diskName,
-            license: asset.license,
-            provenance: asset.provenance,
-            checksum: asset.checksum,
-            restrictions: asset.restrictions,
-          });
-        }
+        await mkdir(directory, { recursive: true, mode: 0o700 });
         const claims = script.claims.map((item) => ({
           text: item.text,
           status: item.status,
@@ -960,7 +599,6 @@ export class LocalRunner implements RunnerApi {
         await Promise.all([
           writeFile(join(directory, 'topic.json'), JSON.stringify(topic), { mode: 0o600 }),
           writeFile(join(directory, 'script.json'), JSON.stringify(authored), { mode: 0o600 }),
-          writeFile(join(directory, 'assets', 'manifest.json'), JSON.stringify(manifest), { mode: 0o600 }),
           writeFile(
             join(directory, 'config.toml'),
             rustConfig(config, job.channelId, join(this.root, 'engine')),
@@ -969,33 +607,7 @@ export class LocalRunner implements RunnerApi {
             },
           ),
         ]);
-        args = [
-          '--config',
-          join(directory, 'config.toml'),
-          'run',
-          '--engine',
-          job.engine,
-          '--channel',
-          job.channelId,
-          '--topic',
-          join(directory, 'topic.json'),
-          '--script',
-          join(directory, 'script.json'),
-          '--workdir',
-          join(directory, 'output'),
-          '--max-scenes',
-          String(script.scenes.length),
-          '--format',
-          script.format,
-          '--privacy',
-          'private',
-          '--json',
-        ];
-        // Motion draws every scene from the storyboard; only the still-image path reads the files.
-        if (job.engine === 'legacy') args.push('--assets', join(directory, 'assets', 'manifest.json'));
-        if (input.burnSubtitles !== false) args.push('--burn-subtitles');
-        if (input.previewOnly) args.push('--preview-only');
-        if (input.asr ?? config.asr.enabled) args.push('--asr');
+        args = runArgs(directory, job, script.format);
       }
       const result = await (this.options.execute ?? this.execute.bind(this))(
         args,
@@ -1021,7 +633,7 @@ export class LocalRunner implements RunnerApi {
       };
       const video = await stat(join(output, 'render', 'final.mp4')).catch(() => undefined);
       job.videoAvailable = Boolean(video?.isFile() && video.size > 0);
-      if (input.previewOnly && job.videoAvailable && ['pass', 'needs_human'].includes(job.qa.technical)) {
+      if (job.previewOnly && job.videoAvailable && ['pass', 'needs_human'].includes(job.qa.technical)) {
         job.status = 'needs_review';
         job.message =
           'Prévia gerada com marca de revisão. Assista e, se estiver bom, use Gerar versão final.';
@@ -1068,8 +680,7 @@ export class LocalRunner implements RunnerApi {
         if (canPublish(network, vertical)) await this.publish(job.channelId, job.id, network).catch(() => {});
       // A horizontal video gets its Shorts at once, so the vertical networks receive them too;
       // each Short publishes itself when it finishes. A refused split leaves the card's button.
-      if (!vertical && job.kind !== 'short' && job.engine === 'motion')
-        await this.startShorts(job.channelId, job.id).catch(() => {});
+      if (!vertical && job.kind !== 'short') await this.startShorts(job.channelId, job.id).catch(() => {});
     }
   }
   /** Narrated storyboard of a finished job, the source a Short is cut from. */
@@ -1097,13 +708,9 @@ export class LocalRunner implements RunnerApi {
     const source = this.jobs.find((item) => item.channelId === channelId && item.id === sourceJobId);
     if (!source) throw new RunnerError('Produção não encontrada neste canal.');
     if (source.kind === 'short') throw new RunnerError('Este vídeo já é um Short.');
-    if (
-      source.status !== 'completed' ||
-      source.previewOnly ||
-      !source.videoAvailable ||
-      source.engine !== 'motion'
-    )
-      throw new RunnerError('O Short sai de uma versão final aprovada feita pelo motor motion.');
+    // A video from before the motion engine has no storyboard; the split names that.
+    if (source.status !== 'completed' || source.previewOnly || !source.videoAvailable)
+      throw new RunnerError('O Short sai de uma versão final aprovada.');
     const script = state.scripts.find((item) => item.id === source.scriptId && item.channelId === channelId);
     if (!script) throw new RunnerError('Roteiro do vídeo de origem não encontrado.');
     if (script.format === 'short')
@@ -1142,8 +749,7 @@ export class LocalRunner implements RunnerApi {
     this.jobs.unshift(...jobs);
     await this.persist();
     for (const job of jobs) {
-      const work = () =>
-        this.run(job, structuredClone(script), config, [], { scriptId: script.id, assetIds: {} });
+      const work = () => this.run(job, structuredClone(script), config);
       this.queue = this.queue.then(work, work);
     }
     return structuredClone(jobs);
@@ -1178,8 +784,7 @@ export class LocalRunner implements RunnerApi {
     // A report left by the stopped run must not pass for this one's.
     await rm(join(this.root, 'jobs', channelId, jobId, 'output'), { recursive: true, force: true });
     await this.persist();
-    const work = () =>
-      this.run(job, structuredClone(script), config, [], { scriptId: script.id, assetIds: {} });
+    const work = () => this.run(job, structuredClone(script), config);
     this.queue = this.queue.then(work, work);
     return structuredClone(job);
   }
@@ -1192,9 +797,8 @@ export class LocalRunner implements RunnerApi {
     return job.kind === 'short' ? this.retryShort(channelId, jobId) : this.retryVideo(channelId, jobId);
   }
   /**
-   * Runs a stopped video again with the scene assets and switches of its own run, so the
-   * operator does not redo the production form. Older jobs without a snapshot fall back
-   * to the visuals prepared for the script; anything else is named, not guessed.
+   * Runs a stopped video again from its script, as a preview or a final version like its own
+   * run, so the operator does not redo the production form.
    */
   async retryVideo(channelId: string, jobId: string): Promise<WebJob> {
     const state = await this.channel(channelId);
@@ -1209,22 +813,6 @@ export class LocalRunner implements RunnerApi {
     const script = state.scripts.find((item) => item.id === job.scriptId && item.channelId === channelId);
     if (!script || script.status === 'archived')
       throw new RunnerError('Roteiro deste vídeo não encontrado neste canal.');
-    const assetIds = { ...job.assetIds };
-    if (Object.keys(assetIds).length !== script.scenes.length)
-      for (const asset of this.media)
-        if (asset.channelId === channelId && asset.generated?.scriptId === script.id)
-          assetIds[String(asset.generated.sceneId)] = asset.id;
-    if (Object.keys(assetIds).length !== script.scenes.length)
-      throw new RunnerError(
-        'As mídias deste trabalho não estão mais disponíveis; gere pela tela de produção.',
-      );
-    const assets = script.scenes.map((scene) =>
-      this.media.find((asset) => asset.id === assetIds[String(scene.id)] && asset.channelId === channelId),
-    );
-    if (assets.some((asset) => !asset))
-      throw new RunnerError(
-        'As mídias deste trabalho não estão mais disponíveis; gere pela tela de produção.',
-      );
     // Claimed before any await, so two clicks queue it once.
     job.status = 'queued';
     job.message = job.previewOnly ? 'Na fila: prévia de novo.' : 'Na fila: versão final de novo.';
@@ -1236,14 +824,7 @@ export class LocalRunner implements RunnerApi {
     // A report left by the stopped run must not pass for this one's.
     await rm(join(this.root, 'jobs', channelId, jobId, 'output'), { recursive: true, force: true });
     await this.persist();
-    const input: StartJobInput = {
-      scriptId: script.id,
-      assetIds,
-      asr: job.asr,
-      burnSubtitles: job.burnSubtitles,
-      previewOnly: job.previewOnly,
-    };
-    const work = () => this.run(job, structuredClone(script), config, assets as StoredAsset[], input);
+    const work = () => this.run(job, structuredClone(script), config);
     this.queue = this.queue.then(work, work);
     return structuredClone(job);
   }
@@ -1253,7 +834,7 @@ export class LocalRunner implements RunnerApi {
     if (!(await stat(storyboard).catch(() => undefined))?.isFile())
       throw new RunnerError('O storyboard deste vídeo não foi encontrado; gere a versão final novamente.');
     const controller = new AbortController();
-    this.visualControllers.add(controller);
+    this.controllers.add(controller);
     const timer = setTimeout(() => controller.abort(), 60_000);
     try {
       const result = await (this.options.execute ?? this.execute.bind(this))(
@@ -1273,7 +854,7 @@ export class LocalRunner implements RunnerApi {
       return parts.length;
     } finally {
       clearTimeout(timer);
-      this.visualControllers.delete(controller);
+      this.controllers.delete(controller);
     }
   }
   /**
@@ -1301,24 +882,6 @@ export class LocalRunner implements RunnerApi {
       force: true,
       maxRetries: 3,
     }).catch(() => {});
-  }
-  /** Deletes a channel file. Videos already made keep their own copy of every file they used. */
-  async removeAsset(channelId: string, assetId: string): Promise<void> {
-    await this.channel(channelId);
-    id(assetId);
-    const index = this.media.findIndex((item) => item.channelId === channelId && item.id === assetId);
-    if (index < 0) throw new RunnerError('Arquivo não encontrado neste canal.');
-    // A queued job copies its files only when it starts.
-    if (this.jobs.some((item) => item.channelId === channelId && ['queued', 'running'].includes(item.status)))
-      throw new RunnerError(
-        'Há um vídeo sendo produzido neste canal; espere terminar para excluir arquivos.',
-      );
-    const [asset] = this.media.splice(index, 1);
-    await this.persist();
-    if (asset.diskName)
-      await rm(join(this.root, 'media', channelId, asset.diskName), { force: true, maxRetries: 3 }).catch(
-        () => {},
-      );
   }
   /** Starts a non-public upload of an approved final version; it continues in the background. */
   async publish(channelId: string, jobId: string, platform: Platform): Promise<WebJob> {
@@ -1488,7 +1051,6 @@ export class LocalRunner implements RunnerApi {
     }
   }
   async idle() {
-    await this.preparations;
     await this.queue;
     await this.uploads;
     await this.writes;
@@ -1496,7 +1058,7 @@ export class LocalRunner implements RunnerApi {
   async close() {
     this.stopped = true;
     this.active?.abort();
-    for (const controller of this.visualControllers) controller.abort();
+    for (const controller of this.controllers) controller.abort();
     await this.idle();
   }
 }

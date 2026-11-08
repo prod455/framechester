@@ -41,11 +41,7 @@ export default {
     'Este vídeo já foi enviado a uma rede e fica no histórico.':
       'This video was already sent to a network and stays in the history.',
     'Este vídeo tem um Short; exclua o Short antes.': 'This video has a Short; delete the Short first.',
-    'Arquivo não encontrado neste canal.': 'File not found on this channel.',
-    'Há um vídeo sendo produzido neste canal; espere terminar para excluir arquivos.':
-      'A video is being made on this channel; wait for it to finish to delete files.',
     'A exclusão de vídeos não está disponível.': 'Deleting videos is not available.',
-    'A exclusão de arquivos não está disponível.': 'Deleting files is not available.',
     'Este roteiro tem vídeos; exclua os vídeos que não foram enviados antes.':
       'This script has videos; delete the videos that were not sent first.',
     'Sessão de envio fora do endpoint da plataforma ({host}).':
@@ -220,11 +216,7 @@ export default {
     'Filtro de consumo inválido. Escolha até 90 dias e um provedor disponível.':
       'Invalid usage filter. Choose up to 90 days and an available provider.',
     'O roteiro não pertence ao canal.': 'The script does not belong to the channel.',
-    'Muitos assets.': 'Too many assets.',
-    'ID de cena inválido.': 'Invalid scene ID.',
     'Opção de job inválida.': 'Invalid job option.',
-    'Tipo de asset inválido.': 'Invalid asset type.',
-    'Imagem não disponível neste canal.': 'Image not available in this channel.',
     'O corte de Shorts não está disponível.': 'Shorts cutting is not available.',
     'O envio ao YouTube não está disponível.': 'YouTube upload is not available.',
     'Arquivo não disponível.': 'File not available.',
@@ -261,34 +253,7 @@ export default {
     'Canal não cadastrado.': 'Channel not registered.',
     'Servidor encerrando.': 'Server shutting down.',
     'Roteiro não encontrado neste canal.': 'Script not found in this channel.',
-    'Complete os títulos e as falas das cenas no roteiro antes de preparar os visuais.':
-      'Fill in the scene titles and lines in the script before preparing the visuals.',
-    'O plano visual excede 1 MB. Reduza o texto das cenas.':
-      'The visual plan exceeds 1 MB. Shorten the scene text.',
-    'Não foi possível criar os visuais locais. Confira os títulos e as falas das cenas e reconstrua o motor com npm run engine:build se necessário.':
-      'Could not create the local visuals. Check the scene titles and lines, and rebuild the engine with npm run engine:build if needed.',
-    'O motor retornou um plano visual inválido.': 'The engine returned an invalid visual plan.',
-    'O motor Rust está desatualizado (respondeu {renderer}; esperado {expected}). Encerre o Studio e rode npm --prefix web start, que recompila o motor antes de subir.':
-      'The Rust engine is outdated (it answered {renderer}; expected {expected}). Close Studio and run npm --prefix web start, which rebuilds the engine before starting.',
-    'O motor retornou cenas visuais incompatíveis.': 'The engine returned incompatible visual scenes.',
-    'O motor retornou um arquivo visual inválido. Reconstrua o motor local se necessário.':
-      'The engine returned an invalid visual file. Rebuild the local engine if needed.',
-    'O arquivo visual saiu da área permitida ou tem tamanho inválido.':
-      'The visual file left the allowed area or has an invalid size.',
-    'O motor não produziu uma imagem PNG válida.': 'The engine did not produce a valid PNG image.',
-    'Nome de arquivo inválido.': 'Invalid file name.',
-    'Declare tipo, licença, origem e restrições da mídia.':
-      "Declare the media's type, license, origin and restrictions.",
-    'Arquivo muito grande ou conteúdo inválido. Limite: 20 MB.':
-      'File too large or invalid content. Limit: 20 MB.',
-    'Tamanho de mídia inválido.': 'Invalid media size.',
-    'O conteúdo do arquivo não corresponde ao formato declarado.':
-      'The file content does not match the declared format.',
     'Opção de prévia inválida.': 'Invalid preview option.',
-    'Selecione uma mídia deste canal para cada cena.': 'Select media from this channel for each scene.',
-    'Mídia ausente ou pertencente a outro canal.': 'Media missing or belonging to another channel.',
-    'O roteiro mudou ou este visual foi preparado para outra cena. Prepare os visuais novamente antes de gerar o vídeo.':
-      'The script changed or this visual was prepared for another scene. Prepare the visuals again before generating the video.',
     'Aguardando o motor local.': 'Waiting for the local engine.',
     'O roteiro de referência não pertence a este canal.':
       'The reference script does not belong to this channel.',
@@ -299,20 +264,12 @@ export default {
     'Produção interrompida pelo encerramento do servidor. O roteiro gerado foi preservado.':
       'Production interrupted because the server shut down. The generated script was kept.',
     'O roteiro gerado não pertence a este canal.': 'The generated script does not belong to this channel.',
-    'Roteiro salvo. Preparando os visuais de todas as cenas.':
-      'Script saved. Preparing the visuals for every scene.',
-    'A preparação automática não entregou um visual para cada cena.':
-      'Automatic preparation did not deliver a visual for every scene.',
     'A produção automática não foi concluída. Confira o roteiro salvo e a configuração do assistente antes de tentar novamente.':
       'Automatic production did not finish. Check the saved script and the assistant settings before trying again.',
     'Cortando o Short: abertura, fechamento e as cenas que mais prendem.':
       'Cutting the Short: opening, closing and the most gripping scenes.',
     'Motor motion: gerando a voz, animando as cenas e executando o QA local.':
       'Motion engine: generating the voice, animating the scenes and running local QA.',
-    'Gerando a voz, montando as cenas com seus arquivos e executando o QA local.':
-      'Generating the voice, building the scenes from your files and running local QA.',
-    'A integridade de uma mídia mudou; produção bloqueada.':
-      "A media file's integrity changed; production blocked.",
     'O motor não concluiu a entrada: {detail}': 'The engine did not finish the delivery: {detail}',
     'O motor não concluiu a entrada. Confira o diagnóstico e a configuração local.':
       'The engine did not finish the delivery. Check the diagnostics and the local settings.',
@@ -334,12 +291,11 @@ export default {
     'Falha no envio ao YouTube.': 'YouTube upload failed.',
     'Produção não encontrada neste canal.': 'Production not found in this channel.',
     'Este vídeo já é um Short.': 'This video is already a Short.',
-    'O Short sai de uma versão final aprovada feita pelo motor motion.':
-      'A Short comes from an approved final version made by the motion engine.',
     'O storyboard deste vídeo não foi encontrado; gere a versão final novamente.':
       "This video's storyboard was not found; generate the final version again.",
     'Roteiro do vídeo de origem não encontrado.': 'Source video script not found.',
     'Na fila: corte do Short.': 'Queued: Short cut.',
+    'O Short sai de uma versão final aprovada.': 'A Short comes from an approved final version.',
     'Só a versão final aprovada no QA pode ser enviada ao YouTube.':
       'Only the final version that passed QA can be uploaded to YouTube.',
     'O envio deste vídeo já está em andamento.': "This video's upload is already in progress.",
@@ -574,11 +530,7 @@ export default {
     'Este vídeo já foi enviado a uma rede e fica no histórico.':
       'Este video ya se envió a una red y queda en el historial.',
     'Este vídeo tem um Short; exclua o Short antes.': 'Este video tiene un Short; elimina el Short primero.',
-    'Arquivo não encontrado neste canal.': 'Archivo no encontrado en este canal.',
-    'Há um vídeo sendo produzido neste canal; espere terminar para excluir arquivos.':
-      'Hay un video produciéndose en este canal; espera a que termine para eliminar archivos.',
     'A exclusão de vídeos não está disponível.': 'La eliminación de videos no está disponible.',
-    'A exclusão de arquivos não está disponível.': 'La eliminación de archivos no está disponible.',
     'Este roteiro tem vídeos; exclua os vídeos que não foram enviados antes.':
       'Este guion tiene videos; elimina primero los videos que no se enviaron.',
     'Sessão de envio fora do endpoint da plataforma ({host}).':
@@ -756,11 +708,7 @@ export default {
     'Filtro de consumo inválido. Escolha até 90 dias e um provedor disponível.':
       'Filtro de consumo no válido. Elige hasta 90 días y un proveedor disponible.',
     'O roteiro não pertence ao canal.': 'El guion no pertenece al canal.',
-    'Muitos assets.': 'Demasiados recursos.',
-    'ID de cena inválido.': 'ID de escena no válido.',
     'Opção de job inválida.': 'Opción de trabajo no válida.',
-    'Tipo de asset inválido.': 'Tipo de recurso no válido.',
-    'Imagem não disponível neste canal.': 'Imagen no disponible en este canal.',
     'O corte de Shorts não está disponível.': 'El corte de Shorts no está disponible.',
     'O envio ao YouTube não está disponível.': 'La subida a YouTube no está disponible.',
     'Arquivo não disponível.': 'Archivo no disponible.',
@@ -797,34 +745,7 @@ export default {
     'Canal não cadastrado.': 'Canal no registrado.',
     'Servidor encerrando.': 'El servidor se está cerrando.',
     'Roteiro não encontrado neste canal.': 'No se encontró el guion en este canal.',
-    'Complete os títulos e as falas das cenas no roteiro antes de preparar os visuais.':
-      'Completa los títulos y los diálogos de las escenas en el guion antes de preparar los visuales.',
-    'O plano visual excede 1 MB. Reduza o texto das cenas.':
-      'El plan visual supera 1 MB. Reduce el texto de las escenas.',
-    'Não foi possível criar os visuais locais. Confira os títulos e as falas das cenas e reconstrua o motor com npm run engine:build se necessário.':
-      'No se pudieron crear los visuales locales. Revisa los títulos y los diálogos de las escenas y recompila el motor con npm run engine:build si es necesario.',
-    'O motor retornou um plano visual inválido.': 'El motor devolvió un plan visual no válido.',
-    'O motor Rust está desatualizado (respondeu {renderer}; esperado {expected}). Encerre o Studio e rode npm --prefix web start, que recompila o motor antes de subir.':
-      'El motor Rust está desactualizado (respondió {renderer}; se esperaba {expected}). Cierra Studio y ejecuta npm --prefix web start, que recompila el motor antes de iniciar.',
-    'O motor retornou cenas visuais incompatíveis.': 'El motor devolvió escenas visuales incompatibles.',
-    'O motor retornou um arquivo visual inválido. Reconstrua o motor local se necessário.':
-      'El motor devolvió un archivo visual no válido. Recompila el motor local si es necesario.',
-    'O arquivo visual saiu da área permitida ou tem tamanho inválido.':
-      'El archivo visual salió del área permitida o tiene un tamaño no válido.',
-    'O motor não produziu uma imagem PNG válida.': 'El motor no produjo una imagen PNG válida.',
-    'Nome de arquivo inválido.': 'Nombre de archivo no válido.',
-    'Declare tipo, licença, origem e restrições da mídia.':
-      'Declara el tipo, la licencia, el origen y las restricciones del medio.',
-    'Arquivo muito grande ou conteúdo inválido. Limite: 20 MB.':
-      'Archivo demasiado grande o contenido no válido. Límite: 20 MB.',
-    'Tamanho de mídia inválido.': 'Tamaño de medio no válido.',
-    'O conteúdo do arquivo não corresponde ao formato declarado.':
-      'El contenido del archivo no coincide con el formato declarado.',
     'Opção de prévia inválida.': 'Opción de vista previa no válida.',
-    'Selecione uma mídia deste canal para cada cena.': 'Selecciona un medio de este canal para cada escena.',
-    'Mídia ausente ou pertencente a outro canal.': 'Medio ausente o perteneciente a otro canal.',
-    'O roteiro mudou ou este visual foi preparado para outra cena. Prepare os visuais novamente antes de gerar o vídeo.':
-      'El guion cambió o este visual se preparó para otra escena. Prepara los visuales de nuevo antes de generar el video.',
     'Aguardando o motor local.': 'Esperando el motor local.',
     'O roteiro de referência não pertence a este canal.': 'El guion de referencia no pertenece a este canal.',
     'Arquivos do narrador não encontrados: {files}. Confira os caminhos em Configurações; caminhos relativos partem da raiz do projeto.':
@@ -834,20 +755,12 @@ export default {
     'Produção interrompida pelo encerramento do servidor. O roteiro gerado foi preservado.':
       'Producción interrumpida por el cierre del servidor. Se conservó el guion generado.',
     'O roteiro gerado não pertence a este canal.': 'El guion generado no pertenece a este canal.',
-    'Roteiro salvo. Preparando os visuais de todas as cenas.':
-      'Guion guardado. Preparando los visuales de todas las escenas.',
-    'A preparação automática não entregou um visual para cada cena.':
-      'La preparación automática no entregó un visual para cada escena.',
     'A produção automática não foi concluída. Confira o roteiro salvo e a configuração do assistente antes de tentar novamente.':
       'La producción automática no terminó. Revisa el guion guardado y la configuración del asistente antes de volver a intentarlo.',
     'Cortando o Short: abertura, fechamento e as cenas que mais prendem.':
       'Cortando el Short: apertura, cierre y las escenas que más atrapan.',
     'Motor motion: gerando a voz, animando as cenas e executando o QA local.':
       'Motor motion: generando la voz, animando las escenas y ejecutando el QA local.',
-    'Gerando a voz, montando as cenas com seus arquivos e executando o QA local.':
-      'Generando la voz, armando las escenas con tus archivos y ejecutando el QA local.',
-    'A integridade de uma mídia mudou; produção bloqueada.':
-      'La integridad de un medio cambió; producción bloqueada.',
     'O motor não concluiu a entrada: {detail}': 'El motor no completó la entrega: {detail}',
     'O motor não concluiu a entrada. Confira o diagnóstico e a configuração local.':
       'El motor no completó la entrega. Revisa el diagnóstico y la configuración local.',
@@ -869,12 +782,11 @@ export default {
     'Falha no envio ao YouTube.': 'Falló la subida a YouTube.',
     'Produção não encontrada neste canal.': 'No se encontró la producción en este canal.',
     'Este vídeo já é um Short.': 'Este video ya es un Short.',
-    'O Short sai de uma versão final aprovada feita pelo motor motion.':
-      'El Short sale de una versión final aprobada hecha por el motor motion.',
     'O storyboard deste vídeo não foi encontrado; gere a versão final novamente.':
       'No se encontró el storyboard de este video; genera la versión final de nuevo.',
     'Roteiro do vídeo de origem não encontrado.': 'No se encontró el guion del video de origen.',
     'Na fila: corte do Short.': 'En cola: corte del Short.',
+    'O Short sai de uma versão final aprovada.': 'El Short sale de una versión final aprobada.',
     'Só a versão final aprovada no QA pode ser enviada ao YouTube.':
       'Solo la versión final aprobada en QA se puede subir a YouTube.',
     'O envio deste vídeo já está em andamento.': 'La subida de este video ya está en curso.',

@@ -1,8 +1,7 @@
 import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { Window } from 'happy-dom';
-import type { Channel, PreparedVisuals, Script, WebJob } from '../shared/types.ts';
-import { defaultConfig } from '../server/store.ts';
+import type { Channel, Script, WebJob } from '../shared/types.ts';
 
 const browser = new Window({ url: 'http://127.0.0.1:4318' });
 for (const name of [
@@ -69,12 +68,6 @@ const script: Script = {
   createdAt: date,
   updatedAt: date,
 };
-const prepared: PreparedVisuals = {
-  scriptId: script.id,
-  assets: [],
-  bindings: { 0: 'visual-0', 1: 'visual-1' },
-  previews: { 0: 'visual-0', 1: 'visual-1' },
-};
 const job: WebJob = {
   id: 'job-final',
   channelId: 'tech',
@@ -90,13 +83,11 @@ function open(value: Script, api: (path: string, method?: string, body?: unknown
   const dialog = openFinalVersion({
     channel,
     script: value,
-    config: defaultConfig(),
     api: api as never,
     onStarted: async (job) => {
       started.push(job);
     },
     onEditScript: () => {},
-    onManual: () => {},
   });
   return { dialog, started };
 }
@@ -105,7 +96,6 @@ test('an AI script with no source reaches the final video after the declaration,
   const calls: Array<{ path: string; method?: string; body?: unknown }> = [];
   const { dialog, started } = open(script, async (path, method, body) => {
     calls.push({ path, method, body });
-    if (path.endsWith('/visuals/prepare')) return prepared;
     if (path.endsWith('/jobs')) return job;
     return { ...script, crossChecked: true };
   });
@@ -120,15 +110,10 @@ test('an AI script with no source reaches the final video after the declaration,
   for (let i = 0; i < 6; i++) await tick();
   assert.deepEqual(
     calls.map((call) => `${call.method} ${call.path}`),
-    ['PUT /api/scripts/script-ai', 'POST /api/channels/tech/visuals/prepare', 'POST /api/channels/tech/jobs'],
+    ['PUT /api/scripts/script-ai', 'POST /api/channels/tech/jobs'],
   );
   assert.deepEqual(calls[0].body, { channelId: 'tech', crossChecked: true });
-  assert.deepEqual(calls[2].body, {
-    scriptId: script.id,
-    assetIds: { 0: 'visual-0', 1: 'visual-1' },
-    asr: false,
-    burnSubtitles: true,
-  });
+  assert.deepEqual(calls[1].body, { scriptId: script.id }, 'Only the script: motion draws every scene');
   assert.equal(started.length, 1);
   assert.equal(dialog.open, false);
 });
@@ -137,13 +122,13 @@ test('an already reviewed script starts without saving it again', async () => {
   const paths: string[] = [];
   const { dialog, started } = open({ ...script, crossChecked: true }, async (path) => {
     paths.push(path);
-    return path.endsWith('/jobs') ? job : prepared;
+    return job;
   });
   const start = dialog.querySelector<HTMLButtonElement>('[data-testid="final-start"]')!;
   assert.equal(start.disabled, false);
   start.click();
   for (let i = 0; i < 6; i++) await tick();
-  assert.deepEqual(paths, ['/api/channels/tech/visuals/prepare', '/api/channels/tech/jobs']);
+  assert.deepEqual(paths, ['/api/channels/tech/jobs']);
   assert.equal(started.length, 1);
 });
 
@@ -160,21 +145,6 @@ test('a contradiction or a foreign reference keeps the button disabled and says 
     assert.ok(dialog.querySelector('button')?.textContent);
     dialog.close();
   }
-});
-
-test('a scene left without a visual is named instead of failing silently', async () => {
-  let jobs = 0;
-  const { dialog, started } = open({ ...script, crossChecked: true }, async (path) => {
-    if (path.endsWith('/jobs')) jobs++;
-    return { ...prepared, bindings: { 0: 'visual-0' } };
-  });
-  dialog.querySelector<HTMLButtonElement>('[data-testid="final-start"]')!.click();
-  for (let i = 0; i < 6; i++) await tick();
-  assert.equal(jobs, 0);
-  assert.equal(started.length, 0);
-  assert.match(dialog.querySelector('[role="alert"]')!.textContent!, /Cena 2 ficou sem visual/);
-  assert.match(dialog.textContent!, /Abrir preparação manual/);
-  assert.equal(dialog.querySelector<HTMLButtonElement>('[data-testid="final-start"]')!.disabled, false);
 });
 
 test('an API error is shown and the button can be used again', async () => {

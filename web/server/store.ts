@@ -12,7 +12,8 @@ import type {
   Look,
 } from '../shared/types.ts';
 import { hats, looks, mascotBodies, mascotShapes } from '../shared/types.ts';
-import type { ChannelIdentity, Hat, MascotBody, MascotShape } from '../shared/types.ts';
+import type { AffiliateLink, ChannelIdentity, Hat, MascotBody, MascotShape } from '../shared/types.ts';
+import { maxAffiliates, validAffiliate } from '../shared/affiliates.ts';
 import { readFile, mkdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -243,6 +244,27 @@ function channelIdentity(value: unknown): ChannelIdentity {
   });
   return { body: body as MascotBody, shape: shape as MascotShape, cast };
 }
+function channelAffiliates(value: unknown): AffiliateLink[] {
+  if (!Array.isArray(value) || value.length > maxAffiliates)
+    throw new HttpError(400, 'O canal aceita até 10 links de afiliado.');
+  return value.map((entry) => {
+    const item = object(entry);
+    keys(item, ['label', 'url', 'terms']);
+    const link = {
+      label: typeof item.label === 'string' ? item.label.trim() : '',
+      url: typeof item.url === 'string' ? item.url.trim() : '',
+      terms: Array.isArray(item.terms)
+        ? item.terms.map((term) => (typeof term === 'string' ? term.trim() : ''))
+        : [],
+    };
+    if (!validAffiliate(link))
+      throw new HttpError(
+        400,
+        'Link de afiliado inválido: use nome | https://link | termos, com nome de até 80 caracteres e de 1 a 10 termos de 2 a 40 caracteres.',
+      );
+    return link;
+  });
+}
 function normalizeChannel(value: unknown, previous?: Channel): Channel {
   const item = object(value);
   keys(item, [
@@ -255,6 +277,7 @@ function normalizeChannel(value: unknown, previous?: Channel): Channel {
     'youtubeChannelId',
     'look',
     'identity',
+    'affiliates',
     'youtubeAutoUpload',
     'autoUpload',
     'createdAt',
@@ -285,6 +308,7 @@ function normalizeChannel(value: unknown, previous?: Channel): Channel {
     throw new HttpError(400, 'Visual inválido: use noite, papel ou planta.');
   const look = item.look as Look | undefined;
   const identity = item.identity === undefined ? undefined : channelIdentity(item.identity);
+  const affiliates = item.affiliates === undefined ? [] : channelAffiliates(item.affiliates);
   const now = new Date().toISOString();
   return {
     id,
@@ -296,6 +320,7 @@ function normalizeChannel(value: unknown, previous?: Channel): Channel {
     ...(youtubeChannelId ? { youtubeChannelId } : {}),
     ...(look ? { look } : {}),
     ...(identity ? { identity } : {}),
+    ...(affiliates.length ? { affiliates } : {}),
     ...(autoUpload.length ? { autoUpload } : {}),
     createdAt: previous?.createdAt ?? now,
     updatedAt: now,

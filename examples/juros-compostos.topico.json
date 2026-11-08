@@ -1,0 +1,68 @@
+{
+  "id": "juros-compostos-10-anos",
+  "title": "The 10 years that decide your retirement",
+  "series": "money",
+  "angle": "Compound interest with one fixed example: $200 a month at an assumed 7% a year, starting at 25 versus 35, and stopping at 35",
+  "sources": [
+    {
+      "title": "Compound Interest Calculator",
+      "url": "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator",
+      "publisher": "Investor.gov (U.S. Securities and Exchange Commission)",
+      "retrieved_at": "2026-11-08",
+      "license": "referencia documental; texto nao redistribuido"
+    },
+    {
+      "title": "Rule of 72",
+      "url": "https://www.investor.gov/introduction-investing/investing-basics/glossary/rule-72",
+      "publisher": "Investor.gov (U.S. Securities and Exchange Commission)",
+      "retrieved_at": "2026-11-08",
+      "license": "referencia documental; texto nao redistribuido"
+    }
+  ],
+  "claims": [
+    {
+      "text": "$200 a month for 40 years at 7% a year, compounded monthly, ends near $525,000 (FV = P*((1+r)^n-1)/r, r=0.07/12, n=480: $524,963).",
+      "status": "cited",
+      "source_urls": [
+        "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator"
+      ]
+    },
+    {
+      "text": "$200 a month for 30 years at the same rate ends near $244,000 (n=360: $243,994).",
+      "status": "cited",
+      "source_urls": [
+        "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator"
+      ]
+    },
+    {
+      "text": "$200 a month from 25 to 35 only ($24,000 in), left to grow 30 more years, ends near $281,000 ($280,968).",
+      "status": "cited",
+      "source_urls": [
+        "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator"
+      ]
+    },
+    {
+      "text": "By the Rule of 72, money growing 7% a year doubles in about 10 years (72/7 = 10.3).",
+      "status": "cited",
+      "source_urls": [
+        "https://www.investor.gov/introduction-investing/investing-basics/glossary/rule-72"
+      ]
+    },
+    {
+      "text": "Matching $281,000 in 30 years at 7% compounded monthly takes about $230 a month ($280,968 / 1,219.97 = $230.31).",
+      "status": "cited",
+      "source_urls": [
+        "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator"
+      ]
+    }
+  ],
+  "metrics": {
+    "acceleration": 0.5,
+    "demand": 0.8,
+    "alignment": 0.8,
+    "originality": 0.6,
+    "visual_feasibility": 0.9,
+    "timing": 0.6,
+    "cross_check": 0.9
+  }
+}

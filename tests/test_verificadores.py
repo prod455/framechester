@@ -8,7 +8,6 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 import verificar_anthropic as anthropic
-import verificar_backup as backup
 import verificar_youtube as youtube
 
 
@@ -79,54 +78,6 @@ class YoutubeTests(unittest.TestCase):
             path = Path(directory) / "sub" / "token.json"
             youtube.write_private_json(path, {"access_token": "x"})
             self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["access_token"], "x")
-
-
-class BackupTests(unittest.TestCase):
-    def test_detect_provider(self):
-        self.assertEqual(backup.detect_provider("b2:bucket:framechester"), "b2")
-        self.assertEqual(backup.detect_provider("s3:https://endpoint/bucket"), "s3")
-        self.assertEqual(backup.detect_provider("rest:http://host/"), "rest")
-        self.assertEqual(backup.detect_provider("relativo/sem/sentido"), "desconhecido")
-
-    def test_validate_repo_url(self):
-        self.assertTrue(backup.validate_repo_url("b2:bucket:framechester")[0])
-        self.assertFalse(backup.validate_repo_url("b2:")[0])
-        self.assertTrue(backup.validate_repo_url("s3:https://endpoint/bucket")[0])
-        self.assertFalse(backup.validate_repo_url("ftp://host/bucket")[0])
-
-    def test_mask_repo_url_hides_credentials(self):
-        masked = backup.mask_repo_url("s3:https://access:secret@endpoint/bucket")
-        self.assertNotIn("secret", masked)
-        self.assertNotIn("access:", masked)
-        self.assertIn("endpoint/bucket", masked)
-
-    def test_redact_removes_all_secret_values(self):
-        env = {"RESTIC_PASSWORD": "senha-super-secreta", "B2_ACCOUNT_KEY": "chave-b2-secreta"}
-        text = backup.redact("erro senha-super-secreta e chave-b2-secreta", env)
-        self.assertNotIn("senha-super-secreta", text)
-        self.assertNotIn("chave-b2-secreta", text)
-
-    def test_validate_env_requires_provider_credentials(self):
-        info, problems = backup.validate_env(
-            {"RESTIC_REPOSITORY": "b2:bucket:path", "RESTIC_PASSWORD": "p"}
-        )
-        self.assertEqual(info["provider"], "b2")
-        self.assertTrue(any("B2_ACCOUNT_ID" in problem for problem in problems))
-
-    def test_validate_env_local_has_no_credential_requirement(self):
-        with tempfile.TemporaryDirectory() as directory:
-            info, problems = backup.validate_env(
-                {"RESTIC_REPOSITORY": directory, "RESTIC_PASSWORD": "p"}
-            )
-        self.assertEqual(info["provider"], "local")
-        self.assertEqual(problems, [])
-
-    def test_parse_snapshot_id_reads_summary_line(self):
-        output = (
-            '{"message_type":"status"}\n'
-            '{"message_type":"summary","snapshot_id":"abcdef123456"}\n'
-        )
-        self.assertEqual(backup.parse_snapshot_id(output), "abcdef123456")
 
 
 if __name__ == "__main__":

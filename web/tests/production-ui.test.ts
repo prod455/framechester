@@ -1,8 +1,7 @@
 import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { Window } from 'happy-dom';
-import type { Channel, Script, WebAsset, PreparedVisuals, WebJob } from '../shared/types.ts';
-import { defaultConfig } from '../server/store.ts';
+import type { Channel, Script, WebJob } from '../shared/types.ts';
 
 const browser = new Window({ url: 'http://127.0.0.1:4318' });
 for (const name of [
@@ -68,24 +67,6 @@ const script: Script = {
   createdAt: date,
   updatedAt: date,
 };
-const asset: WebAsset = {
-  id: 'asset-auto',
-  channelId: 'tech',
-  name: 'Visual automático.png',
-  kind: 'image',
-  bytes: 100,
-  checksum: 'synthetic-checksum',
-  license: 'Original',
-  provenance: 'Gerado localmente',
-  restrictions: 'Ilustração',
-  createdAt: date,
-  generated: { scriptId: 'script-one', sceneId: 42, fingerprint: 'synthetic-fingerprint' },
-};
-const prepared: PreparedVisuals = {
-  scriptId: 'script-one',
-  assets: [asset],
-  bindings: { 42: 'asset-auto' },
-};
 const job: WebJob = {
   id: 'job-one',
   channelId: 'tech',
@@ -96,159 +77,97 @@ const job: WebJob = {
   videoAvailable: false,
 };
 
-test('an empty library automatically prepares and binds scene visuals without upload or licence forms', async () => {
-  const calls: Array<{ path: string; body: unknown }> = [];
+function open(value: Script[], api: (path: string, method?: string, body?: unknown) => Promise<unknown>) {
   let started = false;
   const dialog = openProduction({
     channel,
-    scripts: [script],
-    assets: [],
-    config: defaultConfig(),
+    scripts: value,
     currentChannelId: () => channel.id,
-    api: async <T>(path: string, method = 'GET', body?: unknown) => {
-      assert.equal(method, 'POST');
-      calls.push({ path, body });
-      return (path.endsWith('/jobs') ? job : prepared) as T;
-    },
+    api: api as never,
     onStarted: async () => {
       started = true;
     },
-    onAddAssets: () => assert.fail('Automatic preparation must not require an upload'),
     onEditScript: () => {},
   });
-  await tick();
-  await tick();
-  assert.equal(calls[0].path, '/api/channels/tech/visuals/prepare');
-  assert.deepEqual(calls[0].body, { scriptId: 'script-one' });
+  return { dialog, started: () => started };
+}
+
+test('a saved script starts a motion preview with no scene files, uploads or licence forms', async () => {
+  const calls: Array<{ path: string; method?: string; body: unknown }> = [];
+  const { dialog, started } = open([script], async (path, method, body) => {
+    calls.push({ path, method, body });
+    return job;
+  });
+  assert.deepEqual(calls, [], 'Nothing is prepared before the operator asks for a video');
   assert.equal(dialog.querySelector('input[type=file]'), null);
   assert.equal(dialog.querySelector('input[name=license]'), null);
-  assert.equal(dialog.querySelector('select[name="asset-42"]')?.getAttribute('name'), 'asset-42');
-  assert.equal((dialog.querySelector('select[name="asset-42"]') as HTMLSelectElement).value, 'asset-auto');
-  assert.match(dialog.querySelector('img')!.src, /\/api\/channels\/tech\/assets\/asset-auto\/preview$/);
-  assert.equal(
-    hasUnsavedEdits(),
-    false,
-    'Preparing visuals is already persisted and must not create a discard warning',
-  );
+  assert.equal(dialog.querySelector('select[name^="asset-"]'), null);
+  assert.equal(dialog.querySelector('img'), null);
+  assert.equal(dialog.querySelector('input[name=asr]'), null);
+  assert.equal(dialog.querySelector('input[name=burnSubtitles]'), null);
+  assert.equal(hasUnsavedEdits(), false, 'Opening the preparation must not create a discard warning');
+  assert.match(dialog.textContent!, /1 cena no roteiro/);
   dialog.querySelector<HTMLButtonElement>('button[type=submit]')!.click();
   await tick();
   await tick();
-  assert.equal(started, true);
-  assert.equal(calls.length, 2);
-  assert.deepEqual(calls[1].body, {
-    scriptId: 'script-one',
-    assetIds: { 42: 'asset-auto' },
-    asr: false,
-    burnSubtitles: true,
-    previewOnly: true,
-  });
+  assert.equal(started(), true);
+  assert.deepEqual(calls, [
+    { path: '/api/channels/tech/jobs', method: 'POST', body: { scriptId: 'script-one', previewOnly: true } },
+  ]);
 });
 
-test('a scene without a bound visual cannot start a job', async () => {
+test('the final version sends only the script', async () => {
+  const bodies: unknown[] = [];
+  const { dialog } = open([script], async (_path, _method, body) => {
+    bodies.push(body);
+    return job;
+  });
+  dialog.querySelector<HTMLButtonElement>('[data-testid="final-video"]')!.click();
+  await tick();
+  await tick();
+  assert.deepEqual(bodies, [{ scriptId: 'script-one' }]);
+});
+
+test('a preparation for a channel the operator left starts nothing', async () => {
+  let owner = 'tech';
   let jobs = 0;
   const dialog = openProduction({
     channel,
     scripts: [script],
-    assets: [],
-    config: defaultConfig(),
-    currentChannelId: () => channel.id,
-    api: async <T>(path: string) => {
-      if (path.endsWith('/jobs')) jobs++;
-      return {
-        scriptId: 'script-one',
-        assets: [],
-        bindings: {},
-      } as T;
-    },
-    onStarted: async () => {},
-    onAddAssets: () => {},
-    onEditScript: () => {},
-  });
-  await tick();
-  await tick();
-  assert.equal(dialog.querySelector('img'), null);
-  assert.equal((dialog.querySelector('select[name="asset-42"]') as HTMLSelectElement).value, '');
-  dialog.querySelector<HTMLButtonElement>('button[type=submit]')!.click();
-  await tick();
-  assert.equal(jobs, 0);
-});
-
-test('late visual responses cannot fill a closed preparation or another channel', async () => {
-  let owner = 'tech';
-  let finish: (value: PreparedVisuals) => void = () => {};
-  const response = new Promise<PreparedVisuals>((resolve) => {
-    finish = resolve;
-  });
-  const dialog = openProduction({
-    channel,
-    scripts: [script],
-    assets: [],
-    config: defaultConfig(),
     currentChannelId: () => owner,
-    api: async <T>() => (await response) as T,
+    api: (async () => {
+      jobs++;
+      return job;
+    }) as never,
     onStarted: async () => {},
-    onAddAssets: () => {},
     onEditScript: () => {},
   });
   owner = 'science';
-  dialog.close();
-  finish(prepared);
+  dialog.querySelector<HTMLButtonElement>('button[type=submit]')!.click();
   await tick();
   await tick();
-  assert.equal(document.querySelector('img'), null);
-  assert.equal(document.querySelector('button[type=submit]'), null);
+  assert.equal(jobs, 0);
+  assert.match(dialog.querySelector('[role="alert"]')?.textContent ?? '', /canal ou roteiro mudou/);
 });
 
-test('a contradicted claim blocks the final video; a pending claim or no source at all does not', async () => {
-  const sourceless = openProduction({
-    channel,
-    scripts: [{ ...script, sources: [], claims: [] }],
-    assets: [],
-    config: defaultConfig(),
-    currentChannelId: () => channel.id,
-    api: async <T>() => prepared as T,
-    onStarted: async () => {},
-    onAddAssets: () => {},
-    onEditScript: () => {},
-  });
-  await tick();
-  await tick();
+test('a contradicted claim blocks the final video; a pending claim or no source at all does not', () => {
+  const sourceless = open([{ ...script, sources: [], claims: [] }], async () => job).dialog;
   assert.equal(
     sourceless.querySelector<HTMLButtonElement>('[data-testid="final-video"]')!.disabled,
     false,
     'QA names a missing source in the report; it no longer disables the final video',
   );
   sourceless.close();
-  const pending = openProduction({
-    channel,
-    scripts: [
-      { ...script, sources: [script.sources[0]], claims: [{ ...script.claims[0], status: 'unverified' }] },
-    ],
-    assets: [],
-    config: defaultConfig(),
-    currentChannelId: () => channel.id,
-    api: async <T>() => prepared as T,
-    onStarted: async () => {},
-    onAddAssets: () => {},
-    onEditScript: () => {},
-  });
-  await tick();
-  await tick();
+  const pending = open(
+    [{ ...script, sources: [script.sources[0]], claims: [{ ...script.claims[0], status: 'unverified' }] }],
+    async () => job,
+  ).dialog;
   assert.equal(pending.querySelector<HTMLButtonElement>('[data-testid="final-video"]')!.disabled, false);
   pending.close();
-  const dialog = openProduction({
-    channel,
-    scripts: [{ ...script, claims: [{ ...script.claims[0], status: 'contradicted' }] }],
-    assets: [],
-    config: defaultConfig(),
-    currentChannelId: () => channel.id,
-    api: async <T>() => prepared as T,
-    onStarted: async () => {},
-    onAddAssets: () => {},
-    onEditScript: () => {},
-  });
-  await tick();
-  await tick();
+  const { dialog } = open(
+    [{ ...script, claims: [{ ...script.claims[0], status: 'contradicted' }] }],
+    async () => job,
+  );
   assert.equal(dialog.querySelector<HTMLButtonElement>('[data-testid="final-video"]')!.disabled, true);
   assert.equal(dialog.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled, false);
   assert.match(dialog.textContent!, /alegações/);
@@ -256,41 +175,19 @@ test('a contradicted claim blocks the final video; a pending claim or no source 
 
 test('pending sources still allow an explicitly marked video preview', async () => {
   let sent: unknown;
-  const dialog = openProduction({
-    channel,
-    scripts: [{ ...script, crossChecked: false, claims: [], sources: [] }],
-    assets: [],
-    config: defaultConfig(),
-    currentChannelId: () => channel.id,
-    api: async <T>(path: string, _method = 'GET', body?: unknown) => {
-      if (path.endsWith('/jobs')) {
-        sent = body;
-        return job as T;
-      }
-      return {
-        scriptId: script.id,
-        assets: [asset],
-        bindings: { 42: asset.id },
-        previews: { 42: asset.id },
-      } as T;
+  const { dialog } = open(
+    [{ ...script, crossChecked: false, claims: [], sources: [] }],
+    async (_path, _m, body) => {
+      sent = body;
+      return job;
     },
-    onStarted: async () => {},
-    onAddAssets: () => {},
-    onEditScript: () => {},
-  });
-  await tick();
-  await tick();
+  );
   const preview = dialog.querySelector<HTMLButtonElement>('button[type=submit]')!;
   assert.equal(preview.disabled, false);
   assert.match(preview.textContent!, /Gerar prévia do vídeo/);
+  assert.equal(dialog.querySelector<HTMLButtonElement>('[data-testid="final-video"]')!.disabled, true);
   preview.click();
   await tick();
   await tick();
-  assert.deepEqual(sent, {
-    scriptId: script.id,
-    assetIds: { 42: asset.id },
-    asr: false,
-    burnSubtitles: true,
-    previewOnly: true,
-  });
+  assert.deepEqual(sent, { scriptId: script.id, previewOnly: true });
 });

@@ -335,17 +335,9 @@ test('production files require the correct channel and support bounded byte rang
             },
           ]
         : [],
-    assets: async () => [],
     start: async () => {
       throw new Error('not used');
     },
-    upload: async () => {
-      throw new Error('not used');
-    },
-    prepareVisuals: async () => {
-      throw new Error('not used');
-    },
-    assetFile: async () => undefined,
     file: async (owner, job, file) =>
       owner === 'tech' && job === 'job-1' && file === 'video'
         ? { path: mediaPath, contentType: 'video/mp4' }
@@ -381,31 +373,26 @@ test('production files require the correct channel and support bounded byte rang
   }
 });
 
-test('automatic visual preparation and image previews preserve authentication, CSRF and script ownership', async () => {
-  let calls = 0,
-    previewPath = '';
+test('starting a video takes only the script and the preview switch, behind authentication, CSRF and script ownership', async () => {
+  const started: unknown[] = [];
   const runner: RunnerApi = {
     list: async () => [],
-    assets: async () => [],
-    upload: async () => {
-      throw new Error('not used');
-    },
-    start: async () => {
-      throw new Error('not used');
+    start: async (owner, input) => {
+      started.push([owner, input]);
+      return {
+        id: 'job-one',
+        channelId: owner,
+        scriptId: input.scriptId,
+        status: 'queued',
+        createdAt: '2026-10-28T00:00:00Z',
+        message: 'Fila',
+        videoAvailable: false,
+      };
     },
     file: async () => undefined,
     engineStatus: () => ({ available: true, message: 'Synthetic engine' }),
-    prepareVisuals: async (owner, scriptId) => {
-      calls++;
-      assert.equal(owner, 'tech');
-      return { scriptId, assets: [], bindings: {} };
-    },
-    assetFile: async (owner, asset) =>
-      owner === 'tech' && asset === 'asset-one' ? { path: previewPath, contentType: 'image/png' } : undefined,
   };
   const context = await fixture({ runner });
-  previewPath = join(context.home, 'preview.png');
-  await writeFile(previewPath, 'synthetic-image');
   try {
     await context.app.store.update((state) => {
       const date = '2026-10-28T00:00:00Z';
@@ -444,31 +431,54 @@ test('automatic visual preparation and image previews preserve authentication, C
         ],
       });
     });
-    assert.equal((await fetch(context.origin + '/api/channels/tech/assets/asset-one/preview')).status, 401);
+    const body = { scriptId: 'script-one', previewOnly: true };
     assert.equal(
       (
-        await context.call(
-          '/api/channels/tech/visuals/prepare',
-          'POST',
-          { scriptId: 'script-one' },
-          { 'X-CSRF-Token': '' },
-        )
+        await fetch(context.origin + '/api/channels/tech/jobs', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        })
       ).status,
       403,
+      'No session and no CSRF token',
     );
     assert.equal(
-      (await context.call('/api/channels/science/visuals/prepare', 'POST', { scriptId: 'script-one' }))
-        .status,
+      (await context.call('/api/channels/tech/jobs', 'POST', body, { 'X-CSRF-Token': '' })).status,
+      403,
+    );
+    assert.equal((await context.call('/api/channels/science/jobs', 'POST', body)).status, 400);
+    // The switches of the removed still-image engine are refused, not silently ignored.
+    for (const removed of [
+      { assetIds: { 42: 'asset-one' } },
+      { asr: true },
+      { burnSubtitles: true },
+      { engine: 'legacy' },
+    ])
+      assert.equal(
+        (await context.call('/api/channels/tech/jobs', 'POST', { ...body, ...removed })).status,
+        400,
+        Object.keys(removed)[0],
+      );
+    assert.equal(
+      (await context.call('/api/channels/tech/jobs', 'POST', { ...body, previewOnly: 'yes' })).status,
       400,
     );
-    assert.equal(calls, 0);
-    assert.equal(
-      (await context.call('/api/channels/tech/visuals/prepare', 'POST', { scriptId: 'script-one' })).status,
-      200,
-    );
-    assert.equal(calls, 1);
-    assert.equal((await context.call('/api/channels/tech/assets/asset-one/preview')).status, 200);
-    assert.equal((await context.call('/api/channels/science/assets/asset-one/preview')).status, 404);
+    assert.deepEqual(started, []);
+    assert.equal((await context.call('/api/channels/tech/jobs', 'POST', body)).status, 202);
+    assert.deepEqual(started, [['tech', { scriptId: 'script-one', previewOnly: true }]]);
+    // Scene visuals and the per-scene media library are gone.
+    for (const [path, method] of [
+      ['/api/channels/tech/visuals/prepare', 'POST'],
+      ['/api/channels/tech/assets', 'GET'],
+      ['/api/channels/tech/assets', 'POST'],
+      ['/api/channels/tech/assets/asset-one/preview', 'GET'],
+      ['/api/channels/tech/assets/asset-one', 'DELETE'],
+    ])
+      assert.equal(
+        (await context.call(path, method, method === 'POST' ? { scriptId: 'script-one' } : undefined)).status,
+        404,
+        `${method} ${path}`,
+      );
   } finally {
     await context.close();
   }
@@ -540,16 +550,8 @@ test('automatic production routes bind the quote and generated draft to the auth
   };
   const runner: RunnerApi = {
     list: async () => [],
-    assets: async () => [],
     file: async () => undefined,
-    assetFile: async () => undefined,
-    upload: async () => {
-      throw Error('not used');
-    },
     start: async () => {
-      throw Error('not used');
-    },
-    prepareVisuals: async () => {
       throw Error('not used');
     },
     engineStatus: () => ({ available: true, message: '' }),
@@ -806,11 +808,7 @@ test('the per-network opt-in is validated, the legacy YouTube flag migrates, and
   };
   const runner: RunnerApi = {
     list: async () => [],
-    assets: async () => [],
     start: unused,
-    upload: unused,
-    prepareVisuals: unused,
-    assetFile: async () => undefined,
     file: async () => undefined,
     engineStatus: () => ({ available: true, message: 'synthetic test engine' }),
     publish: async (channelId, jobId, network) => {
@@ -885,30 +883,19 @@ test('the per-network opt-in is validated, the legacy YouTube flag migrates, and
   }
 });
 
-test('deleting videos and channel files keeps CSRF, channel scope, and a script with videos', async () => {
+test('deleting videos keeps CSRF, channel scope, and a script with videos', async () => {
   const removed: string[] = [];
   let jobs = [{ id: 'job-one', channelId: 'tech', scriptId: 'script-one' }];
   const runner: RunnerApi = {
     list: async (owner) => (owner === 'tech' ? (jobs as never) : []),
-    assets: async () => [],
-    upload: async () => {
-      throw new Error('not used');
-    },
     start: async () => {
       throw new Error('not used');
     },
     file: async () => undefined,
     engineStatus: () => ({ available: true, message: 'Synthetic engine' }),
-    prepareVisuals: async () => {
-      throw new Error('not used');
-    },
-    assetFile: async () => undefined,
     remove: async (owner, job) => {
       removed.push(`${owner}/job/${job}`);
       jobs = [];
-    },
-    removeAsset: async (owner, asset) => {
-      removed.push(`${owner}/asset/${asset}`);
     },
   };
   const context = await fixture({ runner });
@@ -951,8 +938,7 @@ test('deleting videos and channel files keeps CSRF, channel scope, and a script 
     assert.deepEqual(removed, []);
     assert.equal((await context.call('/api/scripts/script-one?channel_id=tech', 'DELETE')).status, 409);
     assert.equal((await context.call('/api/channels/tech/jobs/job-one', 'DELETE')).status, 200);
-    assert.equal((await context.call('/api/channels/tech/assets/asset-one', 'DELETE')).status, 200);
-    assert.deepEqual(removed, ['tech/job/job-one', 'tech/asset/asset-one']);
+    assert.deepEqual(removed, ['tech/job/job-one']);
     assert.equal((await context.call('/api/scripts/script-one?channel_id=tech', 'DELETE')).status, 200);
   } finally {
     await context.close();

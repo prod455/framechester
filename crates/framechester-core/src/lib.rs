@@ -4,7 +4,6 @@ pub mod config;
 pub mod domain;
 pub mod editorial;
 pub mod error;
-pub mod finance;
 pub mod narration;
 pub mod package;
 pub mod persona;

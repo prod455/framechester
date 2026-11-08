@@ -13,7 +13,6 @@ pub struct Config {
     pub tts: TtsConfig,
     pub llm: LlmConfig,
     pub publish: PublishConfig,
-    pub backup: BackupConfig,
     pub asr: AsrConfig,
     pub audio: AudioConfig,
     pub motion: MotionConfig,
@@ -55,8 +54,6 @@ impl Default for AudioConfig {
 pub struct MotionConfig {
     /// Rasterization threads; 0 uses every CPU up to eight.
     pub threads: usize,
-    /// Enables the motion engine for `run`; the legacy still-image renderer stays default.
-    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,7 +85,6 @@ pub struct TtsConfig {
     pub engine: String,
     pub python_path: String,
     pub voice_styles: String,
-    pub piper_path: String,
     pub voice_model: String,
     pub voice_name: String,
 }
@@ -108,13 +104,6 @@ pub struct PublishConfig {
     pub enabled: bool,
     pub network: String,
     pub privacy: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
-pub struct BackupConfig {
-    pub enabled: bool,
-    pub provider: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -173,7 +162,6 @@ impl Default for TtsConfig {
                 "models/kokoro/voices-v1.0.bin"
             }
             .into(),
-            piper_path: "piper".into(),
             voice_model: if container {
                 "/models/kokoro/kokoro-v1.0.onnx"
             } else {
@@ -202,15 +190,6 @@ impl Default for PublishConfig {
             enabled: false,
             network: "youtube".into(),
             privacy: "private".into(),
-        }
-    }
-}
-
-impl Default for BackupConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            provider: "b2".into(),
         }
     }
 }
@@ -396,7 +375,6 @@ mod tests {
         assert!(config.app.dry_run);
         assert!(!config.app.telemetry);
         assert!(!config.publish.enabled);
-        assert!(!config.backup.enabled);
     }
 
     #[test]
@@ -440,7 +418,6 @@ mod tests {
         let config = Config::default();
         assert_eq!(config.audio.target_lufs, -14.0);
         assert_eq!(config.audio.true_peak_dbtp, -1.5);
-        assert!(!config.motion.enabled);
         let mut invalid = Config::default();
         invalid.audio.true_peak_dbtp = 1.0;
         assert!(invalid.validate().is_err());

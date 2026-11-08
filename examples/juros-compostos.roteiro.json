@@ -1,0 +1,135 @@
+{
+  "topic_id": "juros-compostos-10-anos",
+  "script": {
+    "title": "Invest less, end up richer: the 10 years that decide your retirement",
+    "hook": "Invest less, end up richer?",
+    "series": "money",
+    "format": "long",
+    "cross_checked": true,
+    "scenes": [
+      {
+        "id": 0,
+        "heading": "Who ends up richer?",
+        "narration": "Two friends invest the same two hundred dollars a month. One puts in twenty-four thousand dollars and stops. The other puts in seventy-two thousand. The one who invested less ends up richer. Here is why.",
+        "visual_brief": "#pergunta Invest less, end up richer?\nOpen the loop: the viewer must want the answer.",
+        "duration_hint_secs": 14.0
+      },
+      {
+        "id": 1,
+        "heading": "The rules of this example",
+        "narration": "The rules are simple. Two hundred dollars a month. We assume seven percent a year, just to do the math. That is not a promise: real returns change every year, and you can lose money.",
+        "visual_brief": "#lista $200 a month; 7% a year, assumed; real returns vary\nState the assumption before any number.",
+        "duration_hint_secs": 14.0
+      },
+      {
+        "id": 2,
+        "heading": "Ana starts at 25",
+        "narration": "Ana starts at 25 and invests until 35. Ten years, then she stops for good. She put in $24,000 in total.",
+        "visual_brief": "#numero 24 | thousand dollars in, then Ana stops\nAna's only contribution.",
+        "duration_hint_secs": 10.0
+      },
+      {
+        "id": 3,
+        "heading": "Ben starts at 35",
+        "narration": "Ben waits. He starts at 35 and invests every month until 65. Thirty years. He puts in $72,000, three times more than Ana.",
+        "visual_brief": "#comparacao Ana: starts at 25; stops at 35; puts in $24,000 | Ben: starts at 35; stops at 65; puts in $72,000\nSame monthly amount, different start.",
+        "duration_hint_secs": 13.0
+      },
+      {
+        "id": 4,
+        "heading": "The result at 65",
+        "narration": "At 65, Ben has about $244,000. Ana, who stopped thirty years earlier, has about $281,000. Less money in, more money out.",
+        "visual_brief": "#grafico Value at 65, in thousands of dollars | Ben=244; Ana=281\nThe surprise, shown as bars.",
+        "duration_hint_secs": 12.0
+      },
+      {
+        "id": 5,
+        "heading": "Why: interest on interest",
+        "narration": "Every year, the interest is added to what you have. Next year, that interest earns interest too. The growth feeds itself.",
+        "visual_brief": "#fluxo Money -> Earns interest [chart] {primary} -> Interest joins the money -> loop\nThe compounding loop.",
+        "duration_hint_secs": 12.0
+      },
+      {
+        "id": 6,
+        "heading": "The Rule of 72",
+        "narration": "There is a shortcut: divide 72 by the yearly rate. At seven percent, 72 divided by 7 is about 10. Your money doubles roughly every ten years.",
+        "visual_brief": "#numero 10 | years to double at 7%, by the Rule of 72\nRule of 72 as a mental tool.",
+        "duration_hint_secs": 13.0
+      },
+      {
+        "id": 7,
+        "heading": "Ana's head start",
+        "narration": "Each dollar Ana put in had ten more years to grow than Ben's. Ten years is about one doubling. To match Ana with thirty years of deposits, Ben would need about $230 a month, not $200.",
+        "visual_brief": "#causa Ana starts 10 years earlier => Each dollar grows 10 years longer => About one extra doubling => Ben needs $230 a month to match\nTime beats the amount.",
+        "duration_hint_secs": 13.0
+      },
+      {
+        "id": 8,
+        "heading": "Starting at 25 and never stopping",
+        "narration": "And if Ana had never stopped? Two hundred dollars a month from 25 to 65 becomes about $525,000, against $281,000 for stopping at 35 and $244,000 for starting late. Ninety-six thousand in, the rest is growth.",
+        "visual_brief": "#grafico Value at 65, in thousands of dollars | Ben=244; Ana stops at 35=281; Never stops=525\nThe full picture.",
+        "duration_hint_secs": 15.0
+      },
+      {
+        "id": 9,
+        "heading": "What to take from this",
+        "narration": "The lesson is not a magic number. It is the order: start small, start early, and let time do the heavy lifting. Check the math yourself with the free calculator from the SEC, linked below.",
+        "visual_brief": "#destaque\nClose on the principle and the source, no investment advice.",
+        "duration_hint_secs": 14.0
+      }
+    ],
+    "sources": [
+      {
+        "title": "Compound Interest Calculator",
+        "url": "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator",
+        "publisher": "Investor.gov (U.S. Securities and Exchange Commission)",
+        "retrieved_at": "2026-11-08",
+        "license": "referencia documental; texto nao redistribuido"
+      },
+      {
+        "title": "Rule of 72",
+        "url": "https://www.investor.gov/introduction-investing/investing-basics/glossary/rule-72",
+        "publisher": "Investor.gov (U.S. Securities and Exchange Commission)",
+        "retrieved_at": "2026-11-08",
+        "license": "referencia documental; texto nao redistribuido"
+      }
+    ],
+    "claims": [
+      {
+        "text": "$200 a month for 40 years at 7% a year, compounded monthly, ends near $525,000 (FV = P*((1+r)^n-1)/r, r=0.07/12, n=480: $524,963).",
+        "status": "cited",
+        "source_urls": [
+          "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator"
+        ]
+      },
+      {
+        "text": "$200 a month for 30 years at the same rate ends near $244,000 (n=360: $243,994).",
+        "status": "cited",
+        "source_urls": [
+          "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator"
+        ]
+      },
+      {
+        "text": "$200 a month from 25 to 35 only ($24,000 in), left to grow 30 more years, ends near $281,000 ($280,968).",
+        "status": "cited",
+        "source_urls": [
+          "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator"
+        ]
+      },
+      {
+        "text": "By the Rule of 72, money growing 7% a year doubles in about 10 years (72/7 = 10.3).",
+        "status": "cited",
+        "source_urls": [
+          "https://www.investor.gov/introduction-investing/investing-basics/glossary/rule-72"
+        ]
+      },
+      {
+        "text": "Matching $281,000 in 30 years at 7% compounded monthly takes about $230 a month ($280,968 / 1,219.97 = $230.31).",
+        "status": "cited",
+        "source_urls": [
+          "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator"
+        ]
+      }
+    ]
+  }
+}

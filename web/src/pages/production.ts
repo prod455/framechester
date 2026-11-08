@@ -11,22 +11,13 @@ import {
   notice,
   statusLabels,
 } from '../components.ts';
-import { button, el, field, icon, input, select, textarea } from '../dom.ts';
+import { button, el, icon } from '../dom.ts';
 import { openFinalVersion } from '../final-version-ui.ts';
-import { date, number } from '../format.ts';
+import { date } from '../format.ts';
 import { openProduction } from '../production-ui.ts';
 import { render } from '../studio/state.ts';
 import { networkMark } from '../studio/platforms.ts';
-import {
-  channelPath,
-  currentChannel,
-  effectiveConfig,
-  go,
-  refresh,
-  scoped,
-  state,
-  studio,
-} from '../studio/state.ts';
+import { channelPath, currentChannel, go, refresh, scoped, state, studio } from '../studio/state.ts';
 import { toast } from '../studio/toast.ts';
 import { requiredChannel } from './channels.ts';
 import { t, translateMessage } from '../../shared/i18n.ts';
@@ -38,7 +29,6 @@ export function productionPage(): HTMLElement {
   if (missing) return missing;
   const snapshot = state();
   const jobs = scoped(snapshot.jobs).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const assets = scoped(snapshot.assets);
   // One primary action, named as on Criar vídeo (law of similarity, Von Restorff).
   const startButton = button(t('Novo vídeo'), () => startProduction(), 'primary', 'spark');
   startButton.disabled = snapshot.engine?.available === false;
@@ -54,67 +44,6 @@ export function productionPage(): HTMLElement {
         'film',
         button(t('Novo vídeo'), () => startProduction(), 'primary', 'spark'),
       );
-  const assetBody = assets.length
-    ? el(
-        'div',
-        { className: 'panel-body asset-grid' },
-        ...assets.map((asset) =>
-          el(
-            'div',
-            { className: 'asset-row' },
-            icon(asset.kind === 'video' ? 'film' : 'folder'),
-            el(
-              'div',
-              {},
-              el('div', { className: 'asset-name', title: asset.name }, asset.name),
-              el(
-                'div',
-                { className: 'asset-caption' },
-                `${asset.kind === 'video' ? t('Vídeo') : t('Imagem')} · ${number(Math.round(asset.bytes / 1024))} KB · ${asset.license}`,
-              ),
-            ),
-            el('span', { className: 'spacer' }),
-            el(
-              'span',
-              { className: 'badge mono', 'data-variant': 'outline', title: asset.checksum },
-              asset.checksum.slice(0, 8),
-            ),
-            iconButton(t('Excluir {name}', { name: asset.name }), 'trash', () =>
-              confirmDelete(
-                asset.name,
-                t('O arquivo sai da biblioteca do canal. Vídeos já produzidos guardam a própria cópia.'),
-                `/assets/${encodeURIComponent(asset.id)}`,
-                t('Arquivo excluído.'),
-              ),
-            ),
-          ),
-        ),
-      )
-    : empty(
-        t('Nenhum arquivo próprio'),
-        t('Adicione uma gravação ou imagem sua para usar numa cena específica.'),
-        'folder',
-        button(t('Adicionar arquivo próprio'), () => uploadAsset(), 'secondary', 'plus'),
-      );
-  // Own files are an occasional need: one place, collapsed (progressive disclosure, Hick).
-  const library = el(
-    'details',
-    { className: 'grid gap-3 border-t pt-4' },
-    el(
-      'summary',
-      { className: 'w-fit cursor-pointer font-semibold' },
-      t('Arquivos próprios do canal ({count})', { count: assets.length }),
-    ),
-    el(
-      'p',
-      { className: 'field-hint' },
-      t(
-        'Gravações e imagens suas, com origem e direitos. Os visuais explicativos são gerados pelo motor; estes são opcionais.',
-      ),
-    ),
-    assetBody,
-    assets.length ? button(t('Adicionar arquivo próprio'), () => uploadAsset(), 'secondary', 'plus') : null,
-  );
   return el(
     'div',
     { className: 'section-stack' },
@@ -133,7 +62,6 @@ export function productionPage(): HTMLElement {
     ),
     snapshot.engine?.available === false ? notice(translateMessage(snapshot.engine.message)) : null,
     jobsBody,
-    library,
   );
 }
 
@@ -218,7 +146,7 @@ export function jobCard(job: WebJob, nested = false): HTMLElement {
       el(
         'p',
         { className: 'job-meta' },
-        `${job.kind === 'short' ? t('Short vertical') : job.previewOnly ? t('Prévia') : t('Versão final')} · ${date(job.createdAt)}${job.engine ? ` · ${job.engine === 'motion' ? t('Motor motion') : t('Imagens por cena')}` : ''}`,
+        `${job.kind === 'short' ? t('Short vertical') : job.previewOnly ? t('Prévia') : t('Versão final')} · ${date(job.createdAt)}`,
       ),
       stages,
       diagnostic,
@@ -317,10 +245,9 @@ function confirmDelete(title: string, text: string, path: string, done: string):
   body.append(form);
 }
 
-/** Shorts are cut from an approved final version made by the motion engine, once per video. */
+/** Shorts are cut from an approved final version, once per video. */
 export function shortButton(job: WebJob): HTMLElement | null {
-  if (job.kind === 'short' || job.status !== 'completed' || job.previewOnly || job.engine !== 'motion')
-    return null;
+  if (job.kind === 'short' || job.status !== 'completed' || job.previewOnly) return null;
   // A vertical video already is the Short; a horizontal one gets its Shorts by itself, and the
   // button only shows when that never happened.
   if (vertical(job)) return null;
@@ -640,7 +567,6 @@ export function generateFinal(script: Script): void {
   openFinalVersion({
     channel,
     script,
-    config: effectiveConfig(),
     onStarted: async () => {
       await refresh();
       toast(t('Versão final na fila. Acompanhe aqui; ela fica pronta em alguns minutos.'));
@@ -648,10 +574,6 @@ export function generateFinal(script: Script): void {
     onEditScript: (scriptId) => {
       studio.activeScriptId = scriptId;
       go('scripts');
-    },
-    onManual: (scriptId) => {
-      studio.activeScriptId = scriptId;
-      prepareProductionManually();
     },
   });
 }
@@ -668,7 +590,7 @@ export function startProduction(): void {
     currentChannelId: () => studio.channelId,
     onStarted: async () => {
       await refresh();
-      toast(t('Produção iniciada. Acompanhe o roteiro, os visuais e a montagem na fila.'));
+      toast(t('Produção iniciada. Acompanhe o roteiro, a animação e a montagem na fila.'));
     },
     onManual: (scriptId) => {
       if (scriptId) studio.activeScriptId = scriptId;
@@ -684,23 +606,12 @@ export function prepareProductionManually(): void {
   const dialog = openProduction({
     channel,
     scripts: scoped(state().scripts),
-    assets: scoped(state().assets),
-    config: effectiveConfig(),
     selectedScriptId: studio.activeScriptId,
     currentChannelId: () => studio.channelId,
     onStarted: async () => {
       await refresh();
       toast(t('Produção adicionada à fila. Acompanhe o andamento aqui.'));
     },
-    onPrepared: (prepared) => {
-      if (studio.data)
-        studio.data.assets = [
-          ...studio.data.assets.filter((asset) => asset.channelId !== channel.id),
-          ...prepared.assets,
-        ];
-    },
-
-    onAddAssets: () => uploadAsset(),
     onEditScript: (scriptId) => {
       studio.activeScriptId = scriptId;
       go('scripts');
@@ -709,83 +620,6 @@ export function prepareProductionManually(): void {
   dialog.addEventListener('close', () => {
     if (location.hash === '#production') render();
   });
-}
-
-export function uploadAsset(): void {
-  const { dialog, body } = createDialog(
-    t('Adicionar recurso visual'),
-    t('O arquivo fica no armazenamento privado deste canal, no servidor local.'),
-  );
-  const file = input('file', '', 'file');
-  file.required = true;
-  file.accept = '.png,.jpg,.jpeg,.webp,.bmp,.mp4,.mov,.m4v,.mkv,.webm,.avi';
-  const kind = select(
-    'kind',
-    [
-      ['image', t('Imagem')],
-      ['video', t('Vídeo')],
-    ],
-    'image',
-  );
-  file.addEventListener('change', () => {
-    const selected = file.files?.[0];
-    if (selected) kind.value = /\.(mp4|mov|m4v|mkv|webm|avi)$/i.test(selected.name) ? 'video' : 'image';
-  });
-  const license = input('license');
-  license.required = true;
-  const provenance = textarea('provenance', '', 3);
-  provenance.required = true;
-  const restrictions = textarea('restrictions', '', 2);
-  restrictions.required = true;
-  const { form, fields } = formWithSave(
-    t('Enviar ao servidor local'),
-    async () => {
-      const selected = file.files?.[0];
-      if (!selected) throw new Error(t('Selecione um arquivo.'));
-      if (selected.size > 20 * 1024 * 1024)
-        throw new Error(
-          t('O arquivo excede o limite de 20 MB por recurso. Use um trecho ou uma versão menor.'),
-        );
-      const contentBase64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () =>
-          typeof reader.result === 'string'
-            ? resolve(reader.result.split(',')[1] || '')
-            : reject(new Error(t('Não foi possível ler o arquivo.')));
-        reader.onerror = () => reject(new Error(t('Não foi possível ler o arquivo.')));
-        reader.readAsDataURL(selected);
-      });
-      await request(channelPath('/assets'), 'POST', {
-        filename: selected.name,
-        kind: kind.value,
-        contentBase64,
-        license: license.value.trim(),
-        provenance: provenance.value.trim(),
-        restrictions: restrictions.value.trim(),
-      });
-      file.value = '';
-      dialog.close();
-      await refresh();
-      toast(t('Recurso visual registrado com origem e hash.'));
-    },
-    () => dialog.close(),
-  );
-  fields.append(
-    field(t('Arquivo de imagem ou vídeo'), file, t('Até 20 MB por recurso visual.')),
-    field(t('Tipo de recurso'), kind),
-    field(
-      t('Licença ou autorização de uso'),
-      license,
-      t('Informe a condição real de uso. A licença do código não cobre mídia de terceiros.'),
-    ),
-    field(t('Origem e autoria'), provenance, t('Quem criou, de onde veio e como o uso foi autorizado?')),
-    field(
-      t('Restrições e atribuição'),
-      restrictions,
-      t('Se não houver restrições, declare isso expressamente.'),
-    ),
-  );
-  body.append(form);
 }
 
 export function viewJob(job: WebJob): void {
@@ -841,7 +675,7 @@ export function viewJob(job: WebJob): void {
     notice(
       job.previewOnly
         ? t(
-            'Esta é a prévia, com marca de revisão. Se estiver bom, gere a versão final: mesmo roteiro e mesmos visuais, sem a marca.',
+            'Esta é a prévia, com marca de revisão. Se estiver bom, gere a versão final: mesmo roteiro e mesma animação, sem a marca.',
           )
         : t(
             'Confira fatos, direitos, legibilidade e ritmo. O pacote é revisável e sua existência não comprova aprovação editorial ou publicação.',

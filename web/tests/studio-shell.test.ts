@@ -154,7 +154,6 @@ function bootstrap(): Bootstrap {
         videoAvailable: true,
       },
     ],
-    assets: [],
     engine: { available: true, message: 'Motor disponível' },
   };
 }

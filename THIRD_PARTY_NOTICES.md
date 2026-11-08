@@ -11,7 +11,6 @@
 | `pt_BR-faber-medium.onnx` | `rhasspy/piper-voices` `pt/pt_BR/faber/medium`; 63,201,294 B; SHA-256 `858555E3A064209C57088FE6BD70C4C3DC54D03EAA00C45D5ECAF43A33F95AA7` | Voz piloto local | Dataset Faber CC0, mas a origem do checkpoint Lessac tem materiais-fonte só para pesquisa. A autorização comercial deste ONNX não está estabelecida; veja a evidência abaixo. | Não incluído; não trate como liberado para uso comercial |
 | `pt_BR-faber-medium.onnx.json` | mesmo diretório da voz Piper | configuração da voz | Igual ao modelo de voz | Não incluído |
 | whisper.cpp + `ggml-base.bin` | local `C:/whisper`; 147,951,465 B; SHA-256 `60ED5BC3DD14EEA856493D334349B405782DDCAF0028D4B5DF4088345FBA2EFE` | QA ASR PT-BR opcional | whisper.cpp MIT; pesos base do OpenAI Whisper MIT | Não incluído |
-| restic | 0.19.1 | backup/restauração criptografados | BSD-2-Clause | O usuário instala à parte |
 | Crates Rust | veja `Cargo.lock` | build/runtime | Permissivas mistas (MIT/Apache-2.0/BSD/ISC); rode `cargo deny`/varredura de licenças antes do release | Depois da varredura |
 | Blender | opcional, não usado nesta etapa | futuro subprocesso 3D | Termos GPL para o software; avalie a inclusão à parte | Instalação externa |
 | Inter (Regular, SemiBold, Bold) | rsms/inter 3.19 OTF, copiada do pacote Debian `fonts-inter`; SHA-256 registrado pelo `framechester-motion` em todo `render_manifest.json` | fonte de texto incluída no motor motion (`assets/fonts/inter`, embutida com `include_bytes!`) | SIL OFL-1.1 (`assets/fonts/inter/LICENSE-OFL-1.1.txt`); vale a regra do nome de fonte reservado | Sim, com o arquivo de licença |
@@ -29,31 +28,6 @@ Fontes primárias conferidas em **2026-10-28**: o [model card do Faber medium](h
 Isso estabelece uma cadeia de licenciamento não resolvida, não uma conclusão jurídica automática de que os termos do dataset se aplicam a todo peso derivado ou som gerado. O rótulo MIT do repositório inteiro e a declaração CC0 do dataset final não resolvem a autorização deste ONNX específico. Obtenha esclarecimento sobre a cadeia de pesos/checkpoints ou escolha uma voz com permissões comerciais documentadas antes de monetizar. Nenhum pedido de permissão foi enviado a terceiros.
 
 As vozes Piper agora ficam bloqueadas pelo adaptador de produção. As configurações de voz antigas do Studio migram para a Kokoro Dora, mantendo a identidade do canal e as configurações de geração do vídeo. Só o modelo Kokoro revisado, o pacote de vozes e os IDs de voz PT-BR são aceitos; veja [VOZES_COMERCIAIS.md](docs/VOZES_COMERCIAIS.md). O piloto antigo continua como evidência técnica histórica, não como aprovação comercial.
-
-## Anúncio vertical (`anuncio/`)
-
-Só software livre, travado no `anuncio/package-lock.json`: React e React DOM **18.3.1** (MIT),
-Vite **8.3.5** (MIT), Playwright Core **1.63.0** (Apache-2.0), que controla um Chromium (BSD),
-e TypeScript (Apache-2.0). O motor de quadros (`anuncio/src/quadro.tsx`) é próprio. O FFmpeg do
-sistema codifica e mixa. Nenhum pacote é redistribuído neste repositório; o operador instala
-com `npm --prefix anuncio ci`. Os efeitos sonoros são sintetizados localmente pelo FFmpeg.
-
-A IA local do anúncio (`anuncio/ia/`, instalada por `npm --prefix anuncio run ia:preparar`,
-versões em `anuncio/ia/requirements.txt`) usa, conferido em **2026-11-07**:
-
-| Componente | Licença | Onde foi conferido |
-|---|---|---|
-| OpenVoice, commit `74a1d147`, só o conversor de timbre | MIT | `LICENSE` e README do repositório ("Free for commercial use", desde abril de 2024) |
-| Pesos `myshell-ai/OpenVoiceV2` | MIT | conferido em tempo de execução no Hugging Face; a clonagem para se mudar |
-| Pesos `black-forest-labs/FLUX.1-schnell` | Apache-2.0 | conferido em tempo de execução no Hugging Face; a geração para se mudar |
-| rembg 2.0.85 e o modelo BiRefNet | MIT | metadados do PyPI |
-| diffusers 0.41.0, transformers 5.20.2, accelerate 1.15.0, torch 2.14.1 | Apache-2.0 / BSD | metadados do PyPI |
-| faster-whisper 1.2.1 | MIT | metadados do PyPI |
-
-O OpenVoice é instalado com `--no-deps` e o front-end de texto dele não é carregado, então
-`unidecode` (GPL) e as dependências de texto chinês não entram. Nada disso é redistribuído:
-os pesos ficam no cache local do Hugging Face, e os personagens e a narração clonada ficam em
-`anuncio/public/`, fora do Git.
 
 ## Dependências web do Framechester Studio
 

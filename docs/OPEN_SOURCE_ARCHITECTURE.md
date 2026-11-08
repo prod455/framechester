@@ -1,6 +1,6 @@
 # Framechester — contrato de arquitetura open-source
 
-Atualização do operador (2026-10-27): vários canais sob um único operador local substituem a premissa anterior de canal único. `ChannelProfile` identifica os canais locais; a seleção explícita delimita as saídas, relatórios e pacotes do pipeline. Os caminhos OAuth e a identidade esperada são por canal; o analytics local valida o canal e a janela do relatório. Isso não é autenticação de vários usuários. Veja `EQUIPES_E_SKILLS.md` e `AUDITORIA_ENGENHARIA.md` para responsabilidades e limites atuais.
+Atualização do operador (2026-10-27): vários canais sob um único operador local substituem a premissa anterior de canal único. `ChannelProfile` identifica os canais locais; a seleção explícita delimita as saídas, relatórios e pacotes do pipeline. Os caminhos OAuth e a identidade esperada são por canal; o analytics local valida o canal e a janela do relatório. Isso não é autenticação de vários usuários. Veja `EQUIPES_E_SKILLS.md` para responsabilidades e limites atuais.
 
 ## Topologia de implantação
 

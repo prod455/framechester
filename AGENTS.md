@@ -23,7 +23,6 @@ For detailed alignment work, apply `precise-ui-alignment` when installed and mea
 - Doctor: `cargo run -p framechester-cli -- doctor`
 - Demo pipeline: `cargo run -p framechester-cli -- run --workdir artifacts/demo-short`
 - QA video: `cargo run -p framechester-cli -- qa --format short --video artifacts/demo-short/render/final.mp4`
-- Simular custos: `python scripts/calculadora_monetizacao.py --storage-gb 50 --provider b2`
 - FFmpeg: `ffmpeg -version`, `ffmpeg -encoders`, `ffmpeg -hwaccels`
 - Web install: `npm --prefix web ci`
 - Web engine build: `npm --prefix web run engine:build`

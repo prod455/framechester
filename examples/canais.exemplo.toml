@@ -11,11 +11,6 @@ look = "planta"
 id = "science"
 look = "papel"
 
-# Canal so de musica (docs/CANAIS_MUSICA.md): framechester music --channel lofi-estudo ...
-[[channels]]
-id = "lofi-estudo"
-language = "en-US"
-
 [app]
 dry_run = true
 telemetry = false

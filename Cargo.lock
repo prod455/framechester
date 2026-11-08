@@ -413,7 +413,6 @@ dependencies = [
  "framechester-motion",
  "serde",
  "serde_json",
- "sha2",
  "tempfile",
 ]
 

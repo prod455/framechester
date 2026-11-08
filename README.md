@@ -192,7 +192,6 @@ framechester doctor
 | `backup --path DIR --yes` | Cria um snapshot restic local; bloqueia destino remoto sem `--allow-remote` |
 | `restore --snapshot ID --target DIR --yes` | Restaura para um destino novo ou vazio; exige que o processo termine com sucesso |
 | `finance` | Simula custos e receita em centavos, sem promessa de resultado |
-| `music --channel ID generate\|search\|list\|mix` | Canais de música: faixas do ACE-Step 1.5 local ou CC0/CC BY do Openverse, mix longo com capítulos, créditos e QA, sem publicar ([guia](docs/CANAIS_MUSICA.md)) |
 | `analytics --channel ID --input PATH` | Valida e resume um snapshot JSON local sem misturar canais, formatos ou classes de receita |
 
 Flags úteis em `run`: `--topic arquivo.json`, `--format short|long`, `--max-scenes N`, `--voice NOME`, `--llm template|anthropic`, `--max-cost-cents N` (obrigatório para Anthropic), `--privacy private|unlisted|public`, `--asr` para o QA de fala com whisper local e `--burn-subtitles` para queimar as legendas no MP4.
@@ -222,7 +221,7 @@ npm --prefix web run build
 ## Limites deste MVP
 
 - A publicação real está desativada nas quatro redes do Studio; o publisher do motor é sempre dry-run e bloqueia `dry_run=false`.
-- Legendas, thumbnail, descrição e fontes/licenças são geradas; `--burn-subtitles` embute o SRT no MP4, e trilha musical licenciada vem da biblioteca do canal (`framechester music`).
+- Legendas, thumbnail, descrição e fontes/licenças são geradas; `--burn-subtitles` embute o SRT no MP4, mas ainda não há trilha musical licenciada.
 - O QA por ASR é opcional e usa whisper local; a cobertura é um alerta, não prova de qualidade editorial.
 - Sem `--assets`, os recursos continuam sintéticos (`testsrc2`). Com manifesto, entram imagens e vídeos locais cujos direitos foram declarados pelo operador.
 - O LLM de template é simples de propósito e exige revisão humana.

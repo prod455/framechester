@@ -1,7 +1,8 @@
 # Canais e calendário inicial
 
 Decisão do operador em 08/11/2026: abrir os canais pelos nichos de maior RPM e publicar
-um vídeo por dia às 22:00 (horário de Brasília, 20:00 em Nova York).
+um vídeo por dia às 22:00 (horário de Brasília, 20:00 em Nova York). Só conteúdo em
+inglês para o público dos EUA; nada voltado ao Brasil.
 
 ## Canais
 
@@ -9,7 +10,6 @@ um vídeo por dia às 22:00 (horário de Brasília, 20:00 em Nova York).
 |---|---|---|---|
 | `money-explained` | en-US | finanças pessoais com contas | nicho de maior RPM nas estimativas públicas de 2026, público dos EUA |
 | `tech-explained` | en-US | tecnologia e IA | segundo grupo de RPM; o motor já tem os componentes de diagrama |
-| `dinheiro-explicado` | pt-BR | finanças pessoais | mesmo formato para o público brasileiro; RPM menor |
 
 As faixas de RPM vêm de blogs de ferramentas (OutlierKit, TubeLab, ClipSpeed), não de
 dados próprios: servem para ordenar nichos, não para prever receita. Canal novo só

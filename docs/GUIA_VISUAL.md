@@ -17,24 +17,22 @@ catálogo negociado nem cliente interativo. O vídeo é renderizado uma vez, e
 uma diretiva de uma linha resolve o problema.
 
 ```text
-roteiro (visualBrief) ──► diretiva #layout ──► parser Rust ──► SVG ──► PNG ──► FFmpeg
+roteiro (visualBrief) ──► diretiva #layout ──► planner Rust ──► storyboard ──► SVG por quadro ──► FFmpeg
                               │
                               └─► mesmo parser em TS: rejeita no salvar e na geração
 ```
 
-- Parser oficial: `crates/framechester-adapters/src/scene_layout.rs`
+- Parser oficial: `crates/framechester-core/src/planner.rs` (motor motion)
 - Espelho no Studio: `web/shared/scene-layouts.ts`
 - Casos compartilhados pelos dois testes: `tests/fixtures/scene-layouts.json`
 
 ## Motor motion
 
-As diretivas abaixo continuam valendo para o renderizador de imagens estáticas. O
-motor motion (`framechester produce`) usa um storyboard semântico com cenas
-animadas e aceita, além delas, `#fluxo`, `#grafico`, `#arquitetura`, `#codigo`,
+Todo vídeo sai do motor motion (`framechester produce`, ou `run` no Studio), que usa
+um storyboard semântico com cenas animadas. Ele aceita as diretivas abaixo e, além delas, `#fluxo`, `#grafico`, `#arquitetura`, `#codigo`,
 `#transformacao`, `#anotacao`, `#infografico`, `#causa`, `#personagem` e `#palco`
 (palco contínuo com mascotes, uma metáfora e um medidor que atravessa as cenas; veja
-abaixo). No caminho
-antigo essas diretivas viram o layout padrão, sem erro. No motor motion, uma cena sem
+abaixo). Uma cena sem
 diretiva ou com `#pergunta` é contada por um personagem animado que combina com a pauta (robô, dev,
 cientista ou apresentador); `#destaque` mantém o título tipográfico. Gramática completa em
 [STORYBOARD.md](STORYBOARD.md); direção de arte em
@@ -66,12 +64,6 @@ tratado como nota em Markdown.
 Por que números e citações precisam estar na narração: assim, o que aparece
 na tela também passa pela revisão de alegações do roteiro. Sem essa regra,
 um número poderia aparecer só na imagem, sem fonte.
-
-Exemplo completo: `examples/guia-visual-plan.json`.
-
-```bash
-cargo run -p framechester-cli -- visuals --input examples/guia-visual-plan.json --output artifacts/guia-visual
-```
 
 ## Identidade
 

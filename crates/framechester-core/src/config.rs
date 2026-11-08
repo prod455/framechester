@@ -54,8 +54,6 @@ impl Default for AudioConfig {
 pub struct MotionConfig {
     /// Rasterization threads; 0 uses every CPU up to eight.
     pub threads: usize,
-    /// Enables the motion engine for `run`; the legacy still-image renderer stays default.
-    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -87,7 +85,6 @@ pub struct TtsConfig {
     pub engine: String,
     pub python_path: String,
     pub voice_styles: String,
-    pub piper_path: String,
     pub voice_model: String,
     pub voice_name: String,
 }
@@ -165,7 +162,6 @@ impl Default for TtsConfig {
                 "models/kokoro/voices-v1.0.bin"
             }
             .into(),
-            piper_path: "piper".into(),
             voice_model: if container {
                 "/models/kokoro/kokoro-v1.0.onnx"
             } else {
@@ -422,7 +418,6 @@ mod tests {
         let config = Config::default();
         assert_eq!(config.audio.target_lufs, -14.0);
         assert_eq!(config.audio.true_peak_dbtp, -1.5);
-        assert!(!config.motion.enabled);
         let mut invalid = Config::default();
         invalid.audio.true_peak_dbtp = 1.0;
         assert!(invalid.validate().is_err());

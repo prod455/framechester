@@ -5,5 +5,3 @@ pub(crate) mod produce;
 pub(crate) mod qa;
 pub(crate) mod report;
 pub(crate) mod run;
-pub(crate) mod trends;
-pub(crate) mod visuals;

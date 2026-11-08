@@ -84,6 +84,8 @@ pub struct Canvas {
     pub vertical: bool,
     /// Look the scene is drawn in: its paints and its display face (`crate::look`).
     pub look: framechester_core::storyboard::Look,
+    /// How numbers are written on screen, from the storyboard's language.
+    pub numerals: framechester_core::storyboard::Numerals,
 }
 
 /// Smallest readable text, as a fraction of the frame's short side: below it a line
@@ -159,6 +161,7 @@ impl Canvas {
                 icon: 64.0,
                 vertical: true,
                 look: Default::default(),
+                numerals: Default::default(),
             },
             VideoFormat::Horizontal => Canvas {
                 format,
@@ -185,6 +188,7 @@ impl Canvas {
                 icon: 56.0,
                 vertical: false,
                 look: Default::default(),
+                numerals: Default::default(),
             },
             // X feed: small on the timeline, so type is larger relative to the frame and
             // captions are shorter.
@@ -212,6 +216,7 @@ impl Canvas {
                 icon: 42.0,
                 vertical: false,
                 look: Default::default(),
+                numerals: Default::default(),
             },
         }
     }

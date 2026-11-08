@@ -1,0 +1,135 @@
+{
+  "topic_id": "03-investment-fees",
+  "script": {
+    "title": "How a 1% fee can cost you $95,000",
+    "hook": "Can 1% cost you $95,000?",
+    "series": "money",
+    "format": "long",
+    "cross_checked": true,
+    "scenes": [
+      {
+        "id": 0,
+        "heading": "A tiny fee?",
+        "narration": "A fee of one percent a year sounds tiny. Over 30 years, it can cost you more than $95,000. Let's see how.",
+        "visual_brief": "#pergunta Can 1% cost you $95,000?\nOpen the loop.",
+        "duration_hint_secs": 8.5
+      },
+      {
+        "id": 1,
+        "heading": "The example",
+        "narration": "You invest $500 a month for 30 years. We assume 7% a year before fees, just to do the math. Real returns vary, and you can lose money.",
+        "visual_brief": "#lista $500 a month; 30 years; 7% a year before fees, assumed\nAssumptions first.",
+        "duration_hint_secs": 10.8
+      },
+      {
+        "id": 2,
+        "heading": "Two funds",
+        "narration": "Fund A charges 0.1% a year. Fund B charges 1%. The fee comes out of your return every year, so A keeps 6.9% and B keeps 6%.",
+        "visual_brief": "#comparacao Fund A: 0.1% a year in fees; 6.9% left for you | Fund B: 1% a year in fees; 6% left for you\nThe only difference.",
+        "duration_hint_secs": 10.4
+      },
+      {
+        "id": 3,
+        "heading": "Same money in",
+        "narration": "Either way, you put in the same $180,000 over 30 years.",
+        "visual_brief": "#numero 180 | thousand dollars invested in both funds\nSame effort.",
+        "duration_hint_secs": 5.0
+      },
+      {
+        "id": 4,
+        "heading": "Thirty years later",
+        "narration": "After 30 years, Fund A is worth about $598,000. Fund B, about $502,000.",
+        "visual_brief": "#grafico Value after 30 years, in thousands of dollars | Fund A=598; Fund B=502\nThe gap.",
+        "duration_hint_secs": 5.0
+      },
+      {
+        "id": 5,
+        "heading": "The difference",
+        "narration": "The difference is $95,827. That is more than half of everything you put in.",
+        "visual_brief": "#numero 95827 | dollars lost to a 0.9% higher fee\nThe price of 1%.",
+        "duration_hint_secs": 5.4
+      },
+      {
+        "id": 6,
+        "heading": "Why so big",
+        "narration": "The fee is charged on your whole balance, every year. As the balance grows, so does the fee, and the money taken by fees never compounds for you again.",
+        "visual_brief": "#causa The fee hits the whole balance => The balance grows => The fee grows with it\nFees compound too.",
+        "duration_hint_secs": 11.2
+      },
+      {
+        "id": 7,
+        "heading": "The SEC says",
+        "narration": "The SEC puts it this way: over time, even small ongoing fees have a big impact on your investment portfolio.",
+        "visual_brief": "#citacao Over time, even small ongoing fees have a big impact on your investment portfolio. | U.S. Securities and Exchange Commission\nOfficial source.",
+        "duration_hint_secs": 7.7
+      },
+      {
+        "id": 8,
+        "heading": "Where fees hide",
+        "narration": "Where to look: the fund's expense ratio, any advisory fee, and account fees. Add them up to get your real yearly cost.",
+        "visual_brief": "#lista Fund expense ratio; Advisory fee; Account fees\nWhat to check.",
+        "duration_hint_secs": 8.5
+      },
+      {
+        "id": 9,
+        "heading": "Compare first",
+        "narration": "Before you invest, find the total yearly fee and compare. A gap that looks smaller than one percent can become a six figure gap later. This is math, not investment advice.",
+        "visual_brief": "#destaque\nClose.",
+        "duration_hint_secs": 11.9
+      }
+    ],
+    "sources": [
+      {
+        "title": "Understanding Fees",
+        "url": "https://www.investor.gov/introduction-investing/getting-started/understanding-fees",
+        "publisher": "Investor.gov (U.S. Securities and Exchange Commission)",
+        "retrieved_at": "2026-11-08",
+        "license": "referencia documental; texto nao redistribuido"
+      },
+      {
+        "title": "Investor Bulletin: How Fees and Expenses Affect Your Investment Portfolio",
+        "url": "https://www.sec.gov/investor/alerts/ib_fees_expenses.pdf",
+        "publisher": "U.S. Securities and Exchange Commission",
+        "retrieved_at": "2026-11-08",
+        "license": "referencia documental; texto nao redistribuido"
+      },
+      {
+        "title": "Compound Interest Calculator",
+        "url": "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator",
+        "publisher": "Investor.gov (U.S. Securities and Exchange Commission)",
+        "retrieved_at": "2026-11-08",
+        "license": "referencia documental; texto nao redistribuido"
+      }
+    ],
+    "claims": [
+      {
+        "text": "$500 a month for 30 years at 6.9% (7% minus a 0.1% fee), compounded monthly, ends near $598,000 ($598,085). Calculo proprio.",
+        "status": "cited",
+        "source_urls": [
+          "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator"
+        ]
+      },
+      {
+        "text": "The same at 6% (7% minus a 1% fee) ends near $502,000 ($502,258); the difference is $95,827. Calculo proprio.",
+        "status": "cited",
+        "source_urls": [
+          "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator"
+        ]
+      },
+      {
+        "text": "Over time, even small ongoing fees have a big impact on your investment portfolio.",
+        "status": "cited",
+        "source_urls": [
+          "https://www.sec.gov/investor/alerts/ib_fees_expenses.pdf"
+        ]
+      },
+      {
+        "text": "Ongoing fees include fund expenses, advisory fees and account fees.",
+        "status": "cited",
+        "source_urls": [
+          "https://www.investor.gov/introduction-investing/getting-started/understanding-fees"
+        ]
+      }
+    ]
+  }
+}

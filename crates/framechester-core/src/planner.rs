@@ -31,8 +31,8 @@ use crate::narration::segment_narration;
 use crate::presets;
 use crate::storyboard::{
     narration_words, shared_hero, Animation, CaptionPlan, Character, Composition, Cue,
-    ElementShape, Icon, Motion, Pose, Relation, RelationKind, Role, Storyboard, StoryboardScene,
-    Transition, ValidationCriteria, VideoFormat, VisualObject, SCHEMA_VERSION,
+    ElementShape, Icon, Motion, Numerals, Pose, Relation, RelationKind, Role, Storyboard,
+    StoryboardScene, Transition, ValidationCriteria, VideoFormat, VisualObject, SCHEMA_VERSION,
 };
 
 const MAX_FIELD: usize = 160;
@@ -1138,7 +1138,7 @@ pub fn transition_into(
 
 /// Plans one scene. The note after the directive becomes the learning goal when present.
 pub fn plan_scene(scene: &Scene, index: usize) -> Result<StoryboardScene> {
-    plan_scene_with(scene, index, parse_composition(scene)?)
+    plan_scene_with(scene, index, parse_composition(scene)?, Numerals::DotGroups)
 }
 
 /// [`plan_scene`] with the composition already parsed (a stage scene needs the script's
@@ -1147,6 +1147,7 @@ fn plan_scene_with(
     scene: &Scene,
     index: usize,
     composition: Composition,
+    numerals: Numerals,
 ) -> Result<StoryboardScene> {
     let (_, note) = split_brief(&scene.visual_brief);
     let note = match composition {
@@ -1184,7 +1185,7 @@ fn plan_scene_with(
         // Provisional: `plan_script` sets each transition from the scene before it.
         transition: transition_into(None, None, index, None),
     };
-    planned.validate()?;
+    planned.validate_in(numerals)?;
     Ok(planned)
 }
 
@@ -1197,7 +1198,7 @@ pub fn plan_script(
     channel: &str,
     format: VideoFormat,
 ) -> Result<(Storyboard, Vec<String>)> {
-    plan_script_for(script, channel, format, None)
+    plan_script_for(script, channel, format, None, "pt-BR")
 }
 
 /// [`plan_script`] for a channel with its own identity: the storyboard carries it, and the
@@ -1207,7 +1208,9 @@ pub fn plan_script_for(
     channel: &str,
     format: VideoFormat,
     identity: Option<&crate::storyboard::Identity>,
+    language: &str,
 ) -> Result<(Storyboard, Vec<String>)> {
+    let numerals = Numerals::for_language(language);
     let mut fallbacks = Vec::new();
     let mut scenes = Vec::with_capacity(script.scenes.len());
     let described = described_cast(script);
@@ -1265,8 +1268,9 @@ pub fn plan_script_for(
         let planned = match split_brief(&scene.visual_brief) {
             (Some(("palco", headline)), rest) => stage
                 .parse(scene.id, headline, rest, &scene.narration)
-                .and_then(|composition| plan_scene_with(scene, index, composition)),
-            _ => plan_scene(scene, index),
+                .and_then(|composition| plan_scene_with(scene, index, composition, numerals)),
+            _ => parse_composition(scene)
+                .and_then(|composition| plan_scene_with(scene, index, composition, numerals)),
         };
         match planned {
             Ok(planned) => scenes.push(planned),
@@ -1276,7 +1280,12 @@ pub fn plan_script_for(
                     visual_brief: note.to_string(),
                     ..scene.clone()
                 };
-                scenes.push(plan_scene(&plain, index)?);
+                scenes.push(plan_scene_with(
+                    &plain,
+                    index,
+                    parse_composition(&plain)?,
+                    numerals,
+                )?);
                 fallbacks.push(format!("{error}; layout padrao usado"));
             }
         }
@@ -1311,7 +1320,7 @@ pub fn plan_script_for(
         title: script.title.clone(),
         channel: channel.to_string(),
         format,
-        language: "pt-BR".into(),
+        language: language.to_string(),
         scenes,
         look: None,
         source_hash: None,

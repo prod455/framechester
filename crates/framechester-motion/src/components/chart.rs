@@ -4,7 +4,7 @@ use super::{rows, Ctx};
 use crate::format::Rect;
 use crate::scene::{Anchor, Node, Shape};
 use crate::tokens::{self, palette};
-use framechester_core::storyboard::{format_value, Role, VisualObject};
+use framechester_core::storyboard::{format_value_in, Role, VisualObject};
 
 fn counter_node(
     ctx: &Ctx<'_>,
@@ -16,13 +16,13 @@ fn counter_node(
     anchor: Anchor,
 ) -> Node {
     let value = object.value.unwrap_or(0.0);
-    let text = format_value(value, object.unit.as_deref());
+    let text = format_value_in(value, object.unit.as_deref(), ctx.canvas.numerals);
     let (family, weight) = ctx.display();
     let mut node = ctx.ts.line(
         &object.id, &text, x, baseline, size, weight, family, colour, anchor,
     );
     if let Shape::Text { counter, .. } = &mut node.shape {
-        *counter = Some((value, object.unit.clone()));
+        *counter = Some((value, object.unit.clone(), ctx.canvas.numerals));
     }
     node
 }
@@ -57,7 +57,11 @@ pub fn build(
     );
     if objects.len() == 1 {
         let object = &objects[0];
-        let text = format_value(object.value.unwrap_or(0.0), object.unit.as_deref());
+        let text = format_value_in(
+            object.value.unwrap_or(0.0),
+            object.unit.as_deref(),
+            ctx.canvas.numerals,
+        );
         let mut size = ctx.display_size(scale.number);
         let (family, weight) = ctx.display();
         while size > scale.heading && ctx.ts.measure(&text, size, weight, family) > body.w {

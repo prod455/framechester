@@ -1,0 +1,40 @@
+{
+  "id": "07-subscriptions-50",
+  "title": "What $50 a month in subscriptions really costs over 30 years",
+  "series": "money",
+  "angle": "$50 a month for 30 years, spent versus invested at an assumed 7% a year",
+  "sources": [
+    {
+      "title": "Compound Interest Calculator",
+      "url": "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator",
+      "publisher": "Investor.gov (U.S. Securities and Exchange Commission)",
+      "retrieved_at": "2026-11-08",
+      "license": "referencia documental; texto nao redistribuido"
+    }
+  ],
+  "claims": [
+    {
+      "text": "$50 a month is $600 a year and $18,000 over 30 years. Calculo proprio.",
+      "status": "cited",
+      "source_urls": [
+        "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator"
+      ]
+    },
+    {
+      "text": "$50 a month invested for 30 years at 7% a year, compounded monthly, ends near $61,000 ($60,999). Calculo proprio.",
+      "status": "cited",
+      "source_urls": [
+        "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator"
+      ]
+    }
+  ],
+  "metrics": {
+    "acceleration": 0.5,
+    "demand": 0.8,
+    "alignment": 0.8,
+    "originality": 0.6,
+    "visual_feasibility": 0.9,
+    "timing": 0.6,
+    "cross_check": 0.9
+  }
+}

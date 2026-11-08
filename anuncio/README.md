@@ -1,7 +1,7 @@
 # Anúncio vertical
 
 Caminho separado do motor Rust para anúncios curtos no formato **Dor e solução**
-([GUIA_VISUAL.md](../docs/GUIA_VISUAL.md#formatos-de-roteiro)): 1080×1920 a 60 fps, cada
+([GUIA_VISUAL.md](../docs/GUIA_VISUAL.md#formatos-de-roteiro)): 1080×1920 no fps do projeto (30, o perfil de Short do QA; a animação é calculada a 60), cada
 animação presa a uma palavra da narração, personagens 3D e a sua voz clonada. O motor
 `framechester produce` continua sendo o caminho dos vídeos do canal.
 
@@ -66,14 +66,17 @@ Nada disso vai para o Git: `public/`, `out/`, `.venv-ia/` e `anuncio.json` ficam
    npm --prefix anuncio run quadros   # dois quadros por cena em out/quadros
    npm --prefix anuncio run studio    # http://127.0.0.1:4318: assista, pause, pule de cena
    ```
-6. Gere a versão final (H.264, CRF 12, 60 fps, `--scale=2`, 2160×3840):
+6. Gere a versão final (H.264, CRF 12, 1080×1920, 30 fps, capturada em 2× e reduzida com lanczos):
    ```bash
    npm --prefix anuncio run render:final
    ```
-   Ela só roda se o `checar --final` passar: narração presente, tempo vindo do
-   faster-whisper, todos os personagens com transparência e o roteiro batendo com a fala.
-   O arquivo fica em `anuncio/out/final.mp4`. Para uma prévia rápida em 1080×1920:
-   `npm --prefix anuncio run render`.
+   Ela só começa se o `checar --final` passar (narração presente, tempo vindo do
+   faster-whisper, personagens com transparência, roteiro batendo com a fala) e só termina
+   pronta se passar no QA técnico de Short do Framechester (`framechester qa --format short`):
+   o script sai com 0 se aprovado, 1 se pede revisão humana e 2 se reprovado. O QA usa
+   `FRAMECHESTER_BIN`, o `target/release/framechester` já compilado ou o `cargo`. O arquivo
+   fica em `anuncio/out/final.mp4`. Para uma prévia rápida: `npm --prefix anuncio run render`
+   (CRF 18, `anuncio/out/previa.mp4`, sem QA).
 
 Na primeira vez, baixe o Chromium do Playwright: `npx --prefix anuncio playwright-core install chromium`.
 Para usar outro Chromium já instalado: `NAVEGADOR=/caminho/do/chromium`. `TRABALHADORES=N`

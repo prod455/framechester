@@ -8,6 +8,9 @@ podem quebrar a compatibilidade e avisam isso aqui.
 ## [Unreleased]
 
 ### Adicionado
+- **Formato escolhido pela narração**: entre a abertura e o fechamento, uma cena sem diretiva vira número em destaque, passos ou causa e efeito quando a fala pede (um número-chave, "first/then/finally", "so/which means"); senão continua com o personagem. Vídeos sem diretivas deixam de ser só personagem falando. Regras em `docs/GUIA_VISUAL.md`.
+- **Números no idioma do vídeo**: en-US mostra `3,322` e `3.5`; pt-BR e es seguem com `3.322` e `3,5`. A contagem animada de um valor inteiro anda em inteiros.
+- **Canais en-US e 7 roteiros de finanças** em `examples/compound-coyote/` e `examples/juros-compostos.*`, com calendário em `docs/CALENDARIO_COMPOUND_COYOTE.md`.
 - **Links de afiliado por canal**: no cadastro do canal no Studio (um por linha: nome | link https | termos) ou em `[[channels.affiliates]]`. A descrição gerada lista só os links cujos termos aparecem no título, gancho, títulos de cena ou narração, e abre com o aviso de afiliado (en-US, pt-BR, es) antes de qualquer link; com link da Amazon, inclui a frase exigida pelo Amazon Associates. Até 10 links por canal, URL https obrigatória, validação igual no Studio e no motor.
 
 ### Removido

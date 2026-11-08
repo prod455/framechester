@@ -1,0 +1,114 @@
+{
+  "topic_id": "06-snowball-vs-avalanche",
+  "script": {
+    "title": "Debt snowball vs avalanche: the math with three real-looking debts",
+    "hook": "Smallest debt first, or highest rate first?",
+    "series": "money",
+    "format": "long",
+    "cross_checked": true,
+    "scenes": [
+      {
+        "id": 0,
+        "heading": "Which debt first?",
+        "narration": "You have three debts and some extra money each month. Do you kill the smallest debt first, or the one with the highest rate? Let's run both.",
+        "visual_brief": "#pergunta Smallest debt first, or highest rate first?\nOpen the loop.",
+        "duration_hint_secs": 10.4
+      },
+      {
+        "id": 1,
+        "heading": "Two methods",
+        "narration": "The snowball pays the smallest balance first. The avalanche pays the highest interest rate first. Both pay the minimum on everything else.",
+        "visual_brief": "#comparacao Snowball: smallest balance first; quick wins | Avalanche: highest rate first; less interest\nDefine both.",
+        "duration_hint_secs": 8.5
+      },
+      {
+        "id": 2,
+        "heading": "Three debts",
+        "narration": "Our example: a $1,500 store card at 18%, a $6,000 credit card at 26%, and an $8,000 car loan at 7%. These are made up numbers, just for the math.",
+        "visual_brief": "#lista Store card: $1,500 at 18%; Credit card: $6,000 at 26%; Car loan: $8,000 at 7%\nThe debts.",
+        "duration_hint_secs": 11.5
+      },
+      {
+        "id": 3,
+        "heading": "The budget",
+        "narration": "The minimums add up to $390. You can pay $690 a month, so $300 extra goes to one target at a time.",
+        "visual_brief": "#numero 300 | extra dollars a month toward one debt\nThe lever.",
+        "duration_hint_secs": 8.5
+      },
+      {
+        "id": 4,
+        "heading": "Snowball run",
+        "narration": "With the snowball, the store card is gone in month 5. That first win comes fast.",
+        "visual_brief": "#numero 5 | months to the first paid off debt with the snowball\nQuick win.",
+        "duration_hint_secs": 6.2
+      },
+      {
+        "id": 5,
+        "heading": "Avalanche run",
+        "narration": "With the avalanche, the 26% card goes first. Your first payoff only comes in month 16.",
+        "visual_brief": "#numero 16 | months to the first paid off debt with the avalanche\nSlower start.",
+        "duration_hint_secs": 6.2
+      },
+      {
+        "id": 6,
+        "heading": "The finish line",
+        "narration": "Snowball: all debt gone in 27 months. Avalanche: 26 months.",
+        "visual_brief": "#grafico Months to be debt free | Snowball=27; Avalanche=26\nAlmost the same.",
+        "duration_hint_secs": 5.0
+      },
+      {
+        "id": 7,
+        "heading": "The interest",
+        "narration": "Snowball costs $2,513 in interest. Avalanche costs $2,350. The avalanche saves $163.",
+        "visual_brief": "#grafico Total interest, in dollars | Snowball=2513; Avalanche=2350\nThe math winner.",
+        "duration_hint_secs": 5.0
+      },
+      {
+        "id": 8,
+        "heading": "Why avalanche wins",
+        "narration": "Paying the highest rate first shrinks the most expensive balance first, so less interest piles up every month.",
+        "visual_brief": "#causa Highest rate paid first => The most expensive balance shrinks => Less interest each month\nThe logic.",
+        "duration_hint_secs": 6.9
+      },
+      {
+        "id": 9,
+        "heading": "So which one?",
+        "narration": "Mathematically, the avalanche wins. But the snowball gives you a win in month 5 instead of month 16. The best method is the one you will actually stick to. This is math, not financial advice.",
+        "visual_brief": "#destaque\nHonest close.",
+        "duration_hint_secs": 13.5
+      }
+    ],
+    "sources": [
+      {
+        "title": "Snowball vs. Avalanche for Paying Down Debt",
+        "url": "https://www.navyfederal.org/makingcents/credit-debt/snowball-vs-avalanche-for-paying-down-debt.html",
+        "publisher": "Navy Federal Credit Union",
+        "retrieved_at": "2026-11-08",
+        "license": "referencia documental; texto nao redistribuido"
+      },
+      {
+        "title": "What is APR?",
+        "url": "https://www.consumerfinance.gov/ask-cfpb/what-is-apr-en-36/",
+        "publisher": "Consumer Financial Protection Bureau",
+        "retrieved_at": "2026-11-08",
+        "license": "referencia documental; texto nao redistribuido"
+      }
+    ],
+    "claims": [
+      {
+        "text": "Snowball pays the smallest balance first; avalanche pays the highest interest rate first; both keep minimums on every debt.",
+        "status": "cited",
+        "source_urls": [
+          "https://www.navyfederal.org/makingcents/credit-debt/snowball-vs-avalanche-for-paying-down-debt.html"
+        ]
+      },
+      {
+        "text": "Example debts: store card $1,500 at 18% ($40 minimum), credit card $6,000 at 26% ($150), car loan $8,000 at 7% ($200), with $690 a month in total. Snowball: first debt gone in month 5, all gone in 27 months, $2,513 interest. Avalanche: first debt gone in month 16, all gone in 26 months, $2,350 interest. Simulacao mensal propria.",
+        "status": "cited",
+        "source_urls": [
+          "https://www.consumerfinance.gov/ask-cfpb/what-is-apr-en-36/"
+        ]
+      }
+    ]
+  }
+}

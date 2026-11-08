@@ -1026,7 +1026,10 @@ fn compose_at(
 /// (`duration_secs > 0`) for cues to resolve; without it, cues fall back to the start.
 pub fn compose(storyboard: &Storyboard, typesetter: &Typesetter) -> Result<Composed> {
     storyboard.validate()?;
-    let canvas = Canvas::for_storyboard(storyboard.format, storyboard.look.unwrap_or_default());
+    let canvas = Canvas {
+        numerals: framechester_core::storyboard::Numerals::for_language(&storyboard.language),
+        ..Canvas::for_storyboard(storyboard.format, storyboard.look.unwrap_or_default())
+    };
     let total = storyboard.scenes.len();
     let stages = components::stage::contexts(
         &storyboard.scenes,
@@ -1050,7 +1053,10 @@ pub fn compose(storyboard: &Storyboard, typesetter: &Typesetter) -> Result<Compo
 /// (`ESTIMATED_SECS_PER_WORD`); the storyboard itself is not changed.
 pub fn layout_preflight(storyboard: &Storyboard, typesetter: &Typesetter) -> Vec<LayoutIssue> {
     const ESTIMATED_SECS_PER_WORD: f32 = 0.33;
-    let canvas = Canvas::for_storyboard(storyboard.format, storyboard.look.unwrap_or_default());
+    let canvas = Canvas {
+        numerals: framechester_core::storyboard::Numerals::for_language(&storyboard.language),
+        ..Canvas::for_storyboard(storyboard.format, storyboard.look.unwrap_or_default())
+    };
     let total = storyboard.scenes.len();
     let stages = components::stage::contexts(
         &storyboard.scenes,

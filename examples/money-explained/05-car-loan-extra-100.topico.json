@@ -1,0 +1,40 @@
+{
+  "id": "05-car-loan-extra-100",
+  "title": "Pay $100 extra on a car loan and see what happens",
+  "series": "money",
+  "angle": "$30,000 car loan at an assumed 8% APR for 72 months, with and without $100 extra a month",
+  "sources": [
+    {
+      "title": "What is APR?",
+      "url": "https://www.consumerfinance.gov/ask-cfpb/what-is-apr-en-36/",
+      "publisher": "Consumer Financial Protection Bureau",
+      "retrieved_at": "2026-11-08",
+      "license": "referencia documental; texto nao redistribuido"
+    }
+  ],
+  "claims": [
+    {
+      "text": "$30,000 at 8% APR over 72 months costs about $526 a month and $7,872 in interest (amortization formula). Calculo proprio.",
+      "status": "cited",
+      "source_urls": [
+        "https://www.consumerfinance.gov/ask-cfpb/what-is-apr-en-36/"
+      ]
+    },
+    {
+      "text": "Paying $626 a month instead finishes in 58 months with $6,264 in interest, saving $1,608 and 14 months. Calculo proprio.",
+      "status": "cited",
+      "source_urls": [
+        "https://www.consumerfinance.gov/ask-cfpb/what-is-apr-en-36/"
+      ]
+    }
+  ],
+  "metrics": {
+    "acceleration": 0.5,
+    "demand": 0.8,
+    "alignment": 0.8,
+    "originality": 0.6,
+    "visual_feasibility": 0.9,
+    "timing": 0.6,
+    "cross_check": 0.9
+  }
+}

@@ -1189,6 +1189,166 @@ fn plan_scene_with(
     Ok(planned)
 }
 
+/// Sentences of a narration, split after ".", "?" or "!" followed by a space.
+fn sentences(narration: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut start = 0;
+    let bytes = narration.as_bytes();
+    for (index, byte) in bytes.iter().enumerate() {
+        let ends = matches!(byte, b'.' | b'?' | b'!')
+            && bytes
+                .get(index + 1)
+                .is_none_or(|next| next.is_ascii_whitespace());
+        if ends {
+            let sentence = narration[start..=index].trim();
+            if !sentence.is_empty() {
+                out.push(sentence);
+            }
+            start = index + 1;
+        }
+    }
+    let tail = narration[start..].trim();
+    if !tail.is_empty() {
+        out.push(tail);
+    }
+    out
+}
+
+/// Words that open a step of a sequence, in English and Portuguese.
+const STEP_OPENERS: [&str; 14] = [
+    "first",
+    "second",
+    "third",
+    "then",
+    "next",
+    "finally",
+    "last",
+    "primeiro",
+    "segundo",
+    "terceiro",
+    "depois",
+    "em seguida",
+    "por fim",
+    "finalmente",
+];
+/// Words that open a consequence of the sentence before.
+const CAUSE_OPENERS: [&str; 12] = [
+    "so ",
+    "that's why",
+    "that is why",
+    "which means",
+    "this means",
+    "as a result",
+    "por isso",
+    "então",
+    "entao",
+    "assim,",
+    "com isso",
+    "isso significa",
+];
+
+fn opens_with(sentence: &str, openers: &[&str]) -> bool {
+    let lower = sentence.to_lowercase();
+    openers.iter().any(|opener| {
+        lower.starts_with(opener)
+            && lower[opener.len()..]
+                .chars()
+                .next()
+                .is_none_or(|next| !next.is_alphanumeric() || opener.ends_with(' '))
+    })
+}
+
+fn item(sentence: &str) -> String {
+    sentence
+        .trim_end_matches(['.', '!', '?'])
+        .replace([';', '|', '[', ']', '{', '}'], ",")
+        .replace("=>", "->")
+        .trim()
+        .to_string()
+}
+
+/// The composition a scene without a directive asks for by its narration: one key number
+/// (the only one said, or the only one its heading repeats) becomes a big number, a sequence of "first, then, finally" becomes steps, a chain of
+/// "so, which means" becomes cause and effect. Anything else (or text too long to read
+/// in a box) returns `None` and the scene stays with the channel's character.
+pub fn inferred_directive(heading: &str, narration: &str, numerals: Numerals) -> Option<String> {
+    let said = sentences(narration);
+    // Steps: three to six sentences, at least two opening with a sequence word.
+    let steps = said.iter().filter(|s| opens_with(s, &STEP_OPENERS)).count();
+    if (3..=6).contains(&said.len()) && steps >= 2 && said.iter().all(|s| s.chars().count() <= 60) {
+        let items: Vec<String> = said.iter().map(|s| item(s)).collect();
+        return Some(format!("#passos {}", items.join("; ")));
+    }
+    // Cause and effect: two to four sentences, every one after the first a consequence.
+    if (2..=4).contains(&said.len())
+        && said[1..].iter().all(|s| opens_with(s, &CAUSE_OPENERS))
+        && said.iter().all(|s| s.chars().count() <= 55)
+    {
+        let items: Vec<String> = said.iter().map(|s| item(s)).collect();
+        return Some(format!("#causa {}", items.join(" => ")));
+    }
+    // One key number: the only number said, or the only one the heading repeats. Shown
+    // big, with the clause around it as the legend.
+    let numbers_in = |text: &str| -> Vec<String> {
+        text.split_whitespace()
+            .map(|word| word.trim_matches(|c: char| !c.is_ascii_digit() && c != '%' && c != '$'))
+            .map(|word| word.trim_start_matches('$').to_string())
+            .filter(|word| word.chars().any(|c| c.is_ascii_digit()))
+            .collect()
+    };
+    let said_numbers = numbers_in(narration);
+    let key = match said_numbers.as_slice() {
+        [only] => only.clone(),
+        [] => return None,
+        _ => {
+            let headed: Vec<String> = numbers_in(heading)
+                .into_iter()
+                .filter(|number| said_numbers.contains(number))
+                .collect();
+            match headed.as_slice() {
+                [only] => only.clone(),
+                _ => return None,
+            }
+        }
+    };
+    let sentence = said.iter().find(|s| s.contains(key.as_str()))?;
+    // Clauses end at ", " (with the space): "3,322" stays one number.
+    let joined = sentence.replace("; ", ", ").replace(": ", ", ");
+    let clause = joined
+        .split(", ")
+        .find(|part| part.contains(key.as_str()))?
+        .trim();
+    let lower = clause.to_lowercase();
+    let clause = ["and ", "so ", "but ", "e ", "mas "]
+        .iter()
+        .find(|opener| lower.starts_with(*opener))
+        .map_or(clause, |opener| &clause[opener.len()..]);
+    let mut legend = item(clause);
+    if let Some(first) = legend.get(..1) {
+        legend = first.to_uppercase() + &legend[1..];
+    }
+    if legend.chars().count() > 60 {
+        return None;
+    }
+    let (digits, percent) = match key.strip_suffix('%') {
+        Some(digits) => (digits, "%"),
+        None => (key.as_str(), ""),
+    };
+    if digits.is_empty()
+        || !digits
+            .chars()
+            .all(|c| c.is_ascii_digit() || c == '.' || c == ',')
+    {
+        return None;
+    }
+    // The directive parser reads pt-BR numerals: "." groups, "," is the decimal.
+    let value = match numerals {
+        Numerals::CommaGroups => digits.replace(',', "").replace('.', ","),
+        Numerals::DotGroups => digits.to_string(),
+    };
+    Some(format!("#numero {value}{percent} | {legend}"))
+}
+
 /// Plans a whole script. Timing is filled later by narration.
 ///
 /// As in the still-image catalog, a malformed directive is a note, not a defect: the scene
@@ -1224,6 +1384,24 @@ pub fn plan_script_for(
         identity.map_or(&[][..], |identity| identity.cast.as_slice()),
     );
     for (index, scene) in script.scenes.iter().enumerate() {
+        // Between the opening and the closing, a scene without a directive takes the
+        // format its narration asks for (see `inferred_directive`).
+        let inferred = (index > 0
+            && index + 1 < total
+            && split_brief(&scene.visual_brief).0.is_none())
+        .then(|| inferred_directive(&scene.heading, &scene.narration, numerals))
+        .flatten()
+        .map(|directive| Scene {
+            visual_brief: format!("{directive}\n{}", scene.visual_brief),
+            ..scene.clone()
+        })
+        // An inference the scene cannot carry leaves it with the character, never a fallback.
+        .filter(|inferred| {
+            parse_composition(inferred)
+                .and_then(|composition| plan_scene_with(inferred, index, composition, numerals))
+                .is_ok()
+        });
+        let scene = inferred.as_ref().unwrap_or(scene);
         // A scene without a directive, or a question, is told by the character that fits
         // the topic; every other directive keeps its own composition.
         let (directive, note) = split_brief(&scene.visual_brief);
@@ -1881,5 +2059,91 @@ mod tests {
         assert!(moves
             .iter()
             .all(|animation| animation.destination.as_deref() == Some("depois-skill-versionada")));
+    }
+
+    #[test]
+    fn a_scene_without_directive_takes_the_format_its_narration_asks_for() {
+        let en = Numerals::CommaGroups;
+        let infer = |heading: &str, narration: &str| inferred_directive(heading, narration, en);
+        assert_eq!(
+            infer(
+                "Interest",
+                "And you pay $3,322 in interest, on top of the five thousand you borrowed."
+            )
+            .as_deref(),
+            Some("#numero 3322 | You pay $3,322 in interest")
+        );
+        assert_eq!(
+            infer("Monthly", "That is about 2.5% a month.").as_deref(),
+            Some("#numero 2,5% | That is about 2.5% a month")
+        );
+        assert_eq!(
+            infer(
+                "56 months",
+                "At $150 a month, it takes 56 months to clear the card."
+            )
+            .as_deref(),
+            Some("#numero 56 | It takes 56 months to clear the card")
+        );
+        assert_eq!(
+            infer(
+                "Plan",
+                "First, list every debt. Then, sort by rate. Finally, pay the top one."
+            )
+            .as_deref(),
+            Some("#passos First, list every debt; Then, sort by rate; Finally, pay the top one")
+        );
+        assert_eq!(
+            infer("Why", "Prices rise every year. So your cash buys less.").as_deref(),
+            Some("#causa Prices rise every year => So your cash buys less")
+        );
+        // Two numbers the heading does not settle, or no number at all: the character tells it.
+        assert_eq!(infer("Result", "Ben has 244 and Ana has 281."), None);
+        assert_eq!(infer("Idea", "Money grows when you leave it alone."), None);
+        // A legend too long to read in a box.
+        let long = "At this point the balance has been sitting there for 56 months with almost nothing changing at all.";
+        assert_eq!(infer("Wait", long), None);
+        assert_eq!(
+            inferred_directive("Juros", "Você paga R$ 3.322 de juros.", Numerals::DotGroups)
+                .as_deref(),
+            Some("#numero 3.322 | Você paga R$ 3.322 de juros")
+        );
+    }
+
+    #[test]
+    fn inferred_formats_skip_the_opening_and_the_closing() {
+        let narrations = [
+            "You pay 56 dollars a month.",
+            "It takes 56 months to clear the card.",
+            "Prices rise every year. So your cash buys less.",
+            "Pay 300 dollars a month instead.",
+        ];
+        let scenes = narrations
+            .iter()
+            .enumerate()
+            .map(|(index, narration)| Scene {
+                id: index as u32,
+                heading: format!("Scene {index}"),
+                narration: (*narration).into(),
+                visual_brief: "Free note.".into(),
+                duration_hint_secs: 8.0,
+            })
+            .collect();
+        let mut base = script("Card math", Vec::new());
+        base.scenes = scenes;
+        let (storyboard, fallbacks) =
+            plan_script_for(&base, "money", VideoFormat::Horizontal, None, "en-US").unwrap();
+        assert!(fallbacks.is_empty(), "{fallbacks:?}");
+        let kinds: Vec<&str> = storyboard
+            .scenes
+            .iter()
+            .map(|scene| match scene.composition {
+                Composition::Character { .. } => "character",
+                Composition::Chart { .. } => "chart",
+                Composition::CauseEffect { .. } => "cause",
+                _ => "other",
+            })
+            .collect();
+        assert_eq!(kinds, ["character", "chart", "cause", "character"]);
     }
 }

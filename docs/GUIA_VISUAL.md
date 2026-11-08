@@ -32,7 +32,19 @@ Todo vídeo sai do motor motion (`framechester produce`, ou `run` no Studio), qu
 um storyboard semântico com cenas animadas. Ele aceita as diretivas abaixo e, além delas, `#fluxo`, `#grafico`, `#arquitetura`, `#codigo`,
 `#transformacao`, `#anotacao`, `#infografico`, `#causa`, `#personagem` e `#palco`
 (palco contínuo com mascotes, uma metáfora e um medidor que atravessa as cenas; veja
-abaixo). Uma cena sem
+abaixo).
+
+**Formato escolhido pela narração.** Entre a primeira e a última cena, uma cena sem
+diretiva ganha o formato que a fala pede, sem o roteirista escrever nada:
+
+| A narração tem | Vira |
+|---|---|
+| um número só, ou vários e o título da cena repete um deles | `#numero` com o trecho da frase como legenda |
+| 3 a 6 frases, duas ou mais abertas por "first/then/finally" ("primeiro/depois/por fim") | `#passos` |
+| 2 a 4 frases, cada uma depois da primeira aberta por "so/which means" ("por isso/então") | `#causa` |
+
+Texto longo demais para caber numa caixa (legenda acima de 60 caracteres) ou uma inferência
+que não passa na validação deixa a cena com o personagem. Uma cena sem
 diretiva ou com `#pergunta` é contada por um personagem animado que combina com a pauta (robô, dev,
 cientista ou apresentador); `#destaque` mantém o título tipográfico. Gramática completa em
 [STORYBOARD.md](STORYBOARD.md); direção de arte em

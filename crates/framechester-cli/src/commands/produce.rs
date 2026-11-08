@@ -137,9 +137,8 @@ fn plan_without_look(
     let mut script = provider.generate(&prompt, &GenerationBudget::default())?;
     script.claims = LocalEvidenceProvider.verify(&script.claims)?;
     let _ = config;
-    let (mut storyboard, fallbacks) =
-        plan_script_for(&script, channel_name, format, channel_identity)?;
-    storyboard.language = language.to_string();
+    let (storyboard, fallbacks) =
+        plan_script_for(&script, channel_name, format, channel_identity, language)?;
     Ok(Planned {
         topic: Some(topic),
         script: Some(script),

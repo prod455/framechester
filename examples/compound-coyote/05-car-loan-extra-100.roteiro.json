@@ -1,0 +1,107 @@
+{
+  "topic_id": "05-car-loan-extra-100",
+  "script": {
+    "title": "Pay $100 extra on a car loan and see what happens",
+    "hook": "What does $100 extra do to a car loan?",
+    "series": "money",
+    "format": "long",
+    "cross_checked": true,
+    "scenes": [
+      {
+        "id": 0,
+        "heading": "$100 a month",
+        "narration": "What happens if you pay just $100 more each month on a car loan? You finish over a year early and keep more than a thousand dollars. Here is the math.",
+        "visual_brief": "#pergunta What does $100 extra do to a car loan?\nOpen the loop.",
+        "duration_hint_secs": 11.9
+      },
+      {
+        "id": 1,
+        "heading": "The loan",
+        "narration": "Our example: a $30,000 car loan, 8% a year, for 72 months. The rate is an assumption for the math. Your loan will have its own.",
+        "visual_brief": "#lista $30,000 borrowed; 8% a year, assumed; 72 months\nAssumptions.",
+        "duration_hint_secs": 10.0
+      },
+      {
+        "id": 2,
+        "heading": "The payment",
+        "narration": "That loan costs about $526 a month.",
+        "visual_brief": "#numero 526 | dollars a month for 72 months\nBaseline payment.",
+        "duration_hint_secs": 5.0
+      },
+      {
+        "id": 3,
+        "heading": "The interest",
+        "narration": "Over six years, you pay $7,872 in interest. That is on top of the $30,000 car.",
+        "visual_brief": "#numero 7872 | dollars of interest over 72 months\nThe hidden cost.",
+        "duration_hint_secs": 6.2
+      },
+      {
+        "id": 4,
+        "heading": "How a payment splits",
+        "narration": "Each payment first covers the interest for the month. Whatever is left pays down what you owe. Early on, interest takes a bigger share.",
+        "visual_brief": "#causa Payment arrives => Interest is paid first => The rest lowers the balance\nAmortization in one line.",
+        "duration_hint_secs": 9.2
+      },
+      {
+        "id": 5,
+        "heading": "Add $100",
+        "narration": "Now pay $626 instead of $526. The extra $100 skips the interest and goes straight to the balance.",
+        "visual_brief": "#comparacao Regular: $526 a month; 72 months | With $100 extra: $626 a month; 58 months\nThe change.",
+        "duration_hint_secs": 6.9
+      },
+      {
+        "id": 6,
+        "heading": "Done sooner",
+        "narration": "The loan is gone in 58 months instead of 72. That is 14 months with no car payment.",
+        "visual_brief": "#grafico Months to pay off | Regular=72; With $100 extra=58\nTime saved.",
+        "duration_hint_secs": 6.9
+      },
+      {
+        "id": 7,
+        "heading": "Less interest",
+        "narration": "Interest falls from $7,872 to $6,264. You keep $1,608.",
+        "visual_brief": "#grafico Interest paid, in dollars | Regular=7872; With $100 extra=6264\nMoney saved.",
+        "duration_hint_secs": 5.0
+      },
+      {
+        "id": 8,
+        "heading": "Why it works",
+        "narration": "A smaller balance means less interest every month after that. Each extra dollar makes the next payment work a little harder for you.",
+        "visual_brief": "#causa Extra $100 lowers the balance => Less interest next month => More of each payment hits the debt\nThe snowball inside a loan.",
+        "duration_hint_secs": 8.8
+      },
+      {
+        "id": 9,
+        "heading": "Before you do it",
+        "narration": "Before paying extra, ask your lender how extra payments are applied, and make sure they go to the principal. This is math, not financial advice.",
+        "visual_brief": "#destaque\nPractical check.",
+        "duration_hint_secs": 9.6
+      }
+    ],
+    "sources": [
+      {
+        "title": "What is APR?",
+        "url": "https://www.consumerfinance.gov/ask-cfpb/what-is-apr-en-36/",
+        "publisher": "Consumer Financial Protection Bureau",
+        "retrieved_at": "2026-11-08",
+        "license": "referencia documental; texto nao redistribuido"
+      }
+    ],
+    "claims": [
+      {
+        "text": "$30,000 at 8% APR over 72 months costs about $526 a month and $7,872 in interest (amortization formula). Calculo proprio.",
+        "status": "cited",
+        "source_urls": [
+          "https://www.consumerfinance.gov/ask-cfpb/what-is-apr-en-36/"
+        ]
+      },
+      {
+        "text": "Paying $626 a month instead finishes in 58 months with $6,264 in interest, saving $1,608 and 14 months. Calculo proprio.",
+        "status": "cited",
+        "source_urls": [
+          "https://www.consumerfinance.gov/ask-cfpb/what-is-apr-en-36/"
+        ]
+      }
+    ]
+  }
+}

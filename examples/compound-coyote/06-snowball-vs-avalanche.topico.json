@@ -1,0 +1,47 @@
+{
+  "id": "06-snowball-vs-avalanche",
+  "title": "Debt snowball vs avalanche: the math with three real-looking debts",
+  "series": "money",
+  "angle": "Three example debts and $300 extra a month: snowball versus avalanche, month by month",
+  "sources": [
+    {
+      "title": "Snowball vs. Avalanche for Paying Down Debt",
+      "url": "https://www.navyfederal.org/makingcents/credit-debt/snowball-vs-avalanche-for-paying-down-debt.html",
+      "publisher": "Navy Federal Credit Union",
+      "retrieved_at": "2026-11-08",
+      "license": "referencia documental; texto nao redistribuido"
+    },
+    {
+      "title": "What is APR?",
+      "url": "https://www.consumerfinance.gov/ask-cfpb/what-is-apr-en-36/",
+      "publisher": "Consumer Financial Protection Bureau",
+      "retrieved_at": "2026-11-08",
+      "license": "referencia documental; texto nao redistribuido"
+    }
+  ],
+  "claims": [
+    {
+      "text": "Snowball pays the smallest balance first; avalanche pays the highest interest rate first; both keep minimums on every debt.",
+      "status": "cited",
+      "source_urls": [
+        "https://www.navyfederal.org/makingcents/credit-debt/snowball-vs-avalanche-for-paying-down-debt.html"
+      ]
+    },
+    {
+      "text": "Example debts: store card $1,500 at 18% ($40 minimum), credit card $6,000 at 26% ($150), car loan $8,000 at 7% ($200), with $690 a month in total. Snowball: first debt gone in month 5, all gone in 27 months, $2,513 interest. Avalanche: first debt gone in month 16, all gone in 26 months, $2,350 interest. Simulacao mensal propria.",
+      "status": "cited",
+      "source_urls": [
+        "https://www.consumerfinance.gov/ask-cfpb/what-is-apr-en-36/"
+      ]
+    }
+  ],
+  "metrics": {
+    "acceleration": 0.5,
+    "demand": 0.8,
+    "alignment": 0.8,
+    "originality": 0.6,
+    "visual_feasibility": 0.9,
+    "timing": 0.6,
+    "cross_check": 0.9
+  }
+}

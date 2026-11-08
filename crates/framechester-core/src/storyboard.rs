@@ -1092,6 +1092,7 @@ impl Storyboard {
     }
 
     pub fn validate(&self) -> Result<()> {
+        let numerals = Numerals::for_language(&self.language);
         if self.version != SCHEMA_VERSION {
             return Err(FramechesterError::InvalidInput(format!(
                 "storyboard version {} nao suportada; esperado {SCHEMA_VERSION}",
@@ -1116,7 +1117,7 @@ impl Storyboard {
             if !ids.insert(scene.id) {
                 return Err(invalid(scene.id, "id duplicado"));
             }
-            scene.validate()?;
+            scene.validate_in(numerals)?;
         }
         Ok(())
     }
@@ -1360,6 +1361,11 @@ fn validate_freeform(scene: u32, elements: &[Element]) -> Result<()> {
 
 impl StoryboardScene {
     pub fn validate(&self) -> Result<()> {
+        self.validate_in(Numerals::DotGroups)
+    }
+
+    /// Validates with the numerals of the video's language.
+    pub fn validate_in(&self, numerals: Numerals) -> Result<()> {
         let id = self.id;
         for (name, text) in [
             ("concept", &self.concept),
@@ -1375,7 +1381,7 @@ impl StoryboardScene {
         }
         let narration = normalize(&self.narration);
         let words = narration_words(&self.narration);
-        self.validate_composition(&narration)?;
+        self.validate_composition(&narration, numerals)?;
         let object_ids: HashSet<&str> = self.composition.object_ids().into_iter().collect();
         let groups = self.composition.groups();
         for animation in &self.animations {
@@ -1506,7 +1512,7 @@ impl StoryboardScene {
         Ok(())
     }
 
-    fn validate_composition(&self, narration: &str) -> Result<()> {
+    fn validate_composition(&self, narration: &str, numerals: Numerals) -> Result<()> {
         let id = self.id;
         let objects = self.composition.objects();
         if objects.len() > MAX_OBJECTS {
@@ -1551,7 +1557,7 @@ impl StoryboardScene {
                     return Err(invalid(id, format!("valor de '{}' nao finito", object.id)));
                 }
                 // Numbers shown on screen must be spoken so they reach the claims review.
-                let shown = format_value(value, object.unit.as_deref());
+                let shown = format_value_in(value, object.unit.as_deref(), numerals);
                 if !number_is_spoken(&shown, value, narration) {
                     return Err(invalid(
                         id,
@@ -1764,25 +1770,63 @@ pub fn contains_phrase(words: &[String], phrase: &str) -> bool {
 
 /// Formats a value the way the renderer shows it: integers without decimals, otherwise
 /// one decimal, with Brazilian thousand separators.
-pub fn format_value(value: f64, unit: Option<&str>) -> String {
-    let number = if (value.fract()).abs() < 1e-9 {
-        let integer = value.round() as i64;
-        let digits = integer.abs().to_string();
-        let mut grouped = String::new();
-        for (index, character) in digits.chars().enumerate() {
-            if index > 0 && (digits.len() - index) % 3 == 0 {
-                grouped.push('.');
-            }
-            grouped.push(character);
-        }
-        if integer < 0 {
-            format!("-{grouped}")
+/// How a video writes numbers: pt-BR and es group thousands with "." and use "," for
+/// decimals; en-US does the opposite. "3.322" reads as three point three in English.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Numerals {
+    #[default]
+    DotGroups,
+    CommaGroups,
+}
+
+impl Numerals {
+    pub fn for_language(language: &str) -> Self {
+        if language.to_ascii_lowercase().starts_with("en") {
+            Self::CommaGroups
         } else {
-            grouped
+            Self::DotGroups
         }
+    }
+
+    fn separators(self) -> (char, char) {
+        match self {
+            Self::DotGroups => ('.', ','),
+            Self::CommaGroups => (',', '.'),
+        }
+    }
+}
+
+/// `format_value_in` with pt-BR numerals.
+pub fn format_value(value: f64, unit: Option<&str>) -> String {
+    format_value_in(value, unit, Numerals::DotGroups)
+}
+
+pub fn format_value_in(value: f64, unit: Option<&str>, numerals: Numerals) -> String {
+    let (group, decimal) = numerals.separators();
+    let whole = (value.fract()).abs() < 1e-9;
+    let rounded = if whole {
+        value.round()
     } else {
-        format!("{value:.1}").replace('.', ",")
+        (value * 10.0).round() / 10.0
     };
+    let integer = rounded.trunc().abs() as i64;
+    let digits = integer.to_string();
+    let mut number = String::new();
+    if rounded < 0.0 {
+        number.push('-');
+    }
+    for (index, character) in digits.chars().enumerate() {
+        if index > 0 && (digits.len() - index) % 3 == 0 {
+            number.push(group);
+        }
+        number.push(character);
+    }
+    if !whole {
+        let tenth = ((rounded.abs() * 10.0).round() as i64) % 10;
+        number.push(decimal);
+        number.push_str(&tenth.to_string());
+    }
     match unit {
         Some(unit) => format!("{number}{unit}"),
         None => number,
@@ -1796,12 +1840,17 @@ fn number_is_spoken(shown: &str, value: f64, narration: &str) -> bool {
         .chars()
         .filter(|c| c.is_ascii_digit() || *c == ',')
         .collect();
+    let digits_en: String = shown
+        .chars()
+        .filter(|c| c.is_ascii_digit() || matches!(c, ',' | '.'))
+        .collect();
     let plain = (value.round() as i64).to_string();
     let compact = shown.replace('.', "");
     let spelled = number_words(shown, value);
     narration.contains(&normalize(shown))
         || narration.contains(&compact.to_lowercase())
         || narration.contains(&digits)
+        || narration.contains(&digits_en)
         || narration
             .split(|c: char| !c.is_alphanumeric())
             .any(|token| token == plain || spelled.contains(&token))
@@ -2099,6 +2148,19 @@ mod tests {
         assert_eq!(format_value(175_000_000_000.0, None), "175.000.000.000");
         assert_eq!(format_value(42.0, Some("%")), "42%");
         assert_eq!(format_value(3.5, Some(" ms")), "3,5 ms");
+        assert_eq!(format_value(2232.24, None), "2.232,2");
+        assert_eq!(format_value(-1.5, None), "-1,5");
+        let en = Numerals::for_language("en-US");
+        assert_eq!(format_value_in(2232.24, None, en), "2,232.2");
+        assert_eq!(format_value_in(3322.0, None, en), "3,322");
+        assert_eq!(format_value_in(3.5, Some("%"), en), "3.5%");
+        assert_eq!(Numerals::for_language("es"), Numerals::DotGroups);
+        assert!(number_is_spoken(
+            "3,322",
+            3322.0,
+            "you pay $3,322 in interest"
+        ));
+        assert!(number_is_spoken("3.5%", 3.5, "about 3.5% a year"));
     }
 
     fn stage(narration: &str, composition: serde_json::Value) -> Result<()> {

@@ -1,0 +1,128 @@
+{
+  "topic_id": "04-inflation-cash",
+  "script": {
+    "title": "Cash is not safe: what 3% inflation does to $10,000",
+    "hook": "Is cash really safe?",
+    "series": "money",
+    "format": "long",
+    "cross_checked": true,
+    "scenes": [
+      {
+        "id": 0,
+        "heading": "Is cash safe?",
+        "narration": "Money in a drawer never goes down. Or does it? Here is what inflation does to cash.",
+        "visual_brief": "#pergunta Is cash really safe?\nOpen the loop.",
+        "duration_hint_secs": 6.5
+      },
+      {
+        "id": 1,
+        "heading": "Prices go up",
+        "narration": "Inflation means prices rise over time, so the same $100 buys less every year. The US government tracks this with the Consumer Price Index.",
+        "visual_brief": "#destaque\nDefine inflation.",
+        "duration_hint_secs": 9.2
+      },
+      {
+        "id": 2,
+        "heading": "The example",
+        "narration": "Our example assumes 3% inflation a year. Prices compound, just like interest. And cash in a drawer earns nothing.",
+        "visual_brief": "#lista 3% inflation a year, assumed; Prices compound like interest; Cash earns nothing\nAssumptions.",
+        "duration_hint_secs": 7.3
+      },
+      {
+        "id": 3,
+        "heading": "Half in 24 years",
+        "narration": "Use the Rule of 72 backwards: 72 divided by 3 is 24. At 3% inflation, cash loses half its buying power in about 24 years.",
+        "visual_brief": "#numero 24 | years for cash to lose half its buying power at 3%\nRule of 72.",
+        "duration_hint_secs": 9.6
+      },
+      {
+        "id": 4,
+        "heading": "What $100 buys",
+        "narration": "Today your $100 buys $100 of stuff. In 10 years, about $74 worth. In 20 years, about $55.",
+        "visual_brief": "#grafico What $100 in cash buys, at 3% inflation | Today=100; In 10 years=74; In 20 years=55\nThe slide.",
+        "duration_hint_secs": 6.9
+      },
+      {
+        "id": 5,
+        "heading": "$10,000 in a drawer",
+        "narration": "Put $10,000 in cash today, and in 10 years it buys only what $7,441 buys now.",
+        "visual_brief": "#numero 7441 | dollars of buying power left from $10,000 after 10 years\nThe silent loss.",
+        "duration_hint_secs": 6.2
+      },
+      {
+        "id": 6,
+        "heading": "Why it happens",
+        "narration": "Prices go up, your cash stays the same, so every year it buys a little less. Nothing is taken from your account. It just shrinks in what it can do.",
+        "visual_brief": "#causa Prices rise 3% a year => Your cash stays the same => You can buy less\nThe mechanism.",
+        "duration_hint_secs": 11.5
+      },
+      {
+        "id": 7,
+        "heading": "Keeping up",
+        "narration": "To keep up, your money has to grow at least as fast as prices. Below the inflation rate, you are losing buying power, even if the number on the screen goes up.",
+        "visual_brief": "#comparacao Cash: grows 0%; loses to inflation | Money that keeps up: grows at least 3% a year; holds its buying power\nThe bar to clear.",
+        "duration_hint_secs": 12.3
+      },
+      {
+        "id": 8,
+        "heading": "Check the real numbers",
+        "narration": "You can check real US inflation for any period with the free CPI Inflation Calculator from the Bureau of Labor Statistics. The link is in the description.",
+        "visual_brief": "#destaque\nPoint to the official tool.",
+        "duration_hint_secs": 10.4
+      },
+      {
+        "id": 9,
+        "heading": "Cash has a job",
+        "narration": "Cash is great for emergencies and short term goals. For long term goals, remember the silent 3%. This is math, not financial advice.",
+        "visual_brief": "#destaque\nClose.",
+        "duration_hint_secs": 8.8
+      }
+    ],
+    "sources": [
+      {
+        "title": "CPI Inflation Calculator",
+        "url": "https://www.bls.gov/data/inflation_calculator.htm",
+        "publisher": "U.S. Bureau of Labor Statistics",
+        "retrieved_at": "2026-11-08",
+        "license": "referencia documental; texto nao redistribuido"
+      },
+      {
+        "title": "Rule of 72",
+        "url": "https://www.investor.gov/introduction-investing/investing-basics/glossary/rule-72",
+        "publisher": "Investor.gov (U.S. Securities and Exchange Commission)",
+        "retrieved_at": "2026-11-08",
+        "license": "referencia documental; texto nao redistribuido"
+      }
+    ],
+    "claims": [
+      {
+        "text": "At 3% a year, $100 buys about $74 of today's goods in 10 years (100/1.03^10 = 74.4) and about $55 in 20 years (55.4). Calculo proprio.",
+        "status": "cited",
+        "source_urls": [
+          "https://www.bls.gov/data/inflation_calculator.htm"
+        ]
+      },
+      {
+        "text": "At 3% inflation, $10,000 in cash buys what $7,441 buys today after 10 years. Calculo proprio.",
+        "status": "cited",
+        "source_urls": [
+          "https://www.bls.gov/data/inflation_calculator.htm"
+        ]
+      },
+      {
+        "text": "By the Rule of 72, 72 divided by 3 is 24: at 3% a year, prices double, and cash loses half its buying power, in about 24 years.",
+        "status": "cited",
+        "source_urls": [
+          "https://www.investor.gov/introduction-investing/investing-basics/glossary/rule-72"
+        ]
+      },
+      {
+        "text": "The BLS CPI Inflation Calculator compares the buying power of a dollar between two dates.",
+        "status": "cited",
+        "source_urls": [
+          "https://www.bls.gov/data/inflation_calculator.htm"
+        ]
+      }
+    ]
+  }
+}

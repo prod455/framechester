@@ -4,7 +4,7 @@ use crate::format::Rect;
 use crate::icons::icon_nodes;
 use crate::scene::{Anchor, Node, Shape};
 use crate::tokens::{self, palette};
-use framechester_core::storyboard::{format_value, Icon, Role, VisualObject};
+use framechester_core::storyboard::{format_value_in, Icon, Role, VisualObject};
 
 pub fn build(ctx: &mut Ctx<'_>, area: Rect, title: &str, objects: &[VisualObject]) -> Vec<Node> {
     let mut nodes = Vec::new();
@@ -103,7 +103,7 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, title: &str, objects: &[VisualObject
         // as the card allows, with the label and detail beside it.
         let (inner, mut top) = match object.value {
             Some(value) if side_icon => {
-                let text = format_value(value, object.unit.as_deref());
+                let text = format_value_in(value, object.unit.as_deref(), ctx.canvas.numerals);
                 let size = ctx.display_size(scale.heading * 1.25).min(inner.h * 0.75);
                 let (family, weight) = ctx.display();
                 let width = ctx.ts.measure(&text, size, weight, family);
@@ -119,7 +119,7 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, title: &str, objects: &[VisualObject
                     Anchor::Start,
                 );
                 if let Shape::Text { counter, .. } = &mut node.shape {
-                    *counter = Some((value, object.unit.clone()));
+                    *counter = Some((value, object.unit.clone(), ctx.canvas.numerals));
                 }
                 nodes.push(node);
                 let shift = width + gap;
@@ -131,7 +131,7 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, title: &str, objects: &[VisualObject
             _ => (inner, top),
         };
         if let (Some(value), false) = (object.value, side_icon) {
-            let text = format_value(value, object.unit.as_deref());
+            let text = format_value_in(value, object.unit.as_deref(), ctx.canvas.numerals);
             // A card shorter than its content gives the space back from the big number,
             // never from the label or the detail.
             let deficit = (content_h - card_h).max(0.0);
@@ -152,7 +152,7 @@ pub fn build(ctx: &mut Ctx<'_>, area: Rect, title: &str, objects: &[VisualObject
                 Anchor::Start,
             );
             if let Shape::Text { counter, .. } = &mut node.shape {
-                *counter = Some((value, object.unit.clone()));
+                *counter = Some((value, object.unit.clone(), ctx.canvas.numerals));
             }
             nodes.push(node);
             top += size * 1.1;

@@ -40,11 +40,7 @@ fn truncate(text: &str, limit: usize) -> String {
     text.chars().take(limit).collect()
 }
 
-pub(crate) fn run(
-    program: &str,
-    args: &[String],
-    current_dir: Option<&Path>,
-) -> Result<std::process::Output> {
+fn run(program: &str, args: &[String], current_dir: Option<&Path>) -> Result<std::process::Output> {
     let mut command = Command::new(program);
     command.args(args);
     if let Some(directory) = current_dir {
@@ -55,10 +51,7 @@ pub(crate) fn run(
     })
 }
 
-pub(crate) fn require_success(
-    output: std::process::Output,
-    label: &str,
-) -> Result<std::process::Output> {
+fn require_success(output: std::process::Output, label: &str) -> Result<std::process::Output> {
     if output.status.success() {
         Ok(output)
     } else {
@@ -75,7 +68,7 @@ fn filter_escape(path: &Path) -> String {
         .replace(':', "\\:")
 }
 
-pub(crate) fn find_font() -> Option<PathBuf> {
+fn find_font() -> Option<PathBuf> {
     let mut candidates = Vec::new();
     if let Ok(value) = std::env::var("FRAMECHESTER_FONT") {
         if !value.trim().is_empty() {

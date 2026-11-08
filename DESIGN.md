@@ -157,8 +157,7 @@ substituto do julgamento visual. A telemetria do Impeccable está desativada no 
 
 ## Leis de UX na prática
 
-As mudanças no Studio são conferidas contra as 20 leis listadas em
-`docs/UI_REVIEW_20261031.md`. As regras permanentes que saíram delas:
+As regras permanentes de UX do Studio:
 
 - Uma ação principal (escura) por tela; em listas, só o passo que leva um vídeo
   adiante é principal (Von Restorff, Hick).

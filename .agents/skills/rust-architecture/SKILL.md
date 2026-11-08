@@ -6,8 +6,7 @@ license: Apache-2.0
 
 # Arquitetura Rust
 
-Consulte o [contrato das equipes](../../../docs/EQUIPES_E_SKILLS.md) e a
-[auditoria](../../../docs/AUDITORIA_ENGENHARIA.md) para contextualizar a mudanca.
+Consulte o [contrato das equipes](../../../docs/EQUIPES_E_SKILLS.md) para contextualizar a mudanca.
 
 1. Trace a entrada real da CLI ate o artefato produzido. Liste os contratos
    publicos afetados, os consumidores e as invariantes preservadas.

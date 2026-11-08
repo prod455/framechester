@@ -6,8 +6,7 @@ license: Apache-2.0
 
 # Revisao de seguranca
 
-Aplique o [contrato das equipes](../../../docs/EQUIPES_E_SKILLS.md) e consulte
-achados pertinentes da [auditoria](../../../docs/AUDITORIA_ENGENHARIA.md).
+Aplique o [contrato das equipes](../../../docs/EQUIPES_E_SKILLS.md).
 
 1. Mapeie entrada controlavel, recurso protegido e efeito relevante da mudanca.
    Distinga arquivo local escolhido pelo operador de material remoto nao

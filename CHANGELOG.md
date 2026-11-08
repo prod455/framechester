@@ -7,6 +7,9 @@ podem quebrar a compatibilidade e avisam isso aqui.
 
 ## [Unreleased]
 
+### Removido
+- Decisão do operador (08/11/2026): só fica o que leva a vídeo publicado e monetizado. Saem o caminho de anúncios `anuncio/` (o modelo de negócio é receita de audiência), os comandos `backup-check`, `backup` e `restore` com restic, o simulador `finance` e `scripts/calculadora_monetizacao.py`, a skill `storage-disaster-recovery` e os relatórios históricos de validação, revisão de UI, benchmark e análise de concorrente em `docs/`. O `[backup]` antigo de um `framechester.toml` é ignorado.
+
 ### Adicionado
 - **IA local no anúncio** (`anuncio/ia/`): personagens 3D com FLUX.1 [schnell] e fundo removido pelo BiRefNet; voz clonada com a narração base da Kokoro e o conversor de timbre do OpenVoice V2 a partir de uns 20 s do operador; tempo por palavra com faster-whisper. Substitui o Higgsfield: sem API paga nem crédito. `npm run ia:preparar`, `personagens`, `voz`, `transcrever`. Os scripts conferem a licença declarada dos pesos antes de baixar.
 - **Anúncio vertical** (`anuncio/`): caminho separado do motor Rust para anúncios Dor e solução de até ~45 s em 1080×1920 a 60 fps, só com software livre. Cenas em React renderizadas quadro a quadro por um motor de quadros próprio (`src/quadro.tsx`) no Chromium via Playwright, em paralelo, e codificadas e mixadas pelo FFmpeg (narração e efeitos no quadro exato). Cada cena é uma frase da narração, com a animação presa à palavra dita (faster-whisper, alinhado ao roteiro mesmo quando o Whisper escreve números com algarismos). Cenas de número que rola com borrão vertical, personagem 3D que quica e treme, extrato que desenrola, app com rosca e tesoura, três palavras, logo com círculo, camadas 3D com botão voz original/clone e final; whip entre cenas, grão de filme e efeitos sintetizados. `render:final` (CRF 12, 2160×3840) só roda com narração real, tempo transcrito e personagens com transparência.

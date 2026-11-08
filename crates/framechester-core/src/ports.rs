@@ -1,7 +1,6 @@
 use crate::domain::{
-    AssetManifest, BackupReceipt, Claim, MetricSample, PublishReceipt, PublishRequest, QaReport,
-    RenderOutput, RenderProfile, Scene, Script, ScriptFormat, Timeline, Topic, TrendMetrics,
-    TtsAudio,
+    AssetManifest, Claim, MetricSample, PublishReceipt, PublishRequest, QaReport, RenderOutput,
+    RenderProfile, Scene, Script, ScriptFormat, Timeline, Topic, TrendMetrics, TtsAudio,
 };
 use crate::error::Result;
 use serde::{Deserialize, Serialize};
@@ -159,13 +158,6 @@ pub trait Publisher {
 pub trait MetricsProvider {
     fn info(&self) -> AdapterInfo;
     fn fetch(&self, video_ids: &[String]) -> Result<Vec<MetricSample>>;
-}
-
-pub trait BackupProvider {
-    fn info(&self) -> AdapterInfo;
-    fn check(&self) -> Result<BackupReceipt>;
-    fn snapshot(&self, paths: &[PathBuf]) -> Result<BackupReceipt>;
-    fn restore(&self, snapshot_id: &str, target: &Path) -> Result<BackupReceipt>;
 }
 
 pub fn metrics_summary(metrics: &TrendMetrics) -> String {

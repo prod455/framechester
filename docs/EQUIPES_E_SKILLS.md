@@ -36,7 +36,6 @@ Skill pública (para agentes de fora, não para a equipe interna): [`skills/fram
 | Multicanais | `multichannel-isolation` | identidade e separação comprovadas |
 | SRE | `sre-observability` | estado de jobs e diagnóstico sem segredos |
 | OSS | `oss-license-review` | atribuições e distribuição verificáveis |
-| Recuperação | `storage-disaster-recovery` | restauração com integridade |
 
 ## Equipe de marketing e produção
 
@@ -60,7 +59,7 @@ Skill pública (para agentes de fora, não para a equipe interna): [`skills/fram
 | Finanças | `monetization-finance` | caixa, custo econômico e cenários |
 | Proveniência | `anti-injection-and-provenance` | entradas rastreáveis e instruções isoladas |
 
-O pacote original contém **33 SKILL.md locais**, incluindo o coordenador `framechester-teams`, aprovados pelo validador estrutural oficial nesta entrega. As descrições mantêm seleção automática habilitada; carregue os procedimentos pertinentes sob demanda. Referências externas não contam como instaladas. Estrutura válida e contrato comum não demonstram comportamento correto em todos os cenários; os testes executados estão em [VALIDACAO_ENTREGA.md](VALIDACAO_ENTREGA.md).
+O pacote original contém **33 SKILL.md locais**, incluindo o coordenador `framechester-teams`, aprovados pelo validador estrutural oficial nesta entrega. As descrições mantêm seleção automática habilitada; carregue os procedimentos pertinentes sob demanda. Referências externas não contam como instaladas. Estrutura válida e contrato comum não demonstram comportamento correto em todos os cenários.
 
 Após os dois passes de UI de 28/10/2026, o total é **35 SKILL.md**: os 33 originais mais `frontend-design` e `impeccable`, com revisões e licenças preservadas. A direção atual da interface está em [DESIGN.md](../DESIGN.md), e a proveniência em [UI_SKILLS_SOURCES.md](UI_SKILLS_SOURCES.md).
 

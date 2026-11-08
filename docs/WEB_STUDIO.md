@@ -6,8 +6,6 @@ O Studio oferece uma interface web em TypeScript/Vite e um backend Node.js
 local para organizar canais, pesquisar pautas, editar roteiros e storytelling,
 configurar a produção e acompanhar as quatro redes. O motor de produção
 continua sendo a CLI Rust. O estágio desta entrega é pré-alpha executável.
-O [parecer de uso local](PRONTIDAO_USO_LOCAL.md) registra o piloto aprovado,
-as correções de QA/UX/DX e os limites ainda existentes para monetização.
 
 ## Instalar e iniciar
 
@@ -510,11 +508,3 @@ e produção; `research` inicia roteiro; o restante só depende de `studio`.
 todas as páginas; é o teste que falha primeiro se uma página perder um import
 ou ler dados antes do carregamento.
 
-Os resultados do Studio, testes web, build e auditoria de dependências ficam
-registrados na [validação web](WEB_STUDIO_VALIDACAO.md). A [validação do motor](VALIDACAO_ENTREGA.md)
-registra Rust/Python e seus pilotos, com as respectivas contagens e limitações. O smoke
-audiovisual ignorado na suíte padrão foi executado explicitamente. Um job
-ponta a ponta no perfil local de QA produziu vídeo e terminou em
-`needs_review`. Essa evidência é do cenário executado, com dados isolados, e
-não constitui auditoria universal de contas, direitos ou conteúdo. Consulte
-também [a auditoria de engenharia](AUDITORIA_ENGENHARIA.md).

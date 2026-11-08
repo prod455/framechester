@@ -1,8 +1,6 @@
 //! Command-line surface: arguments, value enums and the dispatch to `commands`.
 use crate::commands::analytics::analytics_report;
-use crate::commands::backup::{backup_check, backup_restore, backup_snapshot};
 use crate::commands::doctor::{config_check, doctor};
-use crate::commands::finance::finance_report;
 use crate::commands::produce::{plan_command, produce, short};
 use crate::commands::qa::qa_video;
 use crate::commands::report::report_command;
@@ -89,35 +87,6 @@ pub(crate) enum Commands {
         #[arg(long)]
         json: bool,
     },
-    #[command(about = "valida o repositorio restic configurado")]
-    BackupCheck {
-        #[arg(long)]
-        json: bool,
-    },
-    #[command(about = "cria um snapshot restic local; exige --yes")]
-    Backup {
-        #[arg(long = "path", required = true, help = "caminho a incluir; repetivel")]
-        paths: Vec<PathBuf>,
-        #[arg(long, help = "confirmacao explicita; sem isto nada e executado")]
-        yes: bool,
-        #[arg(long, help = "permite repositorio remoto e eventual custo/egress")]
-        allow_remote: bool,
-        #[arg(long)]
-        json: bool,
-    },
-    #[command(about = "restaura um snapshot restic; exige --yes")]
-    Restore {
-        #[arg(long)]
-        snapshot: String,
-        #[arg(long)]
-        target: PathBuf,
-        #[arg(long, help = "confirmacao explicita; sem isto nada e executado")]
-        yes: bool,
-        #[arg(long, help = "permite repositorio remoto e eventual custo/egress")]
-        allow_remote: bool,
-        #[arg(long)]
-        json: bool,
-    },
     #[command(about = "gera report.html a partir de pipeline_report.json")]
     Report {
         #[arg(long)]
@@ -125,8 +94,6 @@ pub(crate) enum Commands {
         #[arg(long)]
         json: bool,
     },
-    #[command(about = "simula custos e receita sem prometer resultado")]
-    Finance(FinanceArgs),
 }
 
 #[derive(Debug, clap::Args)]
@@ -272,40 +239,6 @@ pub(crate) struct ShortArgs {
     pub(crate) json: bool,
 }
 
-#[derive(Debug, clap::Args)]
-pub(crate) struct FinanceArgs {
-    #[arg(long)]
-    pub(crate) eligible: bool,
-    #[arg(long, default_value_t = 0)]
-    pub(crate) views_long: u64,
-    #[arg(long, default_value_t = 0)]
-    pub(crate) rpm_long_cents: u64,
-    #[arg(long, default_value_t = 0)]
-    pub(crate) views_shorts: u64,
-    #[arg(long, default_value_t = 0)]
-    pub(crate) rpm_shorts_cents: u64,
-    #[arg(long, default_value_t = 0)]
-    pub(crate) other_revenue_cents: u64,
-    #[arg(long, value_enum, default_value = "b2")]
-    pub(crate) provider: ProviderArg,
-    #[arg(long, default_value_t = 50)]
-    pub(crate) storage_gb: u64,
-    #[arg(long, default_value_t = 534)]
-    pub(crate) usd_brl_cents: u64,
-    #[arg(long, default_value_t = 0)]
-    pub(crate) additional_cost_cents: u64,
-    #[arg(long, default_value_t = 0)]
-    pub(crate) taxes_bp: u32,
-    #[arg(long, default_value_t = 0)]
-    pub(crate) own_hours: u64,
-    #[arg(long, default_value_t = 0)]
-    pub(crate) hour_rate_cents: u64,
-    #[arg(long, default_value_t = 0)]
-    pub(crate) economic_allocations_cents: u64,
-    #[arg(long)]
-    pub(crate) json: bool,
-}
-
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub(crate) enum FormatArg {
     Short,
@@ -350,12 +283,6 @@ pub(crate) enum LlmArg {
     Anthropic,
 }
 
-#[derive(Debug, Clone, Copy, ValueEnum)]
-pub(crate) enum ProviderArg {
-    B2,
-    R2,
-}
-
 pub(crate) fn run(cli: Cli) -> anyhow::Result<i32> {
     match cli.command {
         Commands::Doctor { json } => doctor(&cli.config, json),
@@ -380,22 +307,7 @@ pub(crate) fn run(cli: Cli) -> anyhow::Result<i32> {
             format,
             json,
         } => qa_video(&cli.config, &video, format, json),
-        Commands::BackupCheck { json } => backup_check(json),
-        Commands::Backup {
-            paths,
-            yes,
-            allow_remote,
-            json,
-        } => backup_snapshot(&paths, yes, allow_remote, json),
-        Commands::Restore {
-            snapshot,
-            target,
-            yes,
-            allow_remote,
-            json,
-        } => backup_restore(&snapshot, &target, yes, allow_remote, json),
         Commands::Report { workdir, json } => report_command(&workdir, json),
-        Commands::Finance(args) => finance_report(args),
     }
 }
 

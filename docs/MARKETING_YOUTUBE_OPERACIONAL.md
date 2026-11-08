@@ -22,7 +22,6 @@ O objetivo comercial é fazer o operador obter resultado com conteúdo original;
 | `scripts/verificar_youtube.py` | OAuth e leitura de canal; não consulta aprovação YPP nem receita | Conexão funcionando não demonstra monetização habilitada. |
 | `crates/framechester-adapters/src/metrics.rs` | `NullMetrics` e importação de arquivo JSON | Ainda não há coleta real de desempenho neste caminho. |
 | `MetricSample` em `crates/framechester-core/src/domain.rs` | `views`, `watch_hours`, `revenue_cents`, `monetized`, provedor e data | Modelo insuficiente para separar janela, formato, views intencionais, valores estimados/finalizados/pagos e moeda. |
-| `crates/framechester-core/src/finance.rs` e `scripts/calculadora_monetizacao.py` | Simulação de custos e receitas | Cenário não é extrato do Studio nem dinheiro recebido; parâmetros precisam de origem e validade. |
 | `THIRD_PARTY_NOTICES.md` | Licença-base do checkpoint da voz ainda pendente de confirmação | Resolver direitos da voz antes de tratá-la como aprovada para uma operação comercial; não redistribuir pesos por presunção. |
 
 **Observação de formato:** o inventário registra uma demonstração curta de 78,5 s em 1920×1080. Isso prova duração curta, mas não prova classificação como Short. O próprio YouTube informa que uploads de até três minutos com proporção quadrada ou vertical são considerados Shorts. A fatia de produto deve distinguir duração e proporção. [Ajuda oficial sobre testes A/B, FAQ de Shorts](https://support.google.com/youtube/answer/16391400?hl=pt-BR).

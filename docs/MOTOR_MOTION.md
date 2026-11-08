@@ -110,4 +110,3 @@ no QA.
 - `render.log.jsonl`: eventos estruturados por fase.
 - Cache de narração por `sha256(motor, voz, texto)` em `artifacts/cache/tts/`; o render
   é determinístico a partir do storyboard narrado.
-- Medições do benchmark em `docs/BENCHMARK_SKILLS_VS_AGENTES.md`.

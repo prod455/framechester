@@ -13,7 +13,6 @@ pub struct Config {
     pub tts: TtsConfig,
     pub llm: LlmConfig,
     pub publish: PublishConfig,
-    pub backup: BackupConfig,
     pub asr: AsrConfig,
     pub audio: AudioConfig,
     pub motion: MotionConfig,
@@ -112,13 +111,6 @@ pub struct PublishConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
-pub struct BackupConfig {
-    pub enabled: bool,
-    pub provider: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
 pub struct AsrConfig {
     pub enabled: bool,
     pub model: String,
@@ -202,15 +194,6 @@ impl Default for PublishConfig {
             enabled: false,
             network: "youtube".into(),
             privacy: "private".into(),
-        }
-    }
-}
-
-impl Default for BackupConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            provider: "b2".into(),
         }
     }
 }
@@ -396,7 +379,6 @@ mod tests {
         assert!(config.app.dry_run);
         assert!(!config.app.telemetry);
         assert!(!config.publish.enabled);
-        assert!(!config.backup.enabled);
     }
 
     #[test]

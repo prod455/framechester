@@ -17,6 +17,7 @@ pub struct Config {
     pub asr: AsrConfig,
     pub audio: AudioConfig,
     pub motion: MotionConfig,
+    pub music: MusicConfig,
 }
 
 /// Soundtrack export targets of the motion engine. Loudness values are editorial
@@ -47,6 +48,54 @@ impl Default for AudioConfig {
             sfx_gain: 0.22,
         }
     }
+}
+
+/// Music-channel sources. The generator runs on the operator's machine; prompts never
+/// leave it, so its URL must be loopback.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MusicConfig {
+    /// REST API of a local ACE-Step 1.5 (`uv run acestep-api`).
+    pub acestep_url: String,
+    /// Environment variable with the key set by `acestep-api --api-key`; unset means none.
+    pub acestep_api_key_env: String,
+    /// Creative Commons catalog searched by `music search`.
+    pub openverse_url: String,
+    pub crossfade_secs: f32,
+}
+
+impl Default for MusicConfig {
+    fn default() -> Self {
+        Self {
+            acestep_url: "http://127.0.0.1:8001".into(),
+            acestep_api_key_env: "ACESTEP_API_KEY".into(),
+            openverse_url: "https://api.openverse.org".into(),
+            crossfade_secs: 4.0,
+        }
+    }
+}
+
+/// Whether `url` is plain HTTP or HTTPS on 127.0.0.1, localhost or [::1].
+pub fn is_loopback_url(url: &str) -> bool {
+    let Some(rest) = url
+        .strip_prefix("http://")
+        .or_else(|| url.strip_prefix("https://"))
+    else {
+        return false;
+    };
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
+    if authority.contains('@') {
+        return false;
+    }
+    let host = if let Some(bracketed) = authority.strip_prefix('[') {
+        match bracketed.split_once(']') {
+            Some((host, tail)) if tail.is_empty() || tail.starts_with(':') => host,
+            _ => return false,
+        }
+    } else {
+        authority.split(':').next().unwrap_or_default()
+    };
+    matches!(host, "127.0.0.1" | "localhost" | "::1")
 }
 
 /// Motion engine settings.
@@ -317,6 +366,21 @@ impl Config {
                 "audio.target_lufs entre -30 e -8, true_peak_dbtp entre -6 e 0, sfx_gain entre 0 e 1".into(),
             ));
         }
+        if !is_loopback_url(&self.music.acestep_url) {
+            return Err(FramechesterError::Config(
+                "music.acestep_url deve ser loopback (127.0.0.1, localhost ou [::1])".into(),
+            ));
+        }
+        if !self.music.openverse_url.starts_with("https://") {
+            return Err(FramechesterError::Config(
+                "music.openverse_url deve usar https".into(),
+            ));
+        }
+        if !(0.0..=15.0).contains(&self.music.crossfade_secs) {
+            return Err(FramechesterError::Config(
+                "music.crossfade_secs deve ficar entre 0 e 15".into(),
+            ));
+        }
         if !matches!(self.llm.provider.as_str(), "template" | "anthropic") {
             return Err(FramechesterError::Config(
                 "llm.provider deve ser template ou anthropic".into(),
@@ -499,5 +563,31 @@ mod tests {
         config.render.height = 1280;
         let long = config.render_profile_for(ScriptFormat::Long);
         assert_eq!((long.width, long.height), (1280, 720));
+    }
+
+    #[test]
+    fn music_generator_must_stay_on_loopback() {
+        for url in [
+            "http://127.0.0.1:8001",
+            "http://localhost:8001/",
+            "http://[::1]:8001",
+        ] {
+            assert!(is_loopback_url(url), "{url}");
+        }
+        for url in [
+            "http://127.0.0.1.example.com:8001",
+            "http://user@127.0.0.1@evil.example:8001",
+            "http://example.com",
+            "ftp://127.0.0.1",
+            "http://[::1]x:8001",
+        ] {
+            assert!(!is_loopback_url(url), "{url}");
+        }
+        assert!(Config::from_toml("[music]\nacestep_url = 'https://api.example.com'\n").is_err());
+        assert!(
+            Config::from_toml("[music]\nopenverse_url = 'http://api.openverse.org'\n").is_err()
+        );
+        assert!(Config::from_toml("[music]\ncrossfade_secs = 30.0\n").is_err());
+        assert_eq!(Config::default().music.crossfade_secs, 4.0);
     }
 }

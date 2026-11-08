@@ -1,11 +1,5 @@
-pub mod anthropic;
 pub mod authored_script;
-pub mod editorial_visuals;
 pub mod ffmpeg;
 pub mod fixtures;
 pub mod kokoro;
-pub mod local_assets;
-pub mod metrics;
-pub mod piper;
-pub mod publish;
-pub mod scene_layout;
+pub mod wav;

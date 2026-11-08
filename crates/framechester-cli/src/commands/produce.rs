@@ -1,13 +1,13 @@
 //! `plan` and `produce`: the motion engine path. A reviewed script (or a ready
 //! storyboard) becomes a semantic storyboard, is narrated segment by segment, rendered
 //! with animated components for the chosen format, and gated by the extended QA. The
-//! legacy still-image pipeline in `run` is untouched; `run --engine motion` delegates here.
+//! `run` is the same path under the name the Studio calls.
 use crate::cli::{load_config, ProduceArgs, ShortArgs};
 use crate::commands::report::{print_report, write_html_report};
 use anyhow::{bail, Context};
 use framechester_adapters::authored_script::AuthoredScriptLlm;
 use framechester_adapters::ffmpeg::inspect_output;
-use framechester_adapters::fixtures::{LocalEvidenceProvider, StaticTrendSource};
+use framechester_adapters::fixtures::LocalEvidenceProvider;
 use framechester_adapters::kokoro::KokoroTts;
 use framechester_core::config::Config;
 use framechester_core::domain::{
@@ -16,9 +16,7 @@ use framechester_core::domain::{
 };
 use framechester_core::editorial;
 use framechester_core::planner::plan_script_for;
-use framechester_core::ports::{
-    FactEvidenceProvider, GenerationBudget, LlmProvider, ScriptPrompt, TrendRequest, TrendSource,
-};
+use framechester_core::ports::{FactEvidenceProvider, GenerationBudget, LlmProvider, ScriptPrompt};
 use framechester_core::storyboard::{Identity, Look, Storyboard, VideoFormat};
 use framechester_motion::audio::LoudnessTarget;
 use framechester_motion::narrate::narrate;
@@ -42,18 +40,7 @@ fn load_topic(path: Option<&Path>, index: usize) -> anyhow::Result<Topic> {
         }
         return Ok(serde_json::from_value(value)?);
     }
-    let signals = StaticTrendSource::sample().fetch(&TrendRequest {
-        since: "2026-01-01".into(),
-        region: "BR".into(),
-        limit: 10,
-    })?;
-    let signal = signals
-        .get(index)
-        .with_context(|| format!("indice {index} fora dos topicos disponiveis"))?;
-    if !signal.blocked_reasons.is_empty() {
-        bail!("topico bloqueado: {}", signal.blocked_reasons.join("; "));
-    }
-    Ok(signal.topic.clone())
+    bail!("--topic e obrigatorio: o topico traz as fontes e alegacoes do roteiro")
 }
 
 /// The declared format of an authored script document, so the same script can be

@@ -173,7 +173,6 @@ fn validate_provenance(script: &Script) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixtures::sample_topics;
     use framechester_core::domain::{ClaimStatus, Scene, ScriptFormat};
     use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -199,8 +198,48 @@ mod tests {
         }
     }
 
+    fn sample_topic() -> framechester_core::domain::Topic {
+        use framechester_core::domain::{Claim, Source, Topic, TrendMetrics};
+        Topic {
+            id: "sample-ia-local".into(),
+            title: "IA local em hardware de consumidor".into(),
+            series: "ia".into(),
+            angle: "O que roda de verdade em uma GPU de entrada".into(),
+            sources: vec![
+                Source {
+                    title: "Documentação de modelo aberto".into(),
+                    url: "https://example.com/modelo-aberto".into(),
+                    publisher: "Exemplo".into(),
+                    retrieved_at: "2026-10-27".into(),
+                    license: "CC BY 4.0 (exemplo sintético)".into(),
+                },
+                Source {
+                    title: "Benchmark público de inferência".into(),
+                    url: "https://example.com/benchmark".into(),
+                    publisher: "Exemplo".into(),
+                    retrieved_at: "2026-10-27".into(),
+                    license: "CC BY 4.0 (exemplo sintético)".into(),
+                },
+            ],
+            claims: vec![Claim {
+                text: "Modelos quantizados reduzem requisitos de memória".into(),
+                status: ClaimStatus::Cited,
+                source_urls: vec!["https://example.com/benchmark".into()],
+            }],
+            metrics: TrendMetrics {
+                acceleration: 0.8,
+                demand: 0.7,
+                alignment: 0.9,
+                originality: 0.6,
+                visual_feasibility: 0.7,
+                timing: 0.8,
+                cross_check: 0.8,
+            },
+        }
+    }
+
     fn prompt_and_document() -> (ScriptPrompt, serde_json::Value) {
-        let topic = sample_topics().remove(0);
+        let topic = sample_topic();
         let script = Script {
             title: "Minha análise autoral".into(),
             hook: "Qual comparação responde à sua pergunta?".into(),

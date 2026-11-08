@@ -5,11 +5,9 @@ use crate::commands::produce::{plan_command, produce, short};
 use crate::commands::qa::qa_video;
 use crate::commands::report::report_command;
 use crate::commands::run::run_pipeline;
-use crate::commands::trends::trends;
-use crate::commands::visuals::visuals;
 use clap::{Parser, Subcommand, ValueEnum};
 use framechester_core::config::Config;
-use framechester_core::domain::{PublishPrivacy, ScriptFormat};
+use framechester_core::domain::ScriptFormat;
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -46,16 +44,7 @@ pub(crate) enum Commands {
         #[arg(long)]
         json: bool,
     },
-    #[command(about = "lista e pontua topicos do fixture local")]
-    Trends {
-        #[arg(long, default_value_t = 10)]
-        limit: usize,
-        #[arg(long, default_value = "BR")]
-        region: String,
-        #[arg(long)]
-        json: bool,
-    },
-    #[command(about = "executa o pipeline completo em dry-run")]
+    #[command(about = "produz o video com o motor animado (atalho de produce usado pelo Studio)")]
     Run(RunArgs),
     #[command(about = "planeja o storyboard semantico de um roteiro autoral (sem TTS nem render)")]
     Plan(ProduceArgs),
@@ -67,13 +56,6 @@ pub(crate) enum Commands {
         about = "divide um video ja narrado em Shorts verticais: partes seguidas ate o limite, cada uma aberta pelo gancho"
     )]
     Short(ShortArgs),
-    #[command(about = "prepara visuais explicativos locais; nao usa API nem chaves")]
-    Visuals {
-        #[arg(long)]
-        input: PathBuf,
-        #[arg(long)]
-        output: PathBuf,
-    },
     #[command(about = "roda QA tecnico em um video existente")]
     Qa {
         #[arg(long)]
@@ -98,62 +80,25 @@ pub(crate) enum Commands {
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct RunArgs {
-    #[arg(
-        long,
-        conflicts_with = "llm",
-        help = "roteiro JSON autoral vinculado ao topico; sem chamada de IA"
-    )]
-    pub(crate) script: Option<PathBuf>,
-    #[arg(
-        long,
-        help = "manifesto JSON de imagens/videos locais com licenca, origem e SHA256"
-    )]
-    pub(crate) assets: Option<PathBuf>,
+    #[arg(long, help = "roteiro JSON autoral vinculado ao topico")]
+    pub(crate) script: PathBuf,
+    #[arg(long, help = "arquivo JSON com Topic ou lista de Topic")]
+    pub(crate) topic: PathBuf,
+    #[arg(long, default_value_t = 0)]
+    pub(crate) topic_index: usize,
     #[arg(
         long,
         help = "id local cadastrado em [[channels]]; obrigatorio quando ha canais"
     )]
     pub(crate) channel: Option<String>,
-    #[arg(long, help = "arquivo JSON com Topic ou lista de Topic")]
-    pub(crate) topic: Option<PathBuf>,
-    #[arg(long, default_value_t = 0)]
-    pub(crate) topic_index: usize,
-    #[arg(long, value_enum)]
+    #[arg(long, value_enum, help = "short (vertical) ou long (horizontal)")]
     pub(crate) format: Option<FormatArg>,
-    #[arg(long, help = "limite de cenas; padrao depende do formato")]
-    pub(crate) max_scenes: Option<usize>,
     #[arg(long)]
     pub(crate) workdir: Option<PathBuf>,
     #[arg(long)]
     pub(crate) voice: Option<String>,
-    #[arg(long, value_enum)]
-    pub(crate) privacy: Option<PrivacyArg>,
-    #[arg(long, value_enum)]
-    pub(crate) llm: Option<LlmArg>,
-    #[arg(
-        long,
-        default_value_t = 0,
-        help = "orcamento em centavos; Anthropic bloqueado ate existir cotacao e controle de custo"
-    )]
-    pub(crate) max_cost_cents: u32,
-    #[arg(long, default_value_t = 4000)]
-    pub(crate) max_output_tokens: u32,
-    #[arg(long, help = "roda QA ASR local com whisper; requer modelo")]
-    pub(crate) asr: bool,
-    #[arg(long, help = "queima legendas PT-BR no MP4 final")]
-    pub(crate) burn_subtitles: bool,
-    #[arg(
-        long,
-        requires = "script",
-        help = "renderiza previa com marca de revisao; sem pacote ou publicacao"
-    )]
+    #[arg(long, help = "renderiza previa com marca de revisao; sem pacote")]
     pub(crate) preview_only: bool,
-    #[arg(
-        long,
-        value_enum,
-        help = "legacy: imagens estaticas por cena (padrao); motion: storyboard semantico animado"
-    )]
-    pub(crate) engine: Option<EngineArg>,
     #[arg(long)]
     pub(crate) json: bool,
 }
@@ -254,35 +199,6 @@ impl From<FormatArg> for ScriptFormat {
     }
 }
 
-#[derive(Debug, Clone, Copy, ValueEnum)]
-pub(crate) enum PrivacyArg {
-    Private,
-    Unlisted,
-    Public,
-}
-
-impl From<PrivacyArg> for PublishPrivacy {
-    fn from(value: PrivacyArg) -> Self {
-        match value {
-            PrivacyArg::Private => PublishPrivacy::Private,
-            PrivacyArg::Unlisted => PublishPrivacy::Unlisted,
-            PrivacyArg::Public => PublishPrivacy::Public,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub(crate) enum EngineArg {
-    Legacy,
-    Motion,
-}
-
-#[derive(Debug, Clone, Copy, ValueEnum)]
-pub(crate) enum LlmArg {
-    Template,
-    Anthropic,
-}
-
 pub(crate) fn run(cli: Cli) -> anyhow::Result<i32> {
     match cli.command {
         Commands::Doctor { json } => doctor(&cli.config, json),
@@ -292,16 +208,10 @@ pub(crate) fn run(cli: Cli) -> anyhow::Result<i32> {
             input,
             json,
         } => analytics_report(&cli.config, &channel, &input, json),
-        Commands::Trends {
-            limit,
-            region,
-            json,
-        } => trends(&cli.config, limit, &region, json),
         Commands::Run(args) => run_pipeline(&cli.config, args),
         Commands::Plan(args) => plan_command(&cli.config, args),
         Commands::Produce(args) => produce(&cli.config, args),
         Commands::Short(args) => short(&cli.config, args),
-        Commands::Visuals { input, output } => visuals(&input, &output),
         Commands::Qa {
             video,
             format,

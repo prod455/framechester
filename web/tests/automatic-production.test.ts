@@ -93,16 +93,8 @@ test('one authorized AI call saves a new channel draft and delegates all local p
   };
   const runner: RunnerApi = {
     list: async () => [],
-    assets: async () => [],
-    assetFile: async () => undefined,
     file: async () => undefined,
-    upload: async () => {
-      throw Error('not used');
-    },
     start: async () => {
-      throw Error('not used');
-    },
-    prepareVisuals: async () => {
       throw Error('not used');
     },
     engineStatus: () => ({ available: true, message: '' }),

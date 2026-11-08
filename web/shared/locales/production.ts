@@ -19,9 +19,6 @@ export default {
     'O vídeo e todos os arquivos dele são apagados. Ele não foi enviado a nenhuma rede.':
       'The video and all its files are erased. It was not sent to any network.',
     'Vídeo excluído.': 'Video deleted.',
-    'O arquivo sai da biblioteca do canal. Vídeos já produzidos guardam a própria cópia.':
-      "The file leaves the channel's library. Videos already made keep their own copy.",
-    'Arquivo excluído.': 'File deleted.',
     'Enviado como rascunho para a caixa de entrada do TikTok em {date}. Abra o app do TikTok para editar e publicar.':
       'Sent as a draft to the TikTok inbox on {date}. Open the TikTok app to edit and post it.',
     // Videos page and job cards
@@ -30,14 +27,6 @@ export default {
     'Mande a pauta: a IA escreve o roteiro e o motor monta as cenas, a voz e o QA.':
       'Send the topic: AI writes the script and the engine builds the scenes, the voice and the QA.',
     Vídeo: 'Video',
-    Imagem: 'Image',
-    'Nenhum arquivo próprio': 'No files of your own',
-    'Adicione uma gravação ou imagem sua para usar numa cena específica.':
-      'Add a recording or image of your own to use in a specific scene.',
-    'Adicionar arquivo próprio': 'Add your own file',
-    'Arquivos próprios do canal ({count})': "Channel's own files ({count})",
-    'Gravações e imagens suas, com origem e direitos. Os visuais explicativos são gerados pelo motor; estes são opcionais.':
-      'Your recordings and images, with source and rights. The engine generates the explanatory visuals; these are optional.',
     Vídeos: 'Videos',
     '{count} vídeo neste canal.': '{count} video on this channel.',
     '{count} vídeos neste canal.': '{count} videos on this channel.',
@@ -57,7 +46,6 @@ export default {
     Prévia: 'Preview',
     'Versão final': 'Final version',
     'Motor motion': 'Motion engine',
-    'Imagens por cena': 'Images per scene',
     Assistir: 'Watch',
     'Enviando ao YouTube como vídeo privado…': 'Uploading to YouTube as a private video…',
     'Envio ao YouTube falhou: {message}': 'YouTube upload failed: {message}',
@@ -74,32 +62,9 @@ export default {
     'Gerar versão final': 'Generate final version',
     'Versão final na fila. Acompanhe aqui; ela fica pronta em alguns minutos.':
       'Final version queued. Follow it here; it will be ready in a few minutes.',
-    'Produção iniciada. Acompanhe o roteiro, os visuais e a montagem na fila.':
-      'Production started. Follow the script, visuals and editing in the queue.',
     'Produção adicionada à fila. Acompanhe o andamento aqui.':
       'Production added to the queue. Follow its progress here.',
     // Visual asset upload
-    'Adicionar recurso visual': 'Add visual asset',
-    'O arquivo fica no armazenamento privado deste canal, no servidor local.':
-      "The file stays in this channel's private storage, on the local server.",
-    'Enviar ao servidor local': 'Upload to local server',
-    'Selecione um arquivo.': 'Select a file.',
-    'O arquivo excede o limite de 20 MB por recurso. Use um trecho ou uma versão menor.':
-      'The file exceeds the 20 MB limit per asset. Use a clip or a smaller version.',
-    'Não foi possível ler o arquivo.': "Couldn't read the file.",
-    'Recurso visual registrado com origem e hash.': 'Visual asset registered with source and hash.',
-    'Arquivo de imagem ou vídeo': 'Image or video file',
-    'Até 20 MB por recurso visual.': 'Up to 20 MB per visual asset.',
-    'Tipo de recurso': 'Asset type',
-    'Licença ou autorização de uso': 'License or usage permission',
-    'Informe a condição real de uso. A licença do código não cobre mídia de terceiros.':
-      "State the actual terms of use. The code's license doesn't cover third-party media.",
-    'Origem e autoria': 'Source and authorship',
-    'Quem criou, de onde veio e como o uso foi autorizado?':
-      'Who created it, where it came from and how its use was authorized?',
-    'Restrições e atribuição': 'Restrictions and attribution',
-    'Se não houver restrições, declare isso expressamente.':
-      'If there are no restrictions, say so explicitly.',
     // Video review dialog
     'Revisar vídeo gerado': 'Review generated video',
     'Revisar vídeo': 'Review video',
@@ -113,29 +78,29 @@ export default {
     Descrição: 'Description',
     Fontes: 'Sources',
     Metadados: 'Metadata',
-    'Esta é a prévia, com marca de revisão. Se estiver bom, gere a versão final: mesmo roteiro e mesmos visuais, sem a marca.':
-      'This is the preview, with a review watermark. If it looks good, generate the final version: same script and visuals, no watermark.',
     'Confira fatos, direitos, legibilidade e ritmo. O pacote é revisável e sua existência não comprova aprovação editorial ou publicação.':
       "Check facts, rights, readability and pacing. The package can be reviewed, and its existence doesn't prove editorial approval or publication.",
     // Manual production dialog
     'Preparar vídeo': 'Prepare video',
-    'Canal: {channel}. Confira as prévias das cenas e o que falta para gerar o vídeo.':
-      "Channel: {channel}. Check the scene previews and what's left before generating the video.",
     'Adicione um roteiro primeiro': 'Add a script first',
     'O motor usa as falas e as cenas do roteiro.': "The engine uses the script's lines and scenes.",
+    'Canal: {channel}. Escolha o roteiro e confira o que falta para gerar o vídeo.':
+      'Channel: {channel}. Pick the script and check what is missing to generate the video.',
+    '{count} cena no roteiro': '{count} scene in the script',
+    '{count} cenas no roteiro': '{count} scenes in the script',
+    'O motor motion anima cada cena a partir do roteiro, com a voz e as legendas do canal.':
+      "The motion engine animates every scene from the script, with the channel's voice and captions.",
+    'A prévia de vídeo pode ser gerada antes da revisão editorial e recebe uma marca de revisão. A animação e a montagem são locais. A adaptação com IA pede autorização antes de qualquer geração paga.':
+      'The video preview can be generated before the editorial review and carries a review watermark. Animation and editing are local. AI adaptation asks for authorization before any paid generation.',
+    'Mesmo roteiro e mesma animação da prévia, sem a marca de revisão.':
+      'Same script and animation as the preview, without the review watermark.',
+    'Produção iniciada. Acompanhe o roteiro, a animação e a montagem na fila.':
+      'Production started. Follow the script, animation and editing in the queue.',
+    'Esta é a prévia, com marca de revisão. Se estiver bom, gere a versão final: mesmo roteiro e mesma animação, sem a marca.':
+      'This is the preview, with a review watermark. If it looks good, generate the final version: same script and animation, no watermark.',
     'Ir para roteiros': 'Go to scripts',
     Roteiro: 'Script',
-    'Criando e vinculando os visuais deste roteiro…': "Creating and linking this script's visuals…",
-    'A preparação retornou recursos de outro roteiro ou canal.':
-      'The preparation returned assets from another script or channel.',
-    'Selecione uma imagem ou clipe do canal': 'Select an image or clip from the channel',
-    'Visual de {heading}': 'Visual for {heading}',
-    'Clipe selecionado: {name}': 'Selected clip: {name}',
     'Cena {number} · {heading}': 'Scene {number} · {heading}',
-    'Visual explicativo criado e associado a esta cena.':
-      'Explanatory visual created and linked to this scene.',
-    'Usar outro recurso visual': 'Use another visual asset',
-    'Imagem ou clipe do canal': 'Image or clip from the channel',
     'Gerar prévia do vídeo': 'Generate video preview',
     'O canal ou roteiro mudou. Abra a preparação novamente.':
       'The channel or script changed. Open the preparation again.',
@@ -146,23 +111,9 @@ export default {
       'For the final version, check “I reviewed and cross-checked the sources and claims” in the script (Sources and review tab).',
     'Para a versão final, corrija no roteiro as alegações marcadas como contradição ou com URL fora das fontes.':
       'For the final version, fix the claims in the script marked as contradicted or citing a URL outside the sources.',
-    '{count} prévia criada': '{count} preview created',
-    '{count} prévias criadas': '{count} previews created',
-    'A preparação precisa de atenção': 'The preparation needs attention',
-    'Os visuais explicativos já estão vinculados às cenas. Confira as imagens antes de continuar.':
-      'The explanatory visuals are already linked to the scenes. Check the images before you continue.',
     'Revisar roteiro': 'Review script',
-    'Falta resolver {count} cena para gerar a versão final. As prévias ilustrativas já estão disponíveis.':
-      '{count} scene still needs a visual before the final version. The illustrative previews are already available.',
-    'Falta resolver {count} cenas para gerar a versão final. As prévias ilustrativas já estão disponíveis.':
-      '{count} scenes still need a visual before the final version. The illustrative previews are already available.',
     'Cenas prontas para gerar o vídeo neste computador.':
       'Scenes ready to generate the video on this computer.',
-    'Incluir legendas no vídeo': 'Burn subtitles into the video',
-    'Conferir a fala com ASR local': 'Check the speech with local ASR',
-    'A prévia de vídeo pode ser gerada antes da revisão editorial e recebe uma marca de revisão. Os visuais e a montagem são locais. A adaptação com IA pede autorização antes de qualquer geração paga.':
-      'The video preview can be generated before editorial review and gets a review watermark. Visuals and editing run locally. AI adaptation asks for permission before any paid generation.',
-    'Não foi possível preparar os visuais.': "Couldn't prepare the visuals.",
     // Final version dialog
     '{count} fonte no roteiro.': '{count} source in the script.',
     '{count} fontes no roteiro.': '{count} sources in the script.',
@@ -179,14 +130,9 @@ export default {
     'Abrir roteiro': 'Open script',
     'Abrir preparação manual': 'Open manual preparation',
     'Registrando a revisão no roteiro…': 'Recording the review in the script…',
-    'Conferindo os visuais das cenas…': 'Checking the scene visuals…',
-    '{scenes} ficou sem visual. Prepare os visuais novamente.':
-      '{scenes} has no visual. Prepare the visuals again.',
     'Cena {number}': 'Scene {number}',
     'Iniciando a versão final…': 'Starting the final version…',
     'Não foi possível iniciar a versão final.': "Couldn't start the final version.",
-    'Mesmo roteiro e mesmos visuais da prévia, sem a marca de revisão.':
-      'Same script and visuals as the preview, without the review watermark.',
     'Conferi e cruzei as fontes e as alegações desta pauta':
       'I reviewed and cross-checked the sources and claims for this topic',
     'Esta é a sua aprovação editorial e fica registrada no roteiro e no relatório de QA. Publicar continua manual.':
@@ -295,9 +241,6 @@ export default {
     'O vídeo e todos os arquivos dele são apagados. Ele não foi enviado a nenhuma rede.':
       'El video y todos sus archivos se borran. No se envió a ninguna red.',
     'Vídeo excluído.': 'Video eliminado.',
-    'O arquivo sai da biblioteca do canal. Vídeos já produzidos guardam a própria cópia.':
-      'El archivo sale de la biblioteca del canal. Los videos ya producidos guardan su propia copia.',
-    'Arquivo excluído.': 'Archivo eliminado.',
     'Enviado como rascunho para a caixa de entrada do TikTok em {date}. Abra o app do TikTok para editar e publicar.':
       'Enviado como borrador a la bandeja de entrada de TikTok el {date}. Abre la app de TikTok para editarlo y publicarlo.',
     // Videos page and job cards
@@ -306,14 +249,6 @@ export default {
     'Mande a pauta: a IA escreve o roteiro e o motor monta as cenas, a voz e o QA.':
       'Envía el tema: la IA escribe el guion y el motor arma las escenas, la voz y el QA.',
     Vídeo: 'Video',
-    Imagem: 'Imagen',
-    'Nenhum arquivo próprio': 'No hay archivos propios',
-    'Adicione uma gravação ou imagem sua para usar numa cena específica.':
-      'Agrega una grabación o imagen tuya para usarla en una escena específica.',
-    'Adicionar arquivo próprio': 'Agregar archivo propio',
-    'Arquivos próprios do canal ({count})': 'Archivos propios del canal ({count})',
-    'Gravações e imagens suas, com origem e direitos. Os visuais explicativos são gerados pelo motor; estes são opcionais.':
-      'Tus grabaciones e imágenes, con origen y derechos. El motor genera los visuales explicativos; estos son opcionales.',
     Vídeos: 'Videos',
     '{count} vídeo neste canal.': '{count} video en este canal.',
     '{count} vídeos neste canal.': '{count} videos en este canal.',
@@ -333,7 +268,6 @@ export default {
     Prévia: 'Vista previa',
     'Versão final': 'Versión final',
     'Motor motion': 'Motor motion',
-    'Imagens por cena': 'Imágenes por escena',
     Assistir: 'Ver',
     'Enviando ao YouTube como vídeo privado…': 'Subiendo a YouTube como video privado…',
     'Envio ao YouTube falhou: {message}': 'La subida a YouTube falló: {message}',
@@ -350,32 +284,9 @@ export default {
     'Gerar versão final': 'Generar versión final',
     'Versão final na fila. Acompanhe aqui; ela fica pronta em alguns minutos.':
       'Versión final en cola. Síguela aquí; estará lista en unos minutos.',
-    'Produção iniciada. Acompanhe o roteiro, os visuais e a montagem na fila.':
-      'Producción iniciada. Sigue el guion, los visuales y el montaje en la cola.',
     'Produção adicionada à fila. Acompanhe o andamento aqui.':
       'Producción agregada a la cola. Sigue su avance aquí.',
     // Visual asset upload
-    'Adicionar recurso visual': 'Agregar recurso visual',
-    'O arquivo fica no armazenamento privado deste canal, no servidor local.':
-      'El archivo queda en el almacenamiento privado de este canal, en el servidor local.',
-    'Enviar ao servidor local': 'Subir al servidor local',
-    'Selecione um arquivo.': 'Selecciona un archivo.',
-    'O arquivo excede o limite de 20 MB por recurso. Use um trecho ou uma versão menor.':
-      'El archivo supera el límite de 20 MB por recurso. Usa un fragmento o una versión más pequeña.',
-    'Não foi possível ler o arquivo.': 'No se pudo leer el archivo.',
-    'Recurso visual registrado com origem e hash.': 'Recurso visual registrado con origen y hash.',
-    'Arquivo de imagem ou vídeo': 'Archivo de imagen o video',
-    'Até 20 MB por recurso visual.': 'Hasta 20 MB por recurso visual.',
-    'Tipo de recurso': 'Tipo de recurso',
-    'Licença ou autorização de uso': 'Licencia o autorización de uso',
-    'Informe a condição real de uso. A licença do código não cobre mídia de terceiros.':
-      'Indica la condición real de uso. La licencia del código no cubre medios de terceros.',
-    'Origem e autoria': 'Origen y autoría',
-    'Quem criou, de onde veio e como o uso foi autorizado?':
-      '¿Quién lo creó, de dónde viene y cómo se autorizó su uso?',
-    'Restrições e atribuição': 'Restricciones y atribución',
-    'Se não houver restrições, declare isso expressamente.':
-      'Si no hay restricciones, decláralo expresamente.',
     // Video review dialog
     'Revisar vídeo gerado': 'Revisar video generado',
     'Revisar vídeo': 'Revisar video',
@@ -389,29 +300,29 @@ export default {
     Descrição: 'Descripción',
     Fontes: 'Fuentes',
     Metadados: 'Metadatos',
-    'Esta é a prévia, com marca de revisão. Se estiver bom, gere a versão final: mesmo roteiro e mesmos visuais, sem a marca.':
-      'Esta es la vista previa, con marca de revisión. Si está bien, genera la versión final: mismo guion y mismos visuales, sin la marca.',
     'Confira fatos, direitos, legibilidade e ritmo. O pacote é revisável e sua existência não comprova aprovação editorial ou publicação.':
       'Revisa hechos, derechos, legibilidad y ritmo. El paquete se puede revisar y su existencia no prueba aprobación editorial ni publicación.',
     // Manual production dialog
     'Preparar vídeo': 'Preparar video',
-    'Canal: {channel}. Confira as prévias das cenas e o que falta para gerar o vídeo.':
-      'Canal: {channel}. Revisa las vistas previas de las escenas y lo que falta para generar el video.',
     'Adicione um roteiro primeiro': 'Agrega un guion primero',
     'O motor usa as falas e as cenas do roteiro.': 'El motor usa los diálogos y las escenas del guion.',
+    'Canal: {channel}. Escolha o roteiro e confira o que falta para gerar o vídeo.':
+      'Canal: {channel}. Elige el guion y revisa lo que falta para generar el video.',
+    '{count} cena no roteiro': '{count} escena en el guion',
+    '{count} cenas no roteiro': '{count} escenas en el guion',
+    'O motor motion anima cada cena a partir do roteiro, com a voz e as legendas do canal.':
+      'El motor motion anima cada escena a partir del guion, con la voz y los subtítulos del canal.',
+    'A prévia de vídeo pode ser gerada antes da revisão editorial e recebe uma marca de revisão. A animação e a montagem são locais. A adaptação com IA pede autorização antes de qualquer geração paga.':
+      'La vista previa del video puede generarse antes de la revisión editorial y lleva una marca de revisión. La animación y el montaje son locales. La adaptación con IA pide autorización antes de cualquier generación de pago.',
+    'Mesmo roteiro e mesma animação da prévia, sem a marca de revisão.':
+      'El mismo guion y la misma animación de la vista previa, sin la marca de revisión.',
+    'Produção iniciada. Acompanhe o roteiro, a animação e a montagem na fila.':
+      'Producción iniciada. Sigue el guion, la animación y el montaje en la cola.',
+    'Esta é a prévia, com marca de revisão. Se estiver bom, gere a versão final: mesmo roteiro e mesma animação, sem a marca.':
+      'Esta es la vista previa, con marca de revisión. Si está bien, genera la versión final: el mismo guion y la misma animación, sin la marca.',
     'Ir para roteiros': 'Ir a guiones',
     Roteiro: 'Guion',
-    'Criando e vinculando os visuais deste roteiro…': 'Creando y vinculando los visuales de este guion…',
-    'A preparação retornou recursos de outro roteiro ou canal.':
-      'La preparación devolvió recursos de otro guion o canal.',
-    'Selecione uma imagem ou clipe do canal': 'Selecciona una imagen o clip del canal',
-    'Visual de {heading}': 'Visual de {heading}',
-    'Clipe selecionado: {name}': 'Clip seleccionado: {name}',
     'Cena {number} · {heading}': 'Escena {number} · {heading}',
-    'Visual explicativo criado e associado a esta cena.':
-      'Visual explicativo creado y asociado a esta escena.',
-    'Usar outro recurso visual': 'Usar otro recurso visual',
-    'Imagem ou clipe do canal': 'Imagen o clip del canal',
     'Gerar prévia do vídeo': 'Generar vista previa del video',
     'O canal ou roteiro mudou. Abra a preparação novamente.':
       'El canal o el guion cambió. Abre la preparación de nuevo.',
@@ -422,23 +333,9 @@ export default {
       'Para la versión final, marca “Revisé y crucé las fuentes y las afirmaciones” en el guion (pestaña Fuentes y revisión).',
     'Para a versão final, corrija no roteiro as alegações marcadas como contradição ou com URL fora das fontes.':
       'Para la versión final, corrige en el guion las afirmaciones marcadas como contradicción o con una URL fuera de las fuentes.',
-    '{count} prévia criada': '{count} vista previa creada',
-    '{count} prévias criadas': '{count} vistas previas creadas',
-    'A preparação precisa de atenção': 'La preparación necesita atención',
-    'Os visuais explicativos já estão vinculados às cenas. Confira as imagens antes de continuar.':
-      'Los visuales explicativos ya están vinculados a las escenas. Revisa las imágenes antes de continuar.',
     'Revisar roteiro': 'Revisar guion',
-    'Falta resolver {count} cena para gerar a versão final. As prévias ilustrativas já estão disponíveis.':
-      'Falta resolver {count} escena para generar la versión final. Las vistas previas ilustrativas ya están disponibles.',
-    'Falta resolver {count} cenas para gerar a versão final. As prévias ilustrativas já estão disponíveis.':
-      'Faltan resolver {count} escenas para generar la versión final. Las vistas previas ilustrativas ya están disponibles.',
     'Cenas prontas para gerar o vídeo neste computador.':
       'Escenas listas para generar el video en esta computadora.',
-    'Incluir legendas no vídeo': 'Incluir subtítulos en el video',
-    'Conferir a fala com ASR local': 'Verificar la locución con ASR local',
-    'A prévia de vídeo pode ser gerada antes da revisão editorial e recebe uma marca de revisão. Os visuais e a montagem são locais. A adaptação com IA pede autorização antes de qualquer geração paga.':
-      'La vista previa del video se puede generar antes de la revisión editorial y lleva una marca de revisión. Los visuales y el montaje son locales. La adaptación con IA pide autorización antes de cualquier generación paga.',
-    'Não foi possível preparar os visuais.': 'No se pudieron preparar los visuales.',
     // Final version dialog
     '{count} fonte no roteiro.': '{count} fuente en el guion.',
     '{count} fontes no roteiro.': '{count} fuentes en el guion.',
@@ -455,14 +352,9 @@ export default {
     'Abrir roteiro': 'Abrir guion',
     'Abrir preparação manual': 'Abrir preparación manual',
     'Registrando a revisão no roteiro…': 'Registrando la revisión en el guion…',
-    'Conferindo os visuais das cenas…': 'Revisando los visuales de las escenas…',
-    '{scenes} ficou sem visual. Prepare os visuais novamente.':
-      '{scenes} quedó sin visual. Prepara los visuales de nuevo.',
     'Cena {number}': 'Escena {number}',
     'Iniciando a versão final…': 'Iniciando la versión final…',
     'Não foi possível iniciar a versão final.': 'No se pudo iniciar la versión final.',
-    'Mesmo roteiro e mesmos visuais da prévia, sem a marca de revisão.':
-      'Mismo guion y mismos visuales de la vista previa, sin la marca de revisión.',
     'Conferi e cruzei as fontes e as alegações desta pauta':
       'Revisé y crucé las fuentes y las afirmaciones de este tema',
     'Esta é a sua aprovação editorial e fica registrada no roteiro e no relatório de QA. Publicar continua manual.':

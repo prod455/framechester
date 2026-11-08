@@ -188,28 +188,7 @@ export interface RevenueEntry extends Timestamped {
   note: string;
   source: 'manual';
 }
-export interface WebAsset {
-  id: string;
-  channelId: string;
-  name: string;
-  kind: 'image' | 'video';
-  bytes: number;
-  checksum: string;
-  license: string;
-  provenance: string;
-  restrictions: string;
-  createdAt: string;
-  generated?: { scriptId: string; sceneId: number; fingerprint: string };
-}
-export interface PreparedVisuals {
-  scriptId: string;
-  assets: WebAsset[];
-  bindings: Record<string, string>;
-  previews?: Record<string, string>;
-}
 export type QaStatus = 'pass' | 'fail' | 'needs_human' | 'skipped';
-/** motion: animated storyboard; legacy: one still per scene, needed for the operator's own files. */
-export type VideoEngine = 'motion' | 'legacy';
 export interface WebJob {
   id: string;
   channelId: string;
@@ -223,11 +202,6 @@ export interface WebJob {
   videoAvailable: boolean;
   previewOnly?: boolean;
   automated?: boolean;
-  /** Scene assets and switches of the run, kept so a stopped job runs again as-is. */
-  assetIds?: Record<string, string>;
-  asr?: boolean;
-  burnSubtitles?: boolean;
-  engine?: VideoEngine;
   publications?: Partial<Record<Platform, Publication>>;
   /** A Short cut from another job's approved final version. */
   kind?: 'short';
@@ -268,7 +242,6 @@ export interface Bootstrap extends AppState {
   connections: SocialConnection[];
   capabilities: NetworkCapability[];
   jobs: WebJob[];
-  assets: WebAsset[];
   engine?: { available: boolean; message: string };
 }
 export interface AuthStatus {
@@ -276,20 +249,10 @@ export interface AuthStatus {
   authenticated: boolean;
   csrfToken?: string;
 }
+/** Every video comes from the motion engine: a script and, optionally, preview only. */
 export interface StartJobInput {
   scriptId: string;
-  assetIds: Record<string, string>;
-  asr?: boolean;
-  burnSubtitles?: boolean;
   previewOnly?: boolean;
-}
-export interface UploadAssetInput {
-  filename: string;
-  kind: 'image' | 'video';
-  contentBase64: string;
-  license: string;
-  provenance: string;
-  restrictions: string;
 }
 export interface TokenConnectionInput {
   channelId: string;
@@ -348,7 +311,7 @@ export interface VideoUpload {
   /** Trailing tag, such as YouTube's #Shorts. */
   tag?: string;
   vertical: boolean;
-  /** PNG drawn by the motion engine, YouTube only; absent on the still-image path. */
+  /** PNG drawn by the motion engine, YouTube only. */
   thumbnail?: string;
 }
 /** postId: YouTube video id, TikTok publish_id or Facebook video id. */
@@ -365,10 +328,6 @@ export interface RunnerApi {
   list(channelId: string): Promise<WebJob[]>;
   start(channelId: string, input: StartJobInput): Promise<WebJob>;
   startAutomated?(channelId: string, seedScriptId: string, prepare: () => Promise<string>): Promise<WebJob>;
-  assets(channelId: string): Promise<WebAsset[]>;
-  upload(channelId: string, input: UploadAssetInput): Promise<WebAsset>;
-  prepareVisuals(channelId: string, scriptId: string): Promise<PreparedVisuals>;
-  assetFile(channelId: string, assetId: string): Promise<{ path: string; contentType: string } | undefined>;
   file(
     channelId: string,
     jobId: string,
@@ -380,5 +339,4 @@ export interface RunnerApi {
   retryShort?(channelId: string, jobId: string): Promise<WebJob>;
   retry?(channelId: string, jobId: string): Promise<WebJob>;
   remove?(channelId: string, jobId: string): Promise<void>;
-  removeAsset?(channelId: string, assetId: string): Promise<void>;
 }

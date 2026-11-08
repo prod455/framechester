@@ -233,6 +233,20 @@ pub fn matching_affiliates<'a>(
         .collect()
 }
 
+/// The statement the Amazon Associates Operating Agreement requires wherever its links appear.
+pub const AMAZON_ASSOCIATE_STATEMENT: &str =
+    "As an Amazon Associate I earn from qualifying purchases.";
+
+fn is_amazon(url: &str) -> bool {
+    let host = url
+        .trim_start_matches("https://")
+        .split(['/', '?', '#', ':'])
+        .next()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    host == "amzn.to" || host.split('.').any(|label| label == "amazon")
+}
+
 pub fn build_description(
     script: &Script,
     topic: &Topic,
@@ -275,8 +289,16 @@ pub fn build_description(
             .iter()
             .map(|link| format!("- {}: {}", link.label.trim(), link.url))
             .collect();
+        let amazon = affiliates.iter().any(|link| is_amazon(&link.url));
         (
-            format!("{}\n\n", text.affiliate_disclosure),
+            if amazon {
+                format!(
+                    "{} {AMAZON_ASSOCIATE_STATEMENT}\n\n",
+                    text.affiliate_disclosure
+                )
+            } else {
+                format!("{}\n\n", text.affiliate_disclosure)
+            },
             format!("{}\n{}\n\n", text.affiliate_links, links.join("\n")),
         )
     };
@@ -492,6 +514,16 @@ mod tests {
             "Links (affiliate):\n- Budget book: https://example.com/book?tag=x-20\n\nSources"
         ));
         assert!(!text.contains("Broker"));
+        assert!(!text.contains(AMAZON_ASSOCIATE_STATEMENT));
+        money.affiliates[0].url = "https://amzn.to/3abc".into();
+        let text = build_description(&script(), &topic(), &timeline(), Some(&money));
+        assert!(text
+            .lines()
+            .next()
+            .unwrap()
+            .ends_with(AMAZON_ASSOCIATE_STATEMENT));
+        assert!(is_amazon("https://www.amazon.com.br/dp/1"));
+        assert!(!is_amazon("https://notamazon.com/x"));
         money.affiliates.remove(0);
         let text = build_description(&script(), &topic(), &timeline(), Some(&money));
         assert!(!text.contains("affiliate"));

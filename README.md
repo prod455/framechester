@@ -11,11 +11,11 @@
 
 > **Como subir o Framechester:** siga o [manual de instalação](docs/DEPLOY.md), direto no computador ou no Docker.
 
-> **Status:** versão 0.1.0. Studio web local, editores e produção completa por canal: tema -> roteiro (manual ou com IA) -> fontes revisadas por pares -> visuais explicativos -> narração TTS PT-BR -> vídeo gerado com FFmpeg -> QA -> vídeo aprovado para envio manual. A publicação automática continua desativada; elegibilidade e receita dependem de cada canal. Veja o [CHANGELOG](CHANGELOG.md) e [como aprovar um vídeo](docs/WEB_STUDIO.md#fontes-e-revisão).
+> **Status:** versão 0.1.0. Studio web local, editores e produção completa por canal: tema -> roteiro (manual ou com IA) -> fontes revisadas por pares -> narração TTS -> vídeo animado pelo motor motion -> QA -> vídeo aprovado para envio manual. A publicação automática continua desativada; elegibilidade e receita dependem de cada canal. Veja o [CHANGELOG](CHANGELOG.md) e [como aprovar um vídeo](docs/WEB_STUDIO.md#fontes-e-revisão).
 
 O Framechester ajuda um criador independente a descobrir assuntos, conferir fontes, escrever roteiros originais, gerar narração, gerar o vídeo, rodar o QA audiovisual e analisar a monetização oficial da plataforma. Não é uma fábrica de engajamento, não compra views e não garante elegibilidade nem receita.
 
-No Studio, **Produzir com IA** recebe sua orientação, escreve um roteiro novo e segue sozinho com [visuais explicativos locais](docs/VISUAIS_AUTOMATICOS.md), voz, legendas, montagem e QA. Você autoriza o custo antes de qualquer geração paga e revisa o vídeo pronto. A preparação manual continua nos controles avançados.
+No Studio, **Produzir com IA** recebe sua orientação, escreve um roteiro novo e segue sozinho com voz, animação, legendas e QA. Você autoriza o custo antes de qualquer geração paga e revisa o vídeo pronto. A preparação manual continua nos controles avançados.
 
 ## Princípios
 
@@ -32,7 +32,6 @@ No Studio, **Produzir com IA** recebe sua orientação, escreve um roteiro novo 
 - Rust 1.85+ (testado com 1.99.1)
 - FFmpeg/ffprobe no `PATH` (testado com o 9.0.1 full build)
 - Python 3.11–3.13 + Kokoro PT-BR: `npm run voices:setup` (runtime e modelos comerciais fixados)
-- Opcional: restic para backup e restauração
 - Opcional: whisper/FFmpeg com modelo para o QA por ASR (`--asr`)
 - Opcional: chave da Anthropic para o adaptador de LLM pago
 
@@ -87,15 +86,11 @@ modelo sozinho.
 ```bash
 cp config.example.toml framechester.toml   # ajuste caminhos locais
 cargo run -p framechester-cli -- doctor
-cargo run -p framechester-cli -- trends --limit 3
-cargo run -p framechester-cli -- run --workdir artifacts/demo-short
-cargo run -p framechester-cli -- run --format long --workdir artifacts/demo-long
-cargo run -p framechester-cli -- run --topic examples/topico.exemplo.json --workdir artifacts/demo-custom
-cargo run -p framechester-cli -- run --asr --workdir artifacts/demo-short
-cargo run -p framechester-cli -- qa --format short --video artifacts/demo-short/render/final.mp4
+cargo run --release -p framechester-cli -- run --script examples/juros-compostos.roteiro.json --topic examples/juros-compostos.topico.json --format long --workdir artifacts/demo-long
+cargo run -p framechester-cli -- qa --format long --video artifacts/demo-long/render/final.mp4
 ```
 
-Por padrão, o comando `run` usa o LLM de template offline, assets sintéticos e publicação em dry-run. O relatório fica em `artifacts/<run>/pipeline_report.json` e o painel local em `artifacts/<run>/report.html`; o pacote para revisão fica em `artifacts/<run>/publish/`, com `final.srt`, `description.txt`, `metadata.json` e `sources.md`, e a thumbnail em `artifacts/<run>/render/thumbnail.png`.
+`run` exige roteiro (`--script`) e tópico (`--topic`) revisados e sempre usa o motor motion. O relatório fica em `<workdir>/pipeline_report.json` e o painel local em `<workdir>/report.html`; o pacote para revisão fica em `<workdir>/publish/`, com `final.srt`, `description.txt`, `metadata.json` e `sources.md`, e a thumbnail em `<workdir>/render/thumbnail.png`.
 
 ## Vídeos explicativos animados (motor motion)
 
@@ -108,7 +103,7 @@ perfil `--release`: a rasterização em `debug` é várias vezes mais lenta.
 cargo run --release -p framechester-cli -- plan --script examples/skills-vs-agentes.roteiro.json --topic examples/skills-vs-agentes.topico.json --format vertical --output artifacts/storyboard.json
 cargo run --release -p framechester-cli -- produce --script examples/skills-vs-agentes.roteiro.json --topic examples/skills-vs-agentes.topico.json --format vertical --workdir artifacts/motion/vertical
 cargo run --release -p framechester-cli -- produce --script examples/skills-vs-agentes.roteiro.json --topic examples/skills-vs-agentes.topico.json --format horizontal --workdir artifacts/motion/horizontal
-cargo run --release -p framechester-cli -- run --engine motion --script examples/skills-vs-agentes.roteiro.json --topic examples/skills-vs-agentes.topico.json --format short --workdir artifacts/motion/run
+cargo run --release -p framechester-cli -- run --script examples/skills-vs-agentes.roteiro.json --topic examples/skills-vs-agentes.topico.json --format short --workdir artifacts/motion/run
 cargo run --release -p framechester-cli -- short --from <storyboard.json> --workdir artifacts/short
 ```
 
@@ -120,8 +115,7 @@ layout, tipografia e áreas seguras próprias. Saídas em `workdir/`: `storyboar
 `render/render_manifest.json`, `qa_report.json`, `pipeline_report.json` e o pacote de
 publicação. Documentação: [docs/STORYBOARD.md](docs/STORYBOARD.md),
 [docs/DESIGN_SYSTEM_VIDEO.md](docs/DESIGN_SYSTEM_VIDEO.md),
-[docs/MOTOR_MOTION.md](docs/MOTOR_MOTION.md) e
-[docs/BENCHMARK_SKILLS_VS_AGENTES.md](docs/BENCHMARK_SKILLS_VS_AGENTES.md).
+e [docs/MOTOR_MOTION.md](docs/MOTOR_MOTION.md).
 
 ### Cena livre e agentes
 
@@ -138,35 +132,25 @@ Para agentes (Claude Code, Codex, Cursor), a skill pública
 [`skills/framechester-video`](skills/framechester-video/SKILL.md) ensina o ciclo
 plan → produce → QA → corrigir. Instale copiando a pasta para o diretório de skills do
 agente ou com `npx skills add prod455/framechester --skill framechester-video`.
-Decisão e escopo: [docs/ESPEC_COMPETIR_HYPERFRAMES.md](docs/ESPEC_COMPETIR_HYPERFRAMES.md).
 
 ## Produção autoral e vários canais
 
 Use `examples/canais.exemplo.toml` como base privada de configuração. Cada `[[channels]]` tem um `id` local e pode declarar `youtube_channel_id` no arquivo privado. Quando há canais cadastrados, `run` exige `--channel`; um canal desconhecido ou duplicado falha antes da produção.
 
 ```bash
-cargo run -p framechester-cli -- --config examples/canais.exemplo.toml run --channel tech --topic examples/topico.exemplo.json --script examples/roteiro.exemplo.json --assets caminho/manifesto.json --workdir artifacts/piloto --burn-subtitles
+cargo run -p framechester-cli -- --config examples/canais.exemplo.toml run --channel tech --topic examples/topico.exemplo.json --script examples/roteiro.exemplo.json --workdir artifacts/piloto
 cargo run -p framechester-cli -- --config examples/canais.exemplo.toml analytics --channel tech --input examples/analytics.exemplo.json --json
 ```
 
-O exemplo `roteiro.exemplo.json` demonstra o contrato e usa fontes fictícias, identificadas como tal; troque a pauta por material real revisado antes de produzir para publicação. `--script` lê `{topic_id, script}` e preserva a narração, as fontes e os IDs das cenas; não pode ser combinado com `--llm`. `--assets` lê um array de `AssetManifest`: `scene_id`, `kind` (`image` ou `video`), `path` relativo ao manifesto, `license`, `provenance`, `checksum` SHA256 e `restrictions`. Os arquivos precisam ficar no diretório do manifesto; cada cena exige seu recurso. O sistema confere metadados e integridade; a validade jurídica dos direitos continua exigindo evidência.
+O exemplo `roteiro.exemplo.json` demonstra o contrato e usa fontes fictícias, identificadas como tal; troque a pauta por material real revisado antes de produzir para publicação. `--script` lê `{topic_id, script}` e preserva a narração, as fontes e os IDs das cenas.
 
 Com `--workdir artifacts/piloto --channel tech`, os resultados ficam em `artifacts/piloto/channels/tech/`. O relatório e os metadados registram o canal. O mesmo tema no canal `science` usa outro diretório. A seleção do canal e o namespace de arquivos não implementam autenticação de vários usuários, isolamento por processo nem orçamento independente persistido.
 
-`short` orienta o perfil para vertical; `long`, para horizontal, preservando o par de dimensões configurado. O renderizador normaliza proporção, FPS e áudio e aceita imagens ou clipes locais, repetindo a fonte quando necessário para cobrir a narração. O QA continua apontando congelamentos e problemas do vídeo final.
+`short` gera o vídeo vertical e `long`, o horizontal.
 
 O analytics importa observações JSON locais com origem, janela, moeda BRL e canal explícitos. O exemplo é `fixture`, com receita desconhecida. O RPM de Shorts usa engaged views; receitas estimadas e recebidas continuam separadas. Importar dados não verifica o Studio nem habilita monetização.
 
 O verificador OAuth aceita `--channel SLUG --expected-channel-id ID` e guarda os arquivos de cada canal em `FRAMECHESTER_HOME/channels/SLUG/`. No modo canal, ele não reaproveita os caminhos globais de tokens e confere a identidade antes de salvar ou de persistir uma renovação. O verificador não faz nenhum envio. Nesse verificador Python, o armazenamento de tokens ainda precisa evoluir para o gerenciador de segredos; o cofre do Studio web é um fluxo independente.
-
-Para reproduzir o piloto original de enquadramento vertical, o gerador de demonstração exige Pillow e FFmpeg (o Pillow não é dependência do motor Rust):
-
-```bash
-python scripts/gerar_assets_piloto.py --output-dir artifacts/piloto-multicanal/media
-cargo run -p framechester-cli -- --config examples/canais.exemplo.toml run --channel tech --topic examples/piloto-vertical.topico.json --script examples/piloto-vertical.roteiro.json --assets artifacts/piloto-multicanal/media/assets.json --workdir artifacts/piloto-multicanal/output --burn-subtitles --asr
-```
-
-Os clipes são diagramas originais de demonstração. O perfil configurado controla a resolução final; a prova registrada nesta entrega usa 360x640 como prévia. O roteiro tem fontes primárias reais e continua em revisão humana. Veja [a validação executada](docs/VALIDACAO_ENTREGA.md) para comandos, resultados e limites.
 
 Para instalar o binário:
 
@@ -179,31 +163,26 @@ framechester doctor
 
 | Comando | O que faz |
 |---|---|
-| `doctor` | Confere FFmpeg, ffprobe, restic, Kokoro/modelos comerciais, variáveis de ambiente, telemetria e dry-run |
+| `doctor` | Confere FFmpeg, ffprobe, Kokoro/modelos comerciais, variáveis de ambiente, telemetria e dry-run |
 | `config-check` | Valida o `framechester.toml` e mostra os valores efetivos |
-| `trends` | Lista e pontua os temas da fixture local, com bloqueios editoriais |
-| `run` | Pipeline completo: roteiro, TTS, timeline, geração do vídeo, QA e publicação em dry-run |
+| `run` | Mesmo caminho do `produce` (motor motion), com o formato `short` ou `long`; é o comando que o Studio chama |
 | `plan` | Monta o storyboard semântico a partir do roteiro, sem narrar nem gerar o vídeo |
 | `produce` | Gera um vídeo animado com o motor motion |
 | `short --from PATH` | Corta um Short vertical de até 58 s a partir do storyboard narrado de um vídeo motion |
 | `qa --video PATH` | QA técnico de um MP4 existente |
 | `report --workdir DIR` | Gera o `report.html` offline a partir do `pipeline_report.json` |
-| `backup-check` | Valida o repositório restic via `RESTIC_REPOSITORY`/`RESTIC_PASSWORD` |
-| `backup --path DIR --yes` | Cria um snapshot restic local; bloqueia destino remoto sem `--allow-remote` |
-| `restore --snapshot ID --target DIR --yes` | Restaura para um destino novo ou vazio; exige que o processo termine com sucesso |
-| `finance` | Simula custos e receita em centavos, sem promessa de resultado |
 | `analytics --channel ID --input PATH` | Valida e resume um snapshot JSON local sem misturar canais, formatos ou classes de receita |
 
-Flags úteis em `run`: `--topic arquivo.json`, `--format short|long`, `--max-scenes N`, `--voice NOME`, `--llm template|anthropic`, `--max-cost-cents N` (obrigatório para Anthropic), `--privacy private|unlisted|public`, `--asr` para o QA de fala com whisper local e `--burn-subtitles` para queimar as legendas no MP4.
+Flags de `run`: `--script`, `--topic`, `--channel`, `--format short|long`, `--voice NOME`, `--workdir` e `--preview-only`.
 
 ## Arquitetura
 
-- `crates/framechester-core`: domínio, etapas, portas (traits), configuração, segurança, editorial, financeiro, QA e pipeline.
-- `crates/framechester-adapters`: fixtures offline, TemplateLlm, AnthropicLlm, KokoroTts, renderizador/QA com FFmpeg + ASR com whisper, publisher em dry-run, métricas e restic.
+- `crates/framechester-core`: domínio, etapas, portas (traits), configuração, segurança, editorial, QA e pipeline.
+- `crates/framechester-adapters`: leitura do roteiro autoral, checagem local de alegações, KokoroTts e QA com FFmpeg + ASR com whisper.
 - `crates/framechester-motion`: motor de animação (storyboard -> componentes -> quadros -> mixagem -> QA).
-- `crates/framechester-cli`: comandos `doctor`, `config-check`, `trends`, `run`, `plan`, `produce`, `short`, `qa`, `report`, `backup-check`, `backup`, `restore`, `finance`.
+- `crates/framechester-cli`: comandos `doctor`, `config-check`, `run`, `plan`, `produce`, `short`, `qa`, `report`.
 - `web/`: frontend TypeScript/Vite e backend Node.js local, autenticação, editores, configuração por canal, cofre e integração com o motor Rust.
-- `scripts/`: verificadores Python para Anthropic, YouTube OAuth e backup restic.
+- `scripts/`: verificadores Python para Anthropic e YouTube OAuth.
 - `docs/`: plano operacional, inventário de viabilidade, arquitetura e ADRs.
 
 ## Testes
@@ -221,11 +200,8 @@ npm --prefix web run build
 ## Limites deste MVP
 
 - A publicação real está desativada nas quatro redes do Studio; o publisher do motor é sempre dry-run e bloqueia `dry_run=false`.
-- Legendas, thumbnail, descrição e fontes/licenças são geradas; `--burn-subtitles` embute o SRT no MP4, mas ainda não há trilha musical licenciada.
+- Legendas por palavra, thumbnail, descrição e fontes/licenças são geradas; ainda não há trilha musical licenciada.
 - O QA por ASR é opcional e usa whisper local; a cobertura é um alerta, não prova de qualidade editorial.
-- Sem `--assets`, os recursos continuam sintéticos (`testsrc2`). Com manifesto, entram imagens e vídeos locais cujos direitos foram declarados pelo operador.
-- O LLM de template é simples de propósito e exige revisão humana.
-- O adaptador Anthropic tem integração HTTP, mas a inferência paga fica bloqueada antes do POST até existir cotação confiável e controle de custo por canal e por produção. `--max-cost-cents` sozinho não libera chamadas. O caminho com `--script` é local e não chama essa API.
 - O Studio tem painel e fila local de produções em um único processo. Não há agendador, fila distribuída, banco SQL nem VPS; produções interrompidas por um reinício precisam ser iniciadas de novo.
 - Nenhum modelo, mídia ou segredo é redistribuído no repositório.
 
@@ -246,4 +222,4 @@ Cada tag `vX.Y.Z` gera uma [release no GitHub](https://github.com/prod455/framec
 
 Nunca envie tokens reais, dados pessoais, mídia não autorizada ou URLs privadas.
 
-As [equipes e skills locais](docs/EQUIPES_E_SKILLS.md) apoiam a implementação em Rust e o marketing por canal. Consulte a [auditoria de engenharia](docs/AUDITORIA_ENGENHARIA.md), o [plano de marketing](docs/MARKETING_YOUTUBE_OPERACIONAL.md) e a [curadoria de fontes](docs/skills-sources.lock.md) para evidências e limites.
+As [equipes e skills locais](docs/EQUIPES_E_SKILLS.md) apoiam a implementação em Rust e o marketing por canal. Consulte o [plano de marketing](docs/MARKETING_YOUTUBE_OPERACIONAL.md) e a [curadoria de fontes](docs/skills-sources.lock.md) para evidências e limites.

@@ -77,7 +77,6 @@ const state = (jobs: WebJob[], youtube = false): Bootstrap => ({
     : [],
   capabilities: [],
   jobs,
-  assets: [],
 });
 const states = (jobs: WebJob[], youtube = false) =>
   videoProgress(state(jobs, youtube), 'tech').steps.map((step) => step.state);

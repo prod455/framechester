@@ -111,8 +111,7 @@ controles de 44 px, ícones de 18 px, recuo de 12 px e entrelinha de UI de
 20 px. Cabeçalhos irmãos reservam a mesma faixa de 44 px; abas não herdam
 padding de 3 px nem track de 36 px para botões de 44 px. Formulários usam
 subgrid onde suportado para alinhar controles com labels e ajudas de alturas
-diferentes; em uma coluna voltam ao fluxo normal. Regras, medidas e limites
-constam em [ALIGNMENT_QA.md](ALIGNMENT_QA.md).
+diferentes; em uma coluna voltam ao fluxo normal.
 
 O passe conferiu desktop, 760 px e 390 px, menu por teclado/Escape, abertura
 direta da revisão, roteiro selecionado, detalhes financeiros e autenticação.

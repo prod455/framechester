@@ -1,9 +1,9 @@
 # Framechester — plano operacional completo (Open Source)
 
-> Atualização do operador em 27/10/2026: o produto deve operar **múltiplos canais**, com contexto, artefatos, credenciais e métricas separados. Referências abaixo a um único canal descrevem o piloto histórico e não limitam a arquitetura atual. Ver [equipes e execução](EQUIPES_E_SKILLS.md), [auditoria](AUDITORIA_ENGENHARIA.md) e [marketing multicanais](MARKETING_YOUTUBE_OPERACIONAL.md).
+> Atualização do operador em 27/10/2026: o produto deve operar **múltiplos canais**, com contexto, artefatos, credenciais e métricas separados. Referências abaixo a um único canal descrevem o piloto histórico e não limitam a arquitetura atual. Ver [equipes e execução](EQUIPES_E_SKILLS.md) e [marketing multicanais](MARKETING_YOUTUBE_OPERACIONAL.md).
 **Versão:** 4.0 • **Data-base:** 27/10/2026 • **Proprietário e beneficiário:** uma única pessoa física no Brasil • **Status:** especificação pública open-source; NÃO é um software implementado nem uma plataforma hospedada.
 
-> **Contrato de negócio:** receita apenas da monetização oficial das plataformas (anúncios e programas de remuneração por audiência, incluindo YouTube Premium). Proibidos no escopo: prestação de serviços, clientes, afiliados, links de vendas, produtos, patrocínios negociados e licenciamento de vídeos para terceiros. Sem aparecer em câmera. Conteúdo original, verificável e permitido pelas regras de cada plataforma.
+> **Contrato de negócio:** receita apenas da monetização oficial das plataformas (anúncios e programas de remuneração por audiência, incluindo YouTube Premium). Links de afiliado entram desde 08/11/2026, por canal, com aviso de afiliado no topo da descrição. Proibidos no escopo: prestação de serviços, clientes, links de vendas próprios, produtos, patrocínios negociados e licenciamento de vídeos para terceiros. Sem aparecer em câmera. Conteúdo original, verificável e permitido pelas regras de cada plataforma.
 
 
 ## Política open-source e escopo (decisão 4.0)

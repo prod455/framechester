@@ -22,7 +22,6 @@ O objetivo comercial é fazer o operador obter resultado com conteúdo original;
 | `scripts/verificar_youtube.py` | OAuth e leitura de canal; não consulta aprovação YPP nem receita | Conexão funcionando não demonstra monetização habilitada. |
 | `crates/framechester-adapters/src/metrics.rs` | `NullMetrics` e importação de arquivo JSON | Ainda não há coleta real de desempenho neste caminho. |
 | `MetricSample` em `crates/framechester-core/src/domain.rs` | `views`, `watch_hours`, `revenue_cents`, `monetized`, provedor e data | Modelo insuficiente para separar janela, formato, views intencionais, valores estimados/finalizados/pagos e moeda. |
-| `crates/framechester-core/src/finance.rs` e `scripts/calculadora_monetizacao.py` | Simulação de custos e receitas | Cenário não é extrato do Studio nem dinheiro recebido; parâmetros precisam de origem e validade. |
 | `THIRD_PARTY_NOTICES.md` | Licença-base do checkpoint da voz ainda pendente de confirmação | Resolver direitos da voz antes de tratá-la como aprovada para uma operação comercial; não redistribuir pesos por presunção. |
 
 **Observação de formato:** o inventário registra uma demonstração curta de 78,5 s em 1920×1080. Isso prova duração curta, mas não prova classificação como Short. O próprio YouTube informa que uploads de até três minutos com proporção quadrada ou vertical são considerados Shorts. A fatia de produto deve distinguir duração e proporção. [Ajuda oficial sobre testes A/B, FAQ de Shorts](https://support.google.com/youtube/answer/16391400?hl=pt-BR).
@@ -207,7 +206,7 @@ Para música da Biblioteca de áudio do YouTube, conferir a faixa e a exigência
 
 ### Publicidade, alegações e adequação aos anunciantes
 
-Os arts. 36–38 do Código de Defesa do Consumidor exigem identificação da publicidade, vedam publicidade enganosa/abusiva e tratam da sustentação das alegações. O negócio atual exclui patrocínio negociado, afiliados e venda. Se o escopo mudar, revisar identificação e evidências antes de inserir comunicação comercial. Não apresentar publicidade como avaliação editorial independente. [CDC atualizado](https://www2.camara.leg.br/legin/fed/lei/1990/lei-8078-11-setembro-1990-365086-normaatualizada-pl.html).
+Os arts. 36–38 do Código de Defesa do Consumidor exigem identificação da publicidade, vedam publicidade enganosa/abusiva e tratam da sustentação das alegações. Desde 08/11/2026 o negócio inclui links de afiliado: a descrição gerada abre com o aviso de afiliado e lista só os links dos produtos de que o vídeo fala. Patrocínio negociado e venda continuam fora. Para público dos EUA, a FTC exige o aviso de forma clara e antes do link. Não apresentar publicidade como avaliação editorial independente. [CDC atualizado](https://www2.camara.leg.br/legin/fed/lei/1990/lei-8078-11-setembro-1990-365086-normaatualizada-pl.html).
 
 Adequação a anunciantes alcança vídeo e metadados; conteúdo permitido na plataforma pode ter anúncios limitados. Revisar também título e thumbnail, especialmente violência, alegações nocivas ou não confiáveis, eventos sensíveis e temas controversos. [Diretrizes oficiais de publicidade](https://support.google.com/youtube/answer/6162278?hl=pt-BR).
 

@@ -6,8 +6,6 @@ O Studio oferece uma interface web em TypeScript/Vite e um backend Node.js
 local para organizar canais, pesquisar pautas, editar roteiros e storytelling,
 configurar a produção e acompanhar as quatro redes. O motor de produção
 continua sendo a CLI Rust. O estágio desta entrega é pré-alpha executável.
-O [parecer de uso local](PRONTIDAO_USO_LOCAL.md) registra o piloto aprovado,
-as correções de QA/UX/DX e os limites ainda existentes para monetização.
 
 ## Instalar e iniciar
 
@@ -233,8 +231,7 @@ direitos registrados.
 card da prévia na fila de produção tem o botão **Gerar versão final** (ele
 também aparece em **Revisar vídeo**). O diálogo mostra quantas fontes o
 roteiro tem, pede a declaração **Conferi e cruzei as fontes e as alegações
-desta pauta** e inicia a versão final com os mesmos visuais da prévia, sem a
-marca de revisão. A declaração fica gravada no roteiro; não é preciso abrir o
+desta pauta** e inicia a versão final pelo motor motion, sem a marca de revisão. A declaração fica gravada no roteiro; não é preciso abrir o
 editor.
 
 O motor recebe essa declaração (`cross_checked`) e registra no relatório de
@@ -258,9 +255,7 @@ conectar a rede ou, numa rede só vertical, o aviso de que vai o Short. Nessas
 três, publicar continua decisão do operador. O Instagram não tem modo
 não público na API: com o opt-in dele ou o botão confirmado, o Reel vertical
 aprovado é **publicado** direto. Cada descrição cita os perfis das outras redes
-conectadas. A preparação manual
-(**Produzir com IA → Controles avançados → Abrir preparação manual**)
-continua disponível para trocar visuais ou usar gravações próprias.
+conectadas.
 
 **Buscar fontes**, na aba Fontes e revisão do roteiro, procura artigos
 revisados por pares (DOI) no Crossref a partir do título, do gancho e das
@@ -276,8 +271,8 @@ publicar: a busca encontra o artigo, não confirma que ele sustenta a fala.
 2. Com Claude/OpenAI, calcule o custo e use **Autorizar e produzir**. A
    autorização cobre uma geração de roteiro; não há aprovação manual entre
    as etapas locais seguintes. Com Ollama, use **Produzir neste computador**.
-3. O servidor gera e salva um novo roteiro, cria e associa os visuais,
-   sintetiza a voz comercial, monta o MP4 com legendas e executa o QA. A fila
+3. O servidor gera e salva um novo roteiro, sintetiza a voz comercial, anima
+   as cenas pelo motor motion com legendas e executa o QA. A fila
    continua executando depois que o diálogo ou navegador é fechado, enquanto
    o servidor permanecer ativo. O roteiro original e as pendências editoriais
    são preservados.
@@ -286,15 +281,14 @@ publicar: a busca encontra o artigo, não confirma que ele sustenta a fala.
    verificadas; não produz um pacote de publicação aprovado.
 
 O assistente usa a orientação e as referências fornecidas no canal; essa
-etapa não executa pesquisa externa na internet nem inventa fontes. Os visuais
-são composições de texto, sem geração fotográfica por API. Só a geração de
-roteiro usa a IA configurada; voz, visuais, montagem e QA são locais.
+etapa não executa pesquisa externa na internet nem inventa fontes. As cenas
+são animações vetoriais do motor motion, sem imagem gerada por API nem mídia
+própria. Só a geração de roteiro usa a IA configurada; voz, animação e QA são
+locais.
 
-**Controles avançados → Abrir preparação manual** mantém o fluxo anterior.
-Nele, **Gerar prévia do vídeo** funciona com fontes ainda não revisadas ou
-gravações pendentes, usando as composições ilustrativas. O vídeo recebe marca
-de revisão. **Gerar versão final** continua exigindo os vínculos e a revisão
-editorial. Veja [visuais automáticos](VISUAIS_AUTOMATICOS.md).
+**Controles avançados → Abrir preparação manual** escolhe um roteiro e gera a prévia
+(com marca de revisão, aceita fontes ainda não revisadas) ou a versão final
+(exige a revisão editorial).
 
 O backend mantém uma fila no processo e registra os estados dos jobs. Após
 reinício, trabalhos que estavam na fila ou em execução ficam bloqueados como
@@ -510,11 +504,3 @@ e produção; `research` inicia roteiro; o restante só depende de `studio`.
 todas as páginas; é o teste que falha primeiro se uma página perder um import
 ou ler dados antes do carregamento.
 
-Os resultados do Studio, testes web, build e auditoria de dependências ficam
-registrados na [validação web](WEB_STUDIO_VALIDACAO.md). A [validação do motor](VALIDACAO_ENTREGA.md)
-registra Rust/Python e seus pilotos, com as respectivas contagens e limitações. O smoke
-audiovisual ignorado na suíte padrão foi executado explicitamente. Um job
-ponta a ponta no perfil local de QA produziu vídeo e terminou em
-`needs_review`. Essa evidência é do cenário executado, com dados isolados, e
-não constitui auditoria universal de contas, direitos ou conteúdo. Consulte
-também [a auditoria de engenharia](AUDITORIA_ENGENHARIA.md).

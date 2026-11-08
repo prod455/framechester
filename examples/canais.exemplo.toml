@@ -11,6 +11,25 @@ look = "planta"
 id = "science"
 look = "papel"
 
+# Canais monetizaveis em ingles (RPM maior que pt-BR): explicadores originais narrados.
+# money-explained: financas pessoais (primeiro roteiro: examples/juros-compostos.roteiro.json).
+[[channels]]
+id = "money-explained"
+language = "en-US"
+look = "papel"
+# Links de afiliado: entram na descricao so dos videos que dizem um dos termos, com aviso no topo.
+# Troque pela URL real do seu programa (ex.: link do Amazon Associates com o seu tag).
+[[channels.affiliates]]
+label = "The Psychology of Money (book)"
+url = "https://example.com/troque-pelo-seu-link"
+terms = ["compound interest", "invest", "retirement"]
+
+# tech-explained: tecnologia e IA.
+[[channels]]
+id = "tech-explained"
+language = "en-US"
+look = "planta"
+
 [app]
 dry_run = true
 telemetry = false
@@ -22,9 +41,12 @@ height = 1080
 fps = 30
 
 [tts]
-piper_path = "C:/piper/piper.exe"
-voice_model = "C:/piper/pt_BR-faber-medium.onnx"
-voice_name = "pt_BR-faber-medium"
+engine = "kokoro"
+# npm run voices:setup. Linux: .framechester/tts-venv/bin/python
+python_path = ".framechester/tts-venv/Scripts/python.exe"
+voice_model = "models/kokoro/kokoro-v1.0.onnx"
+voice_styles = "models/kokoro/voices-v1.0.bin"
+voice_name = "pf_dora"
 
 [publish]
 enabled = false

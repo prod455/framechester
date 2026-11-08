@@ -20,9 +20,9 @@ O Framechester ainda não chegou à 1.0: mudanças incompatíveis podem acontece
 O Framechester roda no computador do próprio operador. O modelo de segurança parte destas premissas:
 
 - O Studio escuta só em loopback, protegido por uma senha local, com proteção CSRF e um cofre por instalação para os tokens. Expor o Studio a uma rede não é suportado.
-- Publicação, compras e gastos com backup ficam desativados, a menos que o operador os ative explicitamente; `dry_run` é o padrão.
+- Publicação e compras ficam desativados, a menos que o operador os ative explicitamente; `dry_run` é o padrão.
 - A telemetria fica desligada. Nenhum dado sai do computador, exceto as chamadas que o operador configura (provedores de LLM, busca de fontes no Crossref, APIs das plataformas com as credenciais do próprio operador).
-- A mídia que o operador importa é conferida quanto a tipo, tamanho e integridade; subprocessos (FFmpeg, Kokoro, restic) são chamados com argumentos explícitos, nunca por um shell.
+- A mídia que o operador importa é conferida quanto a tipo, tamanho e integridade; subprocessos (FFmpeg, Kokoro) são chamados com argumentos explícitos, nunca por um shell.
 
 Dentro do escopo: qualquer coisa que quebre essas premissas, como desvios de autenticação ou de CSRF, segredos vazando para logs, relatórios ou o frontend, path traversal em uploads ou arquivos de produção, server-side request forgery na busca de fontes ou de mídia, injeção de comandos nas chamadas de subprocessos e problemas de cadeia de suprimentos nas dependências fixadas ou nos downloads de modelos.
 
@@ -31,6 +31,6 @@ Fora do escopo: vulnerabilidades que exigem acesso físico ao computador do oper
 ## Checklist de proteção para operadores
 
 - Mantenha o Studio em `127.0.0.1` (o padrão) e use a senha local.
-- Mantenha a chave do cofre fora do repositório e faça backup do diretório de dados com a criptografia do restic.
+- Mantenha a chave do cofre fora do repositório e guarde uma cópia criptografada do diretório de dados.
 - Rode `cargo run -p framechester-cli -- doctor` depois de atualizar; ele mostra as versões do FFmpeg, do Python e dos modelos de voz.
 - Revise o `pipeline_report.json` antes de publicar qualquer coisa manualmente.

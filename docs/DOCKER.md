@@ -188,4 +188,4 @@ anterior, selecione a tag com `FRAMECHESTER_IMAGE` e execute Compose
 `up -d --no-build --wait`; valide a compatibilidade do formato de dados antes
 de reutilizar um volume modificado por uma versão mais nova.
 
-As validações executadas e seus limites estão em [INFRA_VALIDACAO.md](INFRA_VALIDACAO.md).
+

@@ -29,15 +29,13 @@ roteiro (diretivas) ─► planner ─► Storyboard (schema) ─► narrate (TT
 - `framechester-motion` (novo crate): tokens, formatos e áreas seguras, keyframes e
   easing, scene graph com SVG por instante, tipografia com fontes embutidas, 11
   componentes, legendas karaokê, rasterização paralela, soundtrack, QA, logs e manifesto.
-- CLI: `plan`, `produce`, `run --engine motion`. O pipeline antigo (`run`, padrão
-  `--engine legacy`) continua intacto; `[motion] enabled = true` troca o padrão.
+- CLI: `plan`, `produce` e `run` (o mesmo caminho, chamado pelo Studio). O pipeline
+  antigo de imagens paradas foi removido em 08/11/2026.
 - `framechester-core::shorts` + CLI `short`: divide um storyboard narrado em até 5
   Shorts verticais de até 58 s, em partes seguidas; cena longa é partida entre as
   frases e cada parte depois da primeira abre com o gancho (as primeiras frases, até
   1/3 do Short). `--list` só lista as partes; `--part N` produz a parte N. Preserva
   ordem e texto e renarra no formato vertical. O Studio expõe isso em **Gerar Shorts**.
-- Diretivas novas são aceitas pelo catálogo antigo e pelo Studio como `destaque`, então
-  um roteiro escrito para o motor motion ainda renderiza no caminho legado.
 
 ## ADR-0002: motor de animação próprio em Rust (resvg) em vez de Motion Canvas ou Manim
 
@@ -87,17 +85,15 @@ no QA.
 ## Limitações conhecidas
 
 - Sem alinhador forçado fonético (o timing por palavra vem das pausas medidas e das
-  sílabas), sem ASR no caminho motion (o `--asr` do pipeline legado
-  continua disponível).
+  sílabas), sem ASR no caminho motion.
 - Sem imagens ou vídeos externos nas composições: o motor é vetorial e original por
   decisão; `resources[]` registra necessidades externas e o QA bloqueia se faltarem.
-- O Studio web produz pelo motor motion (`run --engine motion`). Uma cena com arquivo
-  próprio do operador (gravação ou imagem) usa o caminho legado no vídeo inteiro, porque o
-  motor motion não embute mídia externa; o card mostra qual motor rodou.
+- O Studio web produz todo vídeo pelo motor motion (`run`). Mídia própria do operador
+  (gravação ou imagem) não entra no vídeo: o motor é vetorial e original.
 - Diretiva mal formada (por exemplo `#grafico` com valor não numérico) não derruba o vídeo:
   como no catálogo de imagens, a cena usa o layout de título e o motivo entra nos avisos
   do relatório (`plan` imprime em stderr).
-- `--preview-only` no motor motion aplica a mesma trava editorial do legado, carimba
+- `--preview-only` no motor motion aplica a trava editorial, carimba
   **PRÉVIA · REVISÃO PENDENTE** em todos os quadros e não gera pacote nem aprovação.
 - Qualidade perceptual foi conferida por contact sheets e quadros extraídos, não por
   teste com espectadores; os alvos de loudness exigem validação auditiva por plataforma.
@@ -110,4 +106,3 @@ no QA.
 - `render.log.jsonl`: eventos estruturados por fase.
 - Cache de narração por `sha256(motor, voz, texto)` em `artifacts/cache/tts/`; o render
   é determinístico a partir do storyboard narrado.
-- Medições do benchmark em `docs/BENCHMARK_SKILLS_VS_AGENTES.md`.

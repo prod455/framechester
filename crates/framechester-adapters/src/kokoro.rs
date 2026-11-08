@@ -1,4 +1,4 @@
-use crate::piper::probe_wav;
+use crate::wav::probe_wav;
 use framechester_core::config::TtsConfig;
 use framechester_core::domain::TtsAudio;
 use framechester_core::error::{FramechesterError, Result};

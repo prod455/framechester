@@ -1,0 +1,68 @@
+{
+  "id": "03-investment-fees",
+  "title": "How a 1% fee can cost you $95,000",
+  "series": "money",
+  "angle": "$500 a month for 30 years at an assumed 7% before fees: 0.1% versus 1% in yearly fees",
+  "sources": [
+    {
+      "title": "Understanding Fees",
+      "url": "https://www.investor.gov/introduction-investing/getting-started/understanding-fees",
+      "publisher": "Investor.gov (U.S. Securities and Exchange Commission)",
+      "retrieved_at": "2026-11-08",
+      "license": "referencia documental; texto nao redistribuido"
+    },
+    {
+      "title": "Investor Bulletin: How Fees and Expenses Affect Your Investment Portfolio",
+      "url": "https://www.sec.gov/investor/alerts/ib_fees_expenses.pdf",
+      "publisher": "U.S. Securities and Exchange Commission",
+      "retrieved_at": "2026-11-08",
+      "license": "referencia documental; texto nao redistribuido"
+    },
+    {
+      "title": "Compound Interest Calculator",
+      "url": "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator",
+      "publisher": "Investor.gov (U.S. Securities and Exchange Commission)",
+      "retrieved_at": "2026-11-08",
+      "license": "referencia documental; texto nao redistribuido"
+    }
+  ],
+  "claims": [
+    {
+      "text": "$500 a month for 30 years at 6.9% (7% minus a 0.1% fee), compounded monthly, ends near $598,000 ($598,085). Calculo proprio.",
+      "status": "cited",
+      "source_urls": [
+        "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator"
+      ]
+    },
+    {
+      "text": "The same at 6% (7% minus a 1% fee) ends near $502,000 ($502,258); the difference is $95,827. Calculo proprio.",
+      "status": "cited",
+      "source_urls": [
+        "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator"
+      ]
+    },
+    {
+      "text": "Over time, even small ongoing fees have a big impact on your investment portfolio.",
+      "status": "cited",
+      "source_urls": [
+        "https://www.sec.gov/investor/alerts/ib_fees_expenses.pdf"
+      ]
+    },
+    {
+      "text": "Ongoing fees include fund expenses, advisory fees and account fees.",
+      "status": "cited",
+      "source_urls": [
+        "https://www.investor.gov/introduction-investing/getting-started/understanding-fees"
+      ]
+    }
+  ],
+  "metrics": {
+    "acceleration": 0.5,
+    "demand": 0.8,
+    "alignment": 0.8,
+    "originality": 0.6,
+    "visual_feasibility": 0.9,
+    "timing": 0.6,
+    "cross_check": 0.9
+  }
+}

@@ -49,7 +49,7 @@ pub enum Shape {
         /// Measured box, for QA.
         bbox: Rect,
         /// Animated number: the shown text is `value × draw progress`, formatted.
-        counter: Option<(f64, Option<String>)>,
+        counter: Option<(f64, Option<String>, framechester_core::storyboard::Numerals)>,
     },
 }
 
@@ -968,11 +968,18 @@ impl Node {
             } => {
                 let typed = self.props.typed.eval(t);
                 let content = match counter {
-                    Some((value, unit)) => {
+                    Some((value, unit, numerals)) => {
                         let progress = self.props.draw.eval(t).clamp(0.0, 1.0) as f64;
-                        framechester_core::storyboard::format_value(
-                            value * progress,
+                        // A whole number counts in whole steps: "2,232.2" never flashes by.
+                        let shown = if value.fract() == 0.0 {
+                            (value * progress).round()
+                        } else {
+                            value * progress
+                        };
+                        framechester_core::storyboard::format_value_in(
+                            shown,
                             unit.as_deref(),
+                            *numerals,
                         )
                     }
                     None => content.clone(),

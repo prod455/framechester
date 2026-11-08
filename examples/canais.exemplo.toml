@@ -24,6 +24,12 @@ label = "The Psychology of Money (book)"
 url = "https://example.com/troque-pelo-seu-link"
 terms = ["compound interest", "invest", "retirement"]
 
+# dinheiro-explicado: financas pessoais em pt-BR (RPM menor; mesmo formato, publico local).
+[[channels]]
+id = "dinheiro-explicado"
+language = "pt-BR"
+look = "papel"
+
 # tech-explained: tecnologia e IA.
 [[channels]]
 id = "tech-explained"

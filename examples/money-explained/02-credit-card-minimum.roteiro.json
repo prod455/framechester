@@ -1,0 +1,142 @@
+{
+  "topic_id": "02-credit-card-minimum",
+  "script": {
+    "title": "Why a $5,000 credit card takes almost 5 years to pay off",
+    "hook": "Why does $5,000 take almost five years?",
+    "series": "money",
+    "format": "long",
+    "cross_checked": true,
+    "scenes": [
+      {
+        "id": 0,
+        "heading": "Almost five years",
+        "narration": "You owe five thousand dollars on a credit card and pay $150 every month. How long until it's gone? Almost five years. Here is the math.",
+        "visual_brief": "#pergunta Why does $5,000 take almost five years?\nOpen the loop.",
+        "duration_hint_secs": 10.0
+      },
+      {
+        "id": 1,
+        "heading": "The setup",
+        "narration": "The setup: a five thousand dollar balance, a 24% yearly rate that we assume just for this example, $150 a month, and no new purchases.",
+        "visual_brief": "#lista $5,000 balance; 24% a year, assumed; $150 a month; no new purchases\nState the assumption first.",
+        "duration_hint_secs": 9.6
+      },
+      {
+        "id": 2,
+        "heading": "2% a month",
+        "narration": "Card rates are quoted per year, but interest builds up month by month. 24% a year is about 2% a month.",
+        "visual_brief": "#numero 2% | interest every month: 24% divided by 12\nYearly rate to monthly rate.",
+        "duration_hint_secs": 8.1
+      },
+      {
+        "id": 3,
+        "heading": "Your first payment",
+        "narration": "On five thousand dollars, 2% is $100. So of your first $150 payment, $100 goes to interest and only $50 pays down the debt.",
+        "visual_brief": "#grafico Your first payment, in dollars | Interest=100; Debt paid down=50\nWhere the money goes.",
+        "duration_hint_secs": 9.2
+      },
+      {
+        "id": 4,
+        "heading": "Running in place",
+        "narration": "The balance barely moves, so next month the interest is almost the same. That is why it feels like running in place.",
+        "visual_brief": "#causa Only $50 hits the debt => The balance barely drops => Next month's interest is almost the same\nThe trap.",
+        "duration_hint_secs": 8.5
+      },
+      {
+        "id": 5,
+        "heading": "56 months",
+        "narration": "At $150 a month, it takes 56 months to clear the card. That is four years and eight months.",
+        "visual_brief": "#numero 56 | months to pay it off at $150 a month\nThe time cost.",
+        "duration_hint_secs": 7.3
+      },
+      {
+        "id": 6,
+        "heading": "The interest bill",
+        "narration": "And you pay $3,322 in interest, on top of the five thousand you borrowed.",
+        "visual_brief": "#numero 3322 | dollars of interest at $150 a month\nThe money cost.",
+        "duration_hint_secs": 5.4
+      },
+      {
+        "id": 7,
+        "heading": "Double the payment",
+        "narration": "Now double the payment to $300. The card is gone in 21 months, and the interest drops to $1,143.",
+        "visual_brief": "#comparacao $150 a month: 56 months; $3,322 in interest | $300 a month: 21 months; $1,143 in interest\nSame debt, two speeds.",
+        "duration_hint_secs": 7.3
+      },
+      {
+        "id": 8,
+        "heading": "Same debt, less interest",
+        "narration": "Same debt, same rate. Paying $300 instead of $150 saves $2,179 in interest: $3,322 against $1,143.",
+        "visual_brief": "#grafico Interest paid, in dollars | $150 a month=3322; $300 a month=1143\nThe difference.",
+        "duration_hint_secs": 6.2
+      },
+      {
+        "id": 9,
+        "heading": "Why it works",
+        "narration": "Every dollar above the interest goes straight to the balance, and a smaller balance means less interest next month. Now the math works for you.",
+        "visual_brief": "#causa Extra dollars hit the balance => Smaller balance => Less interest next month\nCompounding in your favor.",
+        "duration_hint_secs": 9.6
+      },
+      {
+        "id": 10,
+        "heading": "Check your statement",
+        "narration": "Your statement already shows this. US card statements must tell you how long the minimum payment would take, and what you would pay each month to finish in three years. Look for that box.",
+        "visual_brief": "#destaque\nPoint to the real tool.",
+        "duration_hint_secs": 13.1
+      },
+      {
+        "id": 11,
+        "heading": "The rule",
+        "narration": "The rule is simple: pay more than the minimum whenever you can, and stop adding new charges. This is math, not financial advice.",
+        "visual_brief": "#destaque\nClose on the principle.",
+        "duration_hint_secs": 8.8
+      }
+    ],
+    "sources": [
+      {
+        "title": "What is the three-year payment information on a credit card statement?",
+        "url": "https://www.consumerfinance.gov/ask-cfpb/what-is-the-three-year-payment-information-on-a-credit-card-statement-en-36/",
+        "publisher": "Consumer Financial Protection Bureau",
+        "retrieved_at": "2026-11-08",
+        "license": "referencia documental; texto nao redistribuido"
+      },
+      {
+        "title": "What is APR?",
+        "url": "https://www.consumerfinance.gov/ask-cfpb/what-is-apr-en-36/",
+        "publisher": "Consumer Financial Protection Bureau",
+        "retrieved_at": "2026-11-08",
+        "license": "referencia documental; texto nao redistribuido"
+      }
+    ],
+    "claims": [
+      {
+        "text": "$5,000 at 24% APR (2% a month) paid at $150 a month takes 56 months and $3,322 in interest. Math: monthly compounding, fixed payment, no new purchases (calculo proprio, reproduzivel na formula).",
+        "status": "cited",
+        "source_urls": [
+          "https://www.consumerfinance.gov/ask-cfpb/what-is-apr-en-36/"
+        ]
+      },
+      {
+        "text": "The same balance paid at $300 a month takes 21 months and $1,143 in interest. Math: monthly compounding, fixed payment, no new purchases (calculo proprio, reproduzivel na formula).",
+        "status": "cited",
+        "source_urls": [
+          "https://www.consumerfinance.gov/ask-cfpb/what-is-apr-en-36/"
+        ]
+      },
+      {
+        "text": "US card statements must show how long paying only the minimum takes and the monthly payment to pay off the balance in three years.",
+        "status": "cited",
+        "source_urls": [
+          "https://www.consumerfinance.gov/ask-cfpb/what-is-the-three-year-payment-information-on-a-credit-card-statement-en-36/"
+        ]
+      },
+      {
+        "text": "APR is a yearly rate; interest on a card is charged on the balance over the billing cycle.",
+        "status": "cited",
+        "source_urls": [
+          "https://www.consumerfinance.gov/ask-cfpb/what-is-apr-en-36/"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "topic_id": "07-subscriptions-50",
+  "script": {
+    "title": "What $50 a month in subscriptions really costs over 30 years",
+    "hook": "What do your subscriptions really cost?",
+    "series": "money",
+    "format": "long",
+    "cross_checked": true,
+    "scenes": [
+      {
+        "id": 0,
+        "heading": "Fifty dollars",
+        "narration": "Fifty dollars a month in subscriptions feels like nothing. Over 30 years, it is a very different number. Let's do the math.",
+        "visual_brief": "#pergunta What do your subscriptions really cost?\nOpen the loop.",
+        "duration_hint_secs": 8.5
+      },
+      {
+        "id": 1,
+        "heading": "The yearly bill",
+        "narration": "$50 a month is $600 a year. Most people never look at that total.",
+        "visual_brief": "#numero 600 | dollars a year at $50 a month\nAnnualize it.",
+        "duration_hint_secs": 5.4
+      },
+      {
+        "id": 2,
+        "heading": "Thirty years",
+        "narration": "Over 30 years, that is $18,000 spent.",
+        "visual_brief": "#numero 18000 | dollars spent over 30 years\nThe straight sum.",
+        "duration_hint_secs": 5.0
+      },
+      {
+        "id": 3,
+        "heading": "The other path",
+        "narration": "Now imagine the same $50 a month invested instead. We assume 7% a year, just to do the math. Real returns vary, and you can lose money.",
+        "visual_brief": "#lista $50 a month; 30 years; 7% a year, assumed\nAssumptions.",
+        "duration_hint_secs": 10.4
+      },
+      {
+        "id": 4,
+        "heading": "What it becomes",
+        "narration": "After 30 years, it could be about $61,000.",
+        "visual_brief": "#numero 61000 | dollars after 30 years at 7%\nThe compounding result.",
+        "duration_hint_secs": 5.0
+      },
+      {
+        "id": 5,
+        "heading": "Spent or invested",
+        "narration": "Same $50 a month. Spent, it is $18,000 gone. Invested, about $61,000.",
+        "visual_brief": "#grafico After 30 years, in thousands of dollars | Spent=18; Invested=61\nSide by side.",
+        "duration_hint_secs": 5.0
+      },
+      {
+        "id": 6,
+        "heading": "Why the gap",
+        "narration": "Growth earns growth. In the later years, most of the increase comes from returns on returns, not from your deposits.",
+        "visual_brief": "#causa $50 goes in every month => It earns returns => The returns earn returns too\nCompounding.",
+        "duration_hint_secs": 7.7
+      },
+      {
+        "id": 7,
+        "heading": "Not about cutting fun",
+        "narration": "This is not about cancelling everything you enjoy. It is about the subscriptions you forgot you have.",
+        "visual_brief": "#destaque\nTone check.",
+        "duration_hint_secs": 6.5
+      },
+      {
+        "id": 8,
+        "heading": "A ten minute audit",
+        "narration": "Open your bank or card app, search for recurring charges, and cancel the ones you did not use last month. This is math, not financial advice.",
+        "visual_brief": "#passos Search your statement for recurring charges; Mark what you did not use last month; Cancel those today\nAction.",
+        "duration_hint_secs": 10.0
+      }
+    ],
+    "sources": [
+      {
+        "title": "Compound Interest Calculator",
+        "url": "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator",
+        "publisher": "Investor.gov (U.S. Securities and Exchange Commission)",
+        "retrieved_at": "2026-11-08",
+        "license": "referencia documental; texto nao redistribuido"
+      }
+    ],
+    "claims": [
+      {
+        "text": "$50 a month is $600 a year and $18,000 over 30 years. Calculo proprio.",
+        "status": "cited",
+        "source_urls": [
+          "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator"
+        ]
+      },
+      {
+        "text": "$50 a month invested for 30 years at 7% a year, compounded monthly, ends near $61,000 ($60,999). Calculo proprio.",
+        "status": "cited",
+        "source_urls": [
+          "https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator"
+        ]
+      }
+    ]
+  }
+}

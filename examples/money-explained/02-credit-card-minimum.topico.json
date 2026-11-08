@@ -1,0 +1,61 @@
+{
+  "id": "02-credit-card-minimum",
+  "title": "Why a $5,000 credit card takes almost 5 years to pay off",
+  "series": "money",
+  "angle": "One fixed example at an assumed 24% APR: $150 a month versus $300 a month",
+  "sources": [
+    {
+      "title": "What is the three-year payment information on a credit card statement?",
+      "url": "https://www.consumerfinance.gov/ask-cfpb/what-is-the-three-year-payment-information-on-a-credit-card-statement-en-36/",
+      "publisher": "Consumer Financial Protection Bureau",
+      "retrieved_at": "2026-11-08",
+      "license": "referencia documental; texto nao redistribuido"
+    },
+    {
+      "title": "What is APR?",
+      "url": "https://www.consumerfinance.gov/ask-cfpb/what-is-apr-en-36/",
+      "publisher": "Consumer Financial Protection Bureau",
+      "retrieved_at": "2026-11-08",
+      "license": "referencia documental; texto nao redistribuido"
+    }
+  ],
+  "claims": [
+    {
+      "text": "$5,000 at 24% APR (2% a month) paid at $150 a month takes 56 months and $3,322 in interest. Math: monthly compounding, fixed payment, no new purchases (calculo proprio, reproduzivel na formula).",
+      "status": "cited",
+      "source_urls": [
+        "https://www.consumerfinance.gov/ask-cfpb/what-is-apr-en-36/"
+      ]
+    },
+    {
+      "text": "The same balance paid at $300 a month takes 21 months and $1,143 in interest. Math: monthly compounding, fixed payment, no new purchases (calculo proprio, reproduzivel na formula).",
+      "status": "cited",
+      "source_urls": [
+        "https://www.consumerfinance.gov/ask-cfpb/what-is-apr-en-36/"
+      ]
+    },
+    {
+      "text": "US card statements must show how long paying only the minimum takes and the monthly payment to pay off the balance in three years.",
+      "status": "cited",
+      "source_urls": [
+        "https://www.consumerfinance.gov/ask-cfpb/what-is-the-three-year-payment-information-on-a-credit-card-statement-en-36/"
+      ]
+    },
+    {
+      "text": "APR is a yearly rate; interest on a card is charged on the balance over the billing cycle.",
+      "status": "cited",
+      "source_urls": [
+        "https://www.consumerfinance.gov/ask-cfpb/what-is-apr-en-36/"
+      ]
+    }
+  ],
+  "metrics": {
+    "acceleration": 0.5,
+    "demand": 0.8,
+    "alignment": 0.8,
+    "originality": 0.6,
+    "visual_feasibility": 0.9,
+    "timing": 0.6,
+    "cross_check": 0.9
+  }
+}

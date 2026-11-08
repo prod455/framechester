@@ -11,6 +11,19 @@ look = "planta"
 id = "science"
 look = "papel"
 
+# Canais monetizaveis em ingles (RPM maior que pt-BR): explicadores originais narrados.
+# money-explained: financas pessoais (primeiro roteiro: examples/juros-compostos.roteiro.json).
+[[channels]]
+id = "money-explained"
+language = "en-US"
+look = "papel"
+
+# tech-explained: tecnologia e IA.
+[[channels]]
+id = "tech-explained"
+language = "en-US"
+look = "planta"
+
 [app]
 dry_run = true
 telemetry = false

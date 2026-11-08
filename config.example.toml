@@ -48,3 +48,9 @@ model = "C:/whisper/models/ggml-base.bin"
 language = "pt"
 min_coverage = 0.45      # below this: needs_human, never silent pass
 
+# Canais de musica (docs/CANAIS_MUSICA.md). O gerador ACE-Step roda local e precisa ser loopback.
+[music]
+acestep_url = "http://127.0.0.1:8001"
+acestep_api_key_env = "ACESTEP_API_KEY"
+openverse_url = "https://api.openverse.org"
+crossfade_secs = 4.0

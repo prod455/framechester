@@ -3,6 +3,7 @@ use crate::commands::analytics::analytics_report;
 use crate::commands::backup::{backup_check, backup_restore, backup_snapshot};
 use crate::commands::doctor::{config_check, doctor};
 use crate::commands::finance::finance_report;
+use crate::commands::music::music;
 use crate::commands::produce::{plan_command, produce, short};
 use crate::commands::qa::qa_video;
 use crate::commands::report::report_command;
@@ -127,6 +128,82 @@ pub(crate) enum Commands {
     },
     #[command(about = "simula custos e receita sem prometer resultado")]
     Finance(FinanceArgs),
+    #[command(
+        about = "canais de musica: gera faixas com ACE-Step local, busca CC0/CC BY no Openverse e monta mixes longos; nao publica"
+    )]
+    Music(MusicArgs),
+}
+
+#[derive(Debug, clap::Args)]
+pub(crate) struct MusicArgs {
+    #[arg(long, help = "id local cadastrado em [[channels]]")]
+    pub(crate) channel: String,
+    #[command(subcommand)]
+    pub(crate) command: MusicCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub(crate) enum MusicCommand {
+    #[command(
+        about = "gera faixas instrumentais no ACE-Step 1.5 local e adiciona a biblioteca do canal"
+    )]
+    Generate {
+        #[arg(long, help = "estilo em ingles: genero, instrumentos, clima, bpm")]
+        prompt: String,
+        #[arg(
+            long,
+            help = "titulo da faixa; com --count vira 'titulo 1', 'titulo 2'..."
+        )]
+        title: String,
+        #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u32).range(1..=50))]
+        count: u32,
+        #[arg(long, default_value_t = 180.0, help = "segundos por faixa, 10 a 600")]
+        duration: f32,
+        #[arg(long, help = "semente da primeira faixa; sem ela, derivada do prompt")]
+        seed: Option<i64>,
+        #[arg(long, default_value_t = 8, help = "passos de inferencia (turbo 1-20)")]
+        steps: u32,
+    },
+    #[command(about = "busca musica CC0, PDM ou CC BY no Openverse; --take baixa as primeiras")]
+    Search {
+        #[arg(long)]
+        query: String,
+        #[arg(long, default_value_t = 10)]
+        limit: u32,
+        #[arg(
+            long,
+            default_value_t = 0,
+            help = "quantas faixas encontradas baixar para a biblioteca"
+        )]
+        take: usize,
+    },
+    #[command(about = "lista a biblioteca do canal com origem e liberacao")]
+    List {
+        #[arg(long)]
+        json: bool,
+    },
+    #[command(
+        about = "monta o video longo: crossfade, loudness, visual em movimento, capitulos, creditos e QA"
+    )]
+    Mix {
+        #[arg(
+            long,
+            help = "slug do mix; grava em channels/<canal>/music-mixes/<slug>"
+        )]
+        episode: String,
+        #[arg(
+            long,
+            value_delimiter = ',',
+            help = "ids das faixas em ordem; sem ele, a biblioteca inteira"
+        )]
+        tracks: Vec<String>,
+        #[arg(long, help = "imagem de capa propria; sem ela, gradiente animado")]
+        cover: Option<PathBuf>,
+        #[arg(long, help = "segundos de crossfade; padrao music.crossfade_secs")]
+        crossfade: Option<f32>,
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 #[derive(Debug, clap::Args)]
@@ -396,6 +473,7 @@ pub(crate) fn run(cli: Cli) -> anyhow::Result<i32> {
         } => backup_restore(&snapshot, &target, yes, allow_remote, json),
         Commands::Report { workdir, json } => report_command(&workdir, json),
         Commands::Finance(args) => finance_report(args),
+        Commands::Music(args) => music(&cli.config, args),
     }
 }
 

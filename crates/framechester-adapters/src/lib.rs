@@ -1,3 +1,4 @@
+pub mod acestep;
 pub mod anthropic;
 pub mod authored_script;
 pub mod backup;
@@ -7,6 +8,8 @@ pub mod fixtures;
 pub mod kokoro;
 pub mod local_assets;
 pub mod metrics;
+pub mod music_video;
+pub mod openverse;
 pub mod piper;
 pub mod publish;
 pub mod scene_layout;

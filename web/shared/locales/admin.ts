@@ -57,6 +57,11 @@ export default {
     Coroa: 'Crown',
     'Nome do personagem': 'Character name',
     'Cor do mascote': 'Mascot colour',
+    'Livro de finanças | https://amzn.to/seu-link | juros compostos, orçamento':
+      'Finance book | https://amzn.to/your-link | compound interest, budget',
+    'Links de afiliado (opcional)': 'Affiliate links (optional)',
+    'Um por linha: nome | link https | termos separados por vírgula. O link só entra na descrição dos vídeos que falam de um dos termos, com o aviso de afiliado no topo.':
+      'One per line: name | https link | comma-separated terms. A link only goes into the description of videos that mention one of its terms, with the affiliate disclosure at the top.',
     'Formato do mascote': 'Mascot shape',
     'Todos os vídeos do canal usam este mascote.': 'Every video of the channel uses this mascot.',
     'Personagem {number} do elenco': 'Cast character {number}',
@@ -413,6 +418,11 @@ export default {
     Coroa: 'Corona',
     'Nome do personagem': 'Nombre del personaje',
     'Cor do mascote': 'Color de la mascota',
+    'Livro de finanças | https://amzn.to/seu-link | juros compostos, orçamento':
+      'Libro de finanzas | https://amzn.to/tu-enlace | interés compuesto, presupuesto',
+    'Links de afiliado (opcional)': 'Enlaces de afiliado (opcional)',
+    'Um por linha: nome | link https | termos separados por vírgula. O link só entra na descrição dos vídeos que falam de um dos termos, com o aviso de afiliado no topo.':
+      'Uno por línea: nombre | enlace https | términos separados por coma. El enlace solo entra en la descripción de los videos que mencionan uno de sus términos, con el aviso de afiliado arriba.',
     'Formato do mascote': 'Forma de la mascota',
     'Todos os vídeos do canal usam este mascote.': 'Todos los videos del canal usan esta mascota.',
     'Personagem {number} do elenco': 'Personaje {number} del elenco',

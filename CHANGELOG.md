@@ -7,6 +7,9 @@ podem quebrar a compatibilidade e avisam isso aqui.
 
 ## [Unreleased]
 
+### Adicionado
+- **Links de afiliado por canal**: no cadastro do canal no Studio (um por linha: nome | link https | termos) ou em `[[channels.affiliates]]`. A descrição gerada lista só os links cujos termos aparecem no título, gancho, títulos de cena ou narração, e abre com o aviso de afiliado (en-US, pt-BR, es) antes de qualquer link. Até 10 links por canal, URL https obrigatória, validação igual no Studio e no motor.
+
 ### Removido
 - Decisão do operador (08/11/2026): só fica o que leva a vídeo publicado e monetizado. Saem o caminho de anúncios `anuncio/` (o modelo de negócio é receita de audiência), os comandos `backup-check`, `backup` e `restore` com restic, o simulador `finance` e `scripts/calculadora_monetizacao.py`, a skill `storage-disaster-recovery` e os relatórios históricos de validação, revisão de UI, benchmark e análise de concorrente em `docs/`. O `[backup]` antigo de um `framechester.toml` é ignorado.
 

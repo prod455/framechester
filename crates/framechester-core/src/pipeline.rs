@@ -359,10 +359,7 @@ impl Pipeline {
                 &script,
                 &topic,
                 &timeline,
-                self.options
-                    .channel
-                    .as_ref()
-                    .map_or("pt-BR", |channel| channel.language()),
+                self.options.channel.as_ref(),
             ),
             privacy: self.options.privacy,
             dry_run: self.options.dry_run,
@@ -862,6 +859,7 @@ mod tests {
                 language: None,
                 look: None,
                 identity: None,
+                affiliates: Vec::new(),
             };
             let mut adapters = providers();
             adapters.publisher = Box::new(ChannelPublisher(format!("synthetic-{id}")));
@@ -905,6 +903,7 @@ mod tests {
                     language: None,
                     look: None,
                     identity: None,
+                    affiliates: Vec::new(),
                 }),
                 workdir: root.clone(),
                 ..PipelineOptions::default()

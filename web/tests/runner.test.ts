@@ -9,6 +9,7 @@ import { join, resolve } from 'node:path';
 import type { AppState, Script } from '../shared/types.ts';
 import { postText } from '../shared/publishing.ts';
 import { createRunner, localEngineEnvironment, RunnerError } from '../server/runner.ts';
+import { formatAffiliateLines, parseAffiliateLines, validAffiliate } from '../shared/affiliates.ts';
 
 const date = '2026-10-27T00:00:00.000Z';
 const source = (id: number) => ({
@@ -1521,6 +1522,81 @@ test("the channel's mascot and cast travel into the engine config, after its loo
     );
   } finally {
     await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test("the channel's affiliate links travel into the engine config before [app]", async () => {
+  const home = await mkdtemp(join(tmpdir(), 'fc-affiliates-'));
+  const input = state();
+  input.channels[0].affiliates = [
+    {
+      label: 'Finance "book"',
+      url: 'https://example.com/b?tag=x-20',
+      terms: ['compound interest', 'budget'],
+    },
+  ];
+  let toml = '';
+  const runner = await createRunner({
+    home,
+    repositoryRoot: resolve('..'),
+    readState: async () => structuredClone(input),
+    execute: async (args) => {
+      toml = await readFile(args[args.indexOf('--config') + 1], 'utf8');
+      return { exitCode: 2, stdout: '', stderr: '' };
+    },
+  });
+  try {
+    const asset = await runner.upload('tech', {
+      filename: 'fixture.png',
+      kind: 'image',
+      contentBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+      license: 'Original',
+      provenance: 'Fixture',
+      restrictions: 'Teste',
+    });
+    await runner.start('tech', { scriptId: 'script-one', assetIds: { 42: asset.id } });
+    await runner.idle();
+    assert.match(
+      toml,
+      /\[\[channels\.affiliates\]\]\nlabel = "Finance \\"book\\""\nurl = "https:\/\/example\.com\/b\?tag=x-20"\nterms = \["compound interest", "budget"\]\n\[app\]/,
+    );
+  } finally {
+    await runner.close();
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('affiliate links are edited one per line and validated like the engine', async () => {
+  const lines = 'Book | https://example.com/b | compound interest, budget\n\nbroken line';
+  const parsed = parseAffiliateLines(lines);
+  assert.deepEqual(parsed[0], {
+    label: 'Book',
+    url: 'https://example.com/b',
+    terms: ['compound interest', 'budget'],
+  });
+  assert.equal(validAffiliate(parsed[1]!), false);
+  assert.equal(
+    formatAffiliateLines([parsed[0]!]),
+    'Book | https://example.com/b | compound interest, budget',
+  );
+  const home = await mkdtemp(join(tmpdir(), 'fc-affiliates-store-'));
+  const store = new LocalStore(home);
+  try {
+    const saved = await store.saveChannel({ id: 'money', name: 'Canal sintético', affiliates: [parsed[0]] });
+    assert.deepEqual(saved.affiliates, [parsed[0]]);
+    for (const bad of [
+      { ...parsed[0], url: 'http://example.com/b' },
+      { ...parsed[0], terms: [] },
+      { ...parsed[0], terms: ['x'] },
+      { ...parsed[0], label: '' },
+      { ...parsed[0], extra: true },
+    ])
+      await assert.rejects(store.saveChannel({ affiliates: [bad] }, 'money'), /afiliado|não permitidos/);
+    await assert.rejects(store.saveChannel({ affiliates: Array(11).fill(parsed[0]) }, 'money'), /até 10/);
+    const cleared = await store.saveChannel({ affiliates: [] }, 'money');
+    assert.equal(cleared.affiliates, undefined);
+  } finally {
     await rm(home, { recursive: true, force: true });
   }
 });

@@ -17,6 +17,12 @@ look = "papel"
 id = "money-explained"
 language = "en-US"
 look = "papel"
+# Links de afiliado: entram na descricao so dos videos que dizem um dos termos, com aviso no topo.
+# Troque pela URL real do seu programa (ex.: link do Amazon Associates com o seu tag).
+[[channels.affiliates]]
+label = "The Psychology of Money (book)"
+url = "https://example.com/troque-pelo-seu-link"
+terms = ["compound interest", "invest", "retirement"]
 
 # tech-explained: tecnologia e IA.
 [[channels]]

@@ -163,6 +163,7 @@ struct DescriptionText {
     disclosure: &'static str,
     affiliate_disclosure: &'static str,
     affiliate_links: &'static str,
+    affiliate_spoken: &'static str,
     tags: [&'static str; 3],
 }
 
@@ -174,11 +175,11 @@ fn description_text(language: &str) -> DescriptionText {
             license: "license",
             none: "(none)",
             disclosure: "Disclosure: this video's narration was synthesized locally with Kokoro (Apache-2.0). \
-                         The script, facts and sources require human review before publication. \
                          This content does not promise financial results, eligibility or revenue.",
             affiliate_disclosure: "Some links below are affiliate links: if you buy through them, \
                                    the channel may earn a commission at no extra cost to you.",
             affiliate_links: "Links (affiliate):",
+            affiliate_spoken: "Some links in the description are affiliate links: I get commissions for purchases made through them.",
             tags: ["technology", "science", "artificial intelligence"],
         },
         "es" => DescriptionText {
@@ -187,11 +188,11 @@ fn description_text(language: &str) -> DescriptionText {
             license: "licencia",
             none: "(ninguna)",
             disclosure: "Transparencia: la narración de este video se sintetizó localmente con Kokoro (Apache-2.0). \
-                         El guion, los datos y las fuentes requieren revisión humana antes de publicarse. \
                          Este contenido no promete resultados financieros, elegibilidad ni ingresos.",
             affiliate_disclosure: "Algunos enlaces de abajo son de afiliado: si compras con ellos, \
                                    el canal puede recibir una comisión sin costo extra para ti.",
             affiliate_links: "Enlaces (afiliado):",
+            affiliate_spoken: "Algunos enlaces de la descripción son de afiliado: recibo comisiones por las compras hechas con ellos.",
             tags: ["tecnología", "ciencia", "inteligencia artificial"],
         },
         _ => DescriptionText {
@@ -200,11 +201,11 @@ fn description_text(language: &str) -> DescriptionText {
             license: "licença",
             none: "(nenhuma)",
             disclosure: "Transparência: a narração deste vídeo foi sintetizada localmente com Kokoro (Apache-2.0). \
-                         O roteiro, os fatos e as fontes exigem revisão humana antes da publicação. \
                          Este conteúdo não promete resultados financeiros, elegibilidade ou receita.",
             affiliate_disclosure: "Alguns links abaixo são de afiliado: se você comprar por eles, \
                                    o canal pode ganhar uma comissão, sem custo extra para você.",
             affiliate_links: "Links (afiliado):",
+            affiliate_spoken: "Alguns links da descrição são de afiliado: eu ganho comissão nas compras feitas por eles.",
             tags: ["tecnologia", "ciencia", "inteligencia artificial"],
         },
     }
@@ -231,6 +232,23 @@ pub fn matching_affiliates<'a>(
         .iter()
         .filter(|link| link.matches(&said))
         .collect()
+}
+
+/// The FTC wants an affiliate relationship disclosed in the video itself, not only next to
+/// the links. When the description will carry affiliate links, the opening scene says so,
+/// and the word-by-word captions put it on screen. Returns whether the line was added.
+pub fn add_affiliate_disclosure(script: &mut Script, channel: Option<&ChannelProfile>) -> bool {
+    if matching_affiliates(script, channel).is_empty() {
+        return false;
+    }
+    let line = description_text(channel.map_or("pt-BR", ChannelProfile::language)).affiliate_spoken;
+    let Some(first) = script.scenes.first_mut() else {
+        return false;
+    };
+    if !first.narration.contains(line) {
+        first.narration = format!("{} {line}", first.narration.trim());
+    }
+    true
 }
 
 /// The statement the Amazon Associates Operating Agreement requires wherever its links appear.
@@ -524,6 +542,25 @@ mod tests {
             .ends_with(AMAZON_ASSOCIATE_STATEMENT));
         assert!(is_amazon("https://www.amazon.com.br/dp/1"));
         assert!(!is_amazon("https://notamazon.com/x"));
+        let mut spoken = script();
+        assert!(add_affiliate_disclosure(&mut spoken, Some(&money)));
+        assert!(spoken.scenes[0]
+            .narration
+            .ends_with("I get commissions for purchases made through them."));
+        assert!(add_affiliate_disclosure(&mut spoken, Some(&money)));
+        assert_eq!(
+            spoken.scenes[0]
+                .narration
+                .matches("affiliate links")
+                .count(),
+            1
+        );
+        let mut plain = script();
+        assert!(!add_affiliate_disclosure(
+            &mut plain,
+            Some(&channel("en-US"))
+        ));
+        assert_eq!(plain.scenes[0].narration, script().scenes[0].narration);
         money.affiliates.remove(0);
         let text = build_description(&script(), &topic(), &timeline(), Some(&money));
         assert!(!text.contains("affiliate"));
@@ -658,6 +695,7 @@ mod tests {
         let text = build_description(&script(), &topic(), &timeline(), None);
         assert!(text.contains("https://example.com"));
         assert!(text.contains("Transparência"));
+        assert!(!text.contains("revisão humana"));
         assert!(text.contains("Neste vídeo"));
     }
 

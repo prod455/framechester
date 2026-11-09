@@ -9,6 +9,7 @@ use framechester_adapters::authored_script::AuthoredScriptLlm;
 use framechester_adapters::ffmpeg::inspect_output;
 use framechester_adapters::fixtures::LocalEvidenceProvider;
 use framechester_adapters::kokoro::KokoroTts;
+use framechester_core::channel::ChannelProfile;
 use framechester_core::config::Config;
 use framechester_core::domain::{
     now_unix, AssetManifest, PipelineReport, PublishPrivacy, QaStatus, RenderProfile, Script,
@@ -17,7 +18,7 @@ use framechester_core::domain::{
 use framechester_core::editorial;
 use framechester_core::planner::plan_script_for;
 use framechester_core::ports::{FactEvidenceProvider, GenerationBudget, LlmProvider, ScriptPrompt};
-use framechester_core::storyboard::{Identity, Look, Storyboard, VideoFormat};
+use framechester_core::storyboard::{Look, Storyboard, VideoFormat};
 use framechester_motion::audio::LoudnessTarget;
 use framechester_motion::narrate::narrate;
 use framechester_motion::qa::{audit, QaInput};
@@ -70,17 +71,11 @@ pub(crate) fn plan_from_args(
     format: VideoFormat,
     channel_name: &str,
     language: &str,
-    channel_look: Option<Look>,
-    channel_identity: Option<&Identity>,
+    channel: Option<&ChannelProfile>,
 ) -> anyhow::Result<Planned> {
-    let mut planned = plan_without_look(
-        config,
-        args,
-        format,
-        channel_name,
-        language,
-        channel_identity,
-    )?;
+    let channel_look = channel.and_then(|channel| channel.look);
+    let channel_identity = channel.and_then(|channel| channel.identity.as_ref());
+    let mut planned = plan_without_look(config, args, format, channel_name, language, channel)?;
     // The flag wins, then what the storyboard says, then the channel's identity.
     let flag = match &args.look {
         Some(value) => Some(
@@ -103,8 +98,9 @@ fn plan_without_look(
     format: VideoFormat,
     channel_name: &str,
     language: &str,
-    channel_identity: Option<&Identity>,
+    channel: Option<&ChannelProfile>,
 ) -> anyhow::Result<Planned> {
+    let channel_identity = channel.and_then(|channel| channel.identity.as_ref());
     if let Some(path) = &args.storyboard {
         let text = std::fs::read_to_string(path)
             .with_context(|| format!("ler storyboard {}", path.display()))?;
@@ -136,6 +132,7 @@ fn plan_without_look(
     };
     let mut script = provider.generate(&prompt, &GenerationBudget::default())?;
     script.claims = LocalEvidenceProvider.verify(&script.claims)?;
+    framechester_core::package::add_affiliate_disclosure(&mut script, channel);
     let _ = config;
     let (storyboard, fallbacks) =
         plan_script_for(&script, channel_name, format, channel_identity, language)?;
@@ -176,10 +173,7 @@ pub(crate) fn plan_command(
         format,
         &channel_name,
         language,
-        channel.as_ref().and_then(|channel| channel.look),
-        channel
-            .as_ref()
-            .and_then(|channel| channel.identity.as_ref()),
+        channel.as_ref(),
     )?;
     let output = args
         .output
@@ -298,10 +292,7 @@ pub(crate) fn produce(config_path: &Option<PathBuf>, args: ProduceArgs) -> anyho
         format,
         &channel_name,
         language,
-        channel.as_ref().and_then(|channel| channel.look),
-        channel
-            .as_ref()
-            .and_then(|channel| channel.identity.as_ref()),
+        channel.as_ref(),
     )?;
     // Same editorial gate as the legacy pipeline: a draft renders without the operator's
     // declaration, never with unsafe inputs or contradictions.

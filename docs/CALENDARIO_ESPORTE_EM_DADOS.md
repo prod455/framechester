@@ -7,6 +7,11 @@ Shorts e TikTok. Todo número da legenda saiu do mesmo JSON que gerou o vídeo
 (base `international_results`, CC0, lida em 13/11/2026; placar com prorrogação, sem
 pênaltis; "Alemanha" inclui a Alemanha Ocidental).
 
+Decisão do operador em 13/11/2026: este canal é pt-BR e voltado ao Brasil. Para ele, isso
+substitui a regra de 08/11 ("só inglês, nada voltado ao Brasil"), que continua valendo para
+`compound-coyote` e `kernel-clarity`. O horário dos dois calendários não conflita: são
+canais e contas diferentes.
+
 ## Uma vez por máquina
 
 ```bash
@@ -16,6 +21,15 @@ mkdir -p .framechester/dados
 curl -sSLo .framechester/dados/results.csv https://raw.githubusercontent.com/martj42/international_results/master/results.csv
 ```
 
+No `framechester.toml`, cadastre o canal (o `--canal` é obrigatório quando há canais e
+vai para o manifesto de cada vídeo):
+
+```toml
+[[channels]]
+id = "esporte-em-dados"
+language = "pt-BR"
+```
+
 Os JSONs da semana já estão em `examples/esporte/`. Para regerar um a partir de um CSV
 mais novo (os números podem mudar se houve jogo depois de 13/11):
 
@@ -23,7 +37,7 @@ mais novo (os números podem mudar se houve jogo depois de 13/11):
 ./target/release/framechester internacionais --csv .framechester/dados/results.csv --a Brazil --b Argentina --lido-em AAAA-MM-DD --saida examples/esporte/brasil-argentina.confronto.json
 ```
 
-Cada dia abaixo: um comando gera `artifacts/semana/<id>/final.mp4` e só sai com código 0
+Cada dia abaixo: um comando gera (o `--gancho` é o ângulo do dia, escrito sob o título dentro do vídeo) `artifacts/semana/<id>/final.mp4` e só sai com código 0
 se o QA técnico aprovar. Código 2 = reprovado: não poste.
 
 ## Semana
@@ -41,7 +55,7 @@ se o QA técnico aprovar. Código 2 = reprovado: não poste.
 ### sáb 14/11 · Brasil × Argentina
 
 ```bash
-./target/release/framechester confronto --dados examples/esporte/brasil-argentina.confronto.json --saida artifacts/semana/brasil-argentina
+./target/release/framechester confronto --canal esporte-em-dados --dados examples/esporte/brasil-argentina.confronto.json --saida artifacts/semana/brasil-argentina --gancho "A liderança trocou de lado uma vez só"
 ```
 
 Título (Shorts): `Brasil x Argentina: todos os 110 jogos, um por um`
@@ -60,7 +74,7 @@ Qual clássico você quer ver em números?
 ### dom 15/11 · Argentina × Uruguai
 
 ```bash
-./target/release/framechester confronto --dados examples/esporte/argentina-uruguai.confronto.json --saida artifacts/semana/argentina-uruguai
+./target/release/framechester confronto --canal esporte-em-dados --dados examples/esporte/argentina-uruguai.confronto.json --saida artifacts/semana/argentina-uruguai --gancho "O Uruguai nunca passou à frente"
 ```
 
 Título: `Argentina x Uruguai: o duelo de seleções mais jogado da história`
@@ -78,7 +92,7 @@ Base international_results (CC0), com prorrogação e sem pênaltis.
 ### seg 16/11 · Brasil × Uruguai
 
 ```bash
-./target/release/framechester confronto --dados examples/esporte/brasil-uruguai.confronto.json --saida artifacts/semana/brasil-uruguai
+./target/release/framechester confronto --canal esporte-em-dados --dados examples/esporte/brasil-uruguai.confronto.json --saida artifacts/semana/brasil-uruguai --gancho "O Maracanazo é 1 de 79 jogos"
 ```
 
 Título: `Brasil x Uruguai: o Maracanazo é 1 de 79 jogos`
@@ -96,7 +110,7 @@ Base international_results (CC0), com prorrogação e sem pênaltis.
 ### ter 17/11 · Inglaterra × Escócia
 
 ```bash
-./target/release/framechester confronto --dados examples/esporte/inglaterra-escocia.confronto.json --saida artifacts/semana/inglaterra-escocia
+./target/release/framechester confronto --canal esporte-em-dados --dados examples/esporte/inglaterra-escocia.confronto.json --saida artifacts/semana/inglaterra-escocia --gancho "O 1º jogo de seleções da história foi 0 a 0"
 ```
 
 Título: `O primeiro jogo de seleções da história foi 0 a 0: Inglaterra x Escócia`
@@ -114,7 +128,7 @@ Base international_results (CC0), com prorrogação e sem pênaltis.
 ### qua 18/11 · Brasil × Alemanha
 
 ```bash
-./target/release/framechester confronto --dados examples/esporte/brasil-alemanha.confronto.json --saida artifacts/semana/brasil-alemanha
+./target/release/framechester confronto --canal esporte-em-dados --dados examples/esporte/brasil-alemanha.confronto.json --saida artifacts/semana/brasil-alemanha --gancho "O 7 a 1 é só 1 de 23 jogos"
 ```
 
 Título: `Brasil x Alemanha: o 7 a 1 é só 1 de 23 jogos`
@@ -131,7 +145,7 @@ Base international_results (CC0), com prorrogação e sem pênaltis. "Alemanha" 
 ### qui 19/11 · Alemanha × Holanda
 
 ```bash
-./target/release/framechester confronto --dados examples/esporte/alemanha-holanda.confronto.json --saida artifacts/semana/alemanha-holanda
+./target/release/framechester confronto --canal esporte-em-dados --dados examples/esporte/alemanha-holanda.confronto.json --saida artifacts/semana/alemanha-holanda --gancho "O empate ganha esse clássico"
 ```
 
 Título: `Alemanha x Holanda: o empate ganha esse clássico`
@@ -149,7 +163,7 @@ Base international_results (CC0), com prorrogação e sem pênaltis. "Alemanha" 
 ### sex 20/11 · Brasil × Chile
 
 ```bash
-./target/release/framechester confronto --dados examples/esporte/brasil-chile.confronto.json --saida artifacts/semana/brasil-chile
+./target/release/framechester confronto --canal esporte-em-dados --dados examples/esporte/brasil-chile.confronto.json --saida artifacts/semana/brasil-chile --gancho "O Chile nunca ganhou duas seguidas"
 ```
 
 Título: `O Chile nunca ganhou duas seguidas do Brasil`

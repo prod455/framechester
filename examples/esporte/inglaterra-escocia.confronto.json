@@ -1,0 +1,1209 @@
+{
+  "sport": "futebol",
+  "sides": [
+    {
+      "id": "England",
+      "name": "Inglaterra",
+      "short": "ING",
+      "color": "#E8E8E8",
+      "ink": "#10151C"
+    },
+    {
+      "id": "Scotland",
+      "name": "Escócia",
+      "short": "ESC",
+      "color": "#2B4FA8",
+      "ink": "#FFFFFF"
+    }
+  ],
+  "matches": [
+    {
+      "date": "1872-11-30",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1873-03-08",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 4,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1874-03-07",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1875-03-06",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1876-03-04",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1877-03-03",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 3,
+      "competition": "Amistoso",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1878-03-02",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 7,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1879-04-05",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 5,
+      "awayScore": 4,
+      "competition": "Amistoso",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1880-03-13",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 5,
+      "awayScore": 4,
+      "competition": "Amistoso",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1881-03-12",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 6,
+      "competition": "Amistoso",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1882-03-11",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 5,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1883-03-10",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 2,
+      "awayScore": 3,
+      "competition": "Amistoso",
+      "city": "Sheffield",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1884-03-15",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1885-03-21",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1886-03-27",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1887-03-19",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 2,
+      "awayScore": 3,
+      "competition": "Campeonato Britânico",
+      "city": "Blackburn",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1888-03-17",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 0,
+      "awayScore": 5,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1889-04-13",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 2,
+      "awayScore": 3,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1890-04-05",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1891-04-04",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Blackburn",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1892-04-02",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 4,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1893-04-01",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 5,
+      "awayScore": 2,
+      "competition": "Campeonato Britânico",
+      "city": "Richmond",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1894-04-07",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1895-04-06",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Liverpool",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1896-04-04",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1897-04-03",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1898-04-02",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 3,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1899-04-08",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Birmingham",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1900-04-07",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 4,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1901-03-30",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1902-05-03",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Campeonato Britânico",
+      "city": "Birmingham",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1903-04-04",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Campeonato Britânico",
+      "city": "Sheffield",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1904-04-09",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1905-04-01",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1906-04-07",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1907-04-06",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Newcastle",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1908-04-04",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1909-04-03",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1910-04-02",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1911-04-01",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Liverpool",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1912-03-23",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1913-04-05",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1914-04-04",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1920-04-10",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 5,
+      "awayScore": 4,
+      "competition": "Campeonato Britânico",
+      "city": "Sheffield",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1921-04-09",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1922-04-08",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Birmingham",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1923-04-14",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1924-04-12",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1925-04-04",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1926-04-17",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Manchester",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1927-04-02",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1928-03-31",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 5,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1929-04-13",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1930-04-05",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 5,
+      "awayScore": 2,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1931-03-28",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1932-04-09",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1933-04-01",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1934-04-14",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1935-04-06",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1936-04-04",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1937-04-17",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1938-04-09",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1939-04-15",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1946-04-13",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1946-04-24",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Manchester",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1947-04-12",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1948-04-10",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 0,
+      "awayScore": 2,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1949-04-09",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 3,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1950-04-15",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1951-04-14",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 2,
+      "awayScore": 3,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1952-04-05",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1953-04-18",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1954-04-03",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 2,
+      "awayScore": 4,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1955-04-02",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 7,
+      "awayScore": 2,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1956-04-14",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1957-04-06",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1958-04-19",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 0,
+      "awayScore": 4,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1959-04-11",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1960-04-09",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1961-04-15",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 9,
+      "awayScore": 3,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1962-04-14",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1963-04-06",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1964-04-11",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1965-04-10",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1966-04-02",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 3,
+      "awayScore": 4,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1967-04-15",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 2,
+      "awayScore": 3,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1968-02-24",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1969-05-10",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 4,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1970-04-25",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1971-05-22",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1972-05-27",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1973-02-14",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 0,
+      "awayScore": 5,
+      "competition": "Amistoso",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1973-05-19",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1974-05-18",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1975-05-24",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 5,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1976-05-15",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1977-06-04",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1978-05-20",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1979-05-26",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1980-05-24",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 0,
+      "awayScore": 2,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1981-05-23",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1982-05-29",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1983-06-01",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Campeonato Britânico",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1984-05-26",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Campeonato Britânico",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1985-05-25",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa Rous",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1986-04-23",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa Rous",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1987-05-23",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Copa Rous",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1988-05-21",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa Rous",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1989-05-27",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 0,
+      "awayScore": 2,
+      "competition": "Copa Rous",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1996-06-15",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Eurocopa",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "1999-11-13",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 0,
+      "awayScore": 2,
+      "competition": "Eliminatórias da Eurocopa",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "1999-11-17",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Eurocopa",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "2013-08-14",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 3,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "2014-11-18",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 3,
+      "competition": "Amistoso",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "2016-11-11",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Eliminatórias da Copa",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "2017-06-10",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Eliminatórias da Copa",
+      "city": "Glasgow",
+      "country": "Escócia"
+    },
+    {
+      "date": "2021-06-18",
+      "home": "England",
+      "away": "Scotland",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Eurocopa",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "2023-09-12",
+      "home": "Scotland",
+      "away": "England",
+      "homeScore": 1,
+      "awayScore": 3,
+      "competition": "Amistoso",
+      "city": "Glasgow",
+      "country": "Escócia"
+    }
+  ],
+  "source": {
+    "name": "international_results (Mart Jürisoo)",
+    "url": "https://github.com/martj42/international_results",
+    "license": "CC0 1.0",
+    "retrieved": "2026-11-13",
+    "sha256": "09aac809e317f3004c69720a38addb656c49ebb19f1937deab96f96e3362257a",
+    "note": "Seleções principais masculinas · placar com prorrogação, sem pênaltis"
+  }
+}

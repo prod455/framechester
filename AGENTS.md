@@ -5,7 +5,7 @@ Framechester V4: open-source, self-hosted, single-operator media production engi
 
 Current operator decision (2026-10-27): multiple channels under one local operator, with separate identities, artifacts, account bindings and metrics. Multi-user SaaS is a separate scope.
 
-The local Studio uses TypeScript/Vite and a Node.js backend; Rust remains the production engine. For web operation/configuration read `docs/WEB_STUDIO.md`; for social connections and API capabilities read `docs/REDES_SOCIAIS_WEB.md`; for video visuals, scene layouts and script styles read `docs/GUIA_VISUAL.md`.
+The local Studio uses TypeScript/Vite and a Node.js backend; Rust remains the production engine. Operator decision 2026-11-13: new formats render with HyperFrames (`hyperframes/`, see `docs/HYPERFRAMES.md`), starting with the sports statistics/history channel. For web operation/configuration read `docs/WEB_STUDIO.md`; for social connections and API capabilities read `docs/REDES_SOCIAIS_WEB.md`; for video visuals, scene layouts and script styles read `docs/GUIA_VISUAL.md`.
 For Studio UI changes, read `DESIGN.md` before editing; it records the current Operate direction and supersedes the rejected card-based themes.
 For detailed alignment work, apply `precise-ui-alignment` when installed and measure the shared geometry contract in `DESIGN.md`; passing overflow checks does not prove alignment.
 
@@ -24,6 +24,8 @@ For detailed alignment work, apply `precise-ui-alignment` when installed and mea
 - Demo pipeline: `cargo run -p framechester-cli -- run --workdir artifacts/demo-short`
 - QA video: `cargo run -p framechester-cli -- qa --format short --video artifacts/demo-short/render/final.mp4`
 - FFmpeg: `ffmpeg -version`, `ffmpeg -encoders`, `ffmpeg -hwaccels`
+- HyperFrames renderer: `npm --prefix hyperframes ci`, `npm --prefix hyperframes test`, `npm --prefix hyperframes run check`
+- Confronto video (engine binding: renders through `hyperframes/`, then runs the engine QA): `cargo build --release -p framechester-cli && ./target/release/framechester confronto --dados examples/esporte/brasil-argentina.confronto.json --saida artifacts/bra-arg`
 - Web install: `npm --prefix web ci`
 - Web engine build: `npm --prefix web run engine:build`
 - Web check/test/build: `npm --prefix web run check`, `npm --prefix web test`, `npm --prefix web run build`

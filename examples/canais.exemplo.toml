@@ -30,6 +30,12 @@ id = "kernel-clarity"
 language = "en-US"
 look = "planta"
 
+# esporte-em-dados: estatística e história do futebol e outros esportes (renderizador HyperFrames).
+# Primeiro formato: confronto em números (docs/HYPERFRAMES.md). Troque o id pelo nome do canal.
+[[channels]]
+id = "esporte-em-dados"
+language = "pt-BR"
+
 [app]
 dry_run = true
 telemetry = false

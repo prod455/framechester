@@ -1,6 +1,7 @@
 //! Command-line surface: arguments, value enums and the dispatch to `commands`.
 use crate::commands::analytics::analytics_report;
 use crate::commands::doctor::{config_check, doctor};
+use crate::commands::hyperframes::{confronto, internacionais, ConfrontoArgs, InternacionaisArgs};
 use crate::commands::produce::{plan_command, produce, short};
 use crate::commands::qa::qa_video;
 use crate::commands::report::report_command;
@@ -69,6 +70,14 @@ pub(crate) enum Commands {
         #[arg(long)]
         json: bool,
     },
+    #[command(
+        about = "video de confronto em numeros pelo HyperFrames: projeto, render, QA tecnico e manifesto"
+    )]
+    Confronto(ConfrontoArgs),
+    #[command(
+        about = "gera o JSON de confronto de duas selecoes a partir do CSV international_results (CC0)"
+    )]
+    Internacionais(InternacionaisArgs),
     #[command(about = "gera report.html a partir de pipeline_report.json")]
     Report {
         #[arg(long)]
@@ -217,6 +226,11 @@ pub(crate) fn run(cli: Cli) -> anyhow::Result<i32> {
             format,
             json,
         } => qa_video(&cli.config, &video, format, json),
+        Commands::Confronto(args) => confronto(&cli.config, args),
+        Commands::Internacionais(args) => internacionais(&cli.config, args).or_else(|error| {
+            eprintln!("erro: {error:#}");
+            Ok(crate::commands::hyperframes::EXIT_ERROR)
+        }),
         Commands::Report { workdir, json } => report_command(&workdir, json),
     }
 }

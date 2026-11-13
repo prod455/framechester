@@ -1,0 +1,1129 @@
+{
+  "sport": "futebol",
+  "sides": [
+    {
+      "id": "Brazil",
+      "name": "Brasil",
+      "short": "BRA",
+      "color": "#F7D117",
+      "ink": "#10151C"
+    },
+    {
+      "id": "Argentina",
+      "name": "Argentina",
+      "short": "ARG",
+      "color": "#75AADB",
+      "ink": "#0B1622"
+    }
+  ],
+  "matches": [
+    {
+      "date": "1914-09-20",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1914-09-27",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Copa Roca",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1916-07-10",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1917-10-03",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 4,
+      "awayScore": 2,
+      "competition": "Copa América",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1919-05-18",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1919-06-01",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 3,
+      "competition": "Amistoso",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1920-09-25",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Viña del Mar",
+      "country": "Chile"
+    },
+    {
+      "date": "1921-10-02",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1922-10-15",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1922-10-22",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa Roca",
+      "city": "São Paulo",
+      "country": "Brasil"
+    },
+    {
+      "date": "1923-11-18",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1923-12-02",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1923-12-09",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa Roca",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1925-12-13",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 4,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1925-12-25",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1937-01-30",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1937-02-01",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1939-01-15",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 5,
+      "competition": "Copa Roca",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1939-01-22",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 2,
+      "competition": "Copa Roca",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1940-02-18",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Copa Roca",
+      "city": "São Paulo",
+      "country": "Brasil"
+    },
+    {
+      "date": "1940-02-25",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 3,
+      "competition": "Copa Roca",
+      "city": "São Paulo",
+      "country": "Brasil"
+    },
+    {
+      "date": "1940-03-05",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 6,
+      "awayScore": 1,
+      "competition": "Copa Roca",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1940-03-10",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 3,
+      "competition": "Copa Roca",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1940-03-17",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 5,
+      "awayScore": 1,
+      "competition": "Copa Roca",
+      "city": "Avellaneda",
+      "country": "Argentina"
+    },
+    {
+      "date": "1942-01-17",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1945-02-15",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Santiago",
+      "country": "Chile"
+    },
+    {
+      "date": "1945-12-16",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 4,
+      "competition": "Copa Roca",
+      "city": "São Paulo",
+      "country": "Brasil"
+    },
+    {
+      "date": "1945-12-20",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 6,
+      "awayScore": 2,
+      "competition": "Copa Roca",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1945-12-23",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Copa Roca",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1946-02-10",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1956-02-05",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1956-03-18",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Campeonato Pan-Americano",
+      "city": "Cidade do México",
+      "country": "México"
+    },
+    {
+      "date": "1956-07-08",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Taça do Atlântico",
+      "city": "Avellaneda",
+      "country": "Argentina"
+    },
+    {
+      "date": "1957-04-03",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Lima",
+      "country": "Peru"
+    },
+    {
+      "date": "1957-07-07",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Copa Roca",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1957-07-10",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa Roca",
+      "city": "São Paulo",
+      "country": "Brasil"
+    },
+    {
+      "date": "1959-04-04",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1959-12-22",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 4,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Guayaquil",
+      "country": "Equador"
+    },
+    {
+      "date": "1960-03-13",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Campeonato Pan-Americano",
+      "city": "San José",
+      "country": "Costa Rica"
+    },
+    {
+      "date": "1960-03-20",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Campeonato Pan-Americano",
+      "city": "San José",
+      "country": "Costa Rica"
+    },
+    {
+      "date": "1960-05-26",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 4,
+      "awayScore": 2,
+      "competition": "Copa Roca",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1960-05-29",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 4,
+      "competition": "Copa Roca",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1960-07-12",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 5,
+      "awayScore": 1,
+      "competition": "Taça do Atlântico",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1963-03-24",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "La Paz",
+      "country": "Bolívia"
+    },
+    {
+      "date": "1963-04-13",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 3,
+      "competition": "Copa Roca",
+      "city": "São Paulo",
+      "country": "Brasil"
+    },
+    {
+      "date": "1963-04-16",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 5,
+      "awayScore": 2,
+      "competition": "Copa Roca",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1964-06-03",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 3,
+      "competition": "Amistoso",
+      "city": "São Paulo",
+      "country": "Brasil"
+    },
+    {
+      "date": "1965-06-09",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1968-08-07",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 4,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1968-08-11",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Belo Horizonte",
+      "country": "Brasil"
+    },
+    {
+      "date": "1970-03-04",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Porto Alegre",
+      "country": "Brasil"
+    },
+    {
+      "date": "1970-03-08",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1971-07-28",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa Roca",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1971-07-31",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Copa Roca",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1974-06-30",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Copa do Mundo",
+      "city": "Hanôver",
+      "country": "Alemanha"
+    },
+    {
+      "date": "1975-08-06",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Belo Horizonte",
+      "country": "Brasil"
+    },
+    {
+      "date": "1975-08-16",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Rosario",
+      "country": "Argentina"
+    },
+    {
+      "date": "1976-02-27",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Copa Roca",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1976-05-19",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa Roca",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1978-06-18",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Copa do Mundo",
+      "city": "Rosario",
+      "country": "Argentina"
+    },
+    {
+      "date": "1979-08-02",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1979-08-23",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1981-01-04",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Mundialito",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1982-07-02",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 3,
+      "competition": "Copa do Mundo",
+      "city": "Barcelona",
+      "country": "Espanha"
+    },
+    {
+      "date": "1983-08-24",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1983-09-14",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1984-06-17",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "São Paulo",
+      "country": "Brasil"
+    },
+    {
+      "date": "1985-05-05",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Salvador",
+      "country": "Brasil"
+    },
+    {
+      "date": "1988-07-10",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Copa do Bicentenário da Austrália",
+      "city": "Melbourne",
+      "country": "Austrália"
+    },
+    {
+      "date": "1989-07-12",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1990-06-24",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Copa do Mundo",
+      "city": "Turim",
+      "country": "Itália"
+    },
+    {
+      "date": "1991-03-27",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 3,
+      "awayScore": 3,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1991-06-27",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Curitiba",
+      "country": "Brasil"
+    },
+    {
+      "date": "1991-07-17",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 3,
+      "awayScore": 2,
+      "competition": "Copa América",
+      "city": "Santiago",
+      "country": "Chile"
+    },
+    {
+      "date": "1993-02-18",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1993-06-27",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Guayaquil",
+      "country": "Equador"
+    },
+    {
+      "date": "1994-03-23",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Recife",
+      "country": "Brasil"
+    },
+    {
+      "date": "1995-07-17",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Copa América",
+      "city": "Rivera",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1995-11-08",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1998-04-29",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1999-07-11",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Ciudad del Este",
+      "country": "Paraguai"
+    },
+    {
+      "date": "1999-09-04",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1999-09-07",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 4,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Porto Alegre",
+      "country": "Brasil"
+    },
+    {
+      "date": "2000-07-26",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "São Paulo",
+      "country": "Brasil"
+    },
+    {
+      "date": "2001-09-05",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "2004-06-02",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "Belo Horizonte",
+      "country": "Brasil"
+    },
+    {
+      "date": "2004-07-25",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Copa América",
+      "city": "Lima",
+      "country": "Peru"
+    },
+    {
+      "date": "2005-06-08",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "2005-06-29",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 4,
+      "awayScore": 1,
+      "competition": "Copa das Confederações",
+      "city": "Frankfurt",
+      "country": "Alemanha"
+    },
+    {
+      "date": "2006-09-03",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 3,
+      "competition": "Amistoso",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "2007-07-15",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Maracaibo",
+      "country": "Venezuela"
+    },
+    {
+      "date": "2008-06-18",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Eliminatórias da Copa",
+      "city": "Belo Horizonte",
+      "country": "Brasil"
+    },
+    {
+      "date": "2009-09-05",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 3,
+      "competition": "Eliminatórias da Copa",
+      "city": "Rosario",
+      "country": "Argentina"
+    },
+    {
+      "date": "2010-11-17",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Doha",
+      "country": "Catar"
+    },
+    {
+      "date": "2011-09-14",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Superclássico das Américas",
+      "city": "Córdoba",
+      "country": "Argentina"
+    },
+    {
+      "date": "2011-09-28",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Superclássico das Américas",
+      "city": "Belém",
+      "country": "Brasil"
+    },
+    {
+      "date": "2012-06-09",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 4,
+      "competition": "Amistoso",
+      "city": "East Rutherford",
+      "country": "Estados Unidos"
+    },
+    {
+      "date": "2012-09-19",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Superclássico das Américas",
+      "city": "Goiânia",
+      "country": "Brasil"
+    },
+    {
+      "date": "2012-11-21",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Superclássico das Américas",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "2014-10-11",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 2,
+      "competition": "Superclássico das Américas",
+      "city": "Pequim",
+      "country": "China"
+    },
+    {
+      "date": "2015-11-13",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "2016-11-10",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Eliminatórias da Copa",
+      "city": "Belo Horizonte",
+      "country": "Brasil"
+    },
+    {
+      "date": "2017-06-09",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Superclássico das Américas",
+      "city": "Melbourne",
+      "country": "Austrália"
+    },
+    {
+      "date": "2018-10-16",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Superclássico das Américas",
+      "city": "Jedá",
+      "country": "Arábia Saudita"
+    },
+    {
+      "date": "2019-07-02",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Belo Horizonte",
+      "country": "Brasil"
+    },
+    {
+      "date": "2019-11-15",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Superclássico das Américas",
+      "city": "Riad",
+      "country": "Arábia Saudita"
+    },
+    {
+      "date": "2021-07-10",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "2021-11-16",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Eliminatórias da Copa",
+      "city": "San Juan",
+      "country": "Argentina"
+    },
+    {
+      "date": "2023-11-21",
+      "home": "Brazil",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "2025-03-25",
+      "home": "Argentina",
+      "away": "Brazil",
+      "homeScore": 4,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    }
+  ],
+  "source": {
+    "name": "international_results (Mart Jürisoo)",
+    "url": "https://github.com/martj42/international_results",
+    "license": "CC0 1.0",
+    "retrieved": "2026-11-13",
+    "sha256": "09aac809e317f3004c69720a38addb656c49ebb19f1937deab96f96e3362257a",
+    "note": "Seleções principais masculinas · placar com prorrogação, sem pênaltis"
+  }
+}

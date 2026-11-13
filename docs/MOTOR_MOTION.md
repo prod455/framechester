@@ -52,6 +52,9 @@ O storyboard é a fronteira: qualquer motor que leia `docs/schemas/storyboard.sc
 pode substituir ou complementar o `compose` atual sem tocar no planner, na narração ou
 no QA.
 
+**Atualização 13/11/2026 (ADR-0003):** formatos novos passam a renderizar com o
+HyperFrames (`docs/HYPERFRAMES.md`); este motor continua com os explicadores narrados.
+
 ## Trade-offs registrados
 
 - **Timing por palavra ancorado no áudio.** A duração de cada frase é real (um WAV por

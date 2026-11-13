@@ -1,0 +1,819 @@
+{
+  "sport": "futebol",
+  "sides": [
+    {
+      "id": "Brazil",
+      "name": "Brasil",
+      "short": "BRA",
+      "color": "#F7D117",
+      "ink": "#10151C"
+    },
+    {
+      "id": "Uruguay",
+      "name": "Uruguai",
+      "short": "URU",
+      "color": "#4FA3E0",
+      "ink": "#0B1622"
+    }
+  ],
+  "matches": [
+    {
+      "date": "1916-07-12",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1916-07-18",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1917-10-07",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 4,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1917-10-16",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1919-05-26",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Copa América",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1919-05-29",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1920-09-18",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 6,
+      "competition": "Copa América",
+      "city": "Viña del Mar",
+      "country": "Chile"
+    },
+    {
+      "date": "1921-10-23",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1922-10-01",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1923-11-25",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1931-09-06",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa Rio Branco",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1932-12-04",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Copa Rio Branco",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1937-01-19",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 2,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1940-03-24",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 4,
+      "competition": "Copa Rio Branco",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1940-03-31",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa Rio Branco",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1942-01-24",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1944-05-14",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 6,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1944-05-17",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 4,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "São Paulo",
+      "country": "Brasil"
+    },
+    {
+      "date": "1945-02-07",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Santiago",
+      "country": "Chile"
+    },
+    {
+      "date": "1946-01-05",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 4,
+      "awayScore": 3,
+      "competition": "Copa Rio Branco",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1946-01-23",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 4,
+      "awayScore": 3,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1947-03-29",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Copa Rio Branco",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1947-04-01",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 2,
+      "competition": "Copa Rio Branco",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1948-04-04",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa Rio Branco",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1948-04-11",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 4,
+      "awayScore": 2,
+      "competition": "Copa Rio Branco",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1949-04-30",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 5,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1950-05-06",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 4,
+      "competition": "Copa Rio Branco",
+      "city": "São Paulo",
+      "country": "Brasil"
+    },
+    {
+      "date": "1950-05-14",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 2,
+      "competition": "Copa Rio Branco",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1950-07-16",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Copa do Mundo",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1952-04-16",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 4,
+      "awayScore": 2,
+      "competition": "Campeonato Pan-Americano",
+      "city": "Santiago",
+      "country": "Chile"
+    },
+    {
+      "date": "1953-03-15",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Lima",
+      "country": "Peru"
+    },
+    {
+      "date": "1956-02-10",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1956-06-24",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Taça do Atlântico",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1957-03-28",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 3,
+      "competition": "Copa América",
+      "city": "Lima",
+      "country": "Peru"
+    },
+    {
+      "date": "1959-03-26",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1959-12-12",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 3,
+      "competition": "Copa América",
+      "city": "Guayaquil",
+      "country": "Equador"
+    },
+    {
+      "date": "1960-07-09",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Taça do Atlântico",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1965-09-07",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Belo Horizonte",
+      "country": "Brasil"
+    },
+    {
+      "date": "1967-06-25",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Copa Rio Branco",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1967-06-28",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Copa Rio Branco",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1967-07-01",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa Rio Branco",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1968-06-09",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa Rio Branco",
+      "city": "São Paulo",
+      "country": "Brasil"
+    },
+    {
+      "date": "1968-06-12",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 4,
+      "awayScore": 0,
+      "competition": "Copa Rio Branco",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1970-06-17",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Copa do Mundo",
+      "city": "Guadalajara",
+      "country": "México"
+    },
+    {
+      "date": "1976-02-25",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Copa Rio Branco",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1976-04-28",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa Rio Branco",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1979-05-31",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 5,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1980-08-27",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Fortaleza",
+      "country": "Brasil"
+    },
+    {
+      "date": "1981-01-10",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Mundialito",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1983-10-27",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1983-11-04",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Salvador",
+      "country": "Brasil"
+    },
+    {
+      "date": "1984-06-21",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Curitiba",
+      "country": "Brasil"
+    },
+    {
+      "date": "1985-05-02",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Recife",
+      "country": "Brasil"
+    },
+    {
+      "date": "1989-07-16",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1991-07-11",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Viña del Mar",
+      "country": "Chile"
+    },
+    {
+      "date": "1992-04-30",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1992-11-25",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Campina Grande",
+      "country": "Brasil"
+    },
+    {
+      "date": "1993-08-15",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1993-09-19",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Eliminatórias da Copa",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1995-07-23",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1995-10-11",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Salvador",
+      "country": "Brasil"
+    },
+    {
+      "date": "1999-07-18",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Assunção",
+      "country": "Paraguai"
+    },
+    {
+      "date": "2000-06-28",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "2001-07-01",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Eliminatórias da Copa",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "2003-11-19",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 3,
+      "competition": "Eliminatórias da Copa",
+      "city": "Curitiba",
+      "country": "Brasil"
+    },
+    {
+      "date": "2004-07-21",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Lima",
+      "country": "Peru"
+    },
+    {
+      "date": "2005-03-30",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "2007-07-10",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Copa América",
+      "city": "Maracaibo",
+      "country": "Venezuela"
+    },
+    {
+      "date": "2007-11-21",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "São Paulo",
+      "country": "Brasil"
+    },
+    {
+      "date": "2009-06-06",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 4,
+      "competition": "Eliminatórias da Copa",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "2013-06-26",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa das Confederações",
+      "city": "Belo Horizonte",
+      "country": "Brasil"
+    },
+    {
+      "date": "2016-03-25",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Eliminatórias da Copa",
+      "city": "Recife",
+      "country": "Brasil"
+    },
+    {
+      "date": "2017-03-23",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 4,
+      "competition": "Eliminatórias da Copa",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "2018-11-16",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Londres",
+      "country": "Inglaterra"
+    },
+    {
+      "date": "2020-11-17",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 2,
+      "competition": "Eliminatórias da Copa",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "2021-10-14",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 4,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "Manaus",
+      "country": "Brasil"
+    },
+    {
+      "date": "2023-10-17",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Eliminatórias da Copa",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "2024-07-06",
+      "home": "Uruguay",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Las Vegas",
+      "country": "Estados Unidos"
+    },
+    {
+      "date": "2024-11-19",
+      "home": "Brazil",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "Salvador",
+      "country": "Brasil"
+    }
+  ],
+  "source": {
+    "name": "international_results (Mart Jürisoo)",
+    "url": "https://github.com/martj42/international_results",
+    "license": "CC0 1.0",
+    "retrieved": "2026-11-13",
+    "sha256": "09aac809e317f3004c69720a38addb656c49ebb19f1937deab96f96e3362257a",
+    "note": "Seleções principais masculinas · placar com prorrogação, sem pênaltis"
+  }
+}

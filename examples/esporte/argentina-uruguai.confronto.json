@@ -1,0 +1,1859 @@
+{
+  "sport": "futebol",
+  "sides": [
+    {
+      "id": "Argentina",
+      "name": "Argentina",
+      "short": "ARG",
+      "color": "#75AADB",
+      "ink": "#0B1622"
+    },
+    {
+      "id": "Uruguay",
+      "name": "Uruguai",
+      "short": "URU",
+      "color": "#E8E8E8",
+      "ink": "#10151C"
+    }
+  ],
+  "matches": [
+    {
+      "date": "1902-07-20",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 6,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1903-09-13",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 3,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1905-08-15",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Copa Lipton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1906-08-15",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 2,
+      "competition": "Copa Lipton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1906-10-21",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa Newton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1908-08-15",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Copa Lipton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1908-09-13",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa Newton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1908-10-04",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Copa Prêmio Honra Argentina",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1909-08-15",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa Lipton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1909-09-19",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Copa Newton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1909-10-10",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Copa Prêmio Honra Argentina",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1910-06-12",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 4,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1910-08-15",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Copa Lipton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1910-11-13",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa Prêmio Honra Argentina",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1910-11-27",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 6,
+      "competition": "Copa Prêmio Honra Argentina",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1911-08-15",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 2,
+      "competition": "Copa Lipton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1911-09-17",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 3,
+      "competition": "Copa Newton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1911-10-08",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa Prêmio Honra Uruguaia",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1911-10-22",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa Prêmio Honra Argentina",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1911-10-29",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Copa Prêmio Honra Uruguaia",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1912-08-15",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa Lipton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1912-08-25",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Copa Prêmio Honra Uruguaia",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1912-09-22",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Copa Prêmio Honra Argentina",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1912-10-06",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 3,
+      "competition": "Copa Newton",
+      "city": "Avellaneda",
+      "country": "Argentina"
+    },
+    {
+      "date": "1912-12-01",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 3,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1913-06-15",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Avellaneda",
+      "country": "Argentina"
+    },
+    {
+      "date": "1913-07-09",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Avellaneda",
+      "country": "Argentina"
+    },
+    {
+      "date": "1913-08-15",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 4,
+      "awayScore": 0,
+      "competition": "Copa Lipton",
+      "city": "Avellaneda",
+      "country": "Argentina"
+    },
+    {
+      "date": "1913-08-31",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa Prêmio Honra Argentina",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1913-10-05",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa Prêmio Honra Uruguaia",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1913-10-26",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa Newton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1914-08-30",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 2,
+      "competition": "Copa Prêmio Honra Uruguaia",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1914-09-13",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa Prêmio Honra Argentina",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1915-07-18",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 3,
+      "competition": "Copa Prêmio Honra Uruguaia",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1915-08-15",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa Lipton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1915-09-12",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa Newton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1916-07-17",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Avellaneda",
+      "country": "Argentina"
+    },
+    {
+      "date": "1916-08-15",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Copa Newton",
+      "city": "Avellaneda",
+      "country": "Argentina"
+    },
+    {
+      "date": "1916-08-15",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Copa Lipton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1916-10-01",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 7,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Avellaneda",
+      "country": "Argentina"
+    },
+    {
+      "date": "1916-10-01",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Copa Prêmio Honra Uruguaia",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1916-10-29",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1917-07-18",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 2,
+      "competition": "Copa Prêmio Honra Uruguaia",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1917-08-15",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa Lipton",
+      "city": "Avellaneda",
+      "country": "Argentina"
+    },
+    {
+      "date": "1917-09-02",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa Newton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1917-10-14",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1918-07-18",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa Prêmio Honra Uruguaia",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1918-07-28",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Copa Prêmio Honra Uruguaia",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1918-08-15",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Copa Prêmio Honra Argentina",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1918-08-25",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa Prêmio Honra Argentina",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1918-09-20",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa Lipton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1918-09-29",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa Newton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1919-05-13",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 3,
+      "competition": "Copa América",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1919-07-18",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 4,
+      "awayScore": 1,
+      "competition": "Copa Prêmio Honra Uruguaia",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1919-08-24",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa Newton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1919-09-07",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Copa Lipton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1919-10-19",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 6,
+      "awayScore": 1,
+      "competition": "Copa Prêmio Honra Argentina",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1919-12-07",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 4,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1920-07-18",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa Prêmio Honra Uruguaia",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1920-07-25",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 3,
+      "competition": "Copa Newton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1920-08-08",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa Prêmio Honra Argentina",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1920-09-12",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Viña del Mar",
+      "country": "Chile"
+    },
+    {
+      "date": "1921-10-30",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1922-10-08",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1922-11-12",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa Lipton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1922-12-10",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa Prêmio Honra Uruguaia",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1922-12-17",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Copa Newton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1923-06-24",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Copa Lipton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1923-07-15",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1923-07-22",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Copa Prêmio Honra Uruguaia",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1923-09-30",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 2,
+      "competition": "Copa Prêmio Honra Uruguaia",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1923-12-02",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1924-05-25",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 4,
+      "awayScore": 0,
+      "competition": "Copa Newton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1924-05-25",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa Lipton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1924-09-21",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1924-10-02",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1924-11-02",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1926-10-24",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 2,
+      "competition": "Copa América",
+      "city": "Santiago",
+      "country": "Chile"
+    },
+    {
+      "date": "1927-07-14",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Copa Newton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1927-08-30",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Copa Lipton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1927-11-20",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 2,
+      "competition": "Copa América",
+      "city": "Lima",
+      "country": "Peru"
+    },
+    {
+      "date": "1928-06-10",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Jogos Olímpicos",
+      "city": "Amsterdam",
+      "country": "Holanda"
+    },
+    {
+      "date": "1928-06-13",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Jogos Olímpicos",
+      "city": "Amsterdam",
+      "country": "Holanda"
+    },
+    {
+      "date": "1928-08-30",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa Newton",
+      "city": "Avellaneda",
+      "country": "Argentina"
+    },
+    {
+      "date": "1928-09-21",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Copa Lipton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1929-06-16",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1929-06-16",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1929-09-20",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa Newton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1929-09-28",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Copa Lipton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1929-11-17",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1930-05-25",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa Newton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1930-07-30",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 4,
+      "awayScore": 2,
+      "competition": "Copa do Mundo",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1932-05-15",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1932-05-18",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1933-01-21",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1933-02-05",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 4,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Avellaneda",
+      "country": "Argentina"
+    },
+    {
+      "date": "1933-12-14",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1934-07-18",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1934-08-15",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Avellaneda",
+      "country": "Argentina"
+    },
+    {
+      "date": "1935-01-27",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 3,
+      "competition": "Copa América",
+      "city": "Lima",
+      "country": "Peru"
+    },
+    {
+      "date": "1935-07-18",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1935-08-15",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Avellaneda",
+      "country": "Argentina"
+    },
+    {
+      "date": "1936-08-09",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1936-09-20",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1937-01-23",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 3,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1937-10-10",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 3,
+      "competition": "Copa Newton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1937-11-11",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 5,
+      "awayScore": 1,
+      "competition": "Copa Lipton",
+      "city": "Avellaneda",
+      "country": "Argentina"
+    },
+    {
+      "date": "1938-06-18",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1938-10-12",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 3,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1940-07-18",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1940-08-15",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 5,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1941-02-23",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Santiago",
+      "country": "Chile"
+    },
+    {
+      "date": "1942-02-07",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1942-05-25",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 4,
+      "awayScore": 1,
+      "competition": "Copa Newton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1942-08-25",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa Lipton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1943-03-28",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 3,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1943-04-04",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1945-02-25",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Santiago",
+      "country": "Chile"
+    },
+    {
+      "date": "1945-07-18",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Copa Lipton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1945-08-15",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 6,
+      "awayScore": 2,
+      "competition": "Copa Newton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1946-02-02",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1947-12-28",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Guayaquil",
+      "country": "Equador"
+    },
+    {
+      "date": "1955-03-27",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 6,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Santiago",
+      "country": "Chile"
+    },
+    {
+      "date": "1956-02-15",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1956-07-01",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Taça do Atlântico",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1956-10-10",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Paysandú",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1956-11-14",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1957-03-20",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 4,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Lima",
+      "country": "Peru"
+    },
+    {
+      "date": "1957-05-23",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Copa Newton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1957-06-05",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa Lipton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1958-04-06",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1958-04-30",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1959-03-30",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 4,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1959-12-16",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 5,
+      "competition": "Copa América",
+      "city": "Guayaquil",
+      "country": "Equador"
+    },
+    {
+      "date": "1960-08-17",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 4,
+      "awayScore": 0,
+      "competition": "Taça do Atlântico",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1962-03-13",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1962-08-15",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Copa Lipton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1967-02-02",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1968-06-05",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Copa Lipton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1968-06-20",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Copa Newton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1970-04-08",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1970-04-15",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1971-07-14",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1971-07-18",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1972-07-06",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Taça Independência",
+      "city": "Porto Alegre",
+      "country": "Brasil"
+    },
+    {
+      "date": "1973-05-17",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa Lipton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1973-05-23",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa Newton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1975-07-18",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 3,
+      "competition": "Copa Newton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1976-04-08",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 4,
+      "awayScore": 1,
+      "competition": "Copa Lipton",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1976-06-09",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 3,
+      "competition": "Copa Newton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1978-04-25",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1978-05-03",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1984-07-18",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1984-08-02",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1986-06-16",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa do Mundo",
+      "city": "Puebla",
+      "country": "México"
+    },
+    {
+      "date": "1987-07-09",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1989-07-08",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Goiânia",
+      "country": "Brasil"
+    },
+    {
+      "date": "1989-07-14",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 2,
+      "competition": "Copa América",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1992-09-23",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Copa Lipton",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1997-01-12",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Eliminatórias da Copa",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1997-10-12",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Eliminatórias da Copa",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "1999-07-07",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 2,
+      "competition": "Copa América",
+      "city": "Luque",
+      "country": "Paraguai"
+    },
+    {
+      "date": "2000-10-08",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "2001-11-14",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "2003-07-16",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "La Plata",
+      "country": "Argentina"
+    },
+    {
+      "date": "2003-08-20",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Florença",
+      "country": "Itália"
+    },
+    {
+      "date": "2004-07-13",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 4,
+      "awayScore": 2,
+      "competition": "Copa América",
+      "city": "Piura",
+      "country": "Peru"
+    },
+    {
+      "date": "2004-10-09",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 4,
+      "awayScore": 2,
+      "competition": "Eliminatórias da Copa",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "2005-10-12",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Eliminatórias da Copa",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "2008-10-11",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "2009-10-14",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "2011-07-16",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Copa América",
+      "city": "Santa Fe",
+      "country": "Argentina"
+    },
+    {
+      "date": "2012-10-12",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Eliminatórias da Copa",
+      "city": "Mendoza",
+      "country": "Argentina"
+    },
+    {
+      "date": "2013-10-15",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 3,
+      "awayScore": 2,
+      "competition": "Eliminatórias da Copa",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "2015-06-16",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "La Serena",
+      "country": "Chile"
+    },
+    {
+      "date": "2016-09-01",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Eliminatórias da Copa",
+      "city": "Mendoza",
+      "country": "Argentina"
+    },
+    {
+      "date": "2017-08-31",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 0,
+      "competition": "Eliminatórias da Copa",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "2019-11-18",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Tel Aviv",
+      "country": "Israel"
+    },
+    {
+      "date": "2021-06-18",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Copa América",
+      "city": "Brasília",
+      "country": "Brasil"
+    },
+    {
+      "date": "2021-10-10",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 3,
+      "awayScore": 0,
+      "competition": "Eliminatórias da Copa",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "2021-11-12",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "2023-11-16",
+      "home": "Argentina",
+      "away": "Uruguay",
+      "homeScore": 0,
+      "awayScore": 2,
+      "competition": "Eliminatórias da Copa",
+      "city": "Buenos Aires",
+      "country": "Argentina"
+    },
+    {
+      "date": "2025-03-21",
+      "home": "Uruguay",
+      "away": "Argentina",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Eliminatórias da Copa",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    }
+  ],
+  "source": {
+    "name": "international_results (Mart Jürisoo)",
+    "url": "https://github.com/martj42/international_results",
+    "license": "CC0 1.0",
+    "retrieved": "2026-11-13",
+    "sha256": "09aac809e317f3004c69720a38addb656c49ebb19f1937deab96f96e3362257a",
+    "note": "Seleções principais masculinas · placar com prorrogação, sem pênaltis"
+  }
+}

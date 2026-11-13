@@ -1,0 +1,259 @@
+{
+  "sport": "futebol",
+  "sides": [
+    {
+      "id": "Brazil",
+      "name": "Brasil",
+      "short": "BRA",
+      "color": "#F7D117",
+      "ink": "#10151C"
+    },
+    {
+      "id": "Germany",
+      "name": "Alemanha",
+      "short": "ALE",
+      "color": "#E8E8E8",
+      "ink": "#10151C"
+    }
+  ],
+  "matches": [
+    {
+      "date": "1963-05-05",
+      "home": "Germany",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Hamburgo",
+      "country": "Alemanha"
+    },
+    {
+      "date": "1965-06-06",
+      "home": "Brazil",
+      "away": "Germany",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1968-06-16",
+      "home": "Germany",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Stuttgart",
+      "country": "Alemanha"
+    },
+    {
+      "date": "1968-12-14",
+      "home": "Brazil",
+      "away": "Germany",
+      "homeScore": 2,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1973-06-16",
+      "home": "Germany",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Berlim",
+      "country": "Alemanha"
+    },
+    {
+      "date": "1977-06-12",
+      "home": "Brazil",
+      "away": "Germany",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1978-04-05",
+      "home": "Germany",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Hamburgo",
+      "country": "Alemanha"
+    },
+    {
+      "date": "1981-01-07",
+      "home": "Brazil",
+      "away": "Germany",
+      "homeScore": 4,
+      "awayScore": 1,
+      "competition": "Mundialito",
+      "city": "Montevidéu",
+      "country": "Uruguai"
+    },
+    {
+      "date": "1981-05-19",
+      "home": "Germany",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Stuttgart",
+      "country": "Alemanha"
+    },
+    {
+      "date": "1982-03-21",
+      "home": "Brazil",
+      "away": "Germany",
+      "homeScore": 1,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Rio de Janeiro",
+      "country": "Brasil"
+    },
+    {
+      "date": "1986-03-12",
+      "home": "Germany",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 0,
+      "competition": "Amistoso",
+      "city": "Frankfurt",
+      "country": "Alemanha"
+    },
+    {
+      "date": "1987-12-12",
+      "home": "Brazil",
+      "away": "Germany",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Brasília",
+      "country": "Brasil"
+    },
+    {
+      "date": "1992-12-16",
+      "home": "Brazil",
+      "away": "Germany",
+      "homeScore": 3,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Porto Alegre",
+      "country": "Brasil"
+    },
+    {
+      "date": "1993-06-10",
+      "home": "Brazil",
+      "away": "Germany",
+      "homeScore": 3,
+      "awayScore": 3,
+      "competition": "Copa dos EUA",
+      "city": "Washington, D.C.",
+      "country": "Estados Unidos"
+    },
+    {
+      "date": "1993-11-17",
+      "home": "Germany",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Colônia",
+      "country": "Alemanha"
+    },
+    {
+      "date": "1998-03-25",
+      "home": "Germany",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Stuttgart",
+      "country": "Alemanha"
+    },
+    {
+      "date": "1999-07-24",
+      "home": "Brazil",
+      "away": "Germany",
+      "homeScore": 4,
+      "awayScore": 0,
+      "competition": "Copa das Confederações",
+      "city": "Guadalajara",
+      "country": "México"
+    },
+    {
+      "date": "2002-06-30",
+      "home": "Germany",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 2,
+      "competition": "Copa do Mundo",
+      "city": "Yokohama",
+      "country": "Japão"
+    },
+    {
+      "date": "2004-09-08",
+      "home": "Germany",
+      "away": "Brazil",
+      "homeScore": 1,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Berlim",
+      "country": "Alemanha"
+    },
+    {
+      "date": "2005-06-25",
+      "home": "Germany",
+      "away": "Brazil",
+      "homeScore": 2,
+      "awayScore": 3,
+      "competition": "Copa das Confederações",
+      "city": "Nuremberg",
+      "country": "Alemanha"
+    },
+    {
+      "date": "2011-08-10",
+      "home": "Germany",
+      "away": "Brazil",
+      "homeScore": 3,
+      "awayScore": 2,
+      "competition": "Amistoso",
+      "city": "Stuttgart",
+      "country": "Alemanha"
+    },
+    {
+      "date": "2014-07-08",
+      "home": "Brazil",
+      "away": "Germany",
+      "homeScore": 1,
+      "awayScore": 7,
+      "competition": "Copa do Mundo",
+      "city": "Belo Horizonte",
+      "country": "Brasil"
+    },
+    {
+      "date": "2018-03-27",
+      "home": "Germany",
+      "away": "Brazil",
+      "homeScore": 0,
+      "awayScore": 1,
+      "competition": "Amistoso",
+      "city": "Berlim",
+      "country": "Alemanha"
+    }
+  ],
+  "source": {
+    "name": "international_results (Mart Jürisoo)",
+    "url": "https://github.com/martj42/international_results",
+    "license": "CC0 1.0",
+    "retrieved": "2026-11-13",
+    "sha256": "09aac809e317f3004c69720a38addb656c49ebb19f1937deab96f96e3362257a",
+    "note": "Seleções principais masculinas · placar com prorrogação, sem pênaltis"
+  }
+}

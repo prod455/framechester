@@ -114,3 +114,11 @@ test('timing keeps every match readable and a 110-match history inside a Short',
   assert.equal(timing(3).perMatch, 1);
   assert.equal(timing(1000).perMatch, 0.22);
 });
+
+test('the last match plus the pause before the verdict never reach 2 s of stillness', () => {
+  for (const n of [2, 10, 23, 49, 76, 110, 183, 400]) {
+    const t = timing(n);
+    assert.ok(t.perMatch + t.hold <= 1.6, `${n} jogos: ${t.perMatch} + ${t.hold}`);
+    assert.ok(t.hold >= 0.3);
+  }
+});

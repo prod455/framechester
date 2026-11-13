@@ -19,29 +19,37 @@ do HyperFrames (Chrome headless + FFmpeg) e passa o MP4 pelo QA técnico do moto
 
 ## Comandos
 
+O motor em Rust é o ponto de entrada: `framechester confronto` e
+`framechester internacionais` são bindings que chamam o pacote `hyperframes/` (Node) e,
+no confronto, rodam o QA técnico do próprio motor sobre o MP4 e gravam o veredito no
+manifesto. O CLI Node não roda QA; use sempre o `framechester`.
+
 ```bash
 npm --prefix hyperframes ci
-cargo build --release -p framechester-cli        # o QA técnico usa target/release/framechester
+cargo build --release -p framechester-cli
 
 # 1. Dados: baixe o CSV (CC0) e gere o confronto de dois times
 mkdir -p .framechester/dados && curl -sSLo .framechester/dados/results.csv \
   https://raw.githubusercontent.com/martj42/international_results/master/results.csv
-npm --prefix hyperframes run fc -- internacionais --csv .framechester/dados/results.csv \
+./target/release/framechester internacionais --csv .framechester/dados/results.csv \
   --a Brazil --b Argentina --lido-em 2026-11-13 --saida examples/esporte/brasil-argentina.confronto.json
 
-# 2. Vídeo: projeto HyperFrames, render, QA e manifesto
-npm --prefix hyperframes run fc -- confronto --dados examples/esporte/brasil-argentina.confronto.json \
-  --saida artifacts/bra-arg --qualidade standard
+# 2. Vídeo: projeto HyperFrames, render, QA técnico e manifesto
+./target/release/framechester confronto --dados examples/esporte/brasil-argentina.confronto.json \
+  --saida artifacts/bra-arg
 # --qualidade draft para iterar; --corrida 46 é a duração da corrida em segundos; --sem-render só monta o projeto
 
-npm --prefix hyperframes test                     # 13 testes, inclui hyperframes lint do projeto gerado
+npm --prefix hyperframes test                     # testes do pacote, inclui hyperframes lint do projeto gerado
 npm --prefix hyperframes run check                # tsc + prettier
 ```
 
+O pacote é achado em `hyperframes/` a partir do diretório atual, ou em
+`FRAMECHESTER_HYPERFRAMES_DIR`. Precisa de `node` 22+ no PATH.
+
 Saída em `--saida`: `projeto/` (abre no `npx hyperframes preview` para ajustar à mão),
 `final.mp4` e `render_manifest.json` (versões, SHA-256 dos dados, do HTML e do vídeo,
-tempos, resumo e o relatório do QA). Código de saída: 0 QA aprovado, 1 QA pendente ou não
-rodou, 2 QA reprovado. Sem QA aprovado, nada vai para publicação.
+tempos, resumo e o relatório do QA). Código de saída: 0 QA aprovado, 1 QA pendente, 2 QA
+reprovado. Sem QA aprovado, nada vai para publicação.
 
 Em máquina sem navegador próprio do HyperFrames, aponte um com
 `HYPERFRAMES_BROWSER_PATH` (de preferência um `chrome-headless-shell`, que habilita a
@@ -81,6 +89,9 @@ time desconhecido falha em vez de inventar cor ou nome.
 
 Outros esportes: o JSON de confronto (tipo `Confronto` em `hyperframes/src/confronto.ts`) aceita qualquer
 esporte de dois lados com placar; falta só um leitor para cada fonte (próxima fatia).
+
+Calendário da primeira semana do canal, com legendas e comandos:
+[`docs/CALENDARIO_ESPORTE_EM_DADOS.md`](CALENDARIO_ESPORTE_EM_DADOS.md).
 
 ## Próximas fatias
 

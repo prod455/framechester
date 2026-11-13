@@ -25,7 +25,7 @@ For detailed alignment work, apply `precise-ui-alignment` when installed and mea
 - QA video: `cargo run -p framechester-cli -- qa --format short --video artifacts/demo-short/render/final.mp4`
 - FFmpeg: `ffmpeg -version`, `ffmpeg -encoders`, `ffmpeg -hwaccels`
 - HyperFrames renderer: `npm --prefix hyperframes ci`, `npm --prefix hyperframes test`, `npm --prefix hyperframes run check`
-- Confronto video: `npm --prefix hyperframes run fc -- confronto --dados examples/esporte/brasil-argentina.confronto.json --saida artifacts/bra-arg`
+- Confronto video (engine binding: renders through `hyperframes/`, then runs the engine QA): `cargo build --release -p framechester-cli && ./target/release/framechester confronto --dados examples/esporte/brasil-argentina.confronto.json --saida artifacts/bra-arg`
 - Web install: `npm --prefix web ci`
 - Web engine build: `npm --prefix web run engine:build`
 - Web check/test/build: `npm --prefix web run check`, `npm --prefix web test`, `npm --prefix web run build`

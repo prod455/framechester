@@ -48,15 +48,15 @@ antes; 2 = reprovado, não poste; 3 = erro de execução, nada foi avaliado.
 
 ## Semana
 
-| Dia (19:00 BRT) | Confronto | Jogos | Duração |
+| Dia (19:00 BRT) | Confronto | Jogos | Duração (QA aprovado em 13/11) |
 |---|---|---|---|
-| sáb 14/11 | Brasil × Argentina | 110 (1914–2025) | 55,8 s |
+| sáb 14/11 | Brasil × Argentina | 110 (1914–2025) | 55,6 s |
 | dom 15/11 | Argentina × Uruguai | 183 (1902–2025) | 55,7 s |
-| seg 16/11 | Brasil × Uruguai | 79 (1916–2024) | 55,8 s |
-| ter 17/11 | Inglaterra × Escócia | 118 (1872–2023) | 55,8 s |
-| qua 18/11 | Brasil × Alemanha | 23 (1963–2018) | 32,8 s |
-| qui 19/11 | Alemanha × Holanda | 49 (1910–2026) | 55,8 s |
-| sex 20/11 | Brasil × Chile | 76 (1916–2025) | 55,8 s |
+| seg 16/11 | Brasil × Uruguai | 79 (1916–2024) | 55,4 s |
+| ter 17/11 | Inglaterra × Escócia | 118 (1872–2023) | 55,6 s |
+| qua 18/11 | Brasil × Alemanha | 23 (1963–2018) | 32,0 s |
+| qui 19/11 | Alemanha × Holanda | 49 (1910–2026) | 55,1 s |
+| sex 20/11 | Brasil × Chile | 76 (1916–2025) | 55,4 s |
 
 ### sáb 14/11 · Brasil × Argentina
 

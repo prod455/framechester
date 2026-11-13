@@ -57,10 +57,6 @@
     el.style.transform = 'scale(' + s.toFixed(4) + ')';
   }
 
-  function pct(x, total) {
-    return total === 0 ? '' : Math.round((x / total) * 100) + '%';
-  }
-
   function chartPath(k, e) {
     if (k === 0) return { line: '', area: '', dot: null };
     const P = D.chart.points;
@@ -127,10 +123,10 @@
     el.segD.style.width = wd + '%';
     el.segB.style.left = wa + wd + '%';
     el.segB.style.width = wb + '%';
-    const games = cur.winsA + cur.winsB + cur.draws;
-    el.pctA.textContent = pct(cur.winsA, games);
-    el.pctD.textContent = pct(cur.draws, games);
-    el.pctB.textContent = pct(cur.winsB, games);
+    const shares = k === 0 ? null : S[k - 1].pc;
+    el.pctA.textContent = shares ? shares[0] + '%' : '';
+    el.pctD.textContent = shares ? shares[1] + '%' : '';
+    el.pctB.textContent = shares ? shares[2] + '%' : '';
 
     const diff = cur.winsA - cur.winsB;
     const lead = diff > 0 ? D.lead.a : diff < 0 ? D.lead.b : D.lead.tie;
@@ -156,7 +152,10 @@
     for (let i = 0; i < n; i += 1) {
       const chip = chips[i];
       if (i > at || i < at - 7) {
+        // Hidden chips keep no state from an earlier frame: a frame depends on p alone.
         chip.style.display = 'none';
+        chip.style.opacity = '';
+        chip.style.outline = '';
         continue;
       }
       chip.style.display = '';
@@ -171,7 +170,10 @@
       el.progress.textContent = D.labels.progress(0, n);
     } else {
       const s = S[k - 1];
-      el.detail.textContent = D.short.a + ' ' + s.a + '–' + s.b + ' ' + D.short.b + ' · ' + s.c + (s.pl ? ' · ' + s.pl : '');
+      // At a fast pace the line would change faster than it can be read: it stays empty.
+      el.detail.textContent = D.showDetail
+        ? D.short.a + ' ' + s.a + '–' + s.b + ' ' + D.short.b + ' · ' + s.c + (s.pl ? ' · ' + s.pl : '')
+        : '';
       el.year.textContent = String(s.y);
       el.progress.textContent = D.labels.progress(k, n);
     }
@@ -214,13 +216,13 @@
     { opacity: 1, y: 0, duration: 0.8, ease: 'expo.out', stagger: 1.2 },
     outro + 0.3,
   );
-  // Slow push on the whole frame while the verdict reads: every pixel moves, so the
-  // closing never sits still for 2 s (QA freeze). 2.5% about (50%, 60%) keeps every
-  // word inside y 168–1334 and x ≤ 1022.
+  // Slow rise of the whole frame while the verdict reads: every glyph edge moves, so the
+  // closing never sits still for 2 s (QA freeze). Upward only, 8 px: the top line stays
+  // below y 168, the footer moves away from y 1330 and nothing moves sideways.
   tl.fromTo(
     '#cena',
-    { scale: 1 },
-    { scale: 1.025, duration: T.outro, ease: 'sine.inOut', transformOrigin: '50% 60%', immediateRender: false },
+    { y: 0 },
+    { y: -8, duration: T.outro, ease: 'sine.inOut', immediateRender: false },
     outro,
   );
   tl.fromTo('#outro-line', { scaleX: 0 }, { scaleX: 1, duration: T.outro - 0.6, ease: 'none' }, outro + 0.4);

@@ -227,7 +227,10 @@ pub(crate) fn run(cli: Cli) -> anyhow::Result<i32> {
             json,
         } => qa_video(&cli.config, &video, format, json),
         Commands::Confronto(args) => confronto(&cli.config, args),
-        Commands::Internacionais(args) => internacionais(args),
+        Commands::Internacionais(args) => internacionais(&cli.config, args).or_else(|error| {
+            eprintln!("erro: {error:#}");
+            Ok(crate::commands::hyperframes::EXIT_ERROR)
+        }),
         Commands::Report { workdir, json } => report_command(&workdir, json),
     }
 }

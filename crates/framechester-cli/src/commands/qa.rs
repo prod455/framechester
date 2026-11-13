@@ -25,12 +25,13 @@ pub(crate) fn technical_report(
     Ok((output, report))
 }
 
-/// Exit code of a QA verdict: 0 pass, 1 needs a person, 2 fail.
-pub(crate) fn exit_code(report: &QaReport) -> i32 {
-    match report.overall() {
-        QaStatus::Fail => 2,
-        QaStatus::NeedsHuman => 1,
-        _ => 0,
+/// The manifest word for a QA verdict and the command's exit code: 0 pass, 1 a person
+/// must look, 2 fail. `Skipped` is not an approval: it asks for a person.
+pub(crate) fn verdict(status: QaStatus) -> (&'static str, i32) {
+    match status {
+        QaStatus::Pass => ("pass", 0),
+        QaStatus::NeedsHuman | QaStatus::Skipped => ("needs_human", 1),
+        QaStatus::Fail => ("fail", 2),
     }
 }
 
@@ -61,5 +62,5 @@ pub(crate) fn qa_video(
         );
         print_qa(&report);
     }
-    Ok(exit_code(&report))
+    Ok(verdict(report.overall()).1)
 }

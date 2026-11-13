@@ -2,9 +2,10 @@
 //! The Node package builds the composition and renders it; the engine only starts it,
 //! runs its own technical QA on the MP4 and records the verdict in the manifest.
 use crate::cli::{load_config, FormatArg};
-use crate::commands::qa::{exit_code, technical_report};
+use crate::commands::qa::{technical_report, verdict};
 use crate::commands::report::print_qa;
 use anyhow::{bail, Context};
+use framechester_core::config::Config;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -27,6 +28,12 @@ pub(crate) struct ConfrontoArgs {
     pub(crate) corrida: Option<f64>,
     #[arg(long, help = "so monta o projeto HyperFrames, sem render nem QA")]
     pub(crate) sem_render: bool,
+    #[arg(
+        long,
+        conflicts_with = "sem_render",
+        help = "nao renderiza: refaz o QA do final.mp4 existente e regrava o manifesto"
+    )]
+    pub(crate) so_qa: bool,
     #[arg(
         long,
         help = "id local em [[channels]]; obrigatorio quando ha canais (vai para o manifesto)"
@@ -84,14 +91,33 @@ pub(crate) fn node_args(package: &Path, args: Vec<OsString>) -> Vec<OsString> {
     out
 }
 
-fn run_node(args: Vec<OsString>) -> anyhow::Result<()> {
+/// Exit code of an operational failure (no node, no package, render or lint broke),
+/// kept apart from the QA verdicts 0/1/2 so a script can tell "broken" from "review".
+pub(crate) const EXIT_ERROR: i32 = 3;
+
+/// HyperFrames' ffmpeg variables for the engine's configured tools. They take a file path
+/// only; a bare command name ("ffmpeg") is left to the PATH lookup both sides already do.
+pub(crate) fn ffmpeg_env(config: &Config) -> Vec<(&'static str, String)> {
+    [
+        ("HYPERFRAMES_FFMPEG_PATH", &config.render.ffmpeg_path),
+        ("HYPERFRAMES_FFPROBE_PATH", &config.render.ffprobe_path),
+    ]
+    .into_iter()
+    .filter(|(_, path)| Path::new(path.as_str()).components().count() > 1)
+    .map(|(key, path)| (key, path.clone()))
+    .collect()
+}
+
+/// Runs the Node CLI. HyperFrames encodes with the same ffmpeg the engine's QA uses.
+fn run_node(config: &Config, label: &str, args: Vec<OsString>) -> anyhow::Result<()> {
     let package = package_dir()?;
     let status = Command::new("node")
         .args(node_args(&package, args))
+        .envs(ffmpeg_env(config))
         .status()
         .context("node nao encontrado no PATH (Node.js 22 ou mais novo)")?;
     if !status.success() {
-        bail!("renderizador HyperFrames terminou com {status}");
+        bail!("{label} terminou com {status}; veja a mensagem acima");
     }
     Ok(())
 }
@@ -139,7 +165,15 @@ pub(crate) fn attach_qa(
     Ok(manifest)
 }
 
+/// `confronto` with operational failures reported as `EXIT_ERROR`.
 pub(crate) fn confronto(config: &Option<PathBuf>, args: ConfrontoArgs) -> anyhow::Result<i32> {
+    confronto_inner(config, args).or_else(|error| {
+        eprintln!("erro: {error:#}");
+        Ok(EXIT_ERROR)
+    })
+}
+
+fn confronto_inner(config: &Option<PathBuf>, args: ConfrontoArgs) -> anyhow::Result<i32> {
     // The channel is checked before a two-minute render, not after.
     let config = load_config(config)?;
     let channel = config.select_channel(args.canal.as_deref())?;
@@ -148,14 +182,15 @@ pub(crate) fn confronto(config: &Option<PathBuf>, args: ConfrontoArgs) -> anyhow
             bail!("o template confronto escreve em pt-BR; o canal esta em {language}");
         }
     }
-    run_node(confronto_args(&args)?)?;
-    if args.sem_render {
-        return Ok(0);
+    if !args.so_qa {
+        run_node(&config, "render HyperFrames", confronto_args(&args)?)?;
+        if args.sem_render {
+            return Ok(0);
+        }
     }
     let video = args.saida.join("final.mp4");
     let (_, report) = technical_report(&config, &video, Some(FormatArg::Short))?;
-    let code = exit_code(&report);
-    let status = ["pass", "needs_human", "fail"][code as usize];
+    let (status, code) = verdict(report.overall());
     let manifest_path = args.saida.join("render_manifest.json");
     let manifest: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(&manifest_path)
@@ -173,29 +208,49 @@ pub(crate) fn confronto(config: &Option<PathBuf>, args: ConfrontoArgs) -> anyhow
     )?;
     println!("QA tecnico de {}:", video.display());
     print_qa(&report);
+    match code {
+        0 => println!(
+            "pronto para postar: QA aprovado e gravado em {}",
+            manifest_path.display()
+        ),
+        1 => println!("revisao humana: assista ao video antes de postar; o QA nao aprovou sozinho"),
+        _ => println!(
+            "nao poste: corrija o template ou os dados e rode o mesmo comando de novo; \
+             para so reavaliar o MP4 existente, acrescente --so-qa"
+        ),
+    }
     Ok(code)
 }
 
-pub(crate) fn internacionais(args: InternacionaisArgs) -> anyhow::Result<i32> {
-    run_node(vec![
-        "internacionais".into(),
-        "--csv".into(),
-        abs(&args.csv)?,
-        "--a".into(),
-        args.a.into(),
-        "--b".into(),
-        args.b.into(),
-        "--lido-em".into(),
-        args.lido_em.into(),
-        "--saida".into(),
-        abs(&args.saida)?,
-    ])?;
+pub(crate) fn internacionais(
+    config: &Option<PathBuf>,
+    args: InternacionaisArgs,
+) -> anyhow::Result<i32> {
+    let config = load_config(config)?;
+    run_node(
+        &config,
+        "leitura do CSV",
+        vec![
+            "internacionais".into(),
+            "--csv".into(),
+            abs(&args.csv)?,
+            "--a".into(),
+            args.a.into(),
+            "--b".into(),
+            args.b.into(),
+            "--lido-em".into(),
+            args.lido_em.into(),
+            "--saida".into(),
+            abs(&args.saida)?,
+        ],
+    )?;
     Ok(0)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use framechester_core::domain::QaStatus;
 
     fn args() -> ConfrontoArgs {
         ConfrontoArgs {
@@ -204,6 +259,7 @@ mod tests {
             qualidade: "draft".into(),
             corrida: Some(30.0),
             sem_render: false,
+            so_qa: false,
             canal: None,
             gancho: Some("O 7 a 1 é só 1 de 23 jogos".into()),
         }
@@ -260,5 +316,38 @@ mod tests {
         assert_eq!(out["qa"]["engine"], "framechester qa");
         assert_eq!(out["renderer"], "hyperframes");
         assert!(attach_qa(serde_json::json!([]), None, "pass", serde_json::json!({})).is_err());
+    }
+
+    #[test]
+    fn skipped_qa_is_not_an_approval() {
+        assert_eq!(verdict(QaStatus::Pass), ("pass", 0));
+        assert_eq!(verdict(QaStatus::Skipped), ("needs_human", 1));
+        assert_eq!(verdict(QaStatus::NeedsHuman), ("needs_human", 1));
+        assert_eq!(verdict(QaStatus::Fail), ("fail", 2));
+        assert_ne!(EXIT_ERROR, 1);
+    }
+
+    #[test]
+    fn only_a_configured_ffmpeg_file_goes_to_hyperframes() {
+        let mut config = Config::default();
+        assert!(
+            ffmpeg_env(&config).is_empty(),
+            "nome de comando fica com o PATH"
+        );
+        config.render.ffmpeg_path = "C:/ffmpeg/bin/ffmpeg.exe".into();
+        config.render.ffprobe_path = "/usr/local/bin/ffprobe".into();
+        assert_eq!(
+            ffmpeg_env(&config),
+            vec![
+                (
+                    "HYPERFRAMES_FFMPEG_PATH",
+                    "C:/ffmpeg/bin/ffmpeg.exe".to_string()
+                ),
+                (
+                    "HYPERFRAMES_FFPROBE_PATH",
+                    "/usr/local/bin/ffprobe".to_string()
+                ),
+            ]
+        );
     }
 }

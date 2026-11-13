@@ -248,27 +248,28 @@ body {
   right: 72px;
 }
 
-/* Lower band: x 72–892 */
+/* Lower band: x 72–892 (right of 892 is the app's action rail below y 1056).
+   chart 940–1088, strip 1104–1204, detail 1214–1246, footer 1276–1328. */
 .chart-label {
   left: 72px;
-  top: 950px;
+  top: 940px;
   font-size: 22px;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   color: var(--muted);
 }
 .chart {
   left: 72px;
-  top: 984px;
+  top: 970px;
   width: 820px;
-  height: 110px;
+  height: 90px;
 }
 .ticks {
   left: 72px;
-  top: 1098px;
+  top: 1062px;
   width: 820px;
   height: 26px;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
   color: var(--muted);
 }
@@ -279,10 +280,13 @@ body {
 
 .strip-window {
   left: 72px;
-  top: 1140px;
+  top: 1104px;
   width: 820px;
   height: 100px;
   overflow: hidden;
+  /* The oldest chip fades out instead of being cut mid-word. */
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 64px);
+  mask-image: linear-gradient(to right, transparent 0, #000 64px);
 }
 .strip {
   position: absolute;
@@ -299,14 +303,15 @@ body {
   border-radius: 14px;
   background: var(--panel);
   border-top: 6px solid var(--draw);
+  outline-offset: -2px;
   text-align: center;
 }
 .chip .d {
   display: block;
   margin-top: 10px;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   color: var(--muted);
 }
 .chip .s {
@@ -317,7 +322,7 @@ body {
 }
 .detail {
   left: 72px;
-  top: 1252px;
+  top: 1214px;
   width: 820px;
   font-size: 26px;
   font-weight: 600;
@@ -327,11 +332,14 @@ body {
 }
 .footer {
   left: 72px;
-  top: 1290px;
+  top: 1276px;
   width: 820px;
-  font-size: 18px;
-  line-height: 20px;
+  font-size: 22px;
+  line-height: 26px;
   color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Decorative year below the safe area. */
@@ -345,30 +353,33 @@ body {
   opacity: 0.07;
 }
 
-/* Outro: verdict 948–1020, rule 1032, four rows 1048–1280, footer from 1290. */
+/* Outro: verdict 940–1004, rule 1012, four rows 1024–1272, footer from 1276. */
 .verdict {
   left: 72px;
-  top: 948px;
+  top: 940px;
   width: 820px;
 }
-.verdict .row {
-  height: 58px;
-}
-.verdict .head {
+.verdict .row.head {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 72px;
+  font-size: 64px;
   line-height: 1;
-  height: 100px;
+  height: 84px;
+}
+.verdict .row {
+  height: 62px;
 }
 .verdict .k {
-  font-size: 18px;
+  padding-top: 6px;
+  font-size: 20px;
+  line-height: 24px;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   color: var(--muted);
 }
 .verdict .v {
   margin-top: 2px;
-  font-size: 28px;
+  font-size: 26px;
+  line-height: 30px;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
@@ -376,7 +387,7 @@ body {
 }
 .outro-line {
   left: 72px;
-  top: 1032px;
+  top: 1012px;
   width: 820px;
   height: 4px;
   border-radius: 2px;

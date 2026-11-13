@@ -15,60 +15,93 @@ do HyperFrames (Chrome headless + FFmpeg) e passa o MP4 pelo QA técnico do moto
 | Por quê | O HyperFrames já tem o que o motor próprio vinha reimplementando (tipografia web, SVG, GSAP, captura determinística por quadro, mixagem). Competir custava fatias inteiras por recurso. |
 | Contrato | Dado de entrada validado (`hyperframes/src/confronto.ts`) → projeto autocontido (sem rede no render) → MP4 → `framechester qa`. Todo número na tela é derivado das linhas da fonte, com hash e data de leitura no manifesto. |
 | Riscos aceitos | Node e Chromium no caminho crítico; versão do navegador muda o pixel (Docker do HyperFrames resolve se precisar); o GSAP tem licença própria "no charge", não OSI (ver `THIRD_PARTY_NOTICES.md`). |
-| Travas | `hyperframes` e `gsap` em versão exata; `undici` forçado para versão sem os avisos do `npm audit`; telemetria e checagem de atualização do HyperFrames desligadas por variável de ambiente em todo comando; estado dele em `.framechester/hyperframes/` (ignorado), não no home. `publish` do HyperFrames nunca é chamado. |
+| Travas | `hyperframes` e `gsap` em versão exata; `undici` forçado para versão sem os avisos do `npm audit`; telemetria e checagem de atualização do HyperFrames desligadas por variável de ambiente em todo comando; o processo dele roda com `HOME`/`USERPROFILE` e cache em `.framechester/hyperframes/` (ignorado), então config, cache e navegador baixado ficam fora do home do operador (o 0.9 grava em `~/.hyperframes` e `~/.cache/hyperframes` a partir do home). `publish` do HyperFrames nunca é chamado. |
 
 ## Comandos
 
 O motor em Rust é o ponto de entrada: `framechester confronto` e
 `framechester internacionais` são bindings que chamam o pacote `hyperframes/` (Node) e,
 no confronto, rodam o QA técnico do próprio motor sobre o MP4 e gravam o veredito no
-manifesto. O CLI Node não roda QA; use sempre o `framechester`.
+manifesto. O CLI Node não roda QA; use sempre o `framechester`. Rode tudo **na raiz do
+repositório** (o pacote é achado em `hyperframes/` a partir do diretório atual, ou em
+`FRAMECHESTER_HYPERFRAMES_DIR`). Precisa de `node` 22+ e `ffmpeg` no PATH, ou do caminho
+do ffmpeg em `[render] ffmpeg_path`, que o motor repassa ao HyperFrames.
+
+Linux/macOS (bash):
 
 ```bash
 npm --prefix hyperframes ci
 cargo build --release -p framechester-cli
-
-# 1. Dados: baixe o CSV (CC0) e gere o confronto de dois times
-mkdir -p .framechester/dados && curl -sSLo .framechester/dados/results.csv \
-  https://raw.githubusercontent.com/martj42/international_results/master/results.csv
-./target/release/framechester internacionais --csv .framechester/dados/results.csv \
-  --a Brazil --b Argentina --lido-em 2026-11-13 --saida examples/esporte/brasil-argentina.confronto.json
-
-# 2. Vídeo: projeto HyperFrames, render, QA técnico e manifesto
-./target/release/framechester confronto --dados examples/esporte/brasil-argentina.confronto.json \
-  --saida artifacts/bra-arg
-# --qualidade draft para iterar; --corrida 46 é a duração da corrida em segundos; --sem-render só monta o projeto
-
-npm --prefix hyperframes test                     # testes do pacote, inclui hyperframes lint do projeto gerado
-npm --prefix hyperframes run check                # tsc + prettier
+mkdir -p .framechester/dados
+curl -sSLo .framechester/dados/results.csv https://raw.githubusercontent.com/martj42/international_results/master/results.csv
+./target/release/framechester internacionais --csv .framechester/dados/results.csv --a Brazil --b Argentina --lido-em 2026-11-13 --saida examples/esporte/brasil-argentina.confronto.json
+./target/release/framechester confronto --canal esporte-em-dados --dados examples/esporte/brasil-argentina.confronto.json --saida artifacts/bra-arg --gancho "A liderança trocou de lado uma vez só"
 ```
 
-O pacote é achado em `hyperframes/` a partir do diretório atual, ou em
-`FRAMECHESTER_HYPERFRAMES_DIR`. Precisa de `node` 22+ no PATH.
+Windows (PowerShell):
 
-Saída em `--saida`: `projeto/` (abre no `npx hyperframes preview` para ajustar à mão),
-`final.mp4` e `render_manifest.json` (versões, SHA-256 dos dados, do HTML e do vídeo,
-tempos, resumo e o relatório do QA). Código de saída: 0 QA aprovado, 1 QA pendente, 2 QA
-reprovado. Sem QA aprovado, nada vai para publicação.
+```powershell
+npm --prefix hyperframes ci
+cargo build --release -p framechester-cli
+New-Item -ItemType Directory -Force .framechester\dados | Out-Null
+curl.exe -sSLo .framechester\dados\results.csv https://raw.githubusercontent.com/martj42/international_results/master/results.csv
+.\target\release\framechester.exe internacionais --csv .framechester\dados\results.csv --a Brazil --b Argentina --lido-em 2026-11-13 --saida examples\esporte\brasil-argentina.confronto.json
+.\target\release\framechester.exe confronto --canal esporte-em-dados --dados examples\esporte\brasil-argentina.confronto.json --saida artifacts\bra-arg --gancho "A liderança trocou de lado uma vez só"
+```
 
-Em máquina sem navegador próprio do HyperFrames, aponte um com
+Opções do `confronto`: `--canal` (obrigatório quando o `framechester.toml` tem canais;
+vai para o manifesto; o template escreve em pt-BR e recusa canal de outro idioma),
+`--gancho` (ângulo editorial do vídeo, até 44 caracteres, sob o título), `--qualidade
+draft|standard|high`, `--corrida <segundos>` (padrão 46), `--sem-render` (só monta o
+projeto) e `--so-qa` (não renderiza: refaz o QA do `final.mp4` existente e regrava o
+manifesto).
+
+Saída em `--saida`: `projeto/` (abre no `npx --prefix hyperframes hyperframes preview`
+para ajustar à mão), `final.mp4` e `render_manifest.json`: canal, versões (HyperFrames,
+GSAP, Node, navegador), hash do template e do código que desenhou o vídeo, SHA-256 dos
+dados, do HTML e do vídeo, caminhos relativos à pasta de saída, tempos, resumo e o
+relatório do QA. Um vídeo e um manifesto anteriores na mesma pasta são apagados antes de
+começar, e o MP4 só ganha o nome `final.mp4` quando o render termina: nunca fica um "pass"
+antigo ao lado de um vídeo novo.
+
+Códigos de saída: **0** QA aprovado (pode postar), **1** revisão humana (inclui QA pulado:
+pulado não é aprovado), **2** QA reprovado (não poste), **3** erro de execução (sem node,
+sem `npm ci`, render ou lint quebrado; nada foi avaliado). Depois de um 2 a CLI diz onde
+a tela ficou parada (por exemplo `tela parada em 47.9–50.0s`); corrija e rode o mesmo
+comando, ou só `--so-qa` se o MP4 não mudou.
+
+Testes: `npm --prefix hyperframes test` (inclui o `hyperframes lint` do projeto gerado,
+sem navegador, e o runtime do navegador rodado em `node:vm`: um quadro não depende dos
+anteriores e nenhum trecho fica 1,8 s sem mudança de área grande) e
+`npm --prefix hyperframes run check` (tsc e prettier, inclusive do template).
+
+Em máquina sem navegador próprio do HyperFrames, o primeiro render baixa um (para
+`.framechester/hyperframes/`). Para usar um já instalado, aponte
 `HYPERFRAMES_BROWSER_PATH` (de preferência um `chrome-headless-shell`, que habilita a
 captura BeginFrame, mais rápida e exata).
 
 ## Template `confronto` (vertical 1080×1920, 30 fps)
 
-- Abertura (2,6 s): esporte, os dois lados, número de jogos e período.
+- Abertura (2,6 s): esporte, número de jogos e período; os dois lados; o gancho do dia
+  (`--gancho`) ou "Todos os N jogos, um por um".
 - Corrida: um jogo a cada `perMatch` segundos (0,22–1 s; 110 jogos ≈ 0,42 s). Placar de
   vitórias/empates com pulso no contador que mudou, gols acumulados, quem lidera, barra
   de proporção, gráfico do saldo de vitórias (lado A acima de zero, B abaixo), fita de
-  cartões com data e placar (sempre lado A primeiro) e a linha do jogo atual
-  (`BRA 2–3 ARG · Copa América · Santiago, Chile`). O ano atual aparece grande no fundo.
-- Fechamento (6 s): quem venceu mais e por quanto, maior vitória de cada lado, maior
-  sequência de vitórias de cada lado e quantas vezes a liderança trocou de lado; uma
-  linha por 1,2 s, para dar tempo de ler e para o QA de congelamento passar.
+  cartões com data e placar (sempre lado A primeiro) e, quando o ritmo deixa ler (0,6 s
+  ou mais por jogo), a linha do jogo atual (`BRA 2–3 ARG · Copa América · Santiago, Chile`).
+  O ano atual aparece grande no fundo. Percentuais por maior resto: somam sempre 100.
+- Pausa antes do veredito proporcional ao ritmo (`1,4 s − perMatch`, mínimo 0,3 s).
+- Fechamento (6 s): quem venceu mais e por quanto ("Brasil: 8 vitórias a mais"), maior
+  vitória de cada lado, maior sequência de vitórias de cada lado e quantas vezes a
+  liderança trocou de lado; uma linha por 1,2 s, enquanto a tela inteira sobe 8 px: linha
+  de texto entrando é mudança pequena demais para o `freezedetect`, e dois renders sem
+  esse movimento reprovaram no QA.
+- Cores de time usadas como texto são clareadas até 4,5:1 sobre o painel (WCAG AA); a cor
+  do uniforme fica nas barras e nos selos, com tinta que também passa de 4,5:1 (testado
+  para toda a tabela de seleções). Texto informativo de 20 px ou mais.
 - Som sintetizado no próprio pacote: um bip por jogo (agudo vitória A, médio empate,
   grave vitória B) e uma batida no veredito. Nenhum áudio de terceiros.
-- Rodapé fixo com fonte, licença, data de leitura e o que a contagem inclui.
+- Rodapé fixo (22 px) com fonte, licença, data de leitura e o que a contagem inclui.
 - Zona segura dos apps verticais: tudo legível entre y 168 e 1330; abaixo de y 1056 nada
   legível passa de x 892 (botões à direita).
 

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { test } from 'node:test';
+import { after, test } from 'node:test';
 import {
   chartPoints,
   chipDate,
@@ -49,7 +49,10 @@ test('data never becomes markup: text is escaped and the JSON island cannot clos
   const vm = viewModel(sample('</script><img src=x onerror=alert(1)>'));
   const page = html(vm);
   assert.ok(!page.includes('<img src=x'));
-  assert.equal(page.match(/<\/script>/g)?.length, 3); // gsap, data island, runtime
+  const island = /<script type="application\/json" id="confronto-data">([\s\S]*?)<\/script>/.exec(page);
+  assert.ok(island);
+  assert.ok(!island[1]!.includes('</'), 'nada fecha a ilha antes da hora');
+  assert.equal(JSON.parse(island[1]!).steps[0].c, '</script><img src=x onerror=alert(1)>');
   assert.ok(scriptJson({ s: '</script>' }).includes('\\u003c/script>'));
 });
 
@@ -103,6 +106,7 @@ test('wav header and length match the composition', () => {
 
 test('written project is self-contained and passes hyperframes lint', () => {
   const dir = mkdtempSync(join(tmpdir(), 'fc-hf-'));
+  after(() => rmSync(dir, { recursive: true, force: true }));
   writeProject(viewModel(sample()), dir);
   assert.deepEqual(readdirSync(dir).sort(), [
     'confronto.css',

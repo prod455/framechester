@@ -10,7 +10,7 @@ import { type Quality, lint, packageVersion, render, sha256File } from './render
 
 const USAGE = `uso (pelo motor, que também roda o QA técnico):
   framechester internacionais --csv results.csv --a Brazil --b Argentina --lido-em 2026-11-13 --saida confronto.json
-  framechester confronto --dados confronto.json --saida artifacts/confronto [--qualidade draft|standard|high] [--corrida 46] [--sem-render]`;
+  framechester confronto --dados confronto.json --saida artifacts/confronto [--qualidade draft|standard|high] [--corrida 46] [--gancho "texto"] [--sem-render] [--canal id]`;
 
 function required(values: Record<string, unknown>, key: string): string {
   const value = values[key];
@@ -60,6 +60,7 @@ function confronto(args: string[]): number {
       qualidade: { type: 'string', default: 'standard' },
       corrida: { type: 'string' },
       'sem-render': { type: 'boolean', default: false },
+      gancho: { type: 'string' },
     },
   });
   const quality = values.qualidade as Quality;
@@ -71,7 +72,7 @@ function confronto(args: string[]): number {
   const dataPath = path(values, 'dados');
   const out = path(values, 'saida');
   const project = join(out, 'projeto');
-  const vm = viewModel(readConfronto(dataPath), raceSeconds);
+  const vm = viewModel(readConfronto(dataPath), raceSeconds, values.gancho);
   mkdirSync(out, { recursive: true });
   writeProject(vm, project);
   lint(project);

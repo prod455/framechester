@@ -27,6 +27,16 @@ pub(crate) struct ConfrontoArgs {
     pub(crate) corrida: Option<f64>,
     #[arg(long, help = "so monta o projeto HyperFrames, sem render nem QA")]
     pub(crate) sem_render: bool,
+    #[arg(
+        long,
+        help = "id local em [[channels]]; obrigatorio quando ha canais (vai para o manifesto)"
+    )]
+    pub(crate) canal: Option<String>,
+    #[arg(
+        long,
+        help = "angulo editorial mostrado sob o titulo (ate 44 caracteres), ex.: \"O 7 a 1 e so 1 de 23 jogos\""
+    )]
+    pub(crate) gancho: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -102,21 +112,26 @@ pub(crate) fn confronto_args(args: &ConfrontoArgs) -> anyhow::Result<Vec<OsStrin
         }
         out.extend(["--corrida".into(), seconds.to_string().into()]);
     }
+    if let Some(hook) = &args.gancho {
+        out.extend(["--gancho".into(), hook.into()]);
+    }
     if args.sem_render {
         out.push("--sem-render".into());
     }
     Ok(out)
 }
 
-/// The manifest with the engine's QA verdict in `qa`.
+/// The manifest with the channel it was made for and the engine's QA verdict in `qa`.
 pub(crate) fn attach_qa(
     mut manifest: serde_json::Value,
+    channel_id: Option<&str>,
     status: &str,
     report: serde_json::Value,
 ) -> anyhow::Result<serde_json::Value> {
     let object = manifest
         .as_object_mut()
         .context("render_manifest.json nao e um objeto JSON")?;
+    object.insert("channel_id".into(), serde_json::json!(channel_id));
     object.insert(
         "qa".into(),
         serde_json::json!({ "status": status, "engine": "framechester qa", "report": report }),
@@ -125,12 +140,19 @@ pub(crate) fn attach_qa(
 }
 
 pub(crate) fn confronto(config: &Option<PathBuf>, args: ConfrontoArgs) -> anyhow::Result<i32> {
+    // The channel is checked before a two-minute render, not after.
+    let config = load_config(config)?;
+    let channel = config.select_channel(args.canal.as_deref())?;
+    if let Some(language) = channel.as_ref().and_then(|c| c.language.as_deref()) {
+        if language != "pt-BR" {
+            bail!("o template confronto escreve em pt-BR; o canal esta em {language}");
+        }
+    }
     run_node(confronto_args(&args)?)?;
     if args.sem_render {
         return Ok(0);
     }
     let video = args.saida.join("final.mp4");
-    let config = load_config(config)?;
     let (_, report) = technical_report(&config, &video, Some(FormatArg::Short))?;
     let code = exit_code(&report);
     let status = ["pass", "needs_human", "fail"][code as usize];
@@ -139,7 +161,12 @@ pub(crate) fn confronto(config: &Option<PathBuf>, args: ConfrontoArgs) -> anyhow
         &std::fs::read_to_string(&manifest_path)
             .with_context(|| format!("lendo {}", manifest_path.display()))?,
     )?;
-    let manifest = attach_qa(manifest, status, serde_json::to_value(&report)?)?;
+    let manifest = attach_qa(
+        manifest,
+        channel.as_ref().map(|c| c.id.as_str()),
+        status,
+        serde_json::to_value(&report)?,
+    )?;
     std::fs::write(
         &manifest_path,
         serde_json::to_string_pretty(&manifest)? + "\n",
@@ -177,6 +204,8 @@ mod tests {
             qualidade: "draft".into(),
             corrida: Some(30.0),
             sem_render: false,
+            canal: None,
+            gancho: Some("O 7 a 1 é só 1 de 23 jogos".into()),
         }
     }
 
@@ -191,7 +220,17 @@ mod tests {
         assert!(Path::new(&text[2]).is_absolute());
         assert!(text[2].ends_with("x.confronto.json"));
         assert!(Path::new(&text[4]).is_absolute());
-        assert_eq!(&text[5..], ["--qualidade", "draft", "--corrida", "30"]);
+        assert_eq!(
+            &text[5..],
+            [
+                "--qualidade",
+                "draft",
+                "--corrida",
+                "30",
+                "--gancho",
+                "O 7 a 1 é só 1 de 23 jogos"
+            ]
+        );
         let package = Path::new("/repo/hyperframes");
         let full = node_args(package, out);
         assert!(full[0].to_string_lossy().ends_with("tsx/dist/cli.mjs"));
@@ -209,10 +248,17 @@ mod tests {
     fn qa_verdict_replaces_the_manifest_qa_field() {
         let manifest =
             serde_json::json!({ "renderer": "hyperframes", "qa": { "status": "pending" } });
-        let out = attach_qa(manifest, "fail", serde_json::json!({ "checks": [] })).unwrap();
+        let out = attach_qa(
+            manifest,
+            Some("esporte-em-dados"),
+            "fail",
+            serde_json::json!({ "checks": [] }),
+        )
+        .unwrap();
+        assert_eq!(out["channel_id"], "esporte-em-dados");
         assert_eq!(out["qa"]["status"], "fail");
         assert_eq!(out["qa"]["engine"], "framechester qa");
         assert_eq!(out["renderer"], "hyperframes");
-        assert!(attach_qa(serde_json::json!([]), "pass", serde_json::json!({})).is_err());
+        assert!(attach_qa(serde_json::json!([]), None, "pass", serde_json::json!({})).is_err());
     }
 }

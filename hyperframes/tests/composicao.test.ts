@@ -53,6 +53,13 @@ test('data never becomes markup: text is escaped and the JSON island cannot clos
   assert.ok(scriptJson({ s: '</script>' }).includes('\\u003c/script>'));
 });
 
+test('the hook goes under the title, escaped, and a hook that would not fit is refused', () => {
+  const page = html(viewModel(sample(), undefined, '  O 7 a 1 é só <1> de 23 jogos '));
+  assert.ok(page.includes('O 7 a 1 é só &lt;1&gt; de 23 jogos</div>'));
+  assert.ok(html(viewModel(sample())).includes('Todos os 12 jogos, um por um'));
+  assert.throws(() => viewModel(sample(), undefined, 'x'.repeat(45)), /máximo/);
+});
+
 test('the composition is offline and timed by its own duration', () => {
   const vm = viewModel(sample());
   const page = html(vm);

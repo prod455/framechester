@@ -103,12 +103,27 @@ export interface ViewModel {
   steps: Step[];
   summary: Summary;
   timing: Timing;
+  /** The video's editorial angle, written by the operator; shown under the title. */
+  hook: string | null;
 }
 
-export function viewModel(input: Confronto, raceSeconds?: number): ViewModel {
+/** Longest hook that fits the 936 px subtitle line at 34 px. */
+export const HOOK_MAX = 44;
+
+export function viewModel(input: Confronto, raceSeconds?: number, hook?: string): ViewModel {
   const data = validate(input);
   const all = steps(data);
-  return { data, steps: all, summary: summarize(all), timing: timing(all.length, raceSeconds) };
+  const angle = hook?.trim() || null;
+  if (angle && angle.length > HOOK_MAX) {
+    throw new Error(`gancho com ${angle.length} caracteres; o máximo que cabe é ${HOOK_MAX}`);
+  }
+  return {
+    data,
+    steps: all,
+    summary: summarize(all),
+    timing: timing(all.length, raceSeconds),
+    hook: angle,
+  };
 }
 
 export function soundTrack(vm: ViewModel): Blip[] {
@@ -189,10 +204,10 @@ export function html(vm: ViewModel): string {
 <div id="root" data-composition-id="root" data-start="0" data-duration="${t.total}" data-width="${WIDTH}" data-height="${HEIGHT}" data-fps="${FPS}">
   <div id="cena" class="layer clip" data-start="0" data-duration="${t.total}">
     <div class="abs year" id="year"></div>
-    <div class="abs kicker intro">HISTÓRIA EM DADOS · ${escapeHtml(data.sport.toUpperCase())}</div>
+    <div class="abs kicker intro">${escapeHtml(`${data.sport} · ${times(summary.matches, 'jogo', 'jogos')} · ${span}`.toUpperCase())}</div>
     <div class="abs progress intro" id="progress"></div>
     <div class="abs title intro">${titleHtml}</div>
-    <div class="abs subtitle intro">${escapeHtml(`${times(summary.matches, 'jogo', 'jogos')} · ${span}`)}</div>
+    <div class="abs subtitle intro">${escapeHtml(vm.hook ?? `Todos os ${times(summary.matches, 'jogo', 'jogos')}, um por um`)}</div>
 
     <div class="abs side a intro">
       <div class="badge" style="background:${A.color};color:${A.ink}">${escapeHtml(A.short)}</div>

@@ -1,7 +1,8 @@
-// Runs the pinned HyperFrames CLI on a project, then the Framechester technical QA on the MP4.
+// Runs the pinned HyperFrames CLI on a project. The technical QA is the engine's
+// (`framechester confronto` runs this CLI and then `qa` on the MP4).
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -61,37 +62,4 @@ export function render(projectDir: string, output: string, quality: Quality): vo
 
 export function sha256File(path: string): string {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
-}
-
-export interface QaResult {
-  status: 'pass' | 'needs_human' | 'fail' | 'not_run';
-  detail: string;
-  report?: unknown;
-}
-
-/** The engine's `qa` command (binary `framechester`, from `cargo build --release -p framechester-cli`). */
-export function technicalQa(video: string): QaResult {
-  const candidates = ['release', 'debug'].flatMap((profile) =>
-    ['framechester', 'framechester.exe'].map((bin) => join(REPO, 'target', profile, bin)),
-  );
-  const bin = candidates.find((path) => existsSync(path));
-  if (!bin) {
-    return {
-      status: 'not_run',
-      detail: 'motor não compilado: rode `cargo build --release -p framechester-cli` e depois o qa',
-    };
-  }
-  const result = spawnSync(bin, ['qa', '--format', 'short', '--video', video, '--json'], {
-    cwd: REPO,
-    encoding: 'utf8',
-  });
-  if (result.error) throw result.error;
-  const status = result.status === 0 ? 'pass' : result.status === 1 ? 'needs_human' : 'fail';
-  let report: unknown;
-  try {
-    report = JSON.parse(result.stdout);
-  } catch {
-    report = undefined;
-  }
-  return { status, detail: report ? 'ver report' : result.stderr.trim() || result.stdout.trim(), report };
 }

@@ -262,7 +262,9 @@ export function timing(matches: number, raceSeconds = 46): Timing {
   const perMatch = round(Math.min(1, Math.max(0.22, raceSeconds / matches)));
   const intro = 2.6;
   const race = round(perMatch * matches);
-  const hold = 1.2;
+  // The last match's slot plus this pause stays near 1.4 s, so the screen never sits
+  // still for 2 s before the verdict (QA freeze), whatever the pace.
+  const hold = round(Math.max(0.3, 1.4 - perMatch));
   // Verdict rows land 1.2 s apart; the last one lands under 2 s before the end (QA freeze limit).
   const outro = 6;
   return { intro, perMatch, race, hold, outro, total: round(intro + race + hold + outro) };

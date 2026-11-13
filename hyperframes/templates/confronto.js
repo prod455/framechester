@@ -214,6 +214,15 @@
     { opacity: 1, y: 0, duration: 0.8, ease: 'expo.out', stagger: 1.2 },
     outro + 0.3,
   );
+  // Slow push on the whole frame while the verdict reads: every pixel moves, so the
+  // closing never sits still for 2 s (QA freeze). 2.5% about (50%, 60%) keeps every
+  // word inside y 168–1334 and x ≤ 1022.
+  tl.fromTo(
+    '#cena',
+    { scale: 1 },
+    { scale: 1.025, duration: T.outro, ease: 'sine.inOut', transformOrigin: '50% 60%', immediateRender: false },
+    outro,
+  );
   tl.fromTo('#outro-line', { scaleX: 0 }, { scaleX: 1, duration: T.outro - 0.6, ease: 'none' }, outro + 0.4);
   // Pin the timeline's end to the composition's duration.
   tl.set({}, {}, T.total);

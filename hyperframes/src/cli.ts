@@ -1,16 +1,16 @@
-// framechester-hyperframes CLI.
+// framechester-hyperframes CLI, chamado pelo motor (`framechester confronto`, `framechester internacionais`).
 //   internacionais  CSV do international_results → JSON de confronto (com hash e data de leitura)
-//   confronto       JSON de confronto → projeto HyperFrames → MP4 → QA técnico → manifesto
+//   confronto       JSON de confronto → projeto HyperFrames → MP4 → manifesto; o QA técnico é do motor
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { readConfronto, viewModel, writeProject } from './composicao.ts';
 import { buildConfronto } from './internacionais.ts';
-import { type Quality, lint, packageVersion, render, sha256File, technicalQa } from './render.ts';
+import { type Quality, lint, packageVersion, render, sha256File } from './render.ts';
 
-const USAGE = `uso:
-  npm --prefix hyperframes run fc -- internacionais --csv results.csv --a Brazil --b Argentina --lido-em 2026-11-13 --saida confronto.json
-  npm --prefix hyperframes run fc -- confronto --dados confronto.json --saida artifacts/confronto [--qualidade draft|standard|high] [--corrida 46] [--sem-render]`;
+const USAGE = `uso (pelo motor, que também roda o QA técnico):
+  framechester internacionais --csv results.csv --a Brazil --b Argentina --lido-em 2026-11-13 --saida confronto.json
+  framechester confronto --dados confronto.json --saida artifacts/confronto [--qualidade draft|standard|high] [--corrida 46] [--sem-render]`;
 
 function required(values: Record<string, unknown>, key: string): string {
   const value = values[key];
@@ -82,7 +82,6 @@ function confronto(args: string[]): number {
   const started = Date.now();
   render(project, video, quality);
   const renderSeconds = (Date.now() - started) / 1000;
-  const qa = technicalQa(video);
   const manifest = {
     renderer: 'hyperframes',
     template: 'confronto',
@@ -94,12 +93,11 @@ function confronto(args: string[]): number {
     timing: vm.timing,
     summary: vm.summary,
     render_seconds: renderSeconds,
-    qa,
+    qa: { status: 'pending', detail: 'o motor grava aqui o veredito do framechester qa' },
   };
   writeFileSync(join(out, 'render_manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
-  console.log(`vídeo: ${video} · render ${renderSeconds.toFixed(1)}s · QA técnico: ${qa.status}`);
-  if (qa.status === 'not_run') console.log(qa.detail);
-  return qa.status === 'fail' ? 2 : qa.status === 'pass' ? 0 : 1;
+  console.log(`vídeo: ${video} · render ${renderSeconds.toFixed(1)}s`);
+  return 0;
 }
 
 function main(argv: string[]): number {

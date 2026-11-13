@@ -8,6 +8,8 @@ podem quebrar a compatibilidade e avisam isso aqui.
 ## [Unreleased]
 
 ### Adicionado
+- **Renderizador HyperFrames** (`hyperframes/`, decisão do operador em 13/11/2026, `docs/HYPERFRAMES.md`): dados validados viram um projeto HTML/GSAP autocontido, renderizado pelo CLI do HyperFrames (versão exata, telemetria desligada) e aprovado pelo `framechester qa` antes de qualquer publicação; manifesto com hashes da fonte, do HTML e do MP4.
+- **Confronto em números**, primeiro formato do canal de estatística e história do esporte: todos os jogos entre dois lados, um por um, com placar acumulado, liderança, proporção, gráfico do saldo de vitórias, fita de jogos e fechamento com maior vitória, maior sequência e viradas de liderança. Exemplo real: Brasil × Argentina, 110 jogos (1914–2025), da base CC0 `international_results`.
 - **Aviso de afiliado dentro do vídeo**: quando a descrição vai ter link de afiliado, a primeira cena termina com "Some links in the description are affiliate links: I get commissions for purchases made through them." (pt-BR e es equivalentes), dito pela voz e mostrado pela legenda, como a FTC pede. A descrição deixa de dizer que o roteiro "exige revisão humana antes da publicação".
 - **Formato escolhido pela narração**: entre a abertura e o fechamento, uma cena sem diretiva vira número em destaque, passos ou causa e efeito quando a fala pede (um número-chave, "first/then/finally", "so/which means"); senão continua com o personagem. Vídeos sem diretivas deixam de ser só personagem falando. Regras em `docs/GUIA_VISUAL.md`.
 - **Números no idioma do vídeo**: en-US mostra `3,322` e `3.5`; pt-BR e es seguem com `3.322` e `3,5`. A contagem animada de um valor inteiro anda em inteiros.

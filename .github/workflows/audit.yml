@@ -29,3 +29,5 @@ jobs:
         with:
           node-version: "22"
       - run: npm audit --audit-level=high
+      - run: npm audit --audit-level=high
+        working-directory: hyperframes

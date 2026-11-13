@@ -1,0 +1,384 @@
+/* Confronto em números: 1080×1920 (vertical). Every legible word sits in y 168–1330;
+   below y 1056 nothing legible goes right of x 892 (the app's action rail). */
+@font-face {
+  font-family: 'Bebas Neue';
+  src: url('fonts/BebasNeue-Regular.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 400;
+  src: url('fonts/Inter-Regular.otf') format('opentype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 600;
+  src: url('fonts/Inter-SemiBold.otf') format('opentype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 700;
+  src: url('fonts/Inter-Bold.otf') format('opentype');
+}
+
+:root {
+  /* Ground stays above the black-detect floor of the QA (Y > 38 in limited range). */
+  --ground: #1a1e28;
+  --panel: #232836;
+  --line: #343b4d;
+  --text: #f4f6fa;
+  --muted: #9aa3b5;
+  --draw: #8a93a6;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--ground);
+}
+
+#root {
+  position: relative;
+  width: 1080px;
+  height: 1920px;
+  overflow: hidden;
+  background: radial-gradient(1100px 900px at 50% 28%, #222736 0%, var(--ground) 70%);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+}
+
+.abs {
+  position: absolute;
+}
+
+.kicker {
+  left: 72px;
+  top: 196px;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+.progress {
+  right: 72px;
+  top: 196px;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-align: right;
+}
+.title {
+  left: 72px;
+  top: 238px;
+  width: 936px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 116px;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.title .x {
+  color: var(--muted);
+  padding: 0 0.12em;
+}
+.subtitle {
+  left: 72px;
+  top: 360px;
+  font-size: 34px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* Scoreboard */
+.side {
+  top: 440px;
+  width: 360px;
+  height: 320px;
+}
+.side.a {
+  left: 72px;
+}
+.side.b {
+  right: 72px;
+  text-align: right;
+}
+.badge {
+  position: absolute;
+  top: 0;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: 0.04em;
+}
+.side.a .badge {
+  left: 0;
+}
+.side.b .badge {
+  right: 0;
+}
+.side .name {
+  position: absolute;
+  top: 10px;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.side .role {
+  position: absolute;
+  top: 52px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+.side.a .name,
+.side.a .role {
+  left: 104px;
+}
+.side.b .name,
+.side.b .role {
+  right: 104px;
+}
+.big {
+  position: absolute;
+  top: 96px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 220px;
+  line-height: 0.9;
+}
+.side.a .big {
+  left: 0;
+  transform-origin: 0% 60%;
+}
+.side.b .big {
+  right: 0;
+  transform-origin: 100% 60%;
+}
+.goals {
+  position: absolute;
+  top: 300px;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.side.a .goals {
+  left: 0;
+}
+.side.b .goals {
+  right: 0;
+}
+.draws {
+  left: 432px;
+  top: 470px;
+  width: 216px;
+  text-align: center;
+}
+.draws .role {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+.draws .mid {
+  margin-top: 24px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 150px;
+  line-height: 0.9;
+  color: var(--draw);
+  transform-origin: 50% 60%;
+}
+
+.lead {
+  left: 72px;
+  top: 784px;
+  width: 936px;
+  text-align: center;
+}
+.pill {
+  display: inline-block;
+  padding: 8px 24px;
+  border-radius: 999px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: var(--panel);
+  color: var(--text);
+}
+
+.bar {
+  left: 72px;
+  top: 856px;
+  width: 936px;
+  height: 28px;
+  border-radius: 14px;
+  background: var(--panel);
+  overflow: hidden;
+}
+.bar .seg {
+  position: absolute;
+  top: 0;
+  height: 100%;
+}
+.pct {
+  top: 896px;
+  font-size: 26px;
+  font-weight: 700;
+}
+.pct.a {
+  left: 72px;
+}
+.pct.d {
+  left: 432px;
+  width: 216px;
+  text-align: center;
+  color: var(--draw);
+}
+.pct.b {
+  right: 72px;
+}
+
+/* Lower band: x 72–892 */
+.chart-label {
+  left: 72px;
+  top: 950px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+.chart {
+  left: 72px;
+  top: 984px;
+  width: 820px;
+  height: 110px;
+}
+.ticks {
+  left: 72px;
+  top: 1098px;
+  width: 820px;
+  height: 26px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.ticks span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+.strip-window {
+  left: 72px;
+  top: 1140px;
+  width: 820px;
+  height: 100px;
+  overflow: hidden;
+}
+.strip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100px;
+}
+.chip {
+  position: absolute;
+  top: 0;
+  width: 136px;
+  height: 100px;
+  box-sizing: border-box;
+  border-radius: 14px;
+  background: var(--panel);
+  border-top: 6px solid var(--draw);
+  text-align: center;
+}
+.chip .d {
+  display: block;
+  margin-top: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.chip .s {
+  display: block;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 50px;
+  line-height: 1.05;
+}
+.detail {
+  left: 72px;
+  top: 1252px;
+  width: 820px;
+  font-size: 26px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.footer {
+  left: 72px;
+  top: 1290px;
+  width: 820px;
+  font-size: 18px;
+  line-height: 20px;
+  color: var(--muted);
+}
+
+/* Decorative year below the safe area. */
+.year {
+  left: 40px;
+  top: 1360px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 460px;
+  line-height: 1;
+  color: #ffffff;
+  opacity: 0.07;
+}
+
+/* Outro: verdict 948–1020, rule 1032, four rows 1048–1280, footer from 1290. */
+.verdict {
+  left: 72px;
+  top: 948px;
+  width: 820px;
+}
+.verdict .row {
+  height: 58px;
+}
+.verdict .head {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 72px;
+  line-height: 1;
+  height: 100px;
+}
+.verdict .k {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+.verdict .v {
+  margin-top: 2px;
+  font-size: 28px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.outro-line {
+  left: 72px;
+  top: 1032px;
+  width: 820px;
+  height: 4px;
+  border-radius: 2px;
+  transform-origin: 0 50%;
+}

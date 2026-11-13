@@ -1,0 +1,30 @@
+{
+  "name": "framechester-hyperframes",
+  "version": "0.1.0",
+  "description": "Framechester video renderer on HyperFrames: data templates compiled to HTML/GSAP compositions and rendered to MP4",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "check": "tsc --noEmit && prettier --check \"{src,tests}/**/*.ts\"",
+    "format": "prettier --write \"{src,tests}/**/*.ts\"",
+    "test": "tsx --test tests/*.test.ts",
+    "fc": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "gsap": "3.13.0",
+    "hyperframes": "0.9.9"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "prettier": "3.9.10",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2"
+  },
+  "overrides": {
+    "undici": "7.30.1"
+  }
+}

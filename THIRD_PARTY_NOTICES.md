@@ -29,6 +29,20 @@ Isso estabelece uma cadeia de licenciamento não resolvida, não uma conclusão 
 
 As vozes Piper agora ficam bloqueadas pelo adaptador de produção. As configurações de voz antigas do Studio migram para a Kokoro Dora, mantendo a identidade do canal e as configurações de geração do vídeo. Só o modelo Kokoro revisado, o pacote de vozes e os IDs de voz PT-BR são aceitos; veja [VOZES_COMERCIAIS.md](docs/VOZES_COMERCIAIS.md). O piloto antigo continua como evidência técnica histórica, não como aprovação comercial.
 
+## Renderizador HyperFrames (`hyperframes/`)
+
+Revisão local: **2026-11-13**, versões exatas em `hyperframes/package-lock.json`.
+
+| Item | Versão | Uso | Licença |
+|---|---|---|---|
+| `hyperframes` (HeyGen) | 0.9.9 | CLI de render HTML → MP4 (Chrome headless + FFmpeg); chamado como processo, telemetria desligada | Apache-2.0 (`package.json`, repositório `heygen-com/hyperframes`) |
+| `gsap` (GreenSock/Webflow) | 3.13.0 | Linha do tempo das composições; `gsap.min.js` é copiado para cada projeto gerado | Standard "no charge" license, https://gsap.com/standard-license — **não é licença OSI**; permite uso comercial gratuito, com restrições próprias (revise antes de redistribuir em produto concorrente de ferramenta de animação) |
+| `undici` (override) | 7.30.1 | Forçado no lugar do 7.25.0 travado pelo `hyperframes`, que o `npm audit` marca com avisos de DoS | MIT |
+| Dados `international_results` (Mart Jürisoo) | CSV lido em 2026-11-13, SHA-256 no JSON gerado | Resultados de seleções; exemplo `examples/esporte/brasil-argentina.confronto.json` é derivado | CC0 1.0 |
+
+As fontes dos vídeos (Bebas Neue, Inter) são as OFL já em `assets/fonts/`, copiadas com
+suas licenças no repositório. O som é sintetizado pelo pacote; nenhum áudio de terceiros.
+
 ## Dependências web do Framechester Studio
 
 O renderizador local de visuais explicativos usa o `resvg` **0.49.0** e o grafo de

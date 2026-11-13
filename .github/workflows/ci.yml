@@ -56,3 +56,19 @@ jobs:
       - run: npm test
       - name: Startup and shutdown helpers
         run: node --test ../scripts/infra.test.mjs
+
+  hyperframes:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hyperframes
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: hyperframes/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - run: npm test

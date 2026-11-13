@@ -100,13 +100,8 @@ um número poderia aparecer só na imagem, sem fonte.
 - `#lista` usa duas linhas por item quando há espaço; com cinco itens longos
   no formato longo, cai para uma linha por item. Itens curtos ficam melhores.
 
-Longo:
-
-![Layouts no formato longo](img/guia-visual-long.png)
-
-Short:
-
-![Layouts no formato Short](img/guia-visual-short.png)
+Para ver cada layout nos dois formatos, gere as prévias localmente (não ficam no
+repositório): `cargo run --release -p framechester-motion --example preview_components -- artifacts/previas`.
 
 ## Formatos de roteiro
 

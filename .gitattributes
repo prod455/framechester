@@ -10,4 +10,3 @@
 *.onnx binary
 Cargo.lock linguist-generated
 web/package-lock.json linguist-generated
-docs/img/* -diff

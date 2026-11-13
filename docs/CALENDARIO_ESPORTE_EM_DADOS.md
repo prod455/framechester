@@ -14,6 +14,11 @@ canais e contas diferentes.
 
 ## Uma vez por máquina
 
+Rode tudo na raiz do repositório. No Windows (PowerShell) troque `./target/release/framechester`
+por `.\target\release\framechester.exe`, `mkdir -p` por
+`New-Item -ItemType Directory -Force .framechester\dados` e `curl` por `curl.exe`
+(os comandos completos estão em `docs/HYPERFRAMES.md`).
+
 ```bash
 npm --prefix hyperframes ci
 cargo build --release -p framechester-cli
@@ -37,8 +42,9 @@ mais novo (os números podem mudar se houve jogo depois de 13/11):
 ./target/release/framechester internacionais --csv .framechester/dados/results.csv --a Brazil --b Argentina --lido-em AAAA-MM-DD --saida examples/esporte/brasil-argentina.confronto.json
 ```
 
-Cada dia abaixo: um comando gera (o `--gancho` é o ângulo do dia, escrito sob o título dentro do vídeo) `artifacts/semana/<id>/final.mp4` e só sai com código 0
-se o QA técnico aprovar. Código 2 = reprovado: não poste.
+Cada dia abaixo: um comando gera `artifacts/semana/<id>/final.mp4` (o `--gancho` é o ângulo
+do dia, escrito sob o título dentro do vídeo). Código de saída 0 = QA aprovado; 1 = assista
+antes; 2 = reprovado, não poste; 3 = erro de execução, nada foi avaliado.
 
 ## Semana
 
@@ -178,11 +184,34 @@ Base international_results (CC0), com prorrogação e sem pênaltis.
 #futebol #brasilxchile #selecaobrasileira #eliminatorias #estatistica
 ```
 
+## Revisão em sáb 21/11 (proposta: confirme antes da 1ª postagem)
+
+Saída das skills BA e CEO (13/11). A semana é um experimento: não prova monetização, e o
+canal pt-BR tem RPM desconhecido. Anote por vídeo e por rede, às 24 h, 72 h e 7 dias, só o
+que a plataforma mostra (campo sem dado fica vazio, não zero):
+
+| Vídeo | Rede | Janela | Views | Tempo médio | % até o fim (ou "visto" no Shorts) | Comentários pedindo confronto |
+|---|---|---|---|---|---|---|
+
+- **GO** (continuar e investir no Studio): 6 de 7 vídeos com QA aprovado na 1ª tentativa,
+  tempo médio de pelo menos metade da duração em 3 confrontos ou mais, nenhum aviso de
+  direitos ou de política.
+- **PIVOT**: audiência concentrada num só confronto, ou retenção baixa. Muda gancho ou
+  duração, ou testa narração nas viradas de liderança.
+- **STOP**: reclamação de direitos, recusa de monetização por conteúdo reutilizado, ou
+  manutenção tirando tempo dos canais en-US.
+- Limite: R$ 0 de gasto. Antes de tratar o YouTube como receita, reconfira a política de
+  conteúdo reutilizado/repetitivo (https://support.google.com/youtube/answer/1311392,
+  consultada em 27/10/2026 e não reverificada em 13/11).
+
 ## Antes de postar
 
-- Instagram: Reels, capa no quadro do título (0:01), legenda acima. Publica público
-  (o Instagram não tem modo privado).
-- YouTube: Shorts, título da tabela, legenda na descrição.
-- TikTok: legenda acima; o título vira a primeira linha.
-- Se o CSV for regerado, confira os números da legenda no `render_manifest.json`
-  (`summary`) antes de postar: a legenda acima vale para a base lida em 13/11/2026.
+1. Abra `artifacts/semana/<id>/render_manifest.json` e confira `"qa": { "status": "pass" }`
+   (o comando também imprime "pronto para postar"). `needs_human`: assista inteiro antes.
+   `fail`, ou o arquivo não existe: **não poste**; rode o comando do dia de novo.
+2. Se o CSV foi regerado, confira os números da legenda no `summary` do manifesto: a
+   legenda acima vale para a base lida em 13/11/2026.
+3. Capa: o quadro do veredito (últimos 2 s do vídeo), não o começo, que ainda está zerado.
+4. Instagram: Reels, legenda acima. Publica público (o Instagram não tem modo privado).
+5. YouTube: Shorts, título da tabela, legenda na descrição.
+6. TikTok: legenda acima; o título vira a primeira linha.

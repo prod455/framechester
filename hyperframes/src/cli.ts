@@ -1,12 +1,12 @@
 // framechester-hyperframes CLI, chamado pelo motor (`framechester confronto`, `framechester internacionais`).
 //   internacionais  CSV do international_results → JSON de confronto (com hash e data de leitura)
 //   confronto       JSON de confronto → projeto HyperFrames → MP4 → manifesto; o QA técnico é do motor
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { basename, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { readConfronto, viewModel, writeProject } from './composicao.ts';
 import { buildConfronto } from './internacionais.ts';
-import { type Quality, lint, packageVersion, render, sha256File } from './render.ts';
+import { type Quality, lint, packageVersion, render, sha256File, templateSha256 } from './render.ts';
 
 const USAGE = `uso (pelo motor, que também roda o QA técnico):
   framechester internacionais --csv results.csv --a Brazil --b Argentina --lido-em 2026-11-13 --saida confronto.json
@@ -74,29 +74,48 @@ function confronto(args: string[]): number {
   const project = join(out, 'projeto');
   const vm = viewModel(readConfronto(dataPath), raceSeconds, values.gancho);
   mkdirSync(out, { recursive: true });
+  const video = join(out, 'final.mp4');
+  const manifestPath = join(out, 'render_manifest.json');
+  // A verdict never outlives the video it judged: an earlier MP4 and manifest go before
+  // anything new is written, so a failed or partial run leaves no stale "pass" behind.
+  rmSync(manifestPath, { force: true });
+  rmSync(video, { force: true });
   writeProject(vm, project);
   lint(project);
   console.log(`projeto: ${project} · ${vm.timing.total}s · ${vm.timing.perMatch}s por jogo`);
   if (values['sem-render']) return 0;
 
-  const video = join(out, 'final.mp4');
+  const partial = join(out, 'final.partial.mp4');
+  rmSync(partial, { force: true });
   const started = Date.now();
-  render(project, video, quality);
+  render(project, partial, quality);
+  renameSync(partial, video);
   const renderSeconds = (Date.now() - started) / 1000;
   const manifest = {
     renderer: 'hyperframes',
     template: 'confronto',
-    versions: { hyperframes: packageVersion('hyperframes'), gsap: packageVersion('gsap') },
+    versions: {
+      hyperframes: packageVersion('hyperframes'),
+      gsap: packageVersion('gsap'),
+      node: process.versions.node,
+      browser: process.env.HYPERFRAMES_BROWSER_PATH
+        ? 'HYPERFRAMES_BROWSER_PATH'
+        : 'gerenciado pelo HyperFrames',
+    },
+    // Hash of the template and the code that drew it: a render from older code is visible.
+    template_sha256: templateSha256(),
     quality,
-    data: { path: dataPath, sha256: sha256File(dataPath), source: vm.data.source },
-    project: { index_sha256: sha256File(join(project, 'index.html')) },
-    video: { path: video, sha256: sha256File(video) },
+    hook: vm.hook,
+    // Paths relative to the output folder: the manifest can be shared without the operator's home.
+    data: { file: basename(dataPath), sha256: sha256File(dataPath), source: vm.data.source },
+    project: { dir: 'projeto', index_sha256: sha256File(join(project, 'index.html')) },
+    video: { file: 'final.mp4', sha256: sha256File(video) },
     timing: vm.timing,
     summary: vm.summary,
     render_seconds: renderSeconds,
     qa: { status: 'pending', detail: 'o motor grava aqui o veredito do framechester qa' },
   };
-  writeFileSync(join(out, 'render_manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
   console.log(`vídeo: ${video} · render ${renderSeconds.toFixed(1)}s`);
   return 0;
 }

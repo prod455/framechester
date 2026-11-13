@@ -7,17 +7,17 @@ import { csvRecords } from './csv.ts';
 export const SOURCE_URL = 'https://github.com/martj42/international_results';
 export const CSV_URL = 'https://raw.githubusercontent.com/martj42/international_results/master/results.csv';
 
-/** Teams by their name in the dataset. Colours are the kit's main colour; ink keeps WCAG AA on it. */
+/** Teams by their name in the dataset. Colours are the kit's main colour; ink keeps WCAG AA on it (tested). */
 export const TEAMS: Record<string, Omit<Side, 'id'>> = {
   Brazil: { name: 'Brasil', short: 'BRA', color: '#F7D117', ink: '#10151C' },
   Argentina: { name: 'Argentina', short: 'ARG', color: '#75AADB', ink: '#0B1622' },
   Uruguay: { name: 'Uruguai', short: 'URU', color: '#4FA3E0', ink: '#0B1622' },
   Chile: { name: 'Chile', short: 'CHI', color: '#D52B1E', ink: '#FFFFFF' },
-  Paraguay: { name: 'Paraguai', short: 'PAR', color: '#E03A3E', ink: '#FFFFFF' },
+  Paraguay: { name: 'Paraguai', short: 'PAR', color: '#D52B1E', ink: '#FFFFFF' },
   Colombia: { name: 'Colômbia', short: 'COL', color: '#FCD116', ink: '#10151C' },
   Peru: { name: 'Peru', short: 'PER', color: '#E8E8E8', ink: '#10151C' },
   Ecuador: { name: 'Equador', short: 'EQU', color: '#FFD100', ink: '#10151C' },
-  Mexico: { name: 'México', short: 'MEX', color: '#1F8A4C', ink: '#FFFFFF' },
+  Mexico: { name: 'México', short: 'MEX', color: '#006847', ink: '#FFFFFF' },
   'United States': { name: 'Estados Unidos', short: 'EUA', color: '#E8E8E8', ink: '#10151C' },
   Germany: { name: 'Alemanha', short: 'ALE', color: '#E8E8E8', ink: '#10151C' },
   France: { name: 'França', short: 'FRA', color: '#3B5BDB', ink: '#FFFFFF' },
@@ -69,6 +69,7 @@ const CITIES: Record<string, string> = {
   Hanover: 'Hanôver',
   Gothenburg: 'Gotemburgo',
   Florence: 'Florença',
+  Milan: 'Milão',
   Turin: 'Turim',
   'Mexico City': 'Cidade do México',
   Asunción: 'Assunção',
@@ -142,7 +143,13 @@ function distance(x: string, y: string): number {
 export function side(team: string): Side {
   const known = TEAMS[team];
   if (!known) {
-    throw new Error(`time "${team}" sem nome, sigla e cor em TEAMS (hyperframes/src/internacionais.ts)`);
+    const close = Object.keys(TEAMS).find((name) => name.toLowerCase() === team.toLowerCase());
+    throw new Error(
+      close
+        ? `time "${team}" não existe na base; você quis dizer "${close}"?`
+        : `time "${team}" sem nome, sigla e cor em TEAMS (hyperframes/src/internacionais.ts). ` +
+            `Disponíveis: ${Object.keys(TEAMS).join(', ')}`,
+    );
   }
   return { id: team, ...known };
 }

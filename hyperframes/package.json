@@ -9,8 +9,8 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "check": "tsc --noEmit && prettier --check \"{src,tests}/**/*.ts\"",
-    "format": "prettier --write \"{src,tests}/**/*.ts\"",
+    "check": "tsc --noEmit && prettier --check \"{src,tests}/**/*.ts\" \"templates/*.{js,css}\"",
+    "format": "prettier --write \"{src,tests}/**/*.ts\" \"templates/*.{js,css}\"",
     "test": "tsx --test tests/*.test.ts",
     "fc": "tsx src/cli.ts"
   },

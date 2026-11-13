@@ -15,6 +15,7 @@ import {
   timing,
   validate,
 } from './confronto.ts';
+import { readableOnDark } from './cor.ts';
 import { type Blip, renderWav } from './sfx.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -26,7 +27,7 @@ export const WIDTH = 1080;
 export const HEIGHT = 1920;
 export const FPS = 30;
 const CHART_W = 820;
-const CHART_H = 110;
+const CHART_H = 90;
 const DRAW_COLOR = '#8A93A6';
 
 const MONTHS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
@@ -43,6 +44,29 @@ export function escapeHtml(text: string): string {
 /** JSON safe inside a <script> element: no "</script>", no "<!--". */
 export function scriptJson(value: unknown): string {
   return JSON.stringify(value).replace(/</g, '\\u003c');
+}
+
+/** Whole percentages of the parts that always add up to 100 (largest remainder). */
+export function percentages(parts: number[]): number[] {
+  const total = parts.reduce((a, b) => a + b, 0);
+  if (total === 0) return parts.map(() => 0);
+  const exact = parts.map((p) => (p / total) * 100);
+  const floors = exact.map(Math.floor);
+  let left = 100 - floors.reduce((a, b) => a + b, 0);
+  const order = exact
+    .map((x, i) => [x - Math.floor(x), i] as const)
+    .sort((x, y) => y[0] - x[0] || x[1] - y[1]);
+  for (const [, i] of order) {
+    if (left === 0) break;
+    floors[i]! += 1;
+    left -= 1;
+  }
+  return floors;
+}
+
+/** DD/MM/AAAA for an ISO date. */
+export function brDate(iso: string): string {
+  return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 }
 
 export function chipDate(iso: string): string {
@@ -150,12 +174,16 @@ export function html(vm: ViewModel): string {
     summary.firstYear === summary.lastYear
       ? `${summary.firstYear}`
       : `${summary.firstYear}–${summary.lastYear}`;
+  // Team colours as text are lifted until they read at AA on the panel; fills keep the kit.
+  const textA = readableOnDark(A.color);
+  const textB = readableOnDark(B.color);
   const diff = summary.tally.winsA - summary.tally.winsB;
+  const more = (n: number) => `${times(n, 'vitória', 'vitórias')} a mais`;
   const verdict =
     diff > 0
-      ? { text: `${A.name} venceu mais: +${diff}`, color: A.color }
+      ? { text: `${A.name}: ${more(diff)}`, color: textA }
       : diff < 0
-        ? { text: `${B.name} venceu mais: +${-diff}`, color: B.color }
+        ? { text: `${B.name}: ${more(-diff)}`, color: textB }
         : { text: 'Confronto empatado em vitórias', color: '#F4F6FA' };
   const rows: [string, string][] = [
     [`MAIOR VITÓRIA · ${A.name.toUpperCase()}`, winLine(summary.biggestWinA, 'a')],
@@ -170,6 +198,7 @@ export function html(vm: ViewModel): string {
     timing: t,
     colors: { a: A.color, b: B.color, draw: DRAW_COLOR },
     short: { a: A.short, b: B.short },
+    showDetail: t.perMatch >= 0.6,
     text: { goals: '{n} gols', progress: 'JOGO {k} / {n}' },
     lead: {
       start: 'COMEÇA O CONFRONTO',
@@ -186,12 +215,13 @@ export function html(vm: ViewModel): string {
       c: s.competition,
       pl: s.place,
       t: s.tally,
+      pc: percentages([s.tally.winsA, s.tally.draws, s.tally.winsB]),
     })),
     chart: chartPoints(all),
     ticks: yearTicks(all),
   };
   const { zero } = runtime.chart;
-  const footer = `Dados: ${data.source.name} · ${data.source.license} · lidos em ${data.source.retrieved}`;
+  const footer = `Fonte: ${data.source.name} · ${data.source.license} · lida em ${brDate(data.source.retrieved)}`;
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -213,7 +243,7 @@ export function html(vm: ViewModel): string {
       <div class="badge" style="background:${A.color};color:${A.ink}">${escapeHtml(A.short)}</div>
       <div class="name">${escapeHtml(A.name.toUpperCase())}</div>
       <div class="role">VITÓRIAS</div>
-      <div class="big" id="wins-a" style="color:${A.color}">0</div>
+      <div class="big" id="wins-a" style="color:${textA}">0</div>
       <div class="goals" id="goals-a"></div>
     </div>
     <div class="abs draws intro">
@@ -224,7 +254,7 @@ export function html(vm: ViewModel): string {
       <div class="badge" style="background:${B.color};color:${B.ink}">${escapeHtml(B.short)}</div>
       <div class="name">${escapeHtml(B.name.toUpperCase())}</div>
       <div class="role">VITÓRIAS</div>
-      <div class="big" id="wins-b" style="color:${B.color}">0</div>
+      <div class="big" id="wins-b" style="color:${textB}">0</div>
       <div class="goals" id="goals-b"></div>
     </div>
 
@@ -234,9 +264,9 @@ export function html(vm: ViewModel): string {
       <div class="seg" id="seg-d" style="background:${DRAW_COLOR}"></div>
       <div class="seg" id="seg-b" style="background:${B.color}"></div>
     </div>
-    <div class="abs pct a intro" id="pct-a" style="color:${A.color}"></div>
+    <div class="abs pct a intro" id="pct-a" style="color:${textA}"></div>
     <div class="abs pct d intro" id="pct-d"></div>
-    <div class="abs pct b intro" id="pct-b" style="color:${B.color}"></div>
+    <div class="abs pct b intro" id="pct-b" style="color:${textB}"></div>
 
     <div class="race-only">
       <div class="abs chart-label intro">SALDO DE VITÓRIAS · ${escapeHtml(A.short)} ACIMA, ${escapeHtml(B.short)} ABAIXO</div>

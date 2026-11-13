@@ -185,6 +185,48 @@ pub fn detect_freeze(text: &str) -> bool {
     text.lines().any(|line| line.contains("freeze_start:"))
 }
 
+/// Frozen stretches reported by `freezedetect`, in seconds. A freeze still open at the end
+/// of the file has no `freeze_end` and is reported up to `f64::INFINITY`.
+pub fn freeze_spans(text: &str) -> Vec<(f64, f64)> {
+    let value = |line: &str, key: &str| -> Option<f64> {
+        line.split(key)
+            .nth(1)?
+            .split_whitespace()
+            .next()?
+            .parse()
+            .ok()
+    };
+    let mut spans = Vec::new();
+    let mut open: Option<f64> = None;
+    for line in text.lines() {
+        if let Some(start) = value(line, "freeze_start:") {
+            open = Some(start);
+        } else if let Some(end) = value(line, "freeze_end:") {
+            if let Some(start) = open.take() {
+                spans.push((start, end));
+            }
+        }
+    }
+    if let Some(start) = open {
+        spans.push((start, f64::INFINITY));
+    }
+    spans
+}
+
+fn describe_freeze(spans: &[(f64, f64)]) -> String {
+    let parts: Vec<String> = spans
+        .iter()
+        .map(|(start, end)| {
+            if end.is_finite() {
+                format!("{start:.1}–{end:.1}s")
+            } else {
+                format!("{start:.1}s até o fim")
+            }
+        })
+        .collect();
+    format!("tela parada em {}", parts.join(", "))
+}
+
 #[derive(Debug, Clone)]
 pub struct AsrOptions {
     pub model: PathBuf,
@@ -416,7 +458,7 @@ impl FfmpegQa {
                 QaStatus::Pass
             },
             if detect_freeze(&freeze) {
-                "freezedetect encontrou trecho".to_string()
+                describe_freeze(&freeze_spans(&freeze))
             } else {
                 "ok".to_string()
             },
@@ -747,5 +789,21 @@ mod tests {
         assert!(!detect_black("ok"));
         assert!(detect_freeze("freeze_start: 1.2"));
         assert!(!detect_freeze("ok"));
+    }
+
+    #[test]
+    fn freeze_detail_says_where_the_screen_stood_still() {
+        let log = "[freezedetect @ 0x1] lavfi.freezedetect.freeze_start: 47.8667\n\
+                   [freezedetect @ 0x1] lavfi.freezedetect.freeze_duration: 2.1\n\
+                   [freezedetect @ 0x1] lavfi.freezedetect.freeze_end: 49.9667\n\
+                   [freezedetect @ 0x1] lavfi.freezedetect.freeze_start: 54.1\n";
+        let spans = freeze_spans(log);
+        assert_eq!(spans.len(), 2);
+        assert_eq!(spans[0], (47.8667, 49.9667));
+        assert!(spans[1].1.is_infinite());
+        assert_eq!(
+            describe_freeze(&spans),
+            "tela parada em 47.9–50.0s, 54.1s até o fim"
+        );
     }
 }

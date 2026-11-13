@@ -126,7 +126,8 @@ export function validate(data: Confronto): Confronto {
   if (!data.source.name.trim() || !data.source.url.trim() || !data.source.license.trim()) {
     fail('fonte precisa de nome, url e licença');
   }
-  if (!validDate(data.source.retrieved)) fail(`fonte: data de leitura "${data.source.retrieved}" inválida`);
+  if (!validDate(data.source.retrieved))
+    fail(`fonte: data de leitura "${data.source.retrieved}" inválida (use AAAA-MM-DD)`);
   if (!data.source.note.trim()) fail('fonte: nota sobre o que a contagem inclui é obrigatória');
   if (data.matches.length < 2) fail('um confronto precisa de pelo menos 2 jogos');
   const ids = new Set([a.id, b.id]);

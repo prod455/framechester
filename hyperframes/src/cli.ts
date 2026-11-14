@@ -5,12 +5,13 @@ import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node
 import { basename, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { readConfronto, viewModel, writeProject } from './composicao.ts';
+import { DEFAULT_SECONDS } from './confronto.ts';
 import { buildConfronto } from './internacionais.ts';
 import { type Quality, lint, packageVersion, render, sha256File, templateSha256 } from './render.ts';
 
 const USAGE = `uso (pelo motor, que também roda o QA técnico):
   framechester internacionais --csv results.csv --a Brazil --b Argentina --lido-em 2026-11-13 --saida confronto.json
-  framechester confronto --dados confronto.json --saida artifacts/confronto [--qualidade draft|standard|high] [--corrida 46] [--gancho "texto"] [--sem-render] [--canal id]`;
+  framechester confronto --dados confronto.json --saida artifacts/confronto [--qualidade draft|standard|high] [--duracao 62] [--gancho "texto"] [--sem-render] [--canal id]`;
 
 function required(values: Record<string, unknown>, key: string): string {
   const value = values[key];
@@ -58,21 +59,21 @@ function confronto(args: string[]): number {
       dados: { type: 'string' },
       saida: { type: 'string' },
       qualidade: { type: 'string', default: 'standard' },
-      corrida: { type: 'string' },
+      duracao: { type: 'string' },
       'sem-render': { type: 'boolean', default: false },
       gancho: { type: 'string' },
     },
   });
   const quality = values.qualidade as Quality;
   if (!['draft', 'standard', 'high'].includes(quality)) throw new Error(`--qualidade inválida: ${quality}`);
-  const raceSeconds = values.corrida === undefined ? undefined : Number(values.corrida);
-  if (raceSeconds !== undefined && !(raceSeconds > 0))
-    throw new Error(`--corrida inválida: ${values.corrida}`);
+  const seconds = values.duracao === undefined ? undefined : Number(values.duracao);
+  if (seconds !== undefined && Number.isNaN(seconds))
+    throw new Error(`--duracao inválida: ${values.duracao}`);
 
   const dataPath = path(values, 'dados');
   const out = path(values, 'saida');
   const project = join(out, 'projeto');
-  const vm = viewModel(readConfronto(dataPath), raceSeconds, values.gancho);
+  const vm = viewModel(readConfronto(dataPath), seconds, values.gancho);
   mkdirSync(out, { recursive: true });
   const video = join(out, 'final.mp4');
   const manifestPath = join(out, 'render_manifest.json');
@@ -83,6 +84,12 @@ function confronto(args: string[]): number {
   writeProject(vm, project);
   lint(project);
   console.log(`projeto: ${project} · ${vm.timing.total}s · ${vm.timing.perMatch}s por jogo`);
+  const asked = seconds ?? DEFAULT_SECONDS;
+  if (Math.abs(vm.timing.total - asked) > 1) {
+    console.log(
+      `aviso: pedido ${asked}s, mas ${vm.steps.length} jogos a um ritmo legível (0,22–1 s por jogo) dão ${vm.timing.total}s`,
+    );
+  }
   if (values['sem-render']) return 0;
 
   const partial = join(out, 'final.partial.mp4');

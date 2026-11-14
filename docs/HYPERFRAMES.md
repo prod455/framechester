@@ -52,7 +52,9 @@ curl.exe -sSLo .framechester\dados\results.csv https://raw.githubusercontent.com
 Opções do `confronto`: `--canal` (obrigatório quando o `framechester.toml` tem canais;
 vai para o manifesto; o template escreve em pt-BR e recusa canal de outro idioma),
 `--gancho` (ângulo editorial do vídeo, até 44 caracteres, sob o título), `--qualidade
-draft|standard|high`, `--corrida <segundos>` (padrão 46), `--sem-render` (só monta o
+draft|standard|high`, `--duracao <segundos>` (15 a 180; padrão 62, logo acima de 1 minuto, o piso que o
+Creator Rewards do TikTok paga segundo guias de terceiros de 2026, não confirmado na
+fonte oficial; 180 s é o limite do Shorts), `--sem-render` (só monta o
 projeto) e `--so-qa` (não renderiza: refaz o QA do `final.mp4` existente e regrava o
 manifesto).
 
@@ -84,7 +86,9 @@ captura BeginFrame, mais rápida e exata).
 
 - Abertura (2,6 s): esporte, número de jogos e período; os dois lados; o gancho do dia
   (`--gancho`) ou "Todos os N jogos, um por um".
-- Corrida: um jogo a cada `perMatch` segundos (0,22–1 s; 110 jogos ≈ 0,42 s). Placar de
+- Corrida: um jogo a cada `perMatch` segundos, calculado para fechar a `--duracao`
+  (0,22–1 s: o ritmo legível vence o alvo, então 23 jogos param em 32 s e 110 jogos em
+  no máximo 119 s; o comando avisa quando isso acontece; 110 jogos em 62 s ≈ 0,48 s). Placar de
   vitórias/empates com pulso no contador que mudou, gols acumulados, quem lidera, barra
   de proporção, gráfico do saldo de vitórias (lado A acima de zero, B abaixo), fita de
   cartões com data e placar (sempre lado A primeiro) e, quando o ritmo deixa ler (0,6 s

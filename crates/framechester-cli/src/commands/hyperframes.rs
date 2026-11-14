@@ -24,8 +24,11 @@ pub(crate) struct ConfrontoArgs {
     pub(crate) saida: PathBuf,
     #[arg(long, default_value = "standard", value_parser = ["draft", "standard", "high"])]
     pub(crate) qualidade: String,
-    #[arg(long, help = "duracao da corrida em segundos (padrao 46)")]
-    pub(crate) corrida: Option<f64>,
+    #[arg(
+        long,
+        help = "duracao total em segundos, 15 a 180 (padrao 62: passa de 1 minuto, piso do TikTok); o ritmo legivel de 0,22 a 1 s por jogo vence o alvo"
+    )]
+    pub(crate) duracao: Option<f64>,
     #[arg(long, help = "so monta o projeto HyperFrames, sem render nem QA")]
     pub(crate) sem_render: bool,
     #[arg(
@@ -132,11 +135,11 @@ pub(crate) fn confronto_args(args: &ConfrontoArgs) -> anyhow::Result<Vec<OsStrin
         "--qualidade".into(),
         args.qualidade.clone().into(),
     ];
-    if let Some(seconds) = args.corrida {
-        if seconds.is_nan() || seconds <= 0.0 {
-            bail!("--corrida deve ser positiva");
+    if let Some(seconds) = args.duracao {
+        if !(15.0..=180.0).contains(&seconds) {
+            bail!("--duracao deve ficar entre 15 e 180 segundos (180 e o limite do Shorts)");
         }
-        out.extend(["--corrida".into(), seconds.to_string().into()]);
+        out.extend(["--duracao".into(), seconds.to_string().into()]);
     }
     if let Some(hook) = &args.gancho {
         out.extend(["--gancho".into(), hook.into()]);
@@ -257,7 +260,7 @@ mod tests {
             dados: PathBuf::from("examples/esporte/x.confronto.json"),
             saida: PathBuf::from("artifacts/x"),
             qualidade: "draft".into(),
-            corrida: Some(30.0),
+            duracao: Some(90.0),
             sem_render: false,
             so_qa: false,
             canal: None,
@@ -281,8 +284,8 @@ mod tests {
             [
                 "--qualidade",
                 "draft",
-                "--corrida",
-                "30",
+                "--duracao",
+                "90",
                 "--gancho",
                 "O 7 a 1 é só 1 de 23 jogos"
             ]
@@ -294,9 +297,11 @@ mod tests {
     }
 
     #[test]
-    fn non_positive_race_is_refused() {
+    fn duration_outside_15_to_180_seconds_is_refused() {
         let mut a = args();
-        a.corrida = Some(0.0);
+        a.duracao = Some(0.0);
+        assert!(confronto_args(&a).is_err());
+        a.duracao = Some(181.0);
         assert!(confronto_args(&a).is_err());
     }
 

@@ -106,19 +106,36 @@ test('summary: biggest win by margin then goals, longest streak, lead changes ig
   assert.equal(s.lastYear, 1957);
 });
 
-test('timing keeps every match readable and a 110-match history inside a Short', () => {
+test('by default a video passes one minute (TikTok rewards) when the history has enough matches', () => {
+  for (const n of [52, 76, 110, 183]) {
+    const t = timing(n);
+    assert.ok(t.total >= 61 && t.total <= 63, `${n} jogos: ${t.total} s`);
+  }
   const t = timing(110);
-  assert.ok(t.total <= 60, `total ${t.total}`);
   assert.ok(t.perMatch >= 0.22 && t.perMatch <= 1);
   assert.equal(t.race, Math.round(t.perMatch * 110 * 1000) / 1000);
-  assert.equal(timing(3).perMatch, 1);
-  assert.equal(timing(1000).perMatch, 0.22);
+  assert.equal(t.total, Math.round((t.intro + t.race + t.hold + t.outro) * 1000) / 1000);
+});
+
+test('a requested length is met when the pace allows it, and capped by a readable pace', () => {
+  const two = timing(183, 120);
+  assert.ok(Math.abs(two.total - 120) < 0.2, `183 jogos em 120 s: ${two.total}`);
+  // 110 matches at the slowest readable pace (1 s) end at 119 s.
+  assert.equal(timing(110, 120).total, 119);
+  // 23 matches cannot fill a minute at 1 s per match: the video is as long as it can be.
+  assert.equal(timing(23, 62).perMatch, 1);
+  assert.equal(timing(23, 62).total, 32);
+  // 1000 matches cannot fit a minute at 0.22 s per match: the floor wins.
+  assert.equal(timing(1000, 62).perMatch, 0.22);
+  assert.throws(() => timing(110, 181), /180/);
+  assert.throws(() => timing(110, 14), /15/);
 });
 
 test('the last match plus the pause before the verdict never reach 2 s of stillness', () => {
-  for (const n of [2, 10, 23, 49, 76, 110, 183, 400]) {
-    const t = timing(n);
-    assert.ok(t.perMatch + t.hold <= 1.6, `${n} jogos: ${t.perMatch} + ${t.hold}`);
-    assert.ok(t.hold >= 0.3);
-  }
+  for (const n of [2, 10, 23, 49, 76, 110, 183, 400])
+    for (const total of [30, 62, 120, 180]) {
+      const t = timing(n, total);
+      assert.ok(t.perMatch + t.hold <= 1.6, `${n} jogos: ${t.perMatch} + ${t.hold}`);
+      assert.ok(t.hold >= 0.3);
+    }
 });

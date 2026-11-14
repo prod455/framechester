@@ -253,22 +253,45 @@ export interface Timing {
   total: number;
 }
 
+/** Default length: just over a minute, the floor TikTok's Creator Rewards pays for. */
+export const DEFAULT_SECONDS = 62;
+/** Longest vertical video YouTube still treats as a Short. */
+export const MAX_SECONDS = 180;
+export const MIN_SECONDS = 15;
+
+const INTRO = 2.6;
+const OUTRO = 6;
+const PACE_MIN = 0.22;
+const PACE_MAX = 1;
+
 /**
- * Race length scales with the number of matches but stays in a range a viewer can read:
- * no match shorter than 0.22 s, none longer than 1 s. The default lands a 110-match
- * history under 60 s, so it fits a Short.
+ * Timing for `matches` matches aiming at `seconds` in total. The pace stays where a viewer
+ * can follow it, 0.22–1 s per match, so a short history ends sooner and a very long one
+ * runs longer than asked: the pace wins over the target.
+ * With the pause before the verdict at 1.4 s minus the pace, the total is
+ * intro + outro + 1.4 + (matches − 1) × pace, which gives the pace for a target.
  */
-export function timing(matches: number, raceSeconds = 46): Timing {
+export function timing(matches: number, seconds: number = DEFAULT_SECONDS): Timing {
   if (matches < 1) fail('sem jogos');
-  const perMatch = round(Math.min(1, Math.max(0.22, raceSeconds / matches)));
-  const intro = 2.6;
+  if (!(seconds >= MIN_SECONDS && seconds <= MAX_SECONDS)) {
+    fail(`duração ${seconds} s fora de ${MIN_SECONDS}–${MAX_SECONDS} s (180 s é o limite do Shorts)`);
+  }
+  const fixed = INTRO + OUTRO + 1.4;
+  const wanted = matches > 1 ? (seconds - fixed) / (matches - 1) : PACE_MAX;
+  const perMatch = round(Math.min(PACE_MAX, Math.max(PACE_MIN, wanted)));
   const race = round(perMatch * matches);
   // The last match's slot plus this pause stays near 1.4 s, so the screen never sits
   // still for 2 s before the verdict (QA freeze), whatever the pace.
   const hold = round(Math.max(0.3, 1.4 - perMatch));
   // Verdict rows land 1.2 s apart; the last one lands under 2 s before the end (QA freeze limit).
-  const outro = 6;
-  return { intro, perMatch, race, hold, outro, total: round(intro + race + hold + outro) };
+  return {
+    intro: INTRO,
+    perMatch,
+    race,
+    hold,
+    outro: OUTRO,
+    total: round(INTRO + race + hold + OUTRO),
+  };
 }
 
 function round(x: number): number {

@@ -134,7 +134,7 @@ export interface ViewModel {
 /** Longest hook that fits the 936 px subtitle line at 34 px. */
 export const HOOK_MAX = 44;
 
-export function viewModel(input: Confronto, raceSeconds?: number, hook?: string): ViewModel {
+export function viewModel(input: Confronto, seconds?: number, hook?: string): ViewModel {
   const data = validate(input);
   const all = steps(data);
   const angle = hook?.trim() || null;
@@ -145,7 +145,7 @@ export function viewModel(input: Confronto, raceSeconds?: number, hook?: string)
     data,
     steps: all,
     summary: summarize(all),
-    timing: timing(all.length, raceSeconds),
+    timing: timing(all.length, seconds),
     hook: angle,
   };
 }
